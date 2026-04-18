@@ -25,6 +25,29 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+
+        // Scroll-back keys (Shift+PgUp/PgDn/Home/End)
+        match (shift, key.code) {
+            (true, KeyCode::PageUp) => {
+                self.tabs.scroll_active(-20, 20);
+                return Ok(PanelAction::None);
+            }
+            (true, KeyCode::PageDown) => {
+                self.tabs.scroll_active(20, 20);
+                return Ok(PanelAction::None);
+            }
+            (true, KeyCode::Home) => {
+                self.tabs.scroll_active(-100_000, 20);
+                return Ok(PanelAction::None);
+            }
+            (true, KeyCode::End) => {
+                self.tabs.snap_to_bottom(20);
+                return Ok(PanelAction::None);
+            }
+            _ => {}
+        }
+
         // Forward raw keystrokes to the active backend
         let bytes = key_to_bytes(key);
         if !bytes.is_empty() {
@@ -64,9 +87,7 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
         .border_style(Style::default().fg(border_color));
 
     let content = tabs.active_content();
-    let line_count = content.lines().count() as u16;
-    let inner_h = area.height.saturating_sub(2);
-    let scroll = line_count.saturating_sub(inner_h);
+    let scroll = tabs.active_scroll() as u16;
 
     let para = Paragraph::new(content)
         .block(block)
@@ -80,14 +101,11 @@ fn key_to_bytes(key: KeyEvent) -> Vec<u8> {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     match key.code {
         KeyCode::Char(c) if ctrl => {
-            // Ctrl+letter → ASCII control code
-            let code = (c as u8).wrapping_sub(b'a').wrapping_add(1);
-            vec![code]
+            vec![(c as u8).wrapping_sub(b'a').wrapping_add(1)]
         }
         KeyCode::Char(c) => {
             let mut buf = [0u8; 4];
-            let s = c.encode_utf8(&mut buf);
-            s.as_bytes().to_vec()
+            c.encode_utf8(&mut buf).as_bytes().to_vec()
         }
         KeyCode::Enter => vec![b'\r'],
         KeyCode::Backspace => vec![0x7f],

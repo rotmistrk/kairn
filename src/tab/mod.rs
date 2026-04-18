@@ -35,6 +35,9 @@ pub enum Backend {
 pub struct LiveTab {
     pub meta: Tab,
     pub backend: Option<Backend>,
+    pub scroll: usize,
+    /// When true, auto-scroll to bottom on new output.
+    pub follow: bool,
 }
 
 /// Manages open tabs and their backends.
@@ -58,6 +61,8 @@ impl Default for TabManager {
             tabs: vec![LiveTab {
                 meta,
                 backend: None,
+                scroll: 0,
+                follow: true,
             }],
             active: 0,
             next_id: 1,
@@ -92,7 +97,12 @@ impl TabManager {
             title: format!("sh:{command}"),
             output: Vec::new(),
         };
-        self.tabs.push(LiveTab { meta, backend });
+        self.tabs.push(LiveTab {
+            meta,
+            backend,
+            scroll: 0,
+            follow: true,
+        });
         self.active = self.tabs.len() - 1;
         id
     }
@@ -109,7 +119,12 @@ impl TabManager {
             title: format!("kiro:{session_name}"),
             output: Vec::new(),
         };
-        self.tabs.push(LiveTab { meta, backend });
+        self.tabs.push(LiveTab {
+            meta,
+            backend,
+            scroll: 0,
+            follow: true,
+        });
         self.active = self.tabs.len() - 1;
         id
     }
@@ -176,6 +191,9 @@ impl TabManager {
                 for line in text.lines() {
                     tab.meta.output.push(line.to_string());
                 }
+                if tab.follow {
+                    tab.scroll = tab.meta.output.len();
+                }
             }
         }
     }
@@ -203,6 +221,8 @@ impl TabManager {
             .map(|meta| LiveTab {
                 meta,
                 backend: None,
+                scroll: 0,
+                follow: true,
             })
             .collect();
         self.active = active.min(self.tabs.len().saturating_sub(1));
@@ -216,6 +236,30 @@ impl TabManager {
             .enumerate()
             .map(|(i, t)| (t.meta.title.as_str(), i == self.active))
             .collect()
+    }
+
+    /// Current scroll offset of the active tab.
+    pub fn active_scroll(&self) -> usize {
+        self.tabs.get(self.active).map_or(0, |t| t.scroll)
+    }
+
+    /// Scroll the active tab by delta lines.
+    pub fn scroll_active(&mut self, delta: isize, viewport_h: usize) {
+        if let Some(tab) = self.tabs.get_mut(self.active) {
+            let max = tab.meta.output.len().saturating_sub(viewport_h);
+            let new = (tab.scroll as isize).saturating_add(delta);
+            tab.scroll = (new.max(0) as usize).min(max);
+            // If scrolled away from bottom, stop following
+            tab.follow = tab.scroll >= max;
+        }
+    }
+
+    /// Snap active tab to bottom.
+    pub fn snap_to_bottom(&mut self, viewport_h: usize) {
+        if let Some(tab) = self.tabs.get_mut(self.active) {
+            tab.scroll = tab.meta.output.len().saturating_sub(viewport_h);
+            tab.follow = true;
+        }
     }
 }
 
