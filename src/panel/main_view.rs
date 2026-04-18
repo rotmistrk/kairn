@@ -182,7 +182,11 @@ fn render_input_line(frame: &mut Frame, area: Rect, input: &InputLine, focused: 
     let paragraph = Paragraph::new(input.text.as_str()).block(block);
     frame.render_widget(paragraph, area);
 
-    if focused {
-        frame.set_cursor_position((area.x + 1 + input.cursor as u16, area.y + 1));
+    if focused && area.height >= 3 {
+        let cx = (area.x + 1 + input.cursor as u16).min(area.right().saturating_sub(2));
+        let cy = area.y + 1;
+        if cy < area.bottom().saturating_sub(1) {
+            frame.set_cursor_position((cx, cy));
+        }
     }
 }

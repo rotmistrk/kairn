@@ -149,7 +149,11 @@ fn render_search_input(frame: &mut Frame, search: &FileSearch, overlay: Rect) {
         .border_style(Style::default().fg(Color::Yellow));
     let para = Paragraph::new(search.query.as_str()).block(block);
     frame.render_widget(para, input_area);
-    frame.set_cursor_position((input_area.x + 1 + search.cursor as u16, input_area.y + 1));
+    let cx = (input_area.x + 1 + search.cursor as u16).min(input_area.right().saturating_sub(2));
+    let cy = input_area.y + 1;
+    if cy < input_area.bottom().saturating_sub(1) {
+        frame.set_cursor_position((cx, cy));
+    }
 }
 
 fn render_search_results(frame: &mut Frame, search: &FileSearch, overlay: Rect) {
@@ -222,7 +226,11 @@ fn render_save_prompt(frame: &mut Frame, prompt: &overlay::SavePrompt, area: Rec
         .border_style(Style::default().fg(Color::Yellow));
     let para = Paragraph::new(prompt.name.as_str()).block(block);
     frame.render_widget(para, area);
-    frame.set_cursor_position((area.x + 1 + prompt.cursor as u16, area.y + 1));
+    let cx = (area.x + 1 + prompt.cursor as u16).min(area.right().saturating_sub(2));
+    let cy = area.y + 1;
+    if cy < area.bottom().saturating_sub(1) {
+        frame.set_cursor_position((cx, cy));
+    }
 }
 
 fn render_load_picker(frame: &mut Frame, picker: &overlay::LoadPicker, area: Rect) {
