@@ -154,8 +154,17 @@ impl TabManager {
             None => return,
         };
         tab.meta.output.push(format!("> {text}"));
-        if let Some(Backend::Kiro(kp)) = &mut tab.backend {
-            let _ = kp.send_line(text);
+        match &mut tab.backend {
+            Some(Backend::Kiro(kp)) => {
+                if let Err(e) = kp.send_line(text) {
+                    tab.meta.output.push(format!("⚠ send failed: {e}"));
+                }
+            }
+            None => {
+                tab.meta
+                    .output
+                    .push("⚠ kiro-cli not running (failed to spawn)".to_string());
+            }
         }
         if tab.follow {
             tab.scroll = tab.meta.output.len();

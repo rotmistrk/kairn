@@ -76,19 +76,12 @@ impl Panel for InteractivePanel {
 }
 
 impl InteractivePanel {
-    fn dispatch_input(&mut self, text: &str, target: SendTarget) {
-        match target {
-            SendTarget::Kiro => {
-                self.tabs.send_to_active_kiro(text);
-            }
-            SendTarget::Terminal => {
-                if self.tabs.active_is_shell() {
-                    self.tabs.run_in_active(text);
-                } else {
-                    self.tabs
-                        .push_to_active(format!("[not a shell tab] {text}"));
-                }
-            }
+    fn dispatch_input(&mut self, text: &str, _target: SendTarget) {
+        // Smart routing: Enter sends to whatever the active tab is
+        if self.tabs.active_is_shell() {
+            self.tabs.run_in_active(text);
+        } else {
+            self.tabs.send_to_active_kiro(text);
         }
     }
 }
@@ -148,11 +141,7 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
 
 fn render_input(frame: &mut Frame, input: &InputLine, area: Rect, focused: bool) {
     let mode = input.mode_indicator();
-    let hint = if focused {
-        "Enter→run  Alt-Enter→kiro"
-    } else {
-        ""
-    };
+    let hint = if focused { "Enter→send" } else { "" };
     let title = Line::from(vec![
         Span::styled(
             format!(" [{mode}] "),
