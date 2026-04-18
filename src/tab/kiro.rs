@@ -1,6 +1,7 @@
 // Kiro subprocess backend: spawn kiro-cli chat, pipe stdin/stdout/stderr.
 
 use std::io::{Read, Write};
+use std::os::unix::io::AsRawFd;
 use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result};
@@ -28,6 +29,10 @@ impl KiroProcess {
         let stdout = child.stdout.take().context("taking kiro stdout")?;
         let stderr = child.stderr.take().context("taking kiro stderr")?;
 
+        // Set stdout and stderr to non-blocking
+        set_nonblocking(&stdout);
+        set_nonblocking(&stderr);
+
         Ok(Self {
             child,
             stdin,
@@ -52,6 +57,14 @@ impl KiroProcess {
 
     pub fn is_alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))
+    }
+}
+
+fn set_nonblocking<F: AsRawFd>(f: &F) {
+    unsafe {
+        let fd = f.as_raw_fd();
+        let flags = libc::fcntl(fd, libc::F_GETFL);
+        libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
     }
 }
 
