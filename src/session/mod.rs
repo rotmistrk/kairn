@@ -1,5 +1,8 @@
 //! Session save/restore.
-//! Persists layout, open tabs, open file to ~/.kairn/sessions/.
+//! Auto-state: $PWD/.kairn.state (auto-save on quit, auto-restore on launch)
+//! Named sessions: ~/.kairn/sessions/<name>.json (explicit save/load)
+
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -19,9 +22,33 @@ pub struct Session {
     pub open_file: Option<String>,
 }
 
-fn sessions_dir() -> Result<std::path::PathBuf> {
+// ── Auto-state ($PWD/.kairn.state) ──────────
+
+fn state_path(workspace: &Path) -> PathBuf {
+    workspace.join(".kairn.state")
+}
+
+pub fn auto_save(workspace: &Path, session: &Session) -> Result<()> {
+    let json = serde_json::to_string_pretty(session)?;
+    std::fs::write(state_path(workspace), json)?;
+    Ok(())
+}
+
+pub fn auto_load(workspace: &Path) -> Result<Option<Session>> {
+    let path = state_path(workspace);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let json = std::fs::read_to_string(path)?;
+    let session: Session = serde_json::from_str(&json)?;
+    Ok(Some(session))
+}
+
+// ── Named sessions (~/.kairn/sessions/) ─────
+
+fn sessions_dir() -> Result<PathBuf> {
     let home = std::env::var("HOME")
-        .map(std::path::PathBuf::from)
+        .map(PathBuf::from)
         .map_err(|e| anyhow::anyhow!("HOME not set: {e}"))?;
     let dir = home.join(".kairn").join("sessions");
     std::fs::create_dir_all(&dir)?;
@@ -38,11 +65,9 @@ pub fn save(session: &Session) -> Result<()> {
 pub fn load(name: &str) -> Result<Session> {
     let path = sessions_dir()?.join(format!("{name}.json"));
     let json = std::fs::read_to_string(path)?;
-    let session: Session = serde_json::from_str(&json)?;
-    Ok(session)
+    Ok(serde_json::from_str(&json)?)
 }
 
-/// List available session names.
 pub fn list_sessions() -> Result<Vec<String>> {
     let dir = sessions_dir()?;
     let mut names = Vec::new();

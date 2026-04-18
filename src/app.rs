@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
+use crate::config::Config;
 use crate::editor;
 use crate::highlight::Highlighter;
 use crate::input::SendTarget;
@@ -28,14 +29,17 @@ pub struct App {
     pub should_quit: bool,
     pub pending_editor: Option<String>,
     pub highlighter: Highlighter,
+    pub config: Config,
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
 }
 
 impl App {
     pub fn new(workspace_root: String) -> Self {
+        let ws = PathBuf::from(&workspace_root);
+        let config = Config::load(&ws);
         let mut app = Self {
-            workspace_root: PathBuf::from(&workspace_root),
+            workspace_root: ws,
             layout_mode: LayoutMode::default(),
             panel_sizes: PanelSizes::default(),
             focus: FocusedPanel::default(),
@@ -45,11 +49,53 @@ impl App {
             should_quit: false,
             pending_editor: None,
             highlighter: Highlighter::new(),
+            config,
             search: None,
             overlay: None,
         };
-        app.show_welcome();
+        // Try auto-restore, otherwise show welcome
+        if !app.try_auto_restore() {
+            app.show_welcome();
+        }
         app
+    }
+
+    fn try_auto_restore(&mut self) -> bool {
+        let sess = match session::auto_load(&self.workspace_root) {
+            Ok(Some(s)) => s,
+            _ => return false,
+        };
+        self.restore_session(sess);
+        true
+    }
+
+    fn restore_session(&mut self, sess: Session) {
+        self.layout_mode = sess.layout_mode;
+        self.panel_sizes = sess.panel_sizes;
+        self.interactive.tabs.restore(sess.tabs, sess.active_tab);
+        if let Some(path) = sess.open_file {
+            self.open_file(&path);
+        }
+    }
+
+    /// Snapshot current state into a Session.
+    pub fn snapshot_session(&self, name: &str) -> Session {
+        let (tabs, active_tab) = self.interactive.tabs.snapshot();
+        Session {
+            name: name.to_string(),
+            workspace_root: self.workspace_root.to_string_lossy().to_string(),
+            layout_mode: self.layout_mode,
+            panel_sizes: self.panel_sizes.clone(),
+            tabs,
+            active_tab,
+            open_file: self.main_view.current_file_path().map(String::from),
+        }
+    }
+
+    /// Auto-save state to $PWD/.kairn.state.
+    pub fn auto_save(&self) {
+        let sess = self.snapshot_session("_auto");
+        let _ = session::auto_save(&self.workspace_root, &sess);
     }
 
     fn show_welcome(&mut self) {
@@ -133,17 +179,7 @@ impl App {
     }
 
     fn save_session(&self, name: &str) {
-        let (tabs, active_tab) = self.interactive.tabs.snapshot();
-        let open_file = self.main_view.current_file_path().map(String::from);
-        let sess = Session {
-            name: name.to_string(),
-            workspace_root: self.workspace_root.to_string_lossy().to_string(),
-            layout_mode: self.layout_mode,
-            panel_sizes: self.panel_sizes.clone(),
-            tabs,
-            active_tab,
-            open_file,
-        };
+        let sess = self.snapshot_session(name);
         let _ = session::save(&sess);
     }
 
@@ -152,12 +188,7 @@ impl App {
             Ok(s) => s,
             Err(_) => return,
         };
-        self.layout_mode = sess.layout_mode;
-        self.panel_sizes = sess.panel_sizes;
-        self.interactive.tabs.restore(sess.tabs, sess.active_tab);
-        if let Some(path) = sess.open_file {
-            self.open_file(&path);
-        }
+        self.restore_session(sess);
     }
 
     fn open_search(&mut self) {
@@ -379,14 +410,11 @@ fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
     use ratatui::text::{Line, Span};
 
     let bold = Style::default().add_modifier(Modifier::BOLD);
-    let cyan = Style::default()
-        .fg(Color::Cyan)
-        .add_modifier(Modifier::BOLD);
+    let cyan = bold.fg(Color::Cyan);
     let dim = Style::default().fg(Color::DarkGray);
-    let yellow = Style::default().fg(Color::Yellow);
     let white = Style::default().fg(Color::White);
 
-    vec![
+    let mut lines = vec![
         Line::from(""),
         Line::from(Span::styled("  ╦╔═╔═╗╦╦═╗╔╗╔", cyan)),
         Line::from(Span::styled("  ╠╩╗╠═╣║╠╦╝║║║", cyan)),
@@ -408,17 +436,31 @@ fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
             dim,
         )),
         Line::from(""),
-        Line::from(Span::styled("  Quick start:", yellow)),
-        Line::from(Span::styled("  Ctrl-P       Search files", white)),
-        Line::from(Span::styled("  Ctrl-S       Open shell tab", white)),
-        Line::from(Span::styled("  Ctrl-K       Open Kiro tab", white)),
-        Line::from(Span::styled("  Ctrl-D       Diff vs HEAD", white)),
-        Line::from(Span::styled("  Ctrl-G       Git log", white)),
-        Line::from(Span::styled("  Ctrl-/ / F1  All keybindings", white)),
+    ];
+    lines.extend(welcome_keys());
+    lines
+}
+
+fn welcome_keys() -> Vec<ratatui::text::Line<'static>> {
+    use ratatui::style::{Color, Style};
+    use ratatui::text::{Line, Span};
+
+    let y = Style::default().fg(Color::Yellow);
+    let w = Style::default().fg(Color::White);
+    let d = Style::default().fg(Color::DarkGray);
+
+    vec![
+        Line::from(Span::styled("  Quick start:", y)),
+        Line::from(Span::styled("  Ctrl-P       Search files", w)),
+        Line::from(Span::styled("  Ctrl-S       Open shell tab", w)),
+        Line::from(Span::styled("  Ctrl-K       Open Kiro tab", w)),
+        Line::from(Span::styled("  Ctrl-D       Diff vs HEAD", w)),
+        Line::from(Span::styled("  Ctrl-G       Git log", w)),
+        Line::from(Span::styled("  Ctrl-/ / F1  All keybindings", w)),
         Line::from(""),
         Line::from(Span::styled(
-            "  Navigate the file tree on the left, or press Ctrl-P to jump to a file.",
-            dim,
+            "  Navigate the file tree, or Ctrl-P to jump to a file.",
+            d,
         )),
     ]
 }

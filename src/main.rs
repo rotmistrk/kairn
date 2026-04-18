@@ -77,6 +77,7 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App
         })?;
 
         if app.should_quit {
+            app.auto_save();
             return Ok(());
         }
 
