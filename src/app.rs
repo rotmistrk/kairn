@@ -29,6 +29,7 @@ pub struct App {
     pub should_quit: bool,
     pub pending_editor: Option<String>,
     pub pending_shell: bool,
+    pub pending_peek: bool,
     pub highlighter: Highlighter,
     pub config: Config,
     pub keymap: Keymap,
@@ -54,6 +55,7 @@ impl App {
             should_quit: false,
             pending_editor: None,
             pending_shell: false,
+            pending_peek: false,
             highlighter: Highlighter::new(),
             config,
             keymap,
@@ -157,6 +159,9 @@ impl App {
                 self.panel_sizes.resize_interactive(d);
             }
             Action::TogglePinOutput => {}
+            Action::PeekScreen => {
+                self.pending_peek = true;
+            }
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
             }

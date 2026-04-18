@@ -110,6 +110,12 @@ fn run_loop(
             terminal.clear()?;
             continue;
         }
+        if app.pending_peek {
+            app.pending_peek = false;
+            peek_screen()?;
+            terminal.clear()?;
+            continue;
+        }
 
         if event::poll(std::time::Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
@@ -354,4 +360,21 @@ fn install_panic_handler() {
         eprintln!("kairn: please report at https://github.com/rotmistrk/kairn/issues");
         default_hook(info);
     }));
+}
+
+/// Midnight Commander-style peek: leave alternate screen, wait for any key, return.
+fn peek_screen() -> Result<()> {
+    execute!(io::stdout(), LeaveAlternateScreen)?;
+    disable_raw_mode()?;
+    // Show hint
+    eprintln!("-- kairn: press any key to return --");
+    enable_raw_mode()?;
+    // Wait for any key
+    loop {
+        if let Event::Key(_) = event::read()? {
+            break;
+        }
+    }
+    execute!(io::stdout(), EnterAlternateScreen)?;
+    Ok(())
 }
