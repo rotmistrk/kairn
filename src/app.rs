@@ -34,7 +34,7 @@ pub struct App {
 
 impl App {
     pub fn new(workspace_root: String) -> Self {
-        Self {
+        let mut app = Self {
             workspace_root: PathBuf::from(&workspace_root),
             layout_mode: LayoutMode::default(),
             panel_sizes: PanelSizes::default(),
@@ -47,7 +47,15 @@ impl App {
             highlighter: Highlighter::new(),
             search: None,
             overlay: None,
-        }
+        };
+        app.show_welcome();
+        app
+    }
+
+    fn show_welcome(&mut self) {
+        let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
+        self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(welcome_lines());
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
@@ -364,4 +372,53 @@ fn log_entry_line(e: &crate::diff::LogEntry) -> ratatui::text::Line<'static> {
         Span::styled(format!("{} ", e.author), Style::default().fg(Color::Green)),
         Span::styled(e.message.clone(), Style::default().fg(Color::White)),
     ])
+}
+
+fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+
+    let bold = Style::default().add_modifier(Modifier::BOLD);
+    let cyan = Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD);
+    let dim = Style::default().fg(Color::DarkGray);
+    let yellow = Style::default().fg(Color::Yellow);
+    let white = Style::default().fg(Color::White);
+
+    vec![
+        Line::from(""),
+        Line::from(Span::styled("  ╦╔═╔═╗╦╦═╗╔╗╔", cyan)),
+        Line::from(Span::styled("  ╠╩╗╠═╣║╠╦╝║║║", cyan)),
+        Line::from(Span::styled("  ╩ ╩╩ ╩╩╩╚═╝╚╝", cyan)),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  kairn", bold),
+            Span::styled(" v0.1.0", dim),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled("  A TUI IDE oriented around Kiro AI.", white)),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Named after cairn — stacked stones marking a trail.",
+            dim,
+        )),
+        Line::from(Span::styled(
+            "  Kairn guides your path through code, with AI at the core.",
+            dim,
+        )),
+        Line::from(""),
+        Line::from(Span::styled("  Quick start:", yellow)),
+        Line::from(Span::styled("  Ctrl-P       Search files", white)),
+        Line::from(Span::styled("  Ctrl-S       Open shell tab", white)),
+        Line::from(Span::styled("  Ctrl-K       Open Kiro tab", white)),
+        Line::from(Span::styled("  Ctrl-D       Diff vs HEAD", white)),
+        Line::from(Span::styled("  Ctrl-G       Git log", white)),
+        Line::from(Span::styled("  Ctrl-/ / F1  All keybindings", white)),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Navigate the file tree on the left, or press Ctrl-P to jump to a file.",
+            dim,
+        )),
+    ]
 }
