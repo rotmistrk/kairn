@@ -298,7 +298,9 @@ impl App {
     fn handle_tab_action(&mut self, action: Action) {
         match action {
             Action::NewKiroTab => {
-                self.interactive.tabs.add_kiro_tab("new".into());
+                self.interactive
+                    .tabs
+                    .add_kiro_tab_with_cmd("new", &self.config.kiro_command);
             }
             Action::NewShellTab => {
                 self.interactive.tabs.add_shell_tab(self.config.shell());

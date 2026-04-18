@@ -101,16 +101,23 @@ impl TabManager {
     }
 
     pub fn add_kiro_tab(&mut self, session_name: String) -> TabId {
+        self.add_kiro_tab_with_cmd(&session_name, "kiro-cli")
+    }
+
+    pub fn add_kiro_tab_with_cmd(&mut self, session_name: &str, kiro_cmd: &str) -> TabId {
         let id = TabId(self.next_id);
         self.next_id += 1;
-        let backend = KiroProcess::spawn("kiro-cli").ok().map(Backend::Kiro);
+        let (backend, output) = match KiroProcess::spawn(kiro_cmd) {
+            Ok(kp) => (Some(Backend::Kiro(kp)), Vec::new()),
+            Err(e) => (None, vec![format!("⚠ failed to spawn {kiro_cmd}: {e}")]),
+        };
         let meta = Tab {
             id,
             kind: TabKind::Kiro {
-                session_name: session_name.clone(),
+                session_name: session_name.to_string(),
             },
             title: format!("kiro:{session_name}"),
-            output: Vec::new(),
+            output,
         };
         self.tabs.push(LiveTab {
             meta,
