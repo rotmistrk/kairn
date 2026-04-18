@@ -123,9 +123,23 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
         .border_style(Style::default().fg(border_color));
 
     let content = tabs.active_content();
+    let lines: Vec<Line<'_>> = content
+        .lines()
+        .map(|l| {
+            if l.starts_with('⚠') {
+                Line::from(Span::styled(l, Style::default().fg(Color::Red)))
+            } else if l.starts_with('$') {
+                Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
+            } else if l.starts_with('>') {
+                Line::from(Span::styled(l, Style::default().fg(Color::Cyan)))
+            } else {
+                Line::from(l)
+            }
+        })
+        .collect();
     let scroll = tabs.active_scroll() as u16;
 
-    let para = Paragraph::new(content)
+    let para = Paragraph::new(lines)
         .block(block)
         .wrap(Wrap { trim: false })
         .scroll((scroll, 0));

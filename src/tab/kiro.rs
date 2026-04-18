@@ -1,6 +1,6 @@
-// Kiro subprocess backend: spawn kiro-cli chat, pipe stdin/stdout.
+// Kiro subprocess backend: spawn kiro-cli chat, pipe stdin/stdout/stderr.
 
-use std::io::{BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
 
 use anyhow::{Context, Result};
@@ -9,49 +9,47 @@ use anyhow::{Context, Result};
 pub struct KiroProcess {
     child: Child,
     stdin: std::process::ChildStdin,
-    reader: BufReader<std::process::ChildStdout>,
+    stdout: std::process::ChildStdout,
+    stderr: std::process::ChildStderr,
 }
 
 impl KiroProcess {
-    /// Spawn `kiro-cli chat` (or custom command).
     pub fn spawn(kiro_cmd: &str) -> Result<Self> {
         let mut child = Command::new(kiro_cmd)
             .arg("chat")
             .env("TERM", "dumb")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .with_context(|| format!("spawning {kiro_cmd}"))?;
 
         let stdin = child.stdin.take().context("taking kiro stdin")?;
         let stdout = child.stdout.take().context("taking kiro stdout")?;
+        let stderr = child.stderr.take().context("taking kiro stderr")?;
 
         Ok(Self {
             child,
             stdin,
-            reader: BufReader::new(stdout),
+            stdout,
+            stderr,
         })
     }
 
-    /// Send a line of input to kiro.
     pub fn send_line(&mut self, line: &str) -> Result<()> {
         writeln!(self.stdin, "{line}")?;
         self.stdin.flush()?;
         Ok(())
     }
 
-    /// Non-blocking read of available output.
-    pub fn try_read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let inner = self.reader.get_mut();
-        match inner.read(buf) {
-            Ok(n) => Ok(n),
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(0),
-            Err(e) => Err(e.into()),
-        }
+    pub fn try_read_stdout(&mut self, buf: &mut [u8]) -> usize {
+        self.stdout.read(buf).unwrap_or_default()
     }
 
-    /// Check if the process is still running.
+    pub fn try_read_stderr(&mut self, buf: &mut [u8]) -> usize {
+        self.stderr.read(buf).unwrap_or_default()
+    }
+
     pub fn is_alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))
     }

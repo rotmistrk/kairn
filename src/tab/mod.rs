@@ -170,18 +170,8 @@ impl TabManager {
                 Some(Backend::Kiro(kp)) => kp,
                 None => continue,
             };
-            let n = kp.try_read(&mut buf).unwrap_or(0);
-            if n == 0 {
-                continue;
-            }
-            let text = String::from_utf8_lossy(&buf[..n]);
-            let clean = strip_ansi(&text);
-            for line in clean.lines() {
-                if !line.is_empty() {
-                    tab.meta.output.push(line.to_string());
-                }
-            }
-            if tab.follow {
+            let got_output = poll_kiro(kp, &mut buf, &mut tab.meta.output);
+            if got_output && tab.follow {
                 tab.scroll = tab.meta.output.len();
             }
         }
@@ -278,6 +268,37 @@ fn append_output(output: &mut Vec<String>, text: &str) {
     for line in text.lines() {
         output.push(line.to_string());
     }
+}
+
+fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) -> bool {
+    let mut got = false;
+
+    let n = kp.try_read_stdout(buf);
+    if n > 0 {
+        let text = String::from_utf8_lossy(&buf[..n]);
+        let clean = strip_ansi(&text);
+        for line in clean.lines() {
+            if !line.is_empty() {
+                output.push(line.to_string());
+            }
+        }
+        got = true;
+    }
+
+    let n = kp.try_read_stderr(buf);
+    if n > 0 {
+        let text = String::from_utf8_lossy(&buf[..n]);
+        let clean = strip_ansi(&text);
+        for line in clean.lines() {
+            if !line.is_empty() {
+                // Prefix stderr lines so they can be styled differently
+                output.push(format!("⚠ {line}"));
+            }
+        }
+        got = true;
+    }
+
+    got
 }
 
 /// Strip ANSI escape sequences and control characters.
