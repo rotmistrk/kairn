@@ -19,6 +19,7 @@ pub fn run_command(cmd: &str) -> Result<CommandResult> {
     let output = Command::new(&shell)
         .arg("-c")
         .arg(cmd)
+        .env("TERM", "dumb")
         .output()
         .with_context(|| format!("running: {cmd}"))?;
 
