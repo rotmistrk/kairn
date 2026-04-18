@@ -20,6 +20,7 @@ pub enum Action {
     LaunchEditor,
     OpenSearch,
     DiffCurrentFile,
+    GitLog,
     SaveSession,
     LoadSession,
     /// Key not mapped at app level — forward to focused panel.
@@ -42,6 +43,7 @@ pub fn map_key(key: KeyEvent) -> Action {
         (true, false, false, KeyCode::Char('e')) => Action::LaunchEditor,
         (true, false, false, KeyCode::Char('p')) => Action::OpenSearch,
         (true, false, false, KeyCode::Char('d')) => Action::DiffCurrentFile,
+        (true, false, false, KeyCode::Char('g')) => Action::GitLog,
         (true, false, true, KeyCode::Char('S')) => Action::SaveSession,
         (true, false, true, KeyCode::Char('O')) => Action::LoadSession,
 

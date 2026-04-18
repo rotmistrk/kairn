@@ -78,6 +78,7 @@ impl App {
             }
             Action::OpenSearch => self.open_search(),
             Action::DiffCurrentFile => self.diff_current_file(),
+            Action::GitLog => self.show_git_log(),
             Action::SaveSession => self.open_save_prompt(),
             Action::LoadSession => self.open_load_picker(),
             Action::Forward(key) => self.forward_to_panel(key)?,
@@ -169,6 +170,29 @@ impl App {
             .collect::<Vec<_>>()
             .join("\n");
         let buf = crate::buffer::OutputBuffer::diff(format!("diff: {path}"), raw);
+        self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(styled);
+    }
+
+    fn show_git_log(&mut self) {
+        let file_filter = self.main_view.current_file_path().and_then(|p| {
+            // Convert to relative path for gix
+            Path::new(p)
+                .strip_prefix(&self.workspace_root)
+                .ok()
+                .map(|r| r.to_string_lossy().to_string())
+        });
+        let entries = match crate::diff::git_log(&self.workspace_root, file_filter.as_deref(), 200)
+        {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        let (styled, raw) = log_entries_to_styled(&entries);
+        let title = match &file_filter {
+            Some(f) => format!("log: {f}"),
+            None => "log: (all)".to_string(),
+        };
+        let buf = crate::buffer::OutputBuffer::plain(title, raw);
         self.main_view.set_buffer(buf);
         self.main_view.set_highlighted(styled);
     }
@@ -297,4 +321,43 @@ fn diff_lines_to_styled(lines: &[crate::diff::DiffLine]) -> Vec<ratatui::text::L
             Line::from(Span::styled(dl.content.clone(), style))
         })
         .collect()
+}
+
+fn log_entries_to_styled(
+    entries: &[crate::diff::LogEntry],
+) -> (Vec<ratatui::text::Line<'static>>, String) {
+    let mut lines = Vec::new();
+    let mut raw = String::new();
+
+    for e in entries {
+        raw.push_str(&format!(
+            "{} {} {} {}\n",
+            e.hash_short, e.date, e.author, e.message
+        ));
+        lines.push(log_entry_line(e));
+    }
+
+    if entries.is_empty() {
+        lines.push(ratatui::text::Line::from("(no commits found)"));
+        raw.push_str("(no commits found)\n");
+    }
+
+    (lines, raw)
+}
+
+fn log_entry_line(e: &crate::diff::LogEntry) -> ratatui::text::Line<'static> {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::Span;
+
+    ratatui::text::Line::from(vec![
+        Span::styled(
+            format!("{} ", e.hash_short),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(format!("{} ", e.date), Style::default().fg(Color::Cyan)),
+        Span::styled(format!("{} ", e.author), Style::default().fg(Color::Green)),
+        Span::styled(e.message.clone(), Style::default().fg(Color::White)),
+    ])
 }
