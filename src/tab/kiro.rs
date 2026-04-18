@@ -18,6 +18,7 @@ impl KiroProcess {
     pub fn spawn(kiro_cmd: &str) -> Result<Self> {
         let mut child = Command::new(kiro_cmd)
             .arg("chat")
+            .arg("--classic")
             .env("TERM", "dumb")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
