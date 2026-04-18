@@ -14,25 +14,26 @@ pub struct KeyCombo(pub String);
 /// Full configuration.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(default = "default_shell")]
-    pub default_shell: String,
     #[serde(default = "default_kiro_command")]
     pub kiro_command: String,
     #[serde(default)]
     pub keys: HashMap<String, KeyCombo>,
 }
 
-fn default_shell() -> String {
-    "bash".to_string()
-}
 fn default_kiro_command() -> String {
     "kiro-cli".to_string()
+}
+
+impl Config {
+    /// Shell to use for new tabs — always $SHELL, falling back to /bin/sh.
+    pub fn shell(&self) -> String {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            default_shell: default_shell(),
             kiro_command: default_kiro_command(),
             keys: default_keys(),
         }
@@ -150,13 +151,9 @@ fn load_rc_file(path: &Path) -> Option<Config> {
 
 /// Merge overrides into base. Only non-default fields from overlay are applied.
 fn merge_into(base: &mut Config, overlay: Config) {
-    if overlay.default_shell != default_shell() {
-        base.default_shell = overlay.default_shell;
-    }
     if overlay.kiro_command != default_kiro_command() {
         base.kiro_command = overlay.kiro_command;
     }
-    // Sparse key merge: overlay keys override base keys
     for (action, combo) in overlay.keys {
         base.keys.insert(action, combo);
     }

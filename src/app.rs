@@ -285,7 +285,7 @@ impl App {
                 self.interactive.tabs.add_kiro_tab("new".into());
             }
             Action::NewShellTab => {
-                self.interactive.tabs.add_shell_tab("bash".into());
+                self.interactive.tabs.add_shell_tab(self.config.shell());
             }
             Action::NextTab => self.interactive.tabs.next_tab(),
             Action::PrevTab => self.interactive.tabs.prev_tab(),
