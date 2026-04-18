@@ -46,6 +46,7 @@ pub fn map_key(key: KeyEvent) -> Action {
         (true, false, false, KeyCode::Char('d')) => Action::DiffCurrentFile,
         (true, false, false, KeyCode::Char('g')) => Action::GitLog,
         (true, false, false, KeyCode::Char('/')) => Action::ShowHelp,
+        (true, false, false, KeyCode::Char('\x1f')) => Action::ShowHelp,
         (false, false, false, KeyCode::F(1)) => Action::ShowHelp,
         (true, false, true, KeyCode::Char('S')) => Action::SaveSession,
         (true, false, true, KeyCode::Char('O')) => Action::LoadSession,

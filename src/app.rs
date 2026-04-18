@@ -475,7 +475,7 @@ fn welcome_keys() -> Vec<ratatui::text::Line<'static>> {
         Line::from(Span::styled("  Ctrl-K       Open Kiro tab", w)),
         Line::from(Span::styled("  Ctrl-D       Diff vs HEAD", w)),
         Line::from(Span::styled("  Ctrl-G       Git log", w)),
-        Line::from(Span::styled("  Ctrl-/ / F1  All keybindings", w)),
+        Line::from(Span::styled("  F1           All keybindings", w)),
         Line::from(""),
         Line::from(Span::styled(
             "  Navigate the file tree, or Ctrl-P to jump to a file.",

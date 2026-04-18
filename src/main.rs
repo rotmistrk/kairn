@@ -249,6 +249,7 @@ fn render_load_picker(frame: &mut Frame, picker: &overlay::LoadPicker, area: Rec
 
 const HELP_TEXT: &str = "\
  Ctrl-Q        Quit
+ Esc Esc       Quit (fallback)
  Ctrl-L        Rotate layout
  Ctrl-B        Toggle file tree
  Ctrl-Tab      Cycle panel focus
@@ -264,7 +265,7 @@ const HELP_TEXT: &str = "\
  Alt-Shift-arrows Resize ±5
  Ctrl-Shift-S  Save session
  Ctrl-Shift-O  Load session
- Ctrl-/ / F1   This help
+ F1 / Ctrl-/   This help
 
  Main panel (focused):
  ↑/↓/PgUp/PgDn/Home/End  Scroll
