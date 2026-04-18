@@ -175,7 +175,8 @@ impl TabManager {
                 continue;
             }
             let text = String::from_utf8_lossy(&buf[..n]);
-            for line in text.lines() {
+            let clean = strip_ansi(&text);
+            for line in clean.lines() {
                 if !line.is_empty() {
                     tab.meta.output.push(line.to_string());
                 }
@@ -276,5 +277,96 @@ impl TabManager {
 fn append_output(output: &mut Vec<String>, text: &str) {
     for line in text.lines() {
         output.push(line.to_string());
+    }
+}
+
+/// Strip ANSI escape sequences and control characters.
+fn strip_ansi(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            0x1b => i = skip_esc(bytes, i),
+            b'\n' | b'\t' => {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            0x00..=0x1f | 0x7f => i += 1,
+            _ => {
+                if is_esc_fragment(bytes, i) {
+                    i = skip_fragment(bytes, i);
+                } else {
+                    out.push(bytes[i] as char);
+                    i += 1;
+                }
+            }
+        }
+    }
+    out
+}
+
+fn skip_esc(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 1;
+    if i >= bytes.len() {
+        return i;
+    }
+    match bytes[i] {
+        b'[' => {
+            i += 1;
+            while i < bytes.len() {
+                if bytes[i].is_ascii_alphabetic() || bytes[i] == b'~' {
+                    return i + 1;
+                }
+                i += 1;
+            }
+            i
+        }
+        b']' => {
+            i += 1;
+            while i < bytes.len() {
+                if bytes[i] == 0x07 || bytes[i] == b'\\' {
+                    return i + 1;
+                }
+                i += 1;
+            }
+            i
+        }
+        b'(' | b')' => i + 2,
+        _ => i + 1,
+    }
+}
+
+fn is_esc_fragment(bytes: &[u8], pos: usize) -> bool {
+    let mut i = pos;
+    if i < bytes.len() && bytes[i] == b';' {
+        i += 1;
+    }
+    let start = i;
+    while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b';') {
+        i += 1;
+    }
+    if i == start {
+        return false;
+    }
+    i < bytes.len()
+        && matches!(
+            bytes[i],
+            b'm' | b'h' | b'l' | b'G' | b'B' | b'A' | b'C' | b'D' | b'H' | b'J' | b'K'
+        )
+}
+
+fn skip_fragment(bytes: &[u8], pos: usize) -> usize {
+    let mut i = pos;
+    if i < bytes.len() && bytes[i] == b';' {
+        i += 1;
+    }
+    while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b';') {
+        i += 1;
+    }
+    if i < bytes.len() && bytes[i].is_ascii_alphabetic() {
+        i + 1
+    } else {
+        i
     }
 }
