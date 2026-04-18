@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -41,29 +41,6 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
-
-        // Scroll-back
-        match (shift, key.code) {
-            (true, KeyCode::PageUp) => {
-                self.tabs.scroll_active(-20, 20);
-                return Ok(PanelAction::None);
-            }
-            (true, KeyCode::PageDown) => {
-                self.tabs.scroll_active(20, 20);
-                return Ok(PanelAction::None);
-            }
-            (true, KeyCode::Home) => {
-                self.tabs.scroll_active(-100_000, 20);
-                return Ok(PanelAction::None);
-            }
-            (true, KeyCode::End) => {
-                self.tabs.snap_to_bottom(20);
-                return Ok(PanelAction::None);
-            }
-            _ => {}
-        }
-
         // Input line handles the key
         match self.input.handle_key(key) {
             InputAction::None => {}

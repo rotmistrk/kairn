@@ -301,9 +301,16 @@ fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) {
         let text = String::from_utf8_lossy(&buf[..n]);
         let clean = strip_ansi(&text);
         for line in clean.lines() {
-            if !line.is_empty() {
-                output.push(format!("⚠ {line}"));
+            let trimmed = line.trim();
+            // Skip empty, spinner-only, and short control fragments
+            if trimmed.is_empty() || trimmed.len() < 3 {
+                continue;
             }
+            // Skip spinner/progress lines
+            if trimmed.starts_with('�') || trimmed.starts_with("ctrl-c") {
+                continue;
+            }
+            output.push(format!("⚠ {trimmed}"));
         }
     }
 }

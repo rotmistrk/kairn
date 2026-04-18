@@ -60,7 +60,7 @@ impl MainViewPanel {
         }
     }
 
-    fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
+    pub fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
         let max = self.total_lines().saturating_sub(viewport_h);
         let new = (self.scroll as isize).saturating_add(delta);
         self.scroll = (new.max(0) as usize).min(max);

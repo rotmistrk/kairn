@@ -109,6 +109,19 @@ impl App {
     }
 
     /// Display captured output from KAIRN_CAPTURE pipe in main panel.
+    fn scroll_focused(&mut self, delta: isize) {
+        match self.focus {
+            FocusedPanel::Main => {
+                self.main_view.scroll_by(delta, 20);
+            }
+            FocusedPanel::Interactive => {
+                self.interactive.tabs.scroll_active(delta, 20);
+            }
+            FocusedPanel::Tree => {}
+        }
+    }
+
+    /// Display captured output from KAIRN_CAPTURE pipe in main panel.
     pub fn show_captured(&mut self, text: &str) {
         let buf = crate::buffer::OutputBuffer::plain("captured".to_string(), text.to_string());
         self.main_view.set_buffer(buf);
@@ -162,6 +175,10 @@ impl App {
             Action::PeekScreen => {
                 self.pending_peek = true;
             }
+            Action::ScrollUp => self.scroll_focused(-20),
+            Action::ScrollDown => self.scroll_focused(20),
+            Action::ScrollTop => self.scroll_focused(-100_000),
+            Action::ScrollBottom => self.scroll_focused(100_000),
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
             }

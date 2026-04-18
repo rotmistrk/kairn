@@ -30,6 +30,10 @@ pub enum Action {
     ShowHelp,
     SaveSession,
     LoadSession,
+    ScrollUp,
+    ScrollDown,
+    ScrollTop,
+    ScrollBottom,
     /// Key not mapped at app level — forward to focused panel.
     Forward(KeyEvent),
 }
@@ -80,6 +84,10 @@ fn name_to_action(name: &str) -> Option<Action> {
         "show_help" => Action::ShowHelp,
         "save_session" => Action::SaveSession,
         "load_session" => Action::LoadSession,
+        "scroll_up" => Action::ScrollUp,
+        "scroll_down" => Action::ScrollDown,
+        "scroll_top" => Action::ScrollTop,
+        "scroll_bottom" => Action::ScrollBottom,
         "new_kiro_tab" => Action::NewKiroTab,
         "new_shell_tab" => Action::NewShellTab,
         "close_tab" => Action::CloseTab,

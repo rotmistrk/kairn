@@ -70,6 +70,10 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("resize_tree_grow5", "alt+shift+right"),
         ("resize_interactive_grow5", "alt+shift+up"),
         ("resize_interactive_shrink5", "alt+shift+down"),
+        ("scroll_up", "ctrl+up"),
+        ("scroll_down", "ctrl+down"),
+        ("scroll_top", "ctrl+home"),
+        ("scroll_bottom", "ctrl+end"),
     ];
     pairs
         .into_iter()
