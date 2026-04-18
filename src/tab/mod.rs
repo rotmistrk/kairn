@@ -142,9 +142,7 @@ impl TabManager {
                 tab.meta.output.push(format!("[error: {e}]"));
             }
         }
-        if tab.follow {
-            tab.scroll = tab.meta.output.len();
-        }
+        // follow mode: renderer handles scroll
     }
 
     /// Send a line to the active Kiro tab.
@@ -166,9 +164,6 @@ impl TabManager {
                     .push("⚠ kiro-cli not running (failed to spawn)".to_string());
             }
         }
-        if tab.follow {
-            tab.scroll = tab.meta.output.len();
-        }
     }
 
     /// Poll Kiro tabs for new output.
@@ -179,10 +174,7 @@ impl TabManager {
                 Some(Backend::Kiro(kp)) => kp,
                 None => continue,
             };
-            let got_output = poll_kiro(kp, &mut buf, &mut tab.meta.output);
-            if got_output && tab.follow {
-                tab.scroll = tab.meta.output.len();
-            }
+            poll_kiro(kp, &mut buf, &mut tab.meta.output);
         }
     }
 
@@ -217,8 +209,14 @@ impl TabManager {
         }
     }
 
-    pub fn active_scroll(&self) -> usize {
-        self.tabs.get(self.active).map_or(0, |t| t.scroll)
+    /// Current scroll offset of the active tab.
+    /// If follow mode, returns a large value so renderer shows bottom.
+    pub fn active_scroll(&self, viewport_h: usize) -> usize {
+        match self.tabs.get(self.active) {
+            Some(tab) if tab.follow => tab.meta.output.len().saturating_sub(viewport_h),
+            Some(tab) => tab.scroll,
+            None => 0,
+        }
     }
 
     pub fn scroll_active(&mut self, delta: isize, viewport_h: usize) {
@@ -279,9 +277,7 @@ fn append_output(output: &mut Vec<String>, text: &str) {
     }
 }
 
-fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) -> bool {
-    let mut got = false;
-
+fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) {
     let n = kp.try_read_stdout(buf);
     if n > 0 {
         let text = String::from_utf8_lossy(&buf[..n]);
@@ -291,7 +287,6 @@ fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) -> 
                 output.push(line.to_string());
             }
         }
-        got = true;
     }
 
     let n = kp.try_read_stderr(buf);
@@ -300,14 +295,10 @@ fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) -> 
         let clean = strip_ansi(&text);
         for line in clean.lines() {
             if !line.is_empty() {
-                // Prefix stderr lines so they can be styled differently
                 output.push(format!("⚠ {line}"));
             }
         }
-        got = true;
     }
-
-    got
 }
 
 /// Strip ANSI escape sequences and control characters.

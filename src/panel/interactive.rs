@@ -130,7 +130,7 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
             }
         })
         .collect();
-    let scroll = tabs.active_scroll() as u16;
+    let scroll = tabs.active_scroll(area.height.saturating_sub(2) as usize) as u16;
 
     let para = Paragraph::new(lines)
         .block(block)
