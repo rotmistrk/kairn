@@ -32,3 +32,24 @@ pub fn launch_editor(path: &str) -> Result<()> {
 
     Ok(())
 }
+
+/// Suspend TUI and drop to $SHELL. Returns when user exits the shell.
+pub fn launch_shell() -> Result<()> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+
+    disable_raw_mode()?;
+    execute!(io::stdout(), LeaveAlternateScreen)?;
+
+    let status = Command::new(&shell)
+        .status()
+        .with_context(|| format!("failed to launch shell: {shell}"))?;
+
+    execute!(io::stdout(), EnterAlternateScreen)?;
+    enable_raw_mode()?;
+
+    if !status.success() {
+        anyhow::bail!("shell exited with status: {status}");
+    }
+
+    Ok(())
+}

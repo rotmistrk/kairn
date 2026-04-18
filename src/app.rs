@@ -28,6 +28,7 @@ pub struct App {
     pub interactive: InteractivePanel,
     pub should_quit: bool,
     pub pending_editor: Option<String>,
+    pub pending_shell: bool,
     pub highlighter: Highlighter,
     pub config: Config,
     pub keymap: Keymap,
@@ -52,6 +53,7 @@ impl App {
             interactive: InteractivePanel::default(),
             should_quit: false,
             pending_editor: None,
+            pending_shell: false,
             highlighter: Highlighter::new(),
             config,
             keymap,
@@ -151,6 +153,9 @@ impl App {
             Action::TogglePinOutput => {}
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
+            }
+            Action::SuspendToShell => {
+                self.pending_shell = true;
             }
             Action::OpenSearch => self.open_search(),
             Action::DiffCurrentFile => self.diff_current_file(),
@@ -311,6 +316,15 @@ impl App {
         Ok(())
     }
 
+    pub fn run_pending_shell(&mut self) -> Result<()> {
+        if self.pending_shell {
+            self.pending_shell = false;
+            self.auto_save();
+            editor::launch_shell()?;
+        }
+        Ok(())
+    }
+
     fn process_panel_action(&mut self, action: PanelAction) {
         match action {
             PanelAction::None => {}
@@ -357,13 +371,14 @@ impl App {
     }
 
     fn dispatch_input(&mut self, text: &str, target: SendTarget) {
-        let prefix = match target {
-            SendTarget::Kiro => "→kiro",
-            SendTarget::Terminal => "→shell",
-        };
-        self.interactive
-            .tabs
-            .push_to_active(format!("[{prefix}] {text}"));
+        match target {
+            SendTarget::Kiro => {
+                self.interactive.tabs.send_to_active_kiro(text);
+            }
+            SendTarget::Terminal => {
+                self.interactive.tabs.run_in_active(text);
+            }
+        }
     }
 }
 

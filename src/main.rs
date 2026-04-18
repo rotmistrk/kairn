@@ -89,26 +89,20 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App
             continue;
         }
 
+        if app.pending_shell {
+            app.run_pending_shell()?;
+            terminal.clear()?;
+            continue;
+        }
+
         if event::poll(std::time::Duration::from_millis(50))? {
-            match event::read()? {
-                Event::Key(key) => app.handle_key(key)?,
-                Event::Resize(_, _) => handle_resize(terminal, app)?,
-                _ => {}
+            if let Event::Key(key) = event::read()? {
+                app.handle_key(key)?;
             }
         }
 
         app.interactive.tabs.poll_output();
     }
-}
-
-fn handle_resize(terminal: &Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
-    let size = terminal.size()?;
-    let area = Rect::new(0, 0, size.width, size.height);
-    let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
-    let cols = c.interactive.width.saturating_sub(2);
-    let rows = c.interactive.height.saturating_sub(3);
-    app.interactive.tabs.resize_active(cols, rows);
-    Ok(())
 }
 
 fn render_panels(frame: &mut Frame, app: &App) {

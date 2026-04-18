@@ -9,25 +9,41 @@ use ratatui::{
 };
 
 use super::{Panel, PanelAction};
+use crate::input::{InputAction, InputLine, InputMode, SendTarget};
 use crate::tab::TabManager;
 
-#[derive(Default)]
 pub struct InteractivePanel {
     pub tabs: TabManager,
+    pub input: InputLine,
+}
+
+impl Default for InteractivePanel {
+    fn default() -> Self {
+        Self {
+            tabs: TabManager::default(),
+            input: InputLine::new(InputMode::default()),
+        }
+    }
 }
 
 impl Panel for InteractivePanel {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
-        let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).split(area);
+        let chunks = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(3),
+        ])
+        .split(area);
 
         render_tab_bar(frame, &self.tabs, chunks[0], focused);
         render_output(frame, &self.tabs, chunks[1], focused);
+        render_input(frame, &self.input, chunks[2], focused);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
         let shift = key.modifiers.contains(KeyModifiers::SHIFT);
 
-        // Scroll-back keys (Shift+PgUp/PgDn/Home/End)
+        // Scroll-back
         match (shift, key.code) {
             (true, KeyCode::PageUp) => {
                 self.tabs.scroll_active(-20, 20);
@@ -48,12 +64,32 @@ impl Panel for InteractivePanel {
             _ => {}
         }
 
-        // Forward raw keystrokes to the active backend
-        let bytes = key_to_bytes(key);
-        if !bytes.is_empty() {
-            self.tabs.write_to_active(&bytes);
+        // Input line handles the key
+        match self.input.handle_key(key) {
+            InputAction::None => {}
+            InputAction::Send { text, target } => {
+                self.dispatch_input(&text, target);
+            }
         }
         Ok(PanelAction::None)
+    }
+}
+
+impl InteractivePanel {
+    fn dispatch_input(&mut self, text: &str, target: SendTarget) {
+        match target {
+            SendTarget::Kiro => {
+                self.tabs.send_to_active_kiro(text);
+            }
+            SendTarget::Terminal => {
+                if self.tabs.active_is_shell() {
+                    self.tabs.run_in_active(text);
+                } else {
+                    self.tabs
+                        .push_to_active(format!("[not a shell tab] {text}"));
+                }
+            }
+        }
     }
 }
 
@@ -96,28 +132,39 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
     frame.render_widget(para, area);
 }
 
-/// Convert a crossterm KeyEvent to raw bytes for the PTY.
-fn key_to_bytes(key: KeyEvent) -> Vec<u8> {
-    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-    match key.code {
-        KeyCode::Char(c) if ctrl => {
-            vec![(c as u8).wrapping_sub(b'a').wrapping_add(1)]
+fn render_input(frame: &mut Frame, input: &InputLine, area: Rect, focused: bool) {
+    let mode = input.mode_indicator();
+    let hint = if focused {
+        "Enter→run  Alt-Enter→kiro"
+    } else {
+        ""
+    };
+    let title = Line::from(vec![
+        Span::styled(
+            format!(" [{mode}] "),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(hint, Style::default().fg(Color::DarkGray)),
+    ]);
+    let border_color = if focused {
+        Color::Cyan
+    } else {
+        Color::DarkGray
+    };
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(border_color));
+    let para = Paragraph::new(input.text.as_str()).block(block);
+    frame.render_widget(para, area);
+
+    if focused && area.height >= 3 {
+        let cx = (area.x + 1 + input.cursor as u16).min(area.right().saturating_sub(2));
+        let cy = area.y + 1;
+        if cy < area.bottom().saturating_sub(1) {
+            frame.set_cursor_position((cx, cy));
         }
-        KeyCode::Char(c) => {
-            let mut buf = [0u8; 4];
-            c.encode_utf8(&mut buf).as_bytes().to_vec()
-        }
-        KeyCode::Enter => vec![b'\r'],
-        KeyCode::Backspace => vec![0x7f],
-        KeyCode::Tab => vec![b'\t'],
-        KeyCode::Esc => vec![0x1b],
-        KeyCode::Up => b"\x1b[A".to_vec(),
-        KeyCode::Down => b"\x1b[B".to_vec(),
-        KeyCode::Right => b"\x1b[C".to_vec(),
-        KeyCode::Left => b"\x1b[D".to_vec(),
-        KeyCode::Home => b"\x1b[H".to_vec(),
-        KeyCode::End => b"\x1b[F".to_vec(),
-        KeyCode::Delete => b"\x1b[3~".to_vec(),
-        _ => Vec::new(),
     }
 }

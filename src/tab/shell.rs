@@ -1,82 +1,31 @@
-// PTY shell backend using portable-pty.
+// Command runner: execute commands, capture stdout/stderr.
 
-use std::io::{Read, Write};
+use std::process::Command;
 
 use anyhow::{Context, Result};
-use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 
-/// A live PTY shell process.
-pub struct PtyShell {
-    master: Box<dyn MasterPty + Send>,
-    reader: Box<dyn Read + Send>,
-    writer: Box<dyn Write + Send>,
+/// Result of running a command.
+pub struct CommandResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub success: bool,
+    pub code: Option<i32>,
 }
 
-impl PtyShell {
-    /// Spawn a shell in a new PTY.
-    pub fn spawn(shell: &str, cols: u16, rows: u16) -> Result<Self> {
-        let pty_system = native_pty_system();
-        let pair = pty_system
-            .openpty(PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .context("opening PTY")?;
+/// Run a shell command and capture output.
+/// Uses $SHELL -c "command" for shell expansion.
+pub fn run_command(cmd: &str) -> Result<CommandResult> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+    let output = Command::new(&shell)
+        .arg("-c")
+        .arg(cmd)
+        .output()
+        .with_context(|| format!("running: {cmd}"))?;
 
-        let mut cmd = CommandBuilder::new(shell);
-        cmd.env("TERM", "xterm-256color");
-
-        pair.slave.spawn_command(cmd).context("spawning shell")?;
-
-        // Drop slave — master owns the connection
-        drop(pair.slave);
-
-        let reader = pair
-            .master
-            .try_clone_reader()
-            .context("cloning PTY reader")?;
-        let writer = pair.master.take_writer().context("taking PTY writer")?;
-
-        Ok(Self {
-            master: pair.master,
-            reader,
-            writer,
-        })
-    }
-
-    /// Non-blocking read from PTY. Returns empty vec if nothing available.
-    pub fn try_read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        // portable-pty reader is blocking by default.
-        // We use a small buffer and set_non_blocking isn't available,
-        // so we rely on the polling loop calling this frequently.
-        // The reader will block briefly — we handle this at the
-        // event loop level with poll timeout.
-        match self.reader.read(buf) {
-            Ok(n) => Ok(n),
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => Ok(0),
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Write raw bytes to the PTY (keystrokes).
-    pub fn write_all(&mut self, data: &[u8]) -> Result<()> {
-        self.writer.write_all(data)?;
-        self.writer.flush()?;
-        Ok(())
-    }
-
-    /// Resize the PTY.
-    pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
-        self.master
-            .resize(PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .context("resizing PTY")?;
-        Ok(())
-    }
+    Ok(CommandResult {
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        success: output.status.success(),
+        code: output.status.code(),
+    })
 }

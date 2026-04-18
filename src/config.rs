@@ -49,6 +49,7 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("cycle_focus", "ctrl+tab"),
         ("toggle_pin_output", "ctrl+o"),
         ("launch_editor", "ctrl+e"),
+        ("suspend_to_shell", "ctrl+t"),
         ("open_search", "ctrl+p"),
         ("diff_current_file", "ctrl+d"),
         ("git_log", "ctrl+g"),
