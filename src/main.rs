@@ -5,6 +5,7 @@
 
 mod app;
 mod buffer;
+mod capture;
 mod config;
 mod diff;
 mod editor;
@@ -43,7 +44,19 @@ use panel::Panel;
 use search::FileSearch;
 
 fn main() -> Result<()> {
+    // Nesting guard: prevent running kairn inside kairn
+    if std::env::var("KAIRN_PID").is_ok() {
+        eprintln!("kairn: already running (KAIRN_PID is set). Use the existing instance.");
+        std::process::exit(1);
+    }
+    std::env::set_var("KAIRN_PID", std::process::id().to_string());
+
     install_panic_handler();
+
+    let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
+
+    // Create capture pipe before entering TUI
+    let capture = capture::CapturePipe::create(&cwd).ok();
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -51,13 +64,13 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let cwd = std::env::current_dir()
-        .unwrap_or_else(|_| ".".into())
-        .to_string_lossy()
-        .to_string();
-    let mut app = App::new(cwd);
+    let mut app = App::new(cwd.to_string_lossy().to_string());
 
-    let result = run_loop(&mut terminal, &mut app);
+    let result = run_loop(&mut terminal, &mut app, capture);
+
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
 
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -66,7 +79,11 @@ fn main() -> Result<()> {
     result
 }
 
-fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
+fn run_loop(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+    mut capture: Option<capture::CapturePipe>,
+) -> Result<()> {
     loop {
         terminal.draw(|frame| {
             render_panels(frame, app);
@@ -88,7 +105,6 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App
             terminal.clear()?;
             continue;
         }
-
         if app.pending_shell {
             app.run_pending_shell()?;
             terminal.clear()?;
@@ -102,6 +118,15 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App
         }
 
         app.interactive.tabs.poll_output();
+        poll_capture(app, &mut capture);
+    }
+}
+
+fn poll_capture(app: &mut App, capture: &mut Option<capture::CapturePipe>) {
+    if let Some(ref mut pipe) = capture {
+        if let Some(text) = pipe.poll() {
+            app.show_captured(&text);
+        }
     }
 }
 

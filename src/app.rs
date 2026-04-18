@@ -106,6 +106,12 @@ impl App {
         let _ = session::auto_save(&self.workspace_root, &sess);
     }
 
+    /// Display captured output from KAIRN_CAPTURE pipe in main panel.
+    pub fn show_captured(&mut self, text: &str) {
+        let buf = crate::buffer::OutputBuffer::plain("captured".to_string(), text.to_string());
+        self.main_view.set_buffer(buf);
+    }
+
     fn show_welcome(&mut self) {
         let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
         self.main_view.set_buffer(buf);
