@@ -280,48 +280,104 @@ fn read_backend(backend: &mut Option<Backend>, buf: &mut [u8]) -> usize {
     }
 }
 
-/// Strip ANSI escape sequences and carriage returns from terminal output.
+/// Strip ANSI escape sequences and control characters from terminal output.
 fn strip_ansi(s: &str) -> String {
+    // Use regex-like approach: match ESC sequences and control chars
+    let bytes = s.as_bytes();
     let mut out = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.next() {
-        match c {
-            '\x1b' => skip_escape_seq(&mut chars),
-            '\r' => {}
-            _ => out.push(c),
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            0x1b => i = skip_esc(bytes, i),
+            b'\n' | b'\t' => {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+            0x00..=0x1f | 0x7f => i += 1, // skip control chars
+            _ => {
+                // Check for partial escape fragments like "0m", "26l"
+                if is_partial_esc_fragment(bytes, i) {
+                    i = skip_partial_fragment(bytes, i);
+                } else {
+                    out.push(bytes[i] as char);
+                    i += 1;
+                }
+            }
         }
     }
     out
 }
 
-fn skip_escape_seq(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
-    match chars.peek() {
-        Some('[') => {
-            chars.next();
-            consume_until_alpha(chars);
+fn skip_esc(bytes: &[u8], start: usize) -> usize {
+    let mut i = start + 1;
+    if i >= bytes.len() {
+        return i;
+    }
+    match bytes[i] {
+        b'[' => {
+            i += 1;
+            while i < bytes.len() {
+                if bytes[i].is_ascii_alphabetic() || bytes[i] == b'~' {
+                    return i + 1;
+                }
+                i += 1;
+            }
+            i
         }
-        Some(']') => {
-            chars.next();
-            consume_until_bel_or_st(chars);
+        b']' => {
+            i += 1;
+            while i < bytes.len() {
+                if bytes[i] == 0x07 || bytes[i] == b'\\' {
+                    return i + 1;
+                }
+                i += 1;
+            }
+            i
         }
-        _ => {
-            chars.next();
-        }
+        b'(' | b')' => i + 2, // charset selection
+        _ => i + 1,
     }
 }
 
-fn consume_until_alpha(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
-    for c in chars.by_ref() {
-        if c.is_ascii_alphabetic() || c == '~' {
-            break;
-        }
+/// Detect partial escape fragments like "0m", "26l", "244m", ";5;244m"
+fn is_partial_esc_fragment(bytes: &[u8], pos: usize) -> bool {
+    // Look for pattern: optional ';' then digits then a CSI final byte
+    let mut i = pos;
+    // Allow leading ';'
+    if i < bytes.len() && bytes[i] == b';' {
+        i += 1;
+    }
+    // Need at least one digit
+    let start = i;
+    while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b';') {
+        i += 1;
+    }
+    if i == start {
+        return false;
+    }
+    // Must end with a CSI final byte
+    if i < bytes.len() && bytes[i].is_ascii_alphabetic() {
+        let final_byte = bytes[i];
+        matches!(
+            final_byte,
+            b'm' | b'h' | b'l' | b'G' | b'B' | b'A' | b'C' | b'D' | b'H' | b'J' | b'K'
+        )
+    } else {
+        false
     }
 }
 
-fn consume_until_bel_or_st(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
-    for c in chars.by_ref() {
-        if c == '\x07' || c == '\\' {
-            break;
-        }
+fn skip_partial_fragment(bytes: &[u8], pos: usize) -> usize {
+    let mut i = pos;
+    if i < bytes.len() && bytes[i] == b';' {
+        i += 1;
+    }
+    while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b';') {
+        i += 1;
+    }
+    if i < bytes.len() && bytes[i].is_ascii_alphabetic() {
+        i + 1
+    } else {
+        i
     }
 }
