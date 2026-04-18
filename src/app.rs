@@ -7,7 +7,7 @@ use crate::config::Config;
 use crate::editor;
 use crate::highlight::Highlighter;
 use crate::input::SendTarget;
-use crate::keymap::{self, Action};
+use crate::keymap::{Action, Keymap};
 use crate::layout::{LayoutMode, PanelSizes};
 use crate::overlay::{LoadPicker, Overlay, OverlayAction, SavePrompt};
 use crate::panel::file_tree::FileTreePanel;
@@ -30,6 +30,7 @@ pub struct App {
     pub pending_editor: Option<String>,
     pub highlighter: Highlighter,
     pub config: Config,
+    pub keymap: Keymap,
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
     /// Track consecutive Esc presses for double-Esc quit.
@@ -40,6 +41,7 @@ impl App {
     pub fn new(workspace_root: String) -> Self {
         let ws = PathBuf::from(&workspace_root);
         let config = Config::load(&ws);
+        let keymap = Keymap::from_config(&config);
         let mut app = Self {
             workspace_root: ws,
             layout_mode: LayoutMode::default(),
@@ -52,6 +54,7 @@ impl App {
             pending_editor: None,
             highlighter: Highlighter::new(),
             config,
+            keymap,
             search: None,
             overlay: None,
             last_esc: false,
@@ -104,7 +107,7 @@ impl App {
     fn show_welcome(&mut self) {
         let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
         self.main_view.set_buffer(buf);
-        self.main_view.set_highlighted(welcome_lines());
+        self.main_view.set_highlighted(welcome_lines(&self.config));
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
@@ -130,7 +133,7 @@ impl App {
         if self.search.is_some() {
             return self.handle_search_key(key);
         }
-        self.dispatch_action(keymap::map_key(key))
+        self.dispatch_action(self.keymap.map_key(key))
     }
 
     fn dispatch_action(&mut self, action: Action) -> Result<()> {
@@ -424,7 +427,29 @@ fn log_entry_line(e: &crate::diff::LogEntry) -> ratatui::text::Line<'static> {
     ])
 }
 
-fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
+fn welcome_lines(cfg: &Config) -> Vec<ratatui::text::Line<'static>> {
+    use ratatui::style::{Color, Style};
+    use ratatui::text::{Line, Span};
+
+    let dim = Style::default().fg(Color::DarkGray);
+    let mut lines = welcome_banner();
+    lines.extend(welcome_keys(cfg));
+
+    for warn in cfg.detect_collisions() {
+        lines.push(Line::from(Span::styled(
+            format!("  {warn}"),
+            Style::default().fg(Color::Red),
+        )));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        format!("  Config: {}", Config::global_rc().display()),
+        dim,
+    )));
+    lines
+}
+
+fn welcome_banner() -> Vec<ratatui::text::Line<'static>> {
     use ratatui::style::{Color, Modifier, Style};
     use ratatui::text::{Line, Span};
 
@@ -433,7 +458,7 @@ fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
     let dim = Style::default().fg(Color::DarkGray);
     let white = Style::default().fg(Color::White);
 
-    let mut lines = vec![
+    vec![
         Line::from(""),
         Line::from(Span::styled("  ╦╔═╔═╗╦╦═╗╔╗╔", cyan)),
         Line::from(Span::styled("  ╠╩╗╠═╣║╠╦╝║║║", cyan)),
@@ -445,41 +470,44 @@ fn welcome_lines() -> Vec<ratatui::text::Line<'static>> {
         ]),
         Line::from(""),
         Line::from(Span::styled("  A TUI IDE oriented around Kiro AI.", white)),
-        Line::from(""),
         Line::from(Span::styled(
-            "  Named after cairn — stacked stones marking a trail.",
-            dim,
-        )),
-        Line::from(Span::styled(
-            "  Kairn guides your path through code, with AI at the core.",
+            "  Named after cairn — stones marking a trail.",
             dim,
         )),
         Line::from(""),
-    ];
-    lines.extend(welcome_keys());
-    lines
+    ]
 }
 
-fn welcome_keys() -> Vec<ratatui::text::Line<'static>> {
+fn welcome_keys(cfg: &Config) -> Vec<ratatui::text::Line<'static>> {
     use ratatui::style::{Color, Style};
     use ratatui::text::{Line, Span};
 
     let y = Style::default().fg(Color::Yellow);
     let w = Style::default().fg(Color::White);
-    let d = Style::default().fg(Color::DarkGray);
+    let k = |name: &str| cfg.display_key(name);
 
     vec![
         Line::from(Span::styled("  Quick start:", y)),
-        Line::from(Span::styled("  Ctrl-P       Search files", w)),
-        Line::from(Span::styled("  Ctrl-S       Open shell tab", w)),
-        Line::from(Span::styled("  Ctrl-K       Open Kiro tab", w)),
-        Line::from(Span::styled("  Ctrl-D       Diff vs HEAD", w)),
-        Line::from(Span::styled("  Ctrl-G       Git log", w)),
-        Line::from(Span::styled("  F1           All keybindings", w)),
-        Line::from(""),
         Line::from(Span::styled(
-            "  Navigate the file tree, or Ctrl-P to jump to a file.",
-            d,
+            format!("  {:<14} Search files", k("open_search")),
+            w,
+        )),
+        Line::from(Span::styled(
+            format!("  {:<14} Open shell tab", k("new_shell_tab")),
+            w,
+        )),
+        Line::from(Span::styled(
+            format!("  {:<14} Open Kiro tab", k("new_kiro_tab")),
+            w,
+        )),
+        Line::from(Span::styled(
+            format!("  {:<14} Diff vs HEAD", k("diff_current_file")),
+            w,
+        )),
+        Line::from(Span::styled(format!("  {:<14} Git log", k("git_log")), w)),
+        Line::from(Span::styled(
+            format!("  {:<14} All keybindings", k("show_help")),
+            w,
         )),
     ]
 }

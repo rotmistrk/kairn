@@ -72,7 +72,7 @@ fn run_loop(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App
                 render_search_overlay(frame, search);
             }
             if let Some(overlay) = &app.overlay {
-                render_overlay(frame, overlay);
+                render_overlay(frame, overlay, &app.config);
             }
         })?;
 
@@ -195,7 +195,7 @@ fn search_result_item<'a>(
     ]))
 }
 
-fn render_overlay(frame: &mut Frame, overlay: &Overlay) {
+fn render_overlay(frame: &mut Frame, overlay: &Overlay, config: &crate::config::Config) {
     let area = frame.area();
     let w = 50u16.min(area.width);
     let x = area.x + (area.width.saturating_sub(w)) / 2;
@@ -209,7 +209,7 @@ fn render_overlay(frame: &mut Frame, overlay: &Overlay) {
             render_load_picker(frame, p, Rect::new(x, area.y + 3, w, h));
         }
         Overlay::Help => {
-            render_help(frame, area);
+            render_help(frame, area, config);
         }
     }
 }
@@ -247,49 +247,61 @@ fn render_load_picker(frame: &mut Frame, picker: &overlay::LoadPicker, area: Rec
     frame.render_widget(List::new(items).block(block), area);
 }
 
-const HELP_TEXT: &str = "\
- Ctrl-Q        Quit
- Esc Esc       Quit (fallback)
- Ctrl-L        Rotate layout
- Ctrl-B        Toggle file tree
- Ctrl-Tab      Cycle panel focus
- Ctrl-P        Fuzzy file search
- Ctrl-D        Diff file vs HEAD
- Ctrl-G        Git commit log
- Ctrl-E        Open in $EDITOR
- Ctrl-K        New Kiro tab
- Ctrl-S        New shell tab
- Ctrl-W        Close tab
- Alt-←/→       Switch tabs
- Ctrl-Alt-arrows  Resize ±1
- Alt-Shift-arrows Resize ±5
- Ctrl-Shift-S  Save session
- Ctrl-Shift-O  Load session
- F1 / Ctrl-/   This help
-
- Main panel (focused):
- ↑/↓/PgUp/PgDn/Home/End  Scroll
- Enter         Send to Kiro
- Alt-Enter     Send to shell
-
- File tree (focused):
- j/k ↑/↓       Navigate
- Enter/l/→     Open / expand
- h/←           Collapse";
-
-fn render_help(frame: &mut Frame, area: Rect) {
-    let lines = HELP_TEXT.lines().count() as u16 + 2;
-    let w = 42u16.min(area.width);
+fn render_help(frame: &mut Frame, area: Rect, config: &crate::config::Config) {
+    let text = build_help_text(config);
+    let lines = text.lines().count() as u16 + 2;
+    let w = 46u16.min(area.width);
     let h = lines.min(area.height);
     let x = area.x + (area.width.saturating_sub(w)) / 2;
-    let y = area.y + 1;
-    let rect = Rect::new(x, y, w, h);
+    let rect = Rect::new(x, area.y + 1, w, h);
 
     frame.render_widget(Clear, rect);
     let block = Block::default()
         .title(" Keybindings (any key to close) ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Yellow));
-    let para = Paragraph::new(HELP_TEXT).block(block);
-    frame.render_widget(para, rect);
+    frame.render_widget(Paragraph::new(text).block(block), rect);
+}
+
+fn build_help_text(cfg: &crate::config::Config) -> String {
+    let k = |name: &str| cfg.display_key(name);
+    let bindings = [
+        (k("quit"), "Quit"),
+        ("Esc Esc".into(), "Quit (fallback)"),
+        (k("rotate_layout"), "Rotate layout"),
+        (k("toggle_tree"), "Toggle file tree"),
+        (k("cycle_focus"), "Cycle panel focus"),
+        (k("open_search"), "Fuzzy file search"),
+        (k("diff_current_file"), "Diff file vs HEAD"),
+        (k("git_log"), "Git commit log"),
+        (k("launch_editor"), "Open in $EDITOR"),
+        (k("new_kiro_tab"), "New Kiro tab"),
+        (k("new_shell_tab"), "New shell tab"),
+        (k("close_tab"), "Close tab"),
+        (k("prev_tab"), "Previous tab"),
+        (k("next_tab"), "Next tab"),
+        (k("save_session"), "Save session"),
+        (k("load_session"), "Load session"),
+        (k("show_help"), "This help"),
+    ];
+    let mut text = String::new();
+    for (key, desc) in &bindings {
+        text.push_str(&format!(" {key:<16}{desc}\n"));
+    }
+    text.push('\n');
+    text.push_str(" Main panel (focused):\n");
+    text.push_str(" ↑/↓/PgUp/PgDn   Scroll\n");
+    text.push_str(" Enter            Send to Kiro\n");
+    text.push_str(" Alt-Enter        Send to shell\n");
+    text.push('\n');
+    text.push_str(" File tree (focused):\n");
+    text.push_str(" j/k ↑/↓          Navigate\n");
+    text.push_str(" Enter/l/→        Open / expand\n");
+    text.push_str(" h/←              Collapse\n");
+    text.push('\n');
+    text.push_str(&format!(
+        " Config: {}\n",
+        crate::config::Config::global_rc().display()
+    ));
+    text
 }
