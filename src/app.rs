@@ -32,6 +32,8 @@ pub struct App {
     pub config: Config,
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
+    /// Track consecutive Esc presses for double-Esc quit.
+    last_esc: bool,
 }
 
 impl App {
@@ -52,6 +54,7 @@ impl App {
             config,
             search: None,
             overlay: None,
+            last_esc: false,
         };
         // Try auto-restore, otherwise show welcome
         if !app.try_auto_restore() {
@@ -105,6 +108,22 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
+        // Double-Esc to quit (works even if Ctrl-Q is eaten by terminal)
+        if key.code == crossterm::event::KeyCode::Esc {
+            if self.overlay.is_some() || self.search.is_some() {
+                // First Esc closes overlay/search, reset
+                self.last_esc = false;
+            } else if self.last_esc {
+                self.should_quit = true;
+                return Ok(());
+            } else {
+                self.last_esc = true;
+                return Ok(());
+            }
+        } else {
+            self.last_esc = false;
+        }
+
         if self.overlay.is_some() {
             return self.handle_overlay_key(key);
         }
