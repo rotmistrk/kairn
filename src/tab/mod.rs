@@ -302,17 +302,51 @@ fn poll_kiro(kp: &mut KiroProcess, buf: &mut [u8], output: &mut Vec<String>) {
         let clean = strip_ansi(&text);
         for line in clean.lines() {
             let trimmed = line.trim();
-            // Skip empty, spinner-only, and short control fragments
             if trimmed.is_empty() || trimmed.len() < 3 {
                 continue;
             }
-            // Skip spinner/progress lines
-            if trimmed.starts_with('�') || trimmed.starts_with("ctrl-c") {
-                continue;
-            }
-            output.push(format!("⚠ {trimmed}"));
+            update_or_append_status(output, trimmed);
         }
     }
+}
+
+/// If the line looks like a progress/status update, replace the last
+/// status line instead of appending. Otherwise append as stderr.
+fn update_or_append_status(output: &mut Vec<String>, line: &str) {
+    let status = to_status_line(line);
+    // Find and replace last status line if this is also a status
+    if status.is_some() {
+        if let Some(last) = output.last_mut() {
+            if last.starts_with("⏳") {
+                *last = status.unwrap_or_default();
+                return;
+            }
+        }
+    }
+    let display = status.unwrap_or_else(|| format!("⚠ {line}"));
+    output.push(display);
+}
+
+/// Detect progress/spinner patterns and convert to clean status.
+fn to_status_line(line: &str) -> Option<String> {
+    // "N of M mcp servers initialized"
+    if line.contains("mcp servers") || line.contains("initialized") {
+        return Some(format!("⏳ {line}"));
+    }
+    // "✓ name loaded in N.NN s"
+    if line.contains("loaded in") {
+        return Some(format!("✅ {line}"));
+    }
+    // Spinner characters or "ctrl-c to start"
+    if line.starts_with('⠋')
+        || line.starts_with('⠙')
+        || line.starts_with('⠹')
+        || line.starts_with('⠸')
+        || line.contains("ctrl-c")
+    {
+        return Some(format!("⏳ {line}"));
+    }
+    None
 }
 
 /// Strip ANSI escape sequences and control characters.

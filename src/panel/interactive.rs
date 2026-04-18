@@ -98,6 +98,10 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
         .map(|l| {
             if l.starts_with('⚠') {
                 Line::from(Span::styled(l, Style::default().fg(Color::Red)))
+            } else if l.starts_with('⏳') {
+                Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
+            } else if l.starts_with('✅') {
+                Line::from(Span::styled(l, Style::default().fg(Color::Green)))
             } else if l.starts_with('$') {
                 Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
             } else if l.starts_with('>') {
