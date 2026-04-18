@@ -181,19 +181,19 @@ impl TabManager {
     pub fn poll_output(&mut self) {
         let mut buf = [0u8; 4096];
         for tab in &mut self.tabs {
-            let n = match &mut tab.backend {
-                Some(Backend::Shell(pty)) => pty.try_read(&mut buf).unwrap_or(0),
-                Some(Backend::Kiro(kp)) => kp.try_read(&mut buf).unwrap_or(0),
-                None => 0,
-            };
-            if n > 0 {
-                let text = String::from_utf8_lossy(&buf[..n]);
-                for line in text.lines() {
+            let n = read_backend(&mut tab.backend, &mut buf);
+            if n == 0 {
+                continue;
+            }
+            let text = String::from_utf8_lossy(&buf[..n]);
+            let clean = strip_ansi(&text);
+            for line in clean.lines() {
+                if !line.is_empty() {
                     tab.meta.output.push(line.to_string());
                 }
-                if tab.follow {
-                    tab.scroll = tab.meta.output.len();
-                }
+            }
+            if tab.follow {
+                tab.scroll = tab.meta.output.len();
             }
         }
     }
@@ -268,6 +268,60 @@ fn write_to_kiro(kp: &mut KiroProcess, data: &[u8]) {
         let trimmed = s.trim_end();
         if !trimmed.is_empty() {
             let _ = kp.send_line(trimmed);
+        }
+    }
+}
+
+fn read_backend(backend: &mut Option<Backend>, buf: &mut [u8]) -> usize {
+    match backend {
+        Some(Backend::Shell(pty)) => pty.try_read(buf).unwrap_or(0),
+        Some(Backend::Kiro(kp)) => kp.try_read(buf).unwrap_or(0),
+        None => 0,
+    }
+}
+
+/// Strip ANSI escape sequences and carriage returns from terminal output.
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\x1b' => skip_escape_seq(&mut chars),
+            '\r' => {}
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+fn skip_escape_seq(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    match chars.peek() {
+        Some('[') => {
+            chars.next();
+            consume_until_alpha(chars);
+        }
+        Some(']') => {
+            chars.next();
+            consume_until_bel_or_st(chars);
+        }
+        _ => {
+            chars.next();
+        }
+    }
+}
+
+fn consume_until_alpha(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    for c in chars.by_ref() {
+        if c.is_ascii_alphabetic() || c == '~' {
+            break;
+        }
+    }
+}
+
+fn consume_until_bel_or_st(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    for c in chars.by_ref() {
+        if c == '\x07' || c == '\\' {
+            break;
         }
     }
 }
