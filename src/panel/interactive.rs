@@ -131,7 +131,7 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
             } else if l.starts_with('$') {
                 Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
             } else if l.starts_with('>') {
-                Line::from(Span::styled(l, Style::default().fg(Color::Cyan)))
+                Line::from(Span::styled(l, Style::default().fg(Color::LightCyan)))
             } else {
                 Line::from(l)
             }
