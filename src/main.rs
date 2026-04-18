@@ -43,6 +43,8 @@ use panel::Panel;
 use search::FileSearch;
 
 fn main() -> Result<()> {
+    install_panic_handler();
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -312,4 +314,25 @@ fn build_help_text(cfg: &crate::config::Config) -> String {
         crate::config::Config::global_rc().display()
     ));
     text
+}
+
+fn install_panic_handler() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        // Restore terminal so error is visible
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+
+        // Try to preserve state
+        if let Ok(cwd) = std::env::current_dir() {
+            let path = cwd.join(".kairn.panic.state");
+            let _ = std::fs::copy(cwd.join(".kairn.state"), &path);
+            eprintln!("kairn: state saved to {}", path.display());
+        }
+
+        eprintln!("kairn: unexpected panic — this is a bug.");
+        eprintln!("kairn: {info}");
+        eprintln!("kairn: please report at https://github.com/rotmistrk/kairn/issues");
+        default_hook(info);
+    }));
 }
