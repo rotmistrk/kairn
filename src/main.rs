@@ -198,6 +198,9 @@ fn render_overlay(frame: &mut Frame, overlay: &Overlay) {
             let h = (p.sessions.len() as u16 + 2).min(15).min(area.height);
             render_load_picker(frame, p, Rect::new(x, area.y + 3, w, h));
         }
+        Overlay::Help => {
+            render_help(frame, area);
+        }
     }
 }
 
@@ -232,4 +235,50 @@ fn render_load_picker(frame: &mut Frame, picker: &overlay::LoadPicker, area: Rec
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Yellow));
     frame.render_widget(List::new(items).block(block), area);
+}
+
+const HELP_TEXT: &str = "\
+ Ctrl-Q        Quit
+ Ctrl-L        Rotate layout
+ Ctrl-B        Toggle file tree
+ Ctrl-Tab      Cycle panel focus
+ Ctrl-P        Fuzzy file search
+ Ctrl-D        Diff file vs HEAD
+ Ctrl-G        Git commit log
+ Ctrl-E        Open in $EDITOR
+ Ctrl-K        New Kiro tab
+ Ctrl-S        New shell tab
+ Ctrl-W        Close tab
+ Alt-←/→       Switch tabs
+ Ctrl-Alt-arrows  Resize ±1
+ Alt-Shift-arrows Resize ±5
+ Ctrl-Shift-S  Save session
+ Ctrl-Shift-O  Load session
+ Ctrl-/ / F1   This help
+
+ Main panel (focused):
+ ↑/↓/PgUp/PgDn/Home/End  Scroll
+ Enter         Send to Kiro
+ Alt-Enter     Send to shell
+
+ File tree (focused):
+ j/k ↑/↓       Navigate
+ Enter/l/→     Open / expand
+ h/←           Collapse";
+
+fn render_help(frame: &mut Frame, area: Rect) {
+    let lines = HELP_TEXT.lines().count() as u16 + 2;
+    let w = 42u16.min(area.width);
+    let h = lines.min(area.height);
+    let x = area.x + (area.width.saturating_sub(w)) / 2;
+    let y = area.y + 1;
+    let rect = Rect::new(x, y, w, h);
+
+    frame.render_widget(Clear, rect);
+    let block = Block::default()
+        .title(" Keybindings (any key to close) ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow));
+    let para = Paragraph::new(HELP_TEXT).block(block);
+    frame.render_widget(para, rect);
 }

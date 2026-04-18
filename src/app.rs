@@ -81,6 +81,9 @@ impl App {
             Action::GitLog => self.show_git_log(),
             Action::SaveSession => self.open_save_prompt(),
             Action::LoadSession => self.open_load_picker(),
+            Action::ShowHelp => {
+                self.overlay = Some(Overlay::Help);
+            }
             Action::Forward(key) => self.forward_to_panel(key)?,
             action => self.handle_tab_action(action),
         }
@@ -103,6 +106,7 @@ impl App {
         let action = match &mut self.overlay {
             Some(Overlay::SavePrompt(p)) => p.handle_key(key),
             Some(Overlay::LoadPicker(p)) => p.handle_key(key),
+            Some(Overlay::Help) => OverlayAction::Close,
             None => return Ok(()),
         };
         match action {
