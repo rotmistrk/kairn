@@ -1,0 +1,21 @@
+#!/bin/sh
+# Pre-commit hook: runs full check cycle before allowing commit.
+# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+echo "→ cargo fmt --check"
+cargo fmt -- --check
+
+echo "→ cargo check"
+cargo check
+
+echo "→ cargo clippy (deny warnings, deny unwrap/expect)"
+cargo clippy -- -D warnings
+
+echo "→ cargo test"
+cargo test
+
+echo "✅ All pre-commit checks passed"

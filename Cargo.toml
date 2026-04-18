@@ -1,0 +1,45 @@
+[package]
+name = "kairn"
+version = "0.1.0"
+edition = "2021"
+description = "A TUI IDE oriented around Kiro AI"
+license = "MIT"
+repository = "https://github.com/rotmistrk/kairn"
+
+[dependencies]
+# TUI framework
+ratatui = "0.29"
+crossterm = "0.28"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Syntax highlighting
+syntect = "5"
+
+# Diff engine
+similar = "2"
+
+# Git operations
+gix = { version = "0.68", default-features = false, features = ["basic", "extras"] }
+
+# Fuzzy search
+nucleo = "0.5"
+
+# File traversal (respects .gitignore)
+ignore = "0.4"
+
+# Serialization (session persistence)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# PTY for shell tabs
+portable-pty = "0.8"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
