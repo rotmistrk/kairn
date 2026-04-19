@@ -35,8 +35,8 @@ pub struct App {
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
     last_esc: bool,
-    /// Cache: path → (content, highlighted lines)
-    file_cache: std::collections::HashMap<String, (String, Vec<ratatui::text::Line<'static>>)>,
+    /// Cache: path → (mtime_secs, content, highlighted lines)
+    file_cache: std::collections::HashMap<String, (u64, String, Vec<ratatui::text::Line<'static>>)>,
 }
 
 impl App {
@@ -461,16 +461,15 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str) {
-        // Use cache if available
+        let mtime = file_mtime(path);
         let (content, owned_lines) = if let Some(cached) = self.file_cache.get(path) {
-            (cached.0.clone(), cached.1.clone())
+            if cached.0 == mtime {
+                (cached.1.clone(), cached.2.clone())
+            } else {
+                self.read_and_cache(path, mtime)
+            }
         } else {
-            let c = std::fs::read_to_string(path)
-                .unwrap_or_else(|e| format!("Error reading {path}: {e}"));
-            let lines = self.highlight_to_owned(&c, path);
-            self.file_cache
-                .insert(path.to_string(), (c.clone(), lines.clone()));
-            (c, lines)
+            self.read_and_cache(path, mtime)
         };
         let buf = crate::buffer::OutputBuffer {
             title: path.to_string(),
@@ -482,6 +481,19 @@ impl App {
         };
         self.main_view.set_buffer(buf);
         self.main_view.set_highlighted(owned_lines);
+    }
+
+    fn read_and_cache(
+        &mut self,
+        path: &str,
+        mtime: u64,
+    ) -> (String, Vec<ratatui::text::Line<'static>>) {
+        let c =
+            std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
+        let lines = self.highlight_to_owned(&c, path);
+        self.file_cache
+            .insert(path.to_string(), (mtime, c.clone(), lines.clone()));
+        (c, lines)
     }
 
     fn highlight_to_owned(&self, content: &str, path: &str) -> Vec<ratatui::text::Line<'static>> {
@@ -685,4 +697,13 @@ fn blame_to_styled(
     }
 
     (styled, raw)
+}
+
+fn file_mtime(path: &str) -> u64 {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
