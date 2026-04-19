@@ -344,6 +344,22 @@ impl App {
         self.main_view.set_highlighted(styled);
     }
 
+    fn expand_macros(&self, text: &str) -> String {
+        let mut out = text.to_string();
+        if let Some(path) = &self.main_view.current_path {
+            out = out.replace("@file", path);
+            let name = std::path::Path::new(path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            out = out.replace("@name", &name);
+        }
+        out = out.replace("@dir", &self.workspace_root.to_string_lossy());
+        let line = self.main_view.cursor.0 + 1;
+        out = out.replace("@line", &line.to_string());
+        out
+    }
+
     fn show_help(&mut self) {
         let text = build_full_help(&self.config);
         let lines = self.highlight_to_owned(&text, "help.md");
@@ -447,8 +463,8 @@ impl App {
             }
             PanelAction::SwitchMode => self.apply_view_mode(),
             PanelAction::SendToKiro(text) => {
-                // Write selected text to active kiro/shell tab's PTY
-                self.interactive.tabs.write_to_active(text.as_bytes());
+                let expanded = self.expand_macros(&text);
+                self.interactive.tabs.write_to_active(expanded.as_bytes());
             }
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
