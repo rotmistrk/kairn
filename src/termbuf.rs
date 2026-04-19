@@ -35,6 +35,8 @@ pub struct TermBuf {
     current_style: Style,
     /// Scroll offset (0 = showing live screen).
     pub scroll_offset: usize,
+    /// Whether cursor should be visible.
+    pub cursor_visible: bool,
 }
 
 impl TermBuf {
@@ -50,6 +52,7 @@ impl TermBuf {
             cursor_col: 0,
             current_style: Style::default(),
             scroll_offset: 0,
+            cursor_visible: true,
         }
     }
 
@@ -187,11 +190,23 @@ impl vte::Perform for TermBuf {
     fn csi_dispatch(
         &mut self,
         params: &vte::Params,
-        _intermediates: &[u8],
+        intermediates: &[u8],
         _ignore: bool,
         action: char,
     ) {
         let p: Vec<u16> = params.iter().map(|s| s[0]).collect();
+
+        // DEC private modes: ESC [ ? N h/l
+        if intermediates == [b'?'] {
+            let mode = p.first().copied().unwrap_or(0);
+            match (mode, action) {
+                (25, 'h') => self.cursor_visible = true,
+                (25, 'l') => self.cursor_visible = false,
+                _ => {} // ignore other private modes
+            }
+            return;
+        }
+
         match action {
             'm' => self.handle_sgr(&p),
             'A' => self.cursor_up(p.first().copied().unwrap_or(1) as usize),

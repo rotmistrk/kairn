@@ -27,8 +27,45 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
+        // Scroll-back: Shift+Up/Down/PgUp/PgDn handled here, not forwarded
+        if key.modifiers.contains(KeyModifiers::SHIFT) {
+            if let Some(tb) = self.tabs.active_termbuf_mut() {
+                match key.code {
+                    KeyCode::Up => {
+                        tb.scroll_up(1);
+                        return Ok(PanelAction::None);
+                    }
+                    KeyCode::Down => {
+                        tb.scroll_down(1);
+                        return Ok(PanelAction::None);
+                    }
+                    KeyCode::PageUp => {
+                        tb.scroll_up(20);
+                        return Ok(PanelAction::None);
+                    }
+                    KeyCode::PageDown => {
+                        tb.scroll_down(20);
+                        return Ok(PanelAction::None);
+                    }
+                    KeyCode::Home => {
+                        tb.scroll_up(100_000);
+                        return Ok(PanelAction::None);
+                    }
+                    KeyCode::End => {
+                        tb.scroll_to_bottom();
+                        return Ok(PanelAction::None);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         let bytes = key_to_bytes(key);
         if !bytes.is_empty() {
+            // Snap to bottom on any input
+            if let Some(tb) = self.tabs.active_termbuf_mut() {
+                tb.scroll_to_bottom();
+            }
             self.tabs.write_to_active(&bytes);
         }
         Ok(PanelAction::None)
@@ -80,7 +117,7 @@ fn render_termbuf(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: boo
     render_cells(buf, inner, termbuf);
 
     // Show cursor if focused and not scrolled back
-    if focused && termbuf.scroll_offset == 0 {
+    if focused && termbuf.scroll_offset == 0 && termbuf.cursor_visible {
         let (cr, cc) = termbuf.cursor();
         let cx = inner.x + cc as u16;
         let cy = inner.y + cr as u16;
