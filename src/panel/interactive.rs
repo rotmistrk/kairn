@@ -34,7 +34,11 @@ impl InteractivePanel {
 
     /// Current inner dimensions for spawning new tabs.
     pub fn inner_size(&self) -> (u16, u16) {
-        (self.last_cols.max(80), self.last_rows.max(24))
+        if self.last_cols > 0 && self.last_rows > 0 {
+            (self.last_cols, self.last_rows)
+        } else {
+            (80, 24) // fallback only before first render
+        }
     }
 }
 

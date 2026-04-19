@@ -67,6 +67,10 @@ fn main() -> Result<()> {
 
     let mut app = App::new(cwd.to_string_lossy().to_string());
 
+    // Init panel sizes from actual terminal dimensions
+    let ts = terminal.size()?;
+    app.init_panel_size(ts.width, ts.height);
+
     let result = run_loop(&mut terminal, &mut app, capture);
 
     disable_raw_mode()?;

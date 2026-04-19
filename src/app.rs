@@ -69,6 +69,14 @@ impl App {
         app
     }
 
+    /// Call once with terminal size before creating tabs.
+    pub fn init_panel_size(&mut self, width: u16, height: u16) {
+        let area = ratatui::layout::Rect::new(0, 0, width, height);
+        let c =
+            crate::layout::LayoutConstraints::compute(area, self.layout_mode, &self.panel_sizes);
+        self.interactive.sync_size(c.interactive);
+    }
+
     fn try_auto_restore(&mut self) -> bool {
         let sess = match session::auto_load(&self.workspace_root) {
             Ok(Some(s)) => s,
