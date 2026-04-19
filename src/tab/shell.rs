@@ -42,6 +42,11 @@ impl PtyTab {
         while let Ok(data) = self.rx.try_recv() {
             self.termbuf.process(&data);
         }
+        // Send any responses (e.g. cursor position reports) back to PTY
+        for resp in self.termbuf.responses.drain(..) {
+            let _ = self.writer.write_all(&resp);
+            let _ = self.writer.flush();
+        }
     }
 
     pub fn write(&mut self, data: &[u8]) {

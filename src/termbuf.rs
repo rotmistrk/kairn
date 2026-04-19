@@ -37,6 +37,10 @@ pub struct TermBuf {
     pub scroll_offset: usize,
     /// Whether cursor should be visible.
     pub cursor_visible: bool,
+    /// Saved cursor position.
+    saved_cursor: (usize, usize),
+    /// Responses to send back to PTY (e.g. cursor position report).
+    pub responses: Vec<Vec<u8>>,
 }
 
 impl TermBuf {
@@ -53,6 +57,8 @@ impl TermBuf {
             current_style: Style::default(),
             scroll_offset: 0,
             cursor_visible: true,
+            saved_cursor: (0, 0),
+            responses: Vec::new(),
         }
     }
 
@@ -231,6 +237,26 @@ impl vte::Perform for TermBuf {
                 let col = p.first().copied().unwrap_or(1) as usize;
                 self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
             }
+            'n' => {
+                // Device Status Report
+                if p.first().copied() == Some(6) {
+                    // Respond with cursor position: ESC [ row ; col R
+                    let resp = format!("\x1b[{};{}R", self.cursor_row + 1, self.cursor_col + 1);
+                    self.responses.push(resp.into_bytes());
+                }
+            }
+            's' => {
+                self.saved_cursor = (self.cursor_row, self.cursor_col);
+            }
+            'u' => {
+                self.cursor_row = self.saved_cursor.0.min(self.rows - 1);
+                self.cursor_col = self.saved_cursor.1.min(self.cols - 1);
+            }
+            'd' => {
+                // Vertical Position Absolute
+                let row = p.first().copied().unwrap_or(1) as usize;
+                self.cursor_row = row.saturating_sub(1).min(self.rows - 1);
+            }
             _ => {}
         }
     }
@@ -240,7 +266,16 @@ impl vte::Perform for TermBuf {
     fn put(&mut self, _byte: u8) {}
     fn unhook(&mut self) {}
     fn osc_dispatch(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
-    fn esc_dispatch(&mut self, _intermediates: &[u8], _ignore: bool, _byte: u8) {}
+    fn esc_dispatch(&mut self, _intermediates: &[u8], _ignore: bool, byte: u8) {
+        match byte {
+            b'7' => self.saved_cursor = (self.cursor_row, self.cursor_col),
+            b'8' => {
+                self.cursor_row = self.saved_cursor.0.min(self.rows - 1);
+                self.cursor_col = self.saved_cursor.1.min(self.cols - 1);
+            }
+            _ => {}
+        }
+    }
 }
 
 impl TermBuf {
