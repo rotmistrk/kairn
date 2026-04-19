@@ -87,7 +87,7 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         }
         _ => {}
     }
-    Ok(PanelAction::None)
+    preview_current(panel)
 }
 
 fn handle_enter_or_expand(panel: &mut FileTreePanel) -> Result<PanelAction> {
@@ -106,6 +106,17 @@ fn handle_enter_or_expand(panel: &mut FileTreePanel) -> Result<PanelAction> {
     } else {
         Ok(PanelAction::None)
     }
+}
+
+fn preview_current(panel: &FileTreePanel) -> Result<PanelAction> {
+    let flat = tree::flatten(&panel.nodes);
+    if let Some(entry) = flat.get(panel.cursor) {
+        if !entry.node.is_dir() {
+            let path = entry.node.path.to_string_lossy().to_string();
+            return Ok(PanelAction::PreviewFile(path));
+        }
+    }
+    Ok(PanelAction::None)
 }
 
 fn collapse_current(panel: &mut FileTreePanel) {

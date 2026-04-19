@@ -36,6 +36,7 @@ pub trait Panel {
 pub enum PanelAction {
     None,
     OpenFile(String),
+    PreviewFile(String),
     PushOutput(crate::buffer::OutputBuffer),
     Quit,
 }

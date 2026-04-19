@@ -380,6 +380,7 @@ impl App {
         match action {
             PanelAction::None => {}
             PanelAction::OpenFile(path) => self.open_file(&path),
+            PanelAction::PreviewFile(path) => self.open_file(&path),
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
             }
