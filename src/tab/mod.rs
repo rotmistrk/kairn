@@ -37,11 +37,11 @@ pub struct TabManager {
 }
 
 impl TabManager {
-    pub fn add_shell_tab(&mut self, cols: u16, rows: u16) -> TabId {
+    pub fn add_shell_tab(&mut self, cols: u16, rows: u16, cwd: &std::path::Path) -> TabId {
         let id = TabId(self.next_id);
         self.next_id += 1;
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-        let pty = PtyTab::spawn(&shell, &[], cols, rows).ok();
+        let pty = PtyTab::spawn(&shell, &[], cols, rows, cwd).ok();
         let meta = Tab {
             id,
             kind: TabKind::Shell,
@@ -58,10 +58,11 @@ impl TabManager {
         kiro_cmd: &str,
         cols: u16,
         rows: u16,
+        cwd: &std::path::Path,
     ) -> TabId {
         let id = TabId(self.next_id);
         self.next_id += 1;
-        let pty = PtyTab::spawn(kiro_cmd, &["chat", "--classic"], cols, rows).ok();
+        let pty = PtyTab::spawn(kiro_cmd, &["chat", "--classic"], cols, rows, cwd).ok();
         let meta = Tab {
             id,
             kind: TabKind::Kiro {

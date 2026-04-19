@@ -17,9 +17,15 @@ pub struct PtyTab {
 }
 
 impl PtyTab {
-    pub fn spawn(cmd: &str, args: &[&str], cols: u16, rows: u16) -> Result<Self> {
+    pub fn spawn(
+        cmd: &str,
+        args: &[&str],
+        cols: u16,
+        rows: u16,
+        cwd: &std::path::Path,
+    ) -> Result<Self> {
         let pair = open_pty(cols, rows)?;
-        spawn_command(&pair, cmd, args)?;
+        spawn_command(&pair, cmd, args, cwd)?;
         let reader = pair.master.try_clone_reader().context("cloning reader")?;
         let writer = pair.master.take_writer().context("taking writer")?;
         let rx = spawn_reader_thread(reader);
@@ -65,12 +71,18 @@ fn open_pty(cols: u16, rows: u16) -> Result<portable_pty::PtyPair> {
         .context("opening PTY")
 }
 
-fn spawn_command(pair: &portable_pty::PtyPair, cmd: &str, args: &[&str]) -> Result<()> {
+fn spawn_command(
+    pair: &portable_pty::PtyPair,
+    cmd: &str,
+    args: &[&str],
+    cwd: &std::path::Path,
+) -> Result<()> {
     let mut builder = CommandBuilder::new(cmd);
     for arg in args {
         builder.arg(arg);
     }
     builder.env("TERM", "xterm-256color");
+    builder.cwd(cwd);
     pair.slave
         .spawn_command(builder)
         .context("spawning command")?;
