@@ -3,7 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
@@ -90,6 +90,12 @@ pub struct MainViewPanel {
     /// Anchor position for visual modes: (row, col).
     pub anchor: (usize, usize),
     pub line_numbers: bool,
+    /// Incremental search state.
+    pub search_active: bool,
+    pub search_query: String,
+    /// (row, col) of each match.
+    pub search_matches: Vec<(usize, usize)>,
+    pub search_index: usize,
 }
 
 impl MainViewPanel {
@@ -204,6 +210,78 @@ impl MainViewPanel {
             _ => None,
         }
     }
+    fn handle_search_input(&mut self, code: KeyCode) -> PanelAction {
+        match code {
+            KeyCode::Esc => {
+                self.search_active = false;
+            }
+            KeyCode::Enter => {
+                self.search_active = false;
+                self.jump_to_match();
+            }
+            KeyCode::Backspace => {
+                self.search_query.pop();
+                self.update_search_matches();
+                self.jump_to_match();
+            }
+            KeyCode::Char(c) => {
+                self.search_query.push(c);
+                self.update_search_matches();
+                self.jump_to_match();
+            }
+            _ => {}
+        }
+        PanelAction::None
+    }
+
+    fn update_search_matches(&mut self) {
+        self.search_matches.clear();
+        if self.search_query.is_empty() {
+            return;
+        }
+        let content = match &self.buffer {
+            Some(b) => &b.content,
+            None => return,
+        };
+        let query = &self.search_query;
+        for (row, line) in content.lines().enumerate() {
+            let lower_line = line.to_lowercase();
+            let lower_query = query.to_lowercase();
+            let mut start = 0;
+            while let Some(pos) = lower_line[start..].find(&lower_query) {
+                self.search_matches.push((row, start + pos));
+                start += pos + lower_query.len();
+            }
+        }
+        self.search_index = 0;
+    }
+
+    fn jump_to_match(&mut self) {
+        if let Some(&(row, _)) = self.search_matches.get(self.search_index) {
+            self.scroll = row.saturating_sub(5);
+            if self.cursor_mode != CursorMode::Off {
+                self.cursor = (row, 0);
+            }
+        }
+    }
+
+    fn next_match(&mut self) {
+        if !self.search_matches.is_empty() {
+            self.search_index = (self.search_index + 1) % self.search_matches.len();
+            self.jump_to_match();
+        }
+    }
+
+    fn prev_match(&mut self) {
+        if !self.search_matches.is_empty() {
+            self.search_index = if self.search_index == 0 {
+                self.search_matches.len() - 1
+            } else {
+                self.search_index - 1
+            };
+            self.jump_to_match();
+        }
+    }
 
     pub fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
         let max = self.total_lines().saturating_sub(viewport_h);
@@ -257,6 +335,14 @@ impl Panel for MainViewPanel {
         // Highlight cursor line and visual selection
         render_cursor_and_selection(frame, area, self);
 
+        // Highlight search matches
+        render_search_matches(frame, area, self);
+
+        // Search input bar
+        if self.search_active {
+            render_search_bar(frame, area, self);
+        }
+
         // Line numbers gutter
         if self.line_numbers && self.buffer.is_some() {
             render_line_numbers(frame, area, self.scroll, self.total_lines());
@@ -267,6 +353,40 @@ impl Panel for MainViewPanel {
         use crossterm::event::KeyModifiers;
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+        // Search input mode
+        if self.search_active {
+            return Ok(self.handle_search_input(key.code));
+        }
+
+        // n/N for next/prev match (when not in search input)
+        if self.cursor_mode != CursorMode::Off || !self.search_matches.is_empty() {
+            match key.code {
+                KeyCode::Char('n') if !ctrl => {
+                    self.next_match();
+                    return Ok(PanelAction::None);
+                }
+                KeyCode::Char('N') => {
+                    self.prev_match();
+                    return Ok(PanelAction::None);
+                }
+                KeyCode::Char('/') if !ctrl => {
+                    self.search_active = true;
+                    self.search_query.clear();
+                    return Ok(PanelAction::None);
+                }
+                _ => {}
+            }
+        }
+
+        // / to start search (also works in scroll mode)
+        if key.code == KeyCode::Char('/') && !ctrl {
+            self.search_active = true;
+            self.search_query.clear();
+            self.cursor_mode = CursorMode::Normal;
+            self.cursor = (self.scroll, 0);
+            return Ok(PanelAction::None);
+        }
 
         // Alt-Space toggles cursor mode
         if alt && key.code == KeyCode::Char(' ') {
@@ -425,4 +545,61 @@ fn render_line_numbers(frame: &mut Frame, area: Rect, scroll: usize, total: usiz
             }
         }
     }
+}
+
+fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
+    if panel.search_query.is_empty() {
+        return;
+    }
+    let inner_y = area.y + 1;
+    let inner_x = area.x + 1;
+    let inner_h = area.height.saturating_sub(2) as usize;
+    let qlen = panel.search_query.len();
+    let buf = frame.buffer_mut();
+
+    for (i, &(row, col)) in panel.search_matches.iter().enumerate() {
+        if row < panel.scroll || row >= panel.scroll + inner_h {
+            continue;
+        }
+        let y = inner_y + (row - panel.scroll) as u16;
+        let bg = if i == panel.search_index {
+            Color::Yellow
+        } else {
+            Color::Indexed(58) // dark yellow
+        };
+        for c in 0..qlen {
+            let x = inner_x + (col + c) as u16;
+            if x < area.right().saturating_sub(1) && y < area.bottom() {
+                buf[(x, y)].set_bg(bg);
+                if i == panel.search_index {
+                    buf[(x, y)].set_fg(Color::Black);
+                }
+            }
+        }
+    }
+}
+
+fn render_search_bar(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
+    let y = area.bottom().saturating_sub(2);
+    let w = area.width.saturating_sub(2);
+    let bar_area = Rect::new(area.x + 1, y, w, 1);
+
+    let match_info = if panel.search_matches.is_empty() {
+        "no matches".to_string()
+    } else {
+        format!("{}/{}", panel.search_index + 1, panel.search_matches.len())
+    };
+
+    let line = Line::from(vec![
+        Span::styled("/", Style::default().fg(Color::Yellow)),
+        Span::styled(
+            panel.search_query.as_str(),
+            Style::default().fg(Color::White).bg(Color::DarkGray),
+        ),
+        Span::styled(
+            format!("  [{match_info}]"),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]);
+    frame.render_widget(Paragraph::new(line), bar_area);
 }
