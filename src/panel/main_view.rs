@@ -200,12 +200,6 @@ impl MainViewPanel {
             KeyCode::PageDown => self.scroll_by(20, 20),
             KeyCode::Home => self.scroll = 0,
             KeyCode::End => self.scroll = self.total_lines(),
-            KeyCode::Tab => {
-                if self.current_path.is_some() {
-                    self.mode = self.mode.next();
-                    return Ok(PanelAction::SwitchMode);
-                }
-            }
             _ => {}
         }
         Ok(PanelAction::None)

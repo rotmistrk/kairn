@@ -116,6 +116,37 @@ impl App {
     }
 
     /// Display captured output from KAIRN_CAPTURE pipe in main panel.
+    fn cycle_mode(&mut self, forward: bool) {
+        match self.focus {
+            FocusedPanel::Tree => {
+                if forward {
+                    self.file_tree.filter = self.file_tree.filter.next();
+                } else {
+                    // Reverse: cycle 3 times forward
+                    self.file_tree.filter = self.file_tree.filter.next().next();
+                }
+                self.file_tree.cursor = 0;
+                self.file_tree.git_status =
+                    crate::panel::file_tree::collect_git_status(&self.file_tree.root_path);
+            }
+            FocusedPanel::Main => {
+                self.main_view.mode = if forward {
+                    self.main_view.mode.next()
+                } else {
+                    self.main_view.mode.next().next().next()
+                };
+                self.apply_view_mode();
+            }
+            FocusedPanel::Interactive => {
+                if forward {
+                    self.interactive.tabs.next_tab();
+                } else {
+                    self.interactive.tabs.prev_tab();
+                }
+            }
+        }
+    }
+
     fn scroll_focused(&mut self, delta: isize) {
         match self.focus {
             FocusedPanel::Main => {
@@ -192,6 +223,8 @@ impl App {
             Action::ScrollDown => self.scroll_focused(20),
             Action::ScrollTop => self.scroll_focused(-100_000),
             Action::ScrollBottom => self.scroll_focused(100_000),
+            Action::CycleModeNext => self.cycle_mode(true),
+            Action::CycleModePrev => self.cycle_mode(false),
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
             }
@@ -395,7 +428,10 @@ impl App {
         match action {
             PanelAction::None => {}
             PanelAction::OpenFile(path) => self.open_file(&path),
-            PanelAction::PreviewFile(path) => self.open_file(&path),
+            PanelAction::PreviewFile(path) => {
+                self.main_view.current_path = Some(path);
+                self.apply_view_mode();
+            }
             PanelAction::SwitchMode => self.apply_view_mode(),
             PanelAction::SendToKiro(text) => {
                 // Write selected text to active kiro/shell tab's PTY
@@ -423,7 +459,7 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str) {
-        self.main_view.mode = crate::panel::main_view::ViewMode::File;
+        // Mode is sticky — don't reset
         let content =
             std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
         let owned_lines = self.highlight_to_owned(&content, path);

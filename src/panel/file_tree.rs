@@ -34,7 +34,7 @@ pub enum TreeFilter {
 }
 
 impl TreeFilter {
-    fn next(self) -> Self {
+    pub fn next(self) -> Self {
         match self {
             Self::All => Self::Modified,
             Self::Modified => Self::Untracked,
@@ -42,7 +42,7 @@ impl TreeFilter {
         }
     }
 
-    fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
             Self::All => "All",
             Self::Modified => "Modified",
@@ -171,11 +171,6 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         KeyCode::End => {
             panel.cursor = count.saturating_sub(1);
         }
-        KeyCode::Char('g') => {
-            panel.filter = panel.filter.next();
-            panel.cursor = 0;
-            panel.git_status = collect_git_status(&panel.root_path);
-        }
         _ => {}
     }
     preview_current(panel)
@@ -277,7 +272,7 @@ fn entry_style(is_cursor: bool, node: &FileNode, status: Option<&GitStatus>) -> 
 }
 
 /// Collect git status by running `git status --porcelain`.
-fn collect_git_status(root: &std::path::Path) -> HashMap<String, GitStatus> {
+pub fn collect_git_status(root: &std::path::Path) -> HashMap<String, GitStatus> {
     let mut map = HashMap::new();
     let output = std::process::Command::new("git")
         .args(["status", "--porcelain", "-uall"])

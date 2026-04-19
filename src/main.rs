@@ -92,7 +92,7 @@ fn run_loop(
     loop {
         // Sync PTY size to match panel dimensions
         let size = terminal.size()?;
-        let area = Rect::new(0, 0, size.width, size.height);
+        let area = Rect::new(0, 0, size.width, size.height.saturating_sub(1));
         let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
         app.interactive.sync_size(c.interactive);
 
@@ -148,7 +148,11 @@ fn poll_capture(app: &mut App, capture: &mut Option<capture::CapturePipe>) {
 }
 
 fn render_panels(frame: &mut Frame, app: &App) {
-    let area = frame.area();
+    let full = frame.area();
+    // Reserve bottom row for status bar
+    let area = Rect::new(full.x, full.y, full.width, full.height.saturating_sub(1));
+    let status_area = Rect::new(full.x, full.bottom().saturating_sub(1), full.width, 1);
+
     let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
 
     if let Some(tree_rect) = c.tree {
@@ -164,6 +168,8 @@ fn render_panels(frame: &mut Frame, app: &App) {
         c.interactive,
         app.focus == panel::FocusedPanel::Interactive,
     );
+
+    render_status_bar(frame, app, status_area);
 }
 
 fn render_search_overlay(frame: &mut Frame, search: &FileSearch) {
@@ -335,15 +341,20 @@ fn build_help_text(cfg: &crate::config::Config) -> String {
         text.push_str(&format!(" {key:<16}{desc}\n"));
     }
     text.push('\n');
-    text.push_str(" Main panel (focused):\n");
-    text.push_str(" ↑/↓/PgUp/PgDn   Scroll\n");
-    text.push_str(" Enter            Send to Kiro\n");
-    text.push_str(" Alt-Enter        Send to shell\n");
+    text.push_str(&format!(
+        " {:<16}Cycle mode (all panels)\n",
+        k("cycle_mode_next")
+    ));
+    text.push_str(&format!(" {:<16}Cycle mode back\n", k("cycle_mode_prev")));
+    text.push_str(&format!(
+        " {:<16}Peek screen (MC style)\n",
+        k("peek_screen")
+    ));
+    text.push_str(&format!(" {:<16}Suspend to shell\n", k("suspend_to_shell")));
     text.push('\n');
-    text.push_str(" File tree (focused):\n");
-    text.push_str(" j/k ↑/↓          Navigate\n");
-    text.push_str(" Enter/l/→        Open / expand\n");
-    text.push_str(" h/←              Collapse\n");
+    text.push_str(" Main panel: Shift+↑/↓ select, Enter send to kiro\n");
+    text.push_str(" Terminal: PgUp/PgDn scroll back\n");
+    text.push_str(" File tree: j/k nav, Enter open, h collapse\n");
     text.push('\n');
     text.push_str(&format!(
         " Config: {}\n",
@@ -388,4 +399,42 @@ fn peek_screen() -> Result<()> {
     }
     execute!(io::stdout(), EnterAlternateScreen)?;
     Ok(())
+}
+
+fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
+    use ratatui::style::Modifier;
+
+    let focus_name = match app.focus {
+        panel::FocusedPanel::Tree => "Tree",
+        panel::FocusedPanel::Main => "Main",
+        panel::FocusedPanel::Interactive => "Terminal",
+    };
+    let tree_mode = app.file_tree.filter.label();
+    let main_mode = app.main_view.mode.label();
+    let tab_name = app.interactive.tabs.active_title();
+
+    let left = format!(" [{focus_name}]  Tree:{tree_mode}  Main:{main_mode}  Tab:{tab_name}");
+    let right = " C-S-←/→:mode  F2:focus  F1:help  Esc²:quit ";
+
+    let pad = area
+        .width
+        .saturating_sub(left.len() as u16 + right.len() as u16);
+    let line = Line::from(vec![
+        Span::styled(
+            left,
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            " ".repeat(pad as usize),
+            Style::default().bg(Color::DarkGray),
+        ),
+        Span::styled(
+            right.to_string(),
+            Style::default().fg(Color::Black).bg(Color::DarkGray),
+        ),
+    ]);
+    frame.render_widget(Paragraph::new(line), area);
 }
