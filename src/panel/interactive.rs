@@ -88,6 +88,11 @@ impl Panel for InteractivePanel {
 
         let bytes = key_to_bytes(key);
         if !bytes.is_empty() {
+            // Ctrl-Enter: read current line, expand macros, send
+            let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+            if ctrl && key.code == KeyCode::Enter {
+                return Ok(PanelAction::ExpandLine);
+            }
             // Snap to bottom on any input
             if let Some(tb) = self.tabs.active_termbuf_mut() {
                 tb.scroll_to_bottom();

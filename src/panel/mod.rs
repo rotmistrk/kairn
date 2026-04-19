@@ -41,6 +41,7 @@ pub enum PanelAction {
     SwitchMode,
     SendToKiro(String),
     PreviewCommit(String),
+    ExpandLine,
     PushOutput(crate::buffer::OutputBuffer),
     Quit,
 }

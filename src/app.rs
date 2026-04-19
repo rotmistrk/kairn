@@ -378,6 +378,23 @@ impl App {
         out
     }
 
+    fn expand_and_send_line(&mut self) {
+        let line = match self.interactive.tabs.active_termbuf() {
+            Some(tb) => {
+                let (row, _) = tb.cursor();
+                let cells = tb.visible_row(row);
+                cells.iter().map(|c| c.ch).collect::<String>()
+            }
+            None => return,
+        };
+        let trimmed = line.trim_end();
+        // Clear current line (Ctrl-U), send expanded text + Enter
+        self.interactive.tabs.write_to_active(b"\x15");
+        let expanded = self.expand_macros(trimmed);
+        self.interactive.tabs.write_to_active(expanded.as_bytes());
+        self.interactive.tabs.write_to_active(b"\r");
+    }
+
     fn show_commit_diff(&mut self, hash: &str) {
         let output = std::process::Command::new("git")
             .args(["show", "--stat", "--patch", hash])
@@ -505,6 +522,9 @@ impl App {
             }
             PanelAction::PreviewCommit(hash) => {
                 self.show_commit_diff(&hash);
+            }
+            PanelAction::ExpandLine => {
+                self.expand_and_send_line();
             }
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
