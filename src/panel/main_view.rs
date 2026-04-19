@@ -18,6 +18,7 @@ pub enum ViewMode {
     File,
     Diff,
     Log,
+    Blame,
 }
 
 impl ViewMode {
@@ -25,7 +26,8 @@ impl ViewMode {
         match self {
             Self::File => Self::Diff,
             Self::Diff => Self::Log,
-            Self::Log => Self::File,
+            Self::Log => Self::Blame,
+            Self::Blame => Self::File,
         }
     }
 
@@ -34,6 +36,7 @@ impl ViewMode {
             Self::File => "File",
             Self::Diff => "Diff",
             Self::Log => "Log",
+            Self::Blame => "Blame",
         }
     }
 }

@@ -308,6 +308,21 @@ impl App {
         self.main_view.set_highlighted(styled);
     }
 
+    fn show_blame(&mut self) {
+        let path = match &self.main_view.current_path {
+            Some(p) => p.clone(),
+            None => return,
+        };
+        let blame_lines = match crate::diff::git_blame(Path::new(&path)) {
+            Ok(l) => l,
+            Err(_) => return,
+        };
+        let (styled, raw) = blame_to_styled(&blame_lines);
+        let buf = crate::buffer::OutputBuffer::plain(format!("blame: {path}"), raw);
+        self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(styled);
+    }
+
     fn handle_search_key(&mut self, key: KeyEvent) -> Result<()> {
         let action = match &mut self.search {
             Some(search) => search.handle_key(key),
@@ -403,6 +418,7 @@ impl App {
             ViewMode::File => self.open_file(&path),
             ViewMode::Diff => self.diff_current_file(),
             ViewMode::Log => self.show_git_log(),
+            ViewMode::Blame => self.show_blame(),
         }
     }
 
@@ -582,4 +598,46 @@ fn welcome_keys(cfg: &Config) -> Vec<ratatui::text::Line<'static>> {
             w,
         )),
     ]
+}
+
+fn blame_to_styled(
+    lines: &[crate::diff::BlameLine],
+) -> (Vec<ratatui::text::Line<'static>>, String) {
+    use ratatui::style::{Color, Style};
+    use ratatui::text::{Line, Span};
+
+    let mut styled = Vec::new();
+    let mut raw = String::new();
+
+    for bl in lines {
+        let line_str = format!(
+            "{} {:>12} {} │ {}",
+            bl.hash_short, bl.author, bl.date, bl.content
+        );
+        raw.push_str(&line_str);
+        raw.push('\n');
+
+        styled.push(Line::from(vec![
+            Span::styled(
+                format!("{} ", bl.hash_short),
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::styled(
+                format!("{:>12} ", bl.author),
+                Style::default().fg(Color::Green),
+            ),
+            Span::styled(
+                format!("{} │ ", bl.date),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(bl.content.clone(), Style::default().fg(Color::White)),
+        ]));
+    }
+
+    if lines.is_empty() {
+        styled.push(Line::from("(no blame data)"));
+        raw.push_str("(no blame data)\n");
+    }
+
+    (styled, raw)
 }

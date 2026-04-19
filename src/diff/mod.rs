@@ -227,3 +227,60 @@ fn civil_from_days(mut days: i64) -> (i64, i64, i64) {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
+
+// ── Git blame ────────────────────────────────
+
+#[derive(Debug)]
+pub struct BlameLine {
+    pub hash_short: String,
+    pub author: String,
+    pub date: String,
+    pub line_no: usize,
+    pub content: String,
+}
+
+/// Run git blame on a file. Returns one BlameLine per source line.
+pub fn git_blame(file_path: &Path) -> Result<Vec<BlameLine>> {
+    let output = std::process::Command::new("git")
+        .args(["blame", "--porcelain"])
+        .arg(file_path)
+        .output()
+        .context("running git blame")?;
+
+    if !output.status.success() {
+        anyhow::bail!("git blame failed");
+    }
+
+    parse_porcelain_blame(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn parse_porcelain_blame(text: &str) -> Result<Vec<BlameLine>> {
+    let mut lines = Vec::new();
+    let mut hash = String::new();
+    let mut author = String::new();
+    let mut date = String::new();
+    let mut line_no = 0usize;
+
+    for raw in text.lines() {
+        if let Some(content) = raw.strip_prefix('\t') {
+            lines.push(BlameLine {
+                hash_short: hash.chars().take(7).collect(),
+                author: author.clone(),
+                date: date.clone(),
+                line_no,
+                content: content.to_string(),
+            });
+        } else if raw.len() >= 40 && raw.as_bytes()[0].is_ascii_hexdigit() {
+            // Header: hash orig_line final_line [count]
+            let parts: Vec<&str> = raw.split_whitespace().collect();
+            hash = parts.first().unwrap_or(&"").to_string();
+            line_no = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(0);
+        } else if let Some(rest) = raw.strip_prefix("author ") {
+            author = rest.to_string();
+        } else if let Some(rest) = raw.strip_prefix("author-time ") {
+            let secs: i64 = rest.parse().unwrap_or(0);
+            date = format_epoch(secs, 0);
+        }
+    }
+    Ok(lines)
+}
