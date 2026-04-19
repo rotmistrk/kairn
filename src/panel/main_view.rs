@@ -401,8 +401,8 @@ impl Panel for MainViewPanel {
             return Ok(PanelAction::None);
         }
 
-        // Alt-Space toggles cursor mode
-        if alt && key.code == KeyCode::Char(' ') {
+        // Space toggles cursor mode
+        if key.code == KeyCode::Char(' ') && !ctrl && !alt {
             self.cursor_mode = match self.cursor_mode {
                 CursorMode::Off => {
                     self.cursor = (self.scroll, 0);
