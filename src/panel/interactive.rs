@@ -18,6 +18,8 @@ pub struct InteractivePanel {
     pub tabs: TabManager,
     last_cols: u16,
     last_rows: u16,
+    pub renaming: bool,
+    pub rename_buf: String,
 }
 
 impl InteractivePanel {
@@ -46,12 +48,28 @@ impl Panel for InteractivePanel {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
         let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).split(area);
 
-        render_tab_bar(frame, &self.tabs, chunks[0], focused);
+        if self.renaming {
+            render_rename_bar(frame, &self.rename_buf, chunks[0]);
+        } else {
+            render_tab_bar(frame, &self.tabs, chunks[0], focused);
+        }
         render_termbuf(frame, &self.tabs, chunks[1], focused);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        // Scroll-back: PgUp/PgDn (shells don't use these)
+        // Rename mode
+        if self.renaming {
+            return Ok(self.handle_rename_key(key.code));
+        }
+
+        // Ctrl-R starts rename
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('r') {
+            self.renaming = true;
+            self.rename_buf = self.tabs.active_title().to_string();
+            return Ok(PanelAction::None);
+        }
+
+        // Scroll-back: PgUp/PgDn
         match key.code {
             KeyCode::PageUp => {
                 if let Some(tb) = self.tabs.active_termbuf_mut() {
@@ -200,4 +218,37 @@ fn key_code_to_bytes(code: KeyCode, ctrl: bool) -> Vec<u8> {
         KeyCode::PageDown => b"\x1b[6~".to_vec(),
         _ => Vec::new(),
     }
+}
+
+impl InteractivePanel {
+    fn handle_rename_key(&mut self, code: KeyCode) -> PanelAction {
+        match code {
+            KeyCode::Enter => {
+                self.renaming = false;
+                let name = std::mem::take(&mut self.rename_buf);
+                self.tabs.rename_active(name);
+            }
+            KeyCode::Esc => {
+                self.renaming = false;
+                self.rename_buf.clear();
+            }
+            KeyCode::Backspace => {
+                self.rename_buf.pop();
+            }
+            KeyCode::Char(c) => {
+                self.rename_buf.push(c);
+            }
+            _ => {}
+        }
+        PanelAction::None
+    }
+}
+
+fn render_rename_bar(frame: &mut Frame, buf: &str, area: Rect) {
+    let line = Line::from(vec![
+        Span::styled(" Rename: ", Style::default().fg(Color::Yellow)),
+        Span::styled(buf, Style::default().fg(Color::White)),
+        Span::styled("█", Style::default().fg(Color::White)),
+    ]);
+    frame.render_widget(Paragraph::new(line), area);
 }

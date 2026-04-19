@@ -162,6 +162,12 @@ impl TabManager {
         self.tabs.is_empty()
     }
 
+    pub fn rename_active(&mut self, name: String) {
+        if let Some(tab) = self.tabs.get_mut(self.active) {
+            tab.meta.title = name;
+        }
+    }
+
     /// Snapshot for session persistence.
     pub fn snapshot(&self) -> (Vec<Tab>, usize) {
         let tabs = self.tabs.iter().map(|t| t.meta.clone()).collect();
