@@ -346,8 +346,10 @@ impl App {
 
     fn show_help(&mut self) {
         let text = build_full_help(&self.config);
+        let lines = self.highlight_to_owned(&text, "help.md");
         let buf = crate::buffer::OutputBuffer::plain("kairn help".to_string(), text);
         self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(lines);
         self.main_view.current_path = None;
         self.focus = FocusedPanel::Main;
     }
@@ -718,148 +720,136 @@ fn file_mtime(path: &str) -> u64 {
 }
 
 fn build_full_help(cfg: &Config) -> String {
-    let k = |name: &str| cfg.display_key(name);
-    let ks = |name: &str| {
-        let src = cfg.key_source(name);
-        format!("{:<18} {:<14} ({})", k(name), name, src.label())
+    let kb = |name: &str| {
+        let key = cfg.display_key(name);
+        let src = cfg.key_source(name).label();
+        format!("`{key}` — {name} *({src})*")
     };
     let mut h = String::new();
 
-    // Logo
-    h.push('\n');
+    h.push_str("# kairn v0.1.0\n\n");
+    h.push_str("```\n");
     h.push_str("  ╦╔═╔═╗╦╦═╗╔╗╔\n");
-    h.push_str("  ╠╩╗╠═╣║╠╦╝║║║   v0.1.0\n");
-    h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝   A TUI IDE for Kiro AI\n");
-    h.push('\n');
-    h.push_str("  Named after cairn — stacked stones marking a trail.\n");
+    h.push_str("  ╠╩╗╠═╣║╠╦╝║║║\n");
+    h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝\n");
+    h.push_str("```\n\n");
+    h.push_str("A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n");
+
+    h.push_str("## Panel Navigation\n\n");
+    h.push_str(&format!("- {}\n", kb("focus_tree")));
+    h.push_str(&format!("- {}\n", kb("focus_main")));
+    h.push_str(&format!("- {}\n", kb("focus_terminal")));
+    h.push_str(&format!("- {}\n", kb("cycle_focus")));
+    h.push_str(&format!("- {}\n", kb("rotate_layout")));
+    h.push_str(&format!("- {}\n", kb("toggle_tree")));
+    h.push_str(&format!("- {}\n", kb("cycle_mode_next")));
+    h.push_str(&format!("- {}\n", kb("cycle_mode_prev")));
     h.push('\n');
 
-    // Panel navigation
-    h.push_str("═══ Panel Navigation ═══\n\n");
-    h.push_str(&format!("  {}\n", ks("focus_tree")));
-    h.push_str(&format!("  {}\n", ks("focus_main")));
-    h.push_str(&format!("  {}\n", ks("focus_terminal")));
-    h.push_str(&format!("  {}\n", ks("cycle_focus")));
-    h.push_str(&format!("  {}\n", ks("rotate_layout")));
-    h.push_str(&format!("  {}\n", ks("toggle_tree")));
-    h.push_str(&format!("  {}\n", ks("cycle_mode_next")));
-    h.push_str(&format!("  {}\n", ks("cycle_mode_prev")));
+    h.push_str("## File Operations\n\n");
+    h.push_str(&format!("- {}\n", kb("open_search")));
+    h.push_str(&format!("- {}\n", kb("launch_editor")));
+    h.push_str(&format!("- {}\n", kb("show_help")));
     h.push('\n');
 
-    // File operations
-    h.push_str("═══ File Operations ═══\n\n");
-    h.push_str(&format!("  {}\n", ks("open_search")));
-    h.push_str(&format!("  {}\n", ks("launch_editor")));
-    h.push_str(&format!("  {}\n", ks("show_help")));
-    h.push('\n');
+    h.push_str("## Git\n\n");
+    h.push_str(&format!("- {}\n", kb("diff_current_file")));
+    h.push_str(&format!("- {}\n", kb("git_log")));
+    h.push_str("- Mode cycle (main panel): **File → Diff → Log → Blame**\n");
+    h.push_str("- Filter cycle (tree): **All → Modified → Untracked**\n\n");
 
-    // Git
-    h.push_str("═══ Git ═══\n\n");
-    h.push_str(&format!("  {}\n", ks("diff_current_file")));
-    h.push_str(&format!("  {}\n", ks("git_log")));
-    h.push_str("  Mode cycle (main panel): File → Diff → Log → Blame\n");
-    h.push_str("  Filter cycle (tree):     All → Modified → Untracked\n");
-    h.push('\n');
+    h.push_str("## Terminal Tabs\n\n");
+    h.push_str(&format!("- {}\n", kb("new_kiro_tab")));
+    h.push_str(&format!("- {}\n", kb("new_shell_tab")));
+    h.push_str(&format!("- {}\n", kb("close_tab")));
+    h.push_str(&format!("- {}\n", kb("prev_tab")));
+    h.push_str(&format!("- {}\n", kb("next_tab")));
+    h.push_str("- `PgUp`/`PgDn` — scroll back in terminal\n\n");
 
-    // Terminal tabs
-    h.push_str("═══ Terminal Tabs ═══\n\n");
-    h.push_str(&format!("  {}\n", ks("new_kiro_tab")));
-    h.push_str(&format!("  {}\n", ks("new_shell_tab")));
-    h.push_str(&format!("  {}\n", ks("close_tab")));
-    h.push_str(&format!("  {}\n", ks("prev_tab")));
-    h.push_str(&format!("  {}\n", ks("next_tab")));
-    h.push_str("  PgUp/PgDn                                Scroll back\n");
-    h.push('\n');
+    h.push_str("## Session & System\n\n");
+    h.push_str(&format!("- {}\n", kb("save_session")));
+    h.push_str(&format!("- {}\n", kb("load_session")));
+    h.push_str(&format!("- {}\n", kb("suspend_to_shell")));
+    h.push_str(&format!("- {}\n", kb("peek_screen")));
+    h.push_str(&format!("- {}\n", kb("quit")));
+    h.push_str("- `Esc Esc` — quit (fallback)\n\n");
 
-    // Session & system
-    h.push_str("═══ Session & System ═══\n\n");
-    h.push_str(&format!("  {}\n", ks("save_session")));
-    h.push_str(&format!("  {}\n", ks("load_session")));
-    h.push_str(&format!("  {}\n", ks("suspend_to_shell")));
-    h.push_str(&format!("  {}\n", ks("peek_screen")));
-    h.push_str(&format!("  {}\n", ks("quit")));
-    h.push_str("  Esc Esc                                   Quit (fallback)\n");
-    h.push('\n');
+    h.push_str("## Main Panel\n\n");
+    h.push_str("### Scroll mode (default)\n\n");
+    h.push_str("- `↑`/`↓`/`PgUp`/`PgDn` — scroll\n");
+    h.push_str("- `/` — search as you type, `n`/`N` next/prev match\n\n");
+    h.push_str("### Cursor mode (`Space` to toggle)\n\n");
+    h.push_str("- `↑↓←→` — move cursor\n");
+    h.push_str("- `v` — stream (character) select\n");
+    h.push_str("- `V` — line select\n");
+    h.push_str("- `Ctrl-V` — block (column) select\n");
+    h.push_str("- `Enter` — send selection to active kiro or shell tab\n");
+    h.push_str("- `Esc` — clear selection\n\n");
 
-    // Main panel cursor mode
-    h.push_str("═══ Main Panel ═══\n\n");
-    h.push_str("  Scroll mode (default):\n");
-    h.push_str("    ↑/↓/PgUp/PgDn     Scroll\n");
-    h.push_str("    /                  Search (type to find, n/N next/prev)\n");
-    h.push('\n');
-    h.push_str("  Cursor mode (Space to toggle):\n");
-    h.push_str("    ↑↓←→              Move cursor\n");
-    h.push_str("    v                  Stream (character) select\n");
-    h.push_str("    V                  Line select\n");
-    h.push_str("    Ctrl-V             Block (column) select\n");
-    h.push_str("    Enter              Send selection to terminal tab\n");
-    h.push_str("    Esc                Clear selection\n");
-    h.push_str("    /                  Search\n");
-    h.push('\n');
+    h.push_str("## File Tree\n\n");
+    h.push_str("- `j`/`k` `↑`/`↓` — navigate\n");
+    h.push_str("- `Enter`/`l`/`→` — open file / expand dir\n");
+    h.push_str("- `h`/`←` — collapse dir\n");
+    h.push_str("- Auto-preview: files show in main panel on cursor move\n");
+    h.push_str("- Git colors: **yellow**=modified **green**=added **red**=deleted\n\n");
 
-    // File tree
-    h.push_str("═══ File Tree ═══\n\n");
-    h.push_str("  j/k ↑/↓              Navigate\n");
-    h.push_str("  Enter/l/→            Open file / expand dir\n");
-    h.push_str("  h/←                  Collapse dir\n");
-    h.push_str("  Auto-preview: files show in main panel on cursor move\n");
-    h.push_str("  Git colors: yellow=modified green=added red=deleted\n");
-    h.push('\n');
+    h.push_str("## Template Variables (in terminal input)\n\n");
+    h.push_str("When sending text to kiro/shell, these expand automatically:\n\n");
+    h.push_str("| Variable | Expands to |\n");
+    h.push_str("|----------|------------|\n");
+    h.push_str("| `@file`  | Current file path |\n");
+    h.push_str("| `@name`  | Current file name |\n");
+    h.push_str("| `@dir`   | Workspace root |\n");
+    h.push_str("| `@line`  | Current line number (cursor or scroll position) |\n");
+    h.push_str("| `@sel`   | Current selection text |\n\n");
+    h.push_str("Example: type in kiro tab:\n");
+    h.push_str("```\n");
+    h.push_str("explain @file lines 10-20\n");
+    h.push_str("refactor @sel to use iterators\n");
+    h.push_str("```\n\n");
 
-    // Configuration
-    h.push_str("═══ Configuration ═══\n\n");
-    h.push_str(&format!("  Global:   {}\n", Config::global_rc().display()));
-    h.push_str("  Project:  $PWD/.kairnrc (overrides global)\n");
-    h.push_str("  State:    $PWD/.kairn.state (auto-saved on quit)\n");
-    h.push_str("  Format:   JSON — only set what you want to change\n");
-    h.push('\n');
-    h.push_str("  Example .kairnrc:\n");
-    h.push_str("  {\n");
-    h.push_str("    \"kiro_command\": \"kiro-cli\",\n");
-    h.push_str("    \"line_numbers\": true,\n");
-    h.push_str("    \"keys\": {\n");
-    h.push_str("      \"quit\": \"ctrl+q\",\n");
-    h.push_str("      \"new_shell_tab\": \"ctrl+s\"\n");
-    h.push_str("    }\n");
+    h.push_str("## Configuration\n\n");
+    h.push_str(&format!(
+        "- **Global:** `{}`\n",
+        Config::global_rc().display()
+    ));
+    h.push_str("- **Project:** `$PWD/.kairnrc` (overrides global)\n");
+    h.push_str("- **State:** `$PWD/.kairn.state` (auto-saved on quit)\n");
+    h.push_str("- **Format:** JSON — only set what you want to change\n\n");
+    h.push_str("Example `.kairnrc`:\n");
+    h.push_str("```json\n");
+    h.push_str("{\n");
+    h.push_str("  \"kiro_command\": \"kiro-cli\",\n");
+    h.push_str("  \"line_numbers\": true,\n");
+    h.push_str("  \"keys\": {\n");
+    h.push_str("    \"quit\": \"ctrl+q\",\n");
+    h.push_str("    \"new_shell_tab\": \"ctrl+s\"\n");
     h.push_str("  }\n");
-    h.push('\n');
+    h.push_str("}\n");
+    h.push_str("```\n\n");
 
-    // Environment variables
-    h.push_str("═══ Environment Variables ═══\n\n");
-    h.push_str("  KAIRN_PID       Set on start. Prevents nested kairn instances.\n");
-    h.push_str("                  If set, kairn exits with a message.\n\n");
-    h.push_str("  KAIRN_CAPTURE   Named pipe (FIFO) for output capture.\n");
-    h.push_str("                  From a suspended shell (Ctrl-T):\n");
-    h.push_str("                    $ ls -la > $KAIRN_CAPTURE\n");
-    h.push_str("                    $ cat src/main.rs > $KAIRN_CAPTURE\n");
-    h.push_str("                    $ cargo test 2>&1 > $KAIRN_CAPTURE\n");
-    h.push_str("                  Output appears in main panel when you return.\n\n");
-    h.push_str("  SHELL           Used for shell tabs and Ctrl-T suspend.\n");
-    h.push_str("  EDITOR          Used for Ctrl-E (open file in editor).\n");
-    h.push('\n');
+    h.push_str("## Environment Variables\n\n");
+    h.push_str("- **`KAIRN_PID`** — set on start, prevents nested instances\n");
+    h.push_str("- **`KAIRN_CAPTURE`** — named pipe for output capture\n\n");
+    h.push_str("  From a suspended shell (`Ctrl-T`):\n");
+    h.push_str("  ```bash\n");
+    h.push_str("  ls -la > $KAIRN_CAPTURE\n");
+    h.push_str("  cat src/main.rs > $KAIRN_CAPTURE\n");
+    h.push_str("  cargo test 2>&1 > $KAIRN_CAPTURE\n");
+    h.push_str("  ```\n");
+    h.push_str("  Output appears in main panel when you return.\n\n");
+    h.push_str("- **`SHELL`** — used for shell tabs and suspend\n");
+    h.push_str("- **`EDITOR`** — used for `Ctrl-E`\n\n");
 
     // Conflicts
     let conflicts = cfg.detect_collisions();
     if !conflicts.is_empty() {
-        h.push_str("═══ ⚠ Key Conflicts ═══\n\n");
+        h.push_str("## ⚠ Key Conflicts\n\n");
         for c in &conflicts {
-            h.push_str(&format!("  {c}\n"));
+            h.push_str(&format!("- {c}\n"));
         }
         h.push('\n');
     }
 
-    // Full binding dump with sources
-    h.push_str("═══ All Effective Keybindings ═══\n\n");
-    h.push_str("  Key              Action                       Source\n");
-    h.push_str("  ───              ──────                       ──────\n");
-    let mut keys: Vec<_> = cfg.keys.iter().collect();
-    keys.sort_by_key(|(k, _)| k.as_str());
-    for (action, combo) in &keys {
-        if combo.0.is_empty() {
-            continue;
-        }
-        let src = cfg.key_source(action).label();
-        h.push_str(&format!("  {:<18} {:<28} {}\n", combo.0, action, src));
-    }
     h
 }
