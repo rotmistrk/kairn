@@ -746,6 +746,17 @@ fn build_full_help(cfg: &Config) -> String {
     h.push_str(&format!("- {}\n", kb("cycle_mode_prev")));
     h.push('\n');
 
+    h.push_str("## Resize Panels\n\n");
+    h.push_str(&format!("- {}\n", kb("resize_tree_shrink")));
+    h.push_str(&format!("- {}\n", kb("resize_tree_grow")));
+    h.push_str(&format!("- {}\n", kb("resize_interactive_shrink")));
+    h.push_str(&format!("- {}\n", kb("resize_interactive_grow")));
+    h.push_str(&format!("- {}\n", kb("resize_tree_shrink5")));
+    h.push_str(&format!("- {}\n", kb("resize_tree_grow5")));
+    h.push_str(&format!("- {}\n", kb("resize_interactive_shrink5")));
+    h.push_str(&format!("- {}\n", kb("resize_interactive_grow5")));
+    h.push('\n');
+
     h.push_str("## File Operations\n\n");
     h.push_str(&format!("- {}\n", kb("open_search")));
     h.push_str(&format!("- {}\n", kb("launch_editor")));

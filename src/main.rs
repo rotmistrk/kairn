@@ -369,7 +369,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     spans.push(Span::styled("mode  ", value));
     spans.push(Span::styled("F2:", label));
     spans.push(Span::styled("focus  ", value));
-    spans.push(Span::styled("A-1/2/3:", label));
+    spans.push(Span::styled("F3/4/5:", label));
     spans.push(Span::styled("panel  ", value));
     spans.push(Span::styled("F1:", label));
     spans.push(Span::styled("help  ", value));
