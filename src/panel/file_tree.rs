@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -13,27 +14,104 @@ use ratatui::{
 use super::{Panel, PanelAction};
 use crate::tree::{self, FileNode, NodeKind};
 
+/// Git file status.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitStatus {
+    Modified,
+    Added,
+    Deleted,
+    Untracked,
+    Clean,
+}
+
+/// Filter mode for the file tree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TreeFilter {
+    #[default]
+    All,
+    Modified,
+    Untracked,
+}
+
+impl TreeFilter {
+    fn next(self) -> Self {
+        match self {
+            Self::All => Self::Modified,
+            Self::Modified => Self::Untracked,
+            Self::Untracked => Self::All,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::Modified => "Modified",
+            Self::Untracked => "Untracked",
+        }
+    }
+}
+
 pub struct FileTreePanel {
     pub root_path: PathBuf,
     pub nodes: Vec<FileNode>,
     pub cursor: usize,
     pub scroll_offset: usize,
+    pub filter: TreeFilter,
+    pub git_status: HashMap<String, GitStatus>,
 }
 
 impl FileTreePanel {
     pub fn new(root: String) -> Self {
         let root_path = PathBuf::from(&root);
         let nodes = tree::scan_workspace(&root_path).unwrap_or_default();
+        let git_status = collect_git_status(&root_path);
         Self {
             root_path,
             nodes,
             cursor: 0,
             scroll_offset: 0,
+            filter: TreeFilter::default(),
+            git_status,
         }
     }
 
     fn visible_count(&self) -> usize {
-        tree::flatten(&self.nodes).len()
+        self.filtered_flat().len()
+    }
+
+    fn filtered_flat(&self) -> Vec<tree::FlatEntry<'_>> {
+        let flat = tree::flatten(&self.nodes);
+        match self.filter {
+            TreeFilter::All => flat,
+            TreeFilter::Modified => flat
+                .into_iter()
+                .filter(|e| {
+                    let rel = self.rel_path(e.node);
+                    matches!(
+                        self.git_status.get(&rel),
+                        Some(GitStatus::Modified) | Some(GitStatus::Deleted)
+                    ) || e.node.is_dir()
+                })
+                .collect(),
+            TreeFilter::Untracked => flat
+                .into_iter()
+                .filter(|e| {
+                    let rel = self.rel_path(e.node);
+                    matches!(
+                        self.git_status.get(&rel),
+                        Some(GitStatus::Untracked) | Some(GitStatus::Added)
+                    ) || e.node.is_dir()
+                })
+                .collect(),
+        }
+    }
+
+    fn rel_path(&self, node: &FileNode) -> String {
+        node.path
+            .strip_prefix(&self.root_path)
+            .unwrap_or(&node.path)
+            .to_string_lossy()
+            .to_string()
     }
 }
 
@@ -44,14 +122,22 @@ impl Panel for FileTreePanel {
         } else {
             Color::DarkGray
         };
+        let title = format!(" Files [{}] ", self.filter.label());
         let block = Block::default()
-            .title(" Files ")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(border_color));
 
         let inner_height = area.height.saturating_sub(2) as usize;
-        let flat = tree::flatten(&self.nodes);
-        let items = build_list_items(&flat, self.cursor, self.scroll_offset, inner_height);
+        let flat = self.filtered_flat();
+        let items = build_list_items(
+            &flat,
+            self.cursor,
+            self.scroll_offset,
+            inner_height,
+            &self.git_status,
+            &self.root_path,
+        );
 
         let list = List::new(items).block(block);
         frame.render_widget(list, area);
@@ -85,6 +171,11 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         KeyCode::End => {
             panel.cursor = count.saturating_sub(1);
         }
+        KeyCode::Char('g') => {
+            panel.filter = panel.filter.next();
+            panel.cursor = 0;
+            panel.git_status = collect_git_status(&panel.root_path);
+        }
         _ => {}
     }
     preview_current(panel)
@@ -109,7 +200,7 @@ fn handle_enter_or_expand(panel: &mut FileTreePanel) -> Result<PanelAction> {
 }
 
 fn preview_current(panel: &FileTreePanel) -> Result<PanelAction> {
-    let flat = tree::flatten(&panel.nodes);
+    let flat = panel.filtered_flat();
     if let Some(entry) = flat.get(panel.cursor) {
         if !entry.node.is_dir() {
             let path = entry.node.path.to_string_lossy().to_string();
@@ -132,8 +223,9 @@ fn build_list_items<'a>(
     cursor: usize,
     scroll_offset: usize,
     height: usize,
+    git_status: &HashMap<String, GitStatus>,
+    root: &std::path::Path,
 ) -> Vec<ListItem<'a>> {
-    // Adjust scroll to keep cursor visible
     let scroll = adjust_scroll(cursor, scroll_offset, height);
 
     flat.iter()
@@ -144,22 +236,74 @@ fn build_list_items<'a>(
             let indent = "  ".repeat(entry.depth);
             let icon = node_icon(entry.node);
             let name = &entry.node.name;
-            let style = if i == cursor {
-                Style::default().bg(Color::Blue)
-            } else if entry.node.is_dir() {
-                Style::default()
-                    .fg(Color::Blue)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default().fg(Color::White)
-            };
-            let line = Line::from(vec![
+            let rel = entry
+                .node
+                .path
+                .strip_prefix(root)
+                .unwrap_or(&entry.node.path)
+                .to_string_lossy();
+            let style = entry_style(i == cursor, entry.node, git_status.get(rel.as_ref()));
+            ListItem::new(Line::from(vec![
                 Span::raw(indent),
                 Span::styled(format!("{icon} {name}"), style),
-            ]);
-            ListItem::new(line)
+            ]))
         })
         .collect()
+}
+
+fn entry_style(is_cursor: bool, node: &FileNode, status: Option<&GitStatus>) -> Style {
+    let status_color = match status {
+        Some(GitStatus::Modified) => Some(Color::Yellow),
+        Some(GitStatus::Added) => Some(Color::Green),
+        Some(GitStatus::Untracked) => Some(Color::LightGreen),
+        Some(GitStatus::Deleted) => Some(Color::Red),
+        _ => None,
+    };
+    if is_cursor {
+        let mut s = Style::default().bg(Color::Blue);
+        if let Some(c) = status_color {
+            s = s.fg(c);
+        }
+        s
+    } else if let Some(c) = status_color {
+        Style::default().fg(c)
+    } else if node.is_dir() {
+        Style::default()
+            .fg(Color::Blue)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default().fg(Color::White)
+    }
+}
+
+/// Collect git status by running `git status --porcelain`.
+fn collect_git_status(root: &std::path::Path) -> HashMap<String, GitStatus> {
+    let mut map = HashMap::new();
+    let output = std::process::Command::new("git")
+        .args(["status", "--porcelain", "-uall"])
+        .current_dir(root)
+        .output();
+    let output = match output {
+        Ok(o) => o,
+        Err(_) => return map,
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    for line in text.lines() {
+        if line.len() < 4 {
+            continue;
+        }
+        let xy = &line[..2];
+        let path = line[3..].trim().to_string();
+        let status = match xy {
+            "??" => GitStatus::Untracked,
+            " M" | "MM" | "AM" => GitStatus::Modified,
+            "M " | "A " => GitStatus::Added,
+            " D" | "D " => GitStatus::Deleted,
+            _ => GitStatus::Modified,
+        };
+        map.insert(path, status);
+    }
+    map
 }
 
 fn adjust_scroll(cursor: usize, current: usize, height: usize) -> usize {
