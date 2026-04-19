@@ -402,8 +402,6 @@ fn peek_screen() -> Result<()> {
 }
 
 fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
-    use ratatui::style::Modifier;
-
     let focus_name = match app.focus {
         panel::FocusedPanel::Tree => "Tree",
         panel::FocusedPanel::Main => "Main",
@@ -413,28 +411,36 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let main_mode = app.main_view.mode.label();
     let tab_name = app.interactive.tabs.active_title();
 
-    let left = format!(" [{focus_name}]  Tree:{tree_mode}  Main:{main_mode}  Tab:{tab_name}");
-    let right = " C-S-←/→:mode  F2:focus  F1:help  Esc²:quit ";
+    let bg = Style::default().bg(Color::Black);
+    let label = Style::default().fg(Color::LightCyan).bg(Color::Black);
+    let value = Style::default().fg(Color::White).bg(Color::Black);
 
+    let mut spans = vec![
+        Span::styled(" [", label),
+        Span::styled(focus_name, value),
+        Span::styled("]  Tree:", label),
+        Span::styled(tree_mode, value),
+        Span::styled("  Main:", label),
+        Span::styled(main_mode, value),
+        Span::styled("  Tab:", label),
+        Span::styled(tab_name, value),
+    ];
+
+    let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
+    let right = "C-S-←/→:mode  F2:focus  F1:help  Esc²:quit ";
+    let right_len = right.len();
     let pad = area
         .width
-        .saturating_sub(left.len() as u16 + right.len() as u16);
-    let line = Line::from(vec![
-        Span::styled(
-            left,
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            " ".repeat(pad as usize),
-            Style::default().bg(Color::DarkGray),
-        ),
-        Span::styled(
-            right.to_string(),
-            Style::default().fg(Color::Black).bg(Color::DarkGray),
-        ),
-    ]);
-    frame.render_widget(Paragraph::new(line), area);
+        .saturating_sub(left_len as u16 + right_len as u16);
+    spans.push(Span::styled(" ".repeat(pad as usize), bg));
+    spans.push(Span::styled("C-S-←/→:", label));
+    spans.push(Span::styled("mode  ", value));
+    spans.push(Span::styled("F2:", label));
+    spans.push(Span::styled("focus  ", value));
+    spans.push(Span::styled("F1:", label));
+    spans.push(Span::styled("help  ", value));
+    spans.push(Span::styled("Esc²:", label));
+    spans.push(Span::styled("quit ", value));
+
+    frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }

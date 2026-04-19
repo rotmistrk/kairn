@@ -7,7 +7,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -83,27 +83,41 @@ impl FileTreePanel {
         let flat = tree::flatten(&self.nodes);
         match self.filter {
             TreeFilter::All => flat,
-            TreeFilter::Modified => flat
-                .into_iter()
-                .filter(|e| {
-                    let rel = self.rel_path(e.node);
-                    matches!(
-                        self.git_status.get(&rel),
-                        Some(GitStatus::Modified) | Some(GitStatus::Deleted)
-                    ) || e.node.is_dir()
-                })
-                .collect(),
-            TreeFilter::Untracked => flat
-                .into_iter()
-                .filter(|e| {
-                    let rel = self.rel_path(e.node);
-                    matches!(
-                        self.git_status.get(&rel),
-                        Some(GitStatus::Untracked) | Some(GitStatus::Added)
-                    ) || e.node.is_dir()
-                })
-                .collect(),
+            _ => {
+                let matching = self.matching_paths();
+                if matching.is_empty() {
+                    return Vec::new();
+                }
+                flat.into_iter()
+                    .filter(|e| {
+                        let rel = self.rel_path(e.node);
+                        if e.node.is_dir() {
+                            // Show dir only if a matching file is under it
+                            matching.iter().any(|m| m.starts_with(&rel))
+                        } else {
+                            matching.contains(&rel)
+                        }
+                    })
+                    .collect()
+            }
         }
+    }
+
+    /// Collect relative paths of files matching the current filter.
+    fn matching_paths(&self) -> std::collections::HashSet<String> {
+        self.git_status
+            .iter()
+            .filter(|(_, status)| match self.filter {
+                TreeFilter::Modified => {
+                    matches!(status, GitStatus::Modified | GitStatus::Deleted)
+                }
+                TreeFilter::Untracked => {
+                    matches!(status, GitStatus::Untracked | GitStatus::Added)
+                }
+                TreeFilter::All => true,
+            })
+            .map(|(path, _)| path.clone())
+            .collect()
     }
 
     fn rel_path(&self, node: &FileNode) -> String {
@@ -130,6 +144,13 @@ impl Panel for FileTreePanel {
 
         let inner_height = area.height.saturating_sub(2) as usize;
         let flat = self.filtered_flat();
+        if flat.is_empty() && self.filter != TreeFilter::All {
+            let msg = Paragraph::new("  (no matching files)")
+                .style(Style::default().fg(Color::DarkGray))
+                .block(block);
+            frame.render_widget(msg, area);
+            return;
+        }
         let items = build_list_items(
             &flat,
             self.cursor,
