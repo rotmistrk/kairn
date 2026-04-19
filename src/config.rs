@@ -140,7 +140,7 @@ impl Config {
     pub fn detect_collisions(&self) -> Vec<String> {
         let mut seen: HashMap<&str, Vec<&str>> = HashMap::new();
         for (action, combo) in &self.keys {
-            if combo.0.is_empty() || action == "toggle_pin_output" {
+            if combo.0.is_empty() {
                 continue;
             }
             seen.entry(combo.0.as_str())

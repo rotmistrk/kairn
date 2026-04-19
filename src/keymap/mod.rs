@@ -82,7 +82,7 @@ fn name_to_action(name: &str) -> Option<Action> {
         "focus_tree" => Action::FocusTree,
         "focus_main" => Action::FocusMain,
         "focus_terminal" => Action::FocusTerminal,
-        "toggle_pin_output" => return None, // deprecated, ignore
+        "toggle_pin_output" => return None,
         "peek_screen" => Action::PeekScreen,
         "launch_editor" => Action::LaunchEditor,
         "suspend_to_shell" => Action::SuspendToShell,
