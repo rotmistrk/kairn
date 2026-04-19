@@ -316,20 +316,33 @@ impl Panel for MainViewPanel {
             .borders(Borders::ALL)
             .border_style(Style::default().fg(border_color));
 
+        let inner = block.inner(area);
+        frame.render_widget(block, area);
+
+        // Gutter width: 4 chars if line numbers on, 0 otherwise
+        let gutter_w = if self.line_numbers && self.buffer.is_some() {
+            4u16
+        } else {
+            0
+        };
+        let content_area = Rect::new(
+            inner.x + gutter_w,
+            inner.y,
+            inner.width.saturating_sub(gutter_w),
+            inner.height,
+        );
+
         if !self.highlighted_lines.is_empty() {
-            let para = Paragraph::new(self.highlighted_lines.clone())
-                .block(block)
-                .scroll((self.scroll as u16, 0));
-            frame.render_widget(para, area);
+            let para =
+                Paragraph::new(self.highlighted_lines.clone()).scroll((self.scroll as u16, 0));
+            frame.render_widget(para, content_area);
         } else {
             let text = match &self.buffer {
                 Some(buf) => buf.content.as_str(),
                 None => "No content. Open a file or pin tab output.",
             };
-            let para = Paragraph::new(text)
-                .block(block)
-                .scroll((self.scroll as u16, 0));
-            frame.render_widget(para, area);
+            let para = Paragraph::new(text).scroll((self.scroll as u16, 0));
+            frame.render_widget(para, content_area);
         }
 
         // Highlight cursor line and visual selection
