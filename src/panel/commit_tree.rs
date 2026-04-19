@@ -11,33 +11,45 @@ use ratatui::{
 };
 
 use super::{Panel, PanelAction};
-use crate::diff::LogEntry;
+
+/// A line from git log --graph output.
+pub struct GraphLine {
+    pub graph: String,
+    pub hash: String,
+    pub rest: String,
+}
 
 pub struct CommitTreePanel {
     pub root: PathBuf,
-    pub commits: Vec<LogEntry>,
+    pub lines: Vec<GraphLine>,
     pub cursor: usize,
     pub scroll: usize,
 }
 
 impl CommitTreePanel {
     pub fn new(root: PathBuf) -> Self {
-        let commits = crate::diff::git_log(&root, None, 500).unwrap_or_default();
+        let lines = load_graph(&root);
         Self {
             root,
-            commits,
+            lines,
             cursor: 0,
             scroll: 0,
         }
     }
 
     pub fn refresh(&mut self) {
-        self.commits = crate::diff::git_log(&self.root, None, 500).unwrap_or_default();
-        self.cursor = self.cursor.min(self.commits.len().saturating_sub(1));
+        self.lines = load_graph(&self.root);
+        self.cursor = self.cursor.min(self.lines.len().saturating_sub(1));
     }
 
-    pub fn selected_hash(&self) -> Option<&str> {
-        self.commits.get(self.cursor).map(|c| c.hash_short.as_str())
+    fn selected_hash(&self) -> Option<&str> {
+        self.lines.get(self.cursor).and_then(|l| {
+            if l.hash.is_empty() {
+                None
+            } else {
+                Some(l.hash.as_str())
+            }
+        })
     }
 }
 
@@ -56,19 +68,19 @@ impl Panel for CommitTreePanel {
         let inner_h = area.height.saturating_sub(2) as usize;
         let scroll = adjust_scroll(self.cursor, self.scroll, inner_h);
         let items: Vec<ListItem<'_>> = self
-            .commits
+            .lines
             .iter()
             .enumerate()
             .skip(scroll)
             .take(inner_h)
-            .map(|(i, c)| commit_item(c, i == self.cursor))
+            .map(|(i, gl)| graph_item(gl, i == self.cursor))
             .collect();
 
         frame.render_widget(List::new(items).block(block), area);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        let count = self.commits.len();
+        let count = self.lines.len();
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 if self.cursor > 0 {
@@ -82,15 +94,12 @@ impl Panel for CommitTreePanel {
             }
             KeyCode::Home => self.cursor = 0,
             KeyCode::End => self.cursor = count.saturating_sub(1),
-            KeyCode::PageUp => {
-                self.cursor = self.cursor.saturating_sub(20);
-            }
+            KeyCode::PageUp => self.cursor = self.cursor.saturating_sub(20),
             KeyCode::PageDown => {
                 self.cursor = (self.cursor + 20).min(count.saturating_sub(1));
             }
             _ => {}
         }
-        // Preview commit diff
         if let Some(hash) = self.selected_hash() {
             return Ok(PanelAction::PreviewCommit(hash.to_string()));
         }
@@ -98,27 +107,75 @@ impl Panel for CommitTreePanel {
     }
 }
 
-fn commit_item<'a>(c: &'a LogEntry, selected: bool) -> ListItem<'a> {
-    let style = if selected {
-        Style::default().bg(Color::Blue)
-    } else {
-        Style::default()
-    };
-    let line = Line::from(vec![
-        Span::styled(&c.hash_short, style.fg(Color::Yellow)),
-        Span::styled(" ", style),
-        Span::styled(&c.date, style.fg(Color::DarkGray)),
-        Span::styled(" ", style),
-        Span::styled(truncate(&c.message, 40), style.fg(Color::White)),
-    ]);
-    ListItem::new(line)
+fn graph_item<'a>(gl: &'a GraphLine, selected: bool) -> ListItem<'a> {
+    let bg = if selected { Color::Blue } else { Color::Reset };
+    let mut spans = vec![Span::styled(
+        &gl.graph,
+        Style::default().fg(Color::Red).bg(bg),
+    )];
+    if !gl.hash.is_empty() {
+        spans.push(Span::styled(
+            &gl.hash,
+            Style::default().fg(Color::Yellow).bg(bg),
+        ));
+        spans.push(Span::styled(" ", Style::default().bg(bg)));
+        spans.push(Span::styled(
+            &gl.rest,
+            Style::default().fg(Color::White).bg(bg),
+        ));
+    }
+    ListItem::new(Line::from(spans))
 }
 
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", &s[..max - 1])
+fn load_graph(root: &std::path::Path) -> Vec<GraphLine> {
+    let output = std::process::Command::new("git")
+        .args([
+            "log",
+            "--graph",
+            "--oneline",
+            "--all",
+            "--decorate",
+            "--abbrev-commit",
+            "-200",
+        ])
+        .current_dir(root)
+        .output();
+    let text = match output {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
+        Err(_) => return Vec::new(),
+    };
+    text.lines().map(parse_graph_line).collect()
+}
+
+fn parse_graph_line(line: &str) -> GraphLine {
+    // Graph chars: * | / \ space, then optional hash + message
+    let mut graph_end = 0;
+    for (i, ch) in line.char_indices() {
+        if matches!(ch, '*' | '|' | '/' | '\\' | ' ' | '_') {
+            graph_end = i + ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    let graph = line[..graph_end].to_string();
+    let rest = line[graph_end..].trim_start();
+
+    // Try to extract hash (first word if it looks like hex)
+    if let Some(space) = rest.find(' ') {
+        let word = &rest[..space];
+        if word.len() >= 6 && word.chars().all(|c| c.is_ascii_hexdigit()) {
+            return GraphLine {
+                graph,
+                hash: word.to_string(),
+                rest: rest[space + 1..].to_string(),
+            };
+        }
+    }
+
+    GraphLine {
+        graph,
+        hash: String::new(),
+        rest: rest.to_string(),
     }
 }
 
