@@ -102,7 +102,7 @@ fn run_loop(
                 render_search_overlay(frame, search);
             }
             if let Some(overlay) = &app.overlay {
-                render_overlay(frame, overlay, &app.config);
+                render_overlay(frame, overlay);
             }
         })?;
 
@@ -243,7 +243,7 @@ fn search_result_item<'a>(
     ]))
 }
 
-fn render_overlay(frame: &mut Frame, overlay: &Overlay, config: &crate::config::Config) {
+fn render_overlay(frame: &mut Frame, overlay: &Overlay) {
     let area = frame.area();
     let w = 50u16.min(area.width);
     let x = area.x + (area.width.saturating_sub(w)) / 2;
@@ -255,9 +255,6 @@ fn render_overlay(frame: &mut Frame, overlay: &Overlay, config: &crate::config::
         Overlay::LoadPicker(p) => {
             let h = (p.sessions.len() as u16 + 2).min(15).min(area.height);
             render_load_picker(frame, p, Rect::new(x, area.y + 3, w, h));
-        }
-        Overlay::Help => {
-            render_help(frame, area, config);
         }
     }
 }
@@ -298,71 +295,6 @@ fn render_load_picker(frame: &mut Frame, picker: &overlay::LoadPicker, area: Rec
         .border_style(Style::default().fg(Color::Yellow));
     frame.render_widget(List::new(items).block(block), area);
 }
-
-fn render_help(frame: &mut Frame, area: Rect, config: &crate::config::Config) {
-    let text = build_help_text(config);
-    let lines = text.lines().count() as u16 + 2;
-    let w = 46u16.min(area.width);
-    let h = lines.min(area.height);
-    let x = area.x + (area.width.saturating_sub(w)) / 2;
-    let rect = Rect::new(x, area.y + 1, w, h);
-
-    frame.render_widget(Clear, rect);
-    let block = Block::default()
-        .title(" Keybindings (any key to close) ")
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Yellow));
-    frame.render_widget(Paragraph::new(text).block(block), rect);
-}
-
-fn build_help_text(cfg: &crate::config::Config) -> String {
-    let k = |name: &str| cfg.display_key(name);
-    let bindings = [
-        (k("quit"), "Quit"),
-        ("Esc Esc".into(), "Quit (fallback)"),
-        (k("rotate_layout"), "Rotate layout"),
-        (k("toggle_tree"), "Toggle file tree"),
-        (k("cycle_focus"), "Cycle panel focus"),
-        (k("open_search"), "Fuzzy file search"),
-        (k("diff_current_file"), "Diff file vs HEAD"),
-        (k("git_log"), "Git commit log"),
-        (k("launch_editor"), "Open in $EDITOR"),
-        (k("new_kiro_tab"), "New Kiro tab"),
-        (k("new_shell_tab"), "New shell tab"),
-        (k("close_tab"), "Close tab"),
-        (k("prev_tab"), "Previous tab"),
-        (k("next_tab"), "Next tab"),
-        (k("save_session"), "Save session"),
-        (k("load_session"), "Load session"),
-        (k("show_help"), "This help"),
-    ];
-    let mut text = String::new();
-    for (key, desc) in &bindings {
-        text.push_str(&format!(" {key:<16}{desc}\n"));
-    }
-    text.push('\n');
-    text.push_str(&format!(
-        " {:<16}Cycle mode (all panels)\n",
-        k("cycle_mode_next")
-    ));
-    text.push_str(&format!(" {:<16}Cycle mode back\n", k("cycle_mode_prev")));
-    text.push_str(&format!(
-        " {:<16}Peek screen (MC style)\n",
-        k("peek_screen")
-    ));
-    text.push_str(&format!(" {:<16}Suspend to shell\n", k("suspend_to_shell")));
-    text.push('\n');
-    text.push_str(" Main panel: Shift+↑/↓ select, Enter send to kiro\n");
-    text.push_str(" Terminal: PgUp/PgDn scroll back\n");
-    text.push_str(" File tree: j/k nav, Enter open, h collapse\n");
-    text.push('\n');
-    text.push_str(&format!(
-        " Config: {}\n",
-        crate::config::Config::global_rc().display()
-    ));
-    text
-}
-
 fn install_panic_handler() {
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {

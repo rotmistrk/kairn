@@ -6,7 +6,6 @@ use crossterm::event::{KeyCode, KeyEvent};
 pub enum Overlay {
     SavePrompt(SavePrompt),
     LoadPicker(LoadPicker),
-    Help,
 }
 
 /// Text input for session name.

@@ -64,6 +64,7 @@ impl App {
             last_esc: false,
             file_cache: std::collections::HashMap::new(),
         };
+        app.main_view.line_numbers = app.config.line_numbers;
         // Try auto-restore, otherwise show welcome
         if !app.try_auto_restore() {
             app.show_welcome();
@@ -241,9 +242,7 @@ impl App {
             Action::GitLog => self.show_git_log(),
             Action::SaveSession => self.open_save_prompt(),
             Action::LoadSession => self.open_load_picker(),
-            Action::ShowHelp => {
-                self.overlay = Some(Overlay::Help);
-            }
+            Action::ShowHelp => self.show_help(),
             Action::Forward(key) => self.forward_to_panel(key)?,
             action => self.handle_tab_action(action),
         }
@@ -266,7 +265,6 @@ impl App {
         let action = match &mut self.overlay {
             Some(Overlay::SavePrompt(p)) => p.handle_key(key),
             Some(Overlay::LoadPicker(p)) => p.handle_key(key),
-            Some(Overlay::Help) => OverlayAction::Close,
             None => return Ok(()),
         };
         match action {
@@ -344,6 +342,14 @@ impl App {
         let buf = crate::buffer::OutputBuffer::plain(title, raw);
         self.main_view.set_buffer(buf);
         self.main_view.set_highlighted(styled);
+    }
+
+    fn show_help(&mut self) {
+        let text = build_full_help(&self.config);
+        let buf = crate::buffer::OutputBuffer::plain("kairn help".to_string(), text);
+        self.main_view.set_buffer(buf);
+        self.main_view.current_path = None;
+        self.focus = FocusedPanel::Main;
     }
 
     fn show_blame(&mut self) {
@@ -709,4 +715,115 @@ fn file_mtime(path: &str) -> u64 {
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+fn build_full_help(cfg: &Config) -> String {
+    let k = |name: &str| cfg.display_key(name);
+    let mut h = String::new();
+
+    h.push_str("═══ kairn help ═══\n\n");
+
+    h.push_str("── Panel Navigation ──\n");
+    h.push_str(&format!("  {:<20} Focus file tree\n", k("focus_tree")));
+    h.push_str(&format!("  {:<20} Focus main panel\n", k("focus_main")));
+    h.push_str(&format!("  {:<20} Focus terminal\n", k("focus_terminal")));
+    h.push_str(&format!("  {:<20} Cycle focus\n", k("cycle_focus")));
+    h.push_str(&format!("  {:<20} Rotate layout\n", k("rotate_layout")));
+    h.push_str(&format!("  {:<20} Toggle file tree\n", k("toggle_tree")));
+    h.push_str(&format!(
+        "  {:<20} Cycle mode (per panel)\n",
+        k("cycle_mode_next")
+    ));
+    h.push('\n');
+
+    h.push_str("── File Operations ──\n");
+    h.push_str(&format!("  {:<20} Fuzzy file search\n", k("open_search")));
+    h.push_str(&format!("  {:<20} Open in $EDITOR\n", k("launch_editor")));
+    h.push_str(&format!("  {:<20} This help\n", k("show_help")));
+    h.push('\n');
+
+    h.push_str("── Git ──\n");
+    h.push_str(&format!("  {:<20} Diff vs HEAD\n", k("diff_current_file")));
+    h.push_str(&format!("  {:<20} Commit log\n", k("git_log")));
+    h.push_str("  Tab (main panel)   Cycle: File → Diff → Log → Blame\n");
+    h.push_str("  g (file tree)      Cycle: All → Modified → Untracked\n");
+    h.push('\n');
+
+    h.push_str("── Terminal Tabs ──\n");
+    h.push_str(&format!("  {:<20} New Kiro tab\n", k("new_kiro_tab")));
+    h.push_str(&format!("  {:<20} New shell tab\n", k("new_shell_tab")));
+    h.push_str(&format!("  {:<20} Close tab\n", k("close_tab")));
+    h.push_str(&format!("  {:<20} Previous tab\n", k("prev_tab")));
+    h.push_str(&format!("  {:<20} Next tab\n", k("next_tab")));
+    h.push_str("  PgUp/PgDn          Scroll back in terminal\n");
+    h.push('\n');
+
+    h.push_str("── Session & System ──\n");
+    h.push_str(&format!("  {:<20} Save session\n", k("save_session")));
+    h.push_str(&format!("  {:<20} Load session\n", k("load_session")));
+    h.push_str(&format!(
+        "  {:<20} Suspend to shell\n",
+        k("suspend_to_shell")
+    ));
+    h.push_str(&format!(
+        "  {:<20} Peek screen (MC style)\n",
+        k("peek_screen")
+    ));
+    h.push_str(&format!("  {:<20} Quit\n", k("quit")));
+    h.push_str("  Esc Esc             Quit (fallback)\n");
+    h.push('\n');
+
+    h.push_str("── Main Panel Cursor Mode ──\n");
+    h.push_str("  Alt-Space           Toggle cursor mode\n");
+    h.push_str("  ↑↓←→               Move cursor\n");
+    h.push_str("  v                   Stream (character) select\n");
+    h.push_str("  V                   Line select\n");
+    h.push_str("  Ctrl-V              Block (column) select\n");
+    h.push_str("  Enter               Send selection to terminal\n");
+    h.push_str("  Esc                 Clear selection\n");
+    h.push('\n');
+
+    h.push_str("── File Tree ──\n");
+    h.push_str("  j/k ↑/↓             Navigate\n");
+    h.push_str("  Enter/l/→           Open file / expand dir\n");
+    h.push_str("  h/←                 Collapse dir\n");
+    h.push_str("  Files auto-preview on cursor move\n");
+    h.push('\n');
+
+    h.push_str("── Configuration ──\n");
+    h.push_str(&format!(
+        "  Global config:  {}\n",
+        Config::global_rc().display()
+    ));
+    h.push_str("  Local override: $PWD/.kairnrc\n");
+    h.push_str("  State file:     $PWD/.kairn.state (auto-saved on quit)\n");
+    h.push_str("  Format:         JSON (sparse overlay — only set what you change)\n");
+    h.push('\n');
+
+    // Show active config
+    h.push_str("── Active Keybindings ──\n");
+    let mut keys: Vec<_> = cfg.keys.iter().collect();
+    keys.sort_by_key(|(k, _)| k.as_str());
+    for (action, combo) in &keys {
+        h.push_str(&format!("  {:<28} {}\n", action, combo.0));
+    }
+    h.push('\n');
+
+    // Show conflicts
+    let conflicts = cfg.detect_collisions();
+    if !conflicts.is_empty() {
+        h.push_str("── ⚠ Key Conflicts ──\n");
+        for c in &conflicts {
+            h.push_str(&format!("  {c}\n"));
+        }
+        h.push('\n');
+    }
+
+    h.push_str("── Environment Variables ──\n");
+    h.push_str("  KAIRN_PID           Set on start (prevents nesting)\n");
+    h.push_str("  KAIRN_CAPTURE       Named pipe for output capture\n");
+    h.push_str("                      Usage: command > $KAIRN_CAPTURE\n");
+    h.push_str("  SHELL               Used for shell tabs\n");
+    h.push_str("  EDITOR              Used for Ctrl-E\n");
+    h
 }

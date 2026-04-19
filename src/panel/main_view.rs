@@ -89,6 +89,7 @@ pub struct MainViewPanel {
     pub cursor: (usize, usize),
     /// Anchor position for visual modes: (row, col).
     pub anchor: (usize, usize),
+    pub line_numbers: bool,
 }
 
 impl MainViewPanel {
@@ -255,6 +256,11 @@ impl Panel for MainViewPanel {
 
         // Highlight cursor line and visual selection
         render_cursor_and_selection(frame, area, self);
+
+        // Line numbers gutter
+        if self.line_numbers && self.buffer.is_some() {
+            render_line_numbers(frame, area, self.scroll, self.total_lines());
+        }
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
@@ -392,6 +398,30 @@ fn highlight_rows(
         for x in x_start..x_start + inner_w as u16 {
             if y < area.bottom() && x < area.right() {
                 buf[(x, y)].set_bg(Color::DarkGray);
+            }
+        }
+    }
+}
+
+fn render_line_numbers(frame: &mut Frame, area: Rect, scroll: usize, total: usize) {
+    let inner_y = area.y + 1;
+    let inner_h = area.height.saturating_sub(2) as usize;
+    let gutter_w = 4u16; // "123 " = 4 chars
+    let gutter_style = Style::default().fg(Color::DarkGray);
+    let buf = frame.buffer_mut();
+
+    for row in 0..inner_h {
+        let line_no = scroll + row + 1;
+        if line_no > total {
+            break;
+        }
+        let y = inner_y + row as u16;
+        let num_str = format!("{line_no:>3} ");
+        for (i, ch) in num_str.chars().enumerate() {
+            let x = area.x + 1 + i as u16;
+            if x < area.x + 1 + gutter_w && y < area.bottom() {
+                buf[(x, y)].set_char(ch);
+                buf[(x, y)].set_style(gutter_style);
             }
         }
     }

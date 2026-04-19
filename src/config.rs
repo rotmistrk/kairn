@@ -16,12 +16,17 @@ pub struct KeyCombo(pub String);
 pub struct Config {
     #[serde(default = "default_kiro_command")]
     pub kiro_command: String,
+    #[serde(default = "default_true")]
+    pub line_numbers: bool,
     #[serde(default)]
     pub keys: HashMap<String, KeyCombo>,
 }
 
 fn default_kiro_command() -> String {
     "kiro-cli".to_string()
+}
+fn default_true() -> bool {
+    true
 }
 
 impl Config {
@@ -35,6 +40,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             kiro_command: default_kiro_command(),
+            line_numbers: true,
             keys: default_keys(),
         }
     }
