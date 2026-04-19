@@ -16,6 +16,22 @@ use crate::termbuf::TermBuf;
 #[derive(Default)]
 pub struct InteractivePanel {
     pub tabs: TabManager,
+    last_cols: u16,
+    last_rows: u16,
+}
+
+impl InteractivePanel {
+    /// Resize PTY to match panel dimensions.
+    pub fn sync_size(&mut self, area: Rect) {
+        // Inner area = area minus borders (1 each side) minus tab bar (1)
+        let cols = area.width.saturating_sub(2);
+        let rows = area.height.saturating_sub(3); // borders + tab bar
+        if cols != self.last_cols || rows != self.last_rows {
+            self.last_cols = cols;
+            self.last_rows = rows;
+            self.tabs.resize_active(cols, rows);
+        }
+    }
 }
 
 impl Panel for InteractivePanel {
@@ -27,39 +43,21 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        // Scroll-back: Ctrl+Shift+arrows/pgup/pgdn (Shift alone eaten by iTerm)
-        let ctrl_shift = key.modifiers.contains(KeyModifiers::SHIFT)
-            && key.modifiers.contains(KeyModifiers::CONTROL);
-        if ctrl_shift {
-            if let Some(tb) = self.tabs.active_termbuf_mut() {
-                match key.code {
-                    KeyCode::Up => {
-                        tb.scroll_up(1);
-                        return Ok(PanelAction::None);
-                    }
-                    KeyCode::Down => {
-                        tb.scroll_down(1);
-                        return Ok(PanelAction::None);
-                    }
-                    KeyCode::PageUp => {
-                        tb.scroll_up(20);
-                        return Ok(PanelAction::None);
-                    }
-                    KeyCode::PageDown => {
-                        tb.scroll_down(20);
-                        return Ok(PanelAction::None);
-                    }
-                    KeyCode::Home => {
-                        tb.scroll_up(100_000);
-                        return Ok(PanelAction::None);
-                    }
-                    KeyCode::End => {
-                        tb.scroll_to_bottom();
-                        return Ok(PanelAction::None);
-                    }
-                    _ => {}
+        // Scroll-back: PgUp/PgDn (shells don't use these)
+        match key.code {
+            KeyCode::PageUp => {
+                if let Some(tb) = self.tabs.active_termbuf_mut() {
+                    tb.scroll_up(tb.rows() / 2);
                 }
+                return Ok(PanelAction::None);
             }
+            KeyCode::PageDown => {
+                if let Some(tb) = self.tabs.active_termbuf_mut() {
+                    tb.scroll_down(tb.rows() / 2);
+                }
+                return Ok(PanelAction::None);
+            }
+            _ => {}
         }
 
         let bytes = key_to_bytes(key);

@@ -86,6 +86,12 @@ fn run_loop(
     mut capture: Option<capture::CapturePipe>,
 ) -> Result<()> {
     loop {
+        // Sync PTY size to match panel dimensions
+        let size = terminal.size()?;
+        let area = Rect::new(0, 0, size.width, size.height);
+        let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
+        app.interactive.sync_size(c.interactive);
+
         terminal.draw(|frame| {
             render_panels(frame, app);
             if let Some(search) = &app.search {
