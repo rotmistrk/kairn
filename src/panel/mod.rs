@@ -6,8 +6,6 @@ use anyhow::Result;
 use crossterm::event::KeyEvent;
 use ratatui::{layout::Rect, Frame};
 
-use crate::input::SendTarget;
-
 /// Which panel currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FocusedPanel {
@@ -39,6 +37,5 @@ pub enum PanelAction {
     None,
     OpenFile(String),
     PushOutput(crate::buffer::OutputBuffer),
-    SendInput { text: String, target: SendTarget },
     Quit,
 }

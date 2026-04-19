@@ -10,7 +10,6 @@ mod config;
 mod diff;
 mod editor;
 mod highlight;
-mod input;
 mod keymap;
 mod layout;
 mod overlay;
@@ -18,6 +17,7 @@ mod panel;
 mod search;
 mod session;
 mod tab;
+mod termbuf;
 mod tree;
 
 use std::io;

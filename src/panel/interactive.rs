@@ -1,65 +1,37 @@
 use anyhow::Result;
-use crossterm::event::KeyEvent;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
+    buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
 use super::{Panel, PanelAction};
-use crate::input::{InputAction, InputLine, InputMode, SendTarget};
 use crate::tab::TabManager;
+use crate::termbuf::TermBuf;
 
+#[derive(Default)]
 pub struct InteractivePanel {
     pub tabs: TabManager,
-    pub input: InputLine,
-}
-
-impl Default for InteractivePanel {
-    fn default() -> Self {
-        Self {
-            tabs: TabManager::default(),
-            input: InputLine::new(InputMode::default()),
-        }
-    }
 }
 
 impl Panel for InteractivePanel {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
-        let chunks = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Min(1),
-            Constraint::Length(3),
-        ])
-        .split(area);
+        let chunks = Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).split(area);
 
         render_tab_bar(frame, &self.tabs, chunks[0], focused);
-        render_output(frame, &self.tabs, chunks[1], focused);
-        render_input(frame, &self.input, chunks[2], focused);
+        render_termbuf(frame, &self.tabs, chunks[1], focused);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        // Input line handles the key
-        match self.input.handle_key(key) {
-            InputAction::None => {}
-            InputAction::Send { text, target } => {
-                self.dispatch_input(&text, target);
-            }
+        let bytes = key_to_bytes(key);
+        if !bytes.is_empty() {
+            self.tabs.write_to_active(&bytes);
         }
         Ok(PanelAction::None)
-    }
-}
-
-impl InteractivePanel {
-    fn dispatch_input(&mut self, text: &str, _target: SendTarget) {
-        // Smart routing: Enter sends to whatever the active tab is
-        if self.tabs.active_is_shell() {
-            self.tabs.run_in_active(text);
-        } else {
-            self.tabs.send_to_active_kiro(text);
-        }
     }
 }
 
@@ -82,7 +54,7 @@ fn render_tab_bar(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: boo
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
 
-fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool) {
+fn render_termbuf(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool) {
     let border_color = if focused {
         Color::Cyan
     } else {
@@ -91,64 +63,96 @@ fn render_output(frame: &mut Frame, tabs: &TabManager, area: Rect, focused: bool
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
 
-    let content = tabs.active_content();
-    let lines: Vec<Line<'_>> = content
-        .lines()
-        .map(|l| {
-            if l.starts_with('⚠') {
-                Line::from(Span::styled(l, Style::default().fg(Color::Red)))
-            } else if l.starts_with('⏳') {
-                Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
-            } else if l.starts_with('✅') {
-                Line::from(Span::styled(l, Style::default().fg(Color::Green)))
-            } else if l.starts_with('$') {
-                Line::from(Span::styled(l, Style::default().fg(Color::Yellow)))
-            } else if l.starts_with('>') {
-                Line::from(Span::styled(l, Style::default().fg(Color::LightCyan)))
-            } else {
-                Line::from(l)
-            }
-        })
-        .collect();
-    let scroll = tabs.active_scroll(area.height.saturating_sub(2) as usize) as u16;
-
-    let para = Paragraph::new(lines)
-        .block(block)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll, 0));
-    frame.render_widget(para, area);
-}
-
-fn render_input(frame: &mut Frame, input: &InputLine, area: Rect, focused: bool) {
-    let mode = input.mode_indicator();
-    let hint = if focused { "Enter→send" } else { "" };
-    let title = Line::from(vec![
-        Span::styled(
-            format!(" [{mode}] "),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(hint, Style::default().fg(Color::DarkGray)),
-    ]);
-    let border_color = if focused {
-        Color::Cyan
-    } else {
-        Color::DarkGray
+    let termbuf = match tabs.active_termbuf() {
+        Some(tb) => tb,
+        None => {
+            let msg = Paragraph::new("No active terminal. Press Ctrl-S or Ctrl-K.");
+            frame.render_widget(msg, inner);
+            return;
+        }
     };
-    let block = Block::default()
-        .title(title)
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(border_color));
-    let para = Paragraph::new(input.text.as_str()).block(block);
-    frame.render_widget(para, area);
 
-    if focused && area.height >= 3 {
-        let cx = (area.x + 1 + input.cursor as u16).min(area.right().saturating_sub(2));
-        let cy = area.y + 1;
-        if cy < area.bottom().saturating_sub(1) {
+    // Render termbuf cells directly into the ratatui buffer
+    let buf = frame.buffer_mut();
+    render_cells(buf, inner, termbuf);
+
+    // Show cursor if focused and not scrolled back
+    if focused && termbuf.scroll_offset == 0 {
+        let (cr, cc) = termbuf.cursor();
+        let cx = inner.x + cc as u16;
+        let cy = inner.y + cr as u16;
+        if cx < inner.right() && cy < inner.bottom() {
             frame.set_cursor_position((cx, cy));
         }
+    }
+}
+
+fn render_cells(buf: &mut Buffer, area: Rect, termbuf: &TermBuf) {
+    for row in 0..area.height as usize {
+        if row >= termbuf.rows() {
+            break;
+        }
+        let cells = termbuf.visible_row(row);
+        for col in 0..area.width as usize {
+            if col >= cells.len() {
+                break;
+            }
+            let x = area.x + col as u16;
+            let y = area.y + row as u16;
+            if x < area.right() && y < area.bottom() {
+                let cell = &cells[col];
+                let buf_cell = &mut buf[(x, y)];
+                buf_cell.set_char(cell.ch);
+                buf_cell.set_style(cell.style);
+            }
+        }
+    }
+}
+
+/// Convert a crossterm KeyEvent to raw bytes for the PTY.
+fn key_to_bytes(key: KeyEvent) -> Vec<u8> {
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    let alt = key.modifiers.contains(KeyModifiers::ALT);
+
+    if alt {
+        // Alt+key sends ESC then the key
+        let inner = key_code_to_bytes(key.code, ctrl);
+        if inner.is_empty() {
+            return Vec::new();
+        }
+        let mut out = vec![0x1b];
+        out.extend_from_slice(&inner);
+        return out;
+    }
+
+    key_code_to_bytes(key.code, ctrl)
+}
+
+fn key_code_to_bytes(code: KeyCode, ctrl: bool) -> Vec<u8> {
+    match code {
+        KeyCode::Char(c) if ctrl => {
+            vec![(c as u8).wrapping_sub(b'a').wrapping_add(1)]
+        }
+        KeyCode::Char(c) => {
+            let mut buf = [0u8; 4];
+            c.encode_utf8(&mut buf).as_bytes().to_vec()
+        }
+        KeyCode::Enter => vec![b'\r'],
+        KeyCode::Backspace => vec![0x7f],
+        KeyCode::Tab => vec![b'\t'],
+        KeyCode::Esc => vec![0x1b],
+        KeyCode::Up => b"\x1b[A".to_vec(),
+        KeyCode::Down => b"\x1b[B".to_vec(),
+        KeyCode::Right => b"\x1b[C".to_vec(),
+        KeyCode::Left => b"\x1b[D".to_vec(),
+        KeyCode::Home => b"\x1b[H".to_vec(),
+        KeyCode::End => b"\x1b[F".to_vec(),
+        KeyCode::Delete => b"\x1b[3~".to_vec(),
+        KeyCode::PageUp => b"\x1b[5~".to_vec(),
+        KeyCode::PageDown => b"\x1b[6~".to_vec(),
+        _ => Vec::new(),
     }
 }

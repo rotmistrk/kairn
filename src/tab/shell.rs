@@ -1,32 +1,96 @@
-// Command runner: execute commands, capture stdout/stderr.
+// PTY backend: spawns a process in a PTY, feeds output to TermBuf.
 
-use std::process::Command;
+use std::io::{Read, Write};
+use std::sync::mpsc;
 
 use anyhow::{Context, Result};
+use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 
-/// Result of running a command.
-pub struct CommandResult {
-    pub stdout: String,
-    pub stderr: String,
-    pub success: bool,
-    pub code: Option<i32>,
+use crate::termbuf::TermBuf;
+
+/// A live PTY process with its terminal buffer.
+pub struct PtyTab {
+    master: Box<dyn MasterPty + Send>,
+    writer: Box<dyn Write + Send>,
+    rx: mpsc::Receiver<Vec<u8>>,
+    pub termbuf: TermBuf,
 }
 
-/// Run a shell command and capture output.
-/// Uses $SHELL -c "command" for shell expansion.
-pub fn run_command(cmd: &str) -> Result<CommandResult> {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-    let output = Command::new(&shell)
-        .arg("-c")
-        .arg(cmd)
-        .env("TERM", "dumb")
-        .output()
-        .with_context(|| format!("running: {cmd}"))?;
+impl PtyTab {
+    pub fn spawn(cmd: &str, args: &[&str], cols: u16, rows: u16) -> Result<Self> {
+        let pair = open_pty(cols, rows)?;
+        spawn_command(&pair, cmd, args)?;
+        let reader = pair.master.try_clone_reader().context("cloning reader")?;
+        let writer = pair.master.take_writer().context("taking writer")?;
+        let rx = spawn_reader_thread(reader);
 
-    Ok(CommandResult {
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-        success: output.status.success(),
-        code: output.status.code(),
-    })
+        Ok(Self {
+            master: pair.master,
+            writer,
+            rx,
+            termbuf: TermBuf::new(cols as usize, rows as usize),
+        })
+    }
+
+    pub fn poll(&mut self) {
+        while let Ok(data) = self.rx.try_recv() {
+            self.termbuf.process(&data);
+        }
+    }
+
+    pub fn write(&mut self, data: &[u8]) {
+        let _ = self.writer.write_all(data);
+        let _ = self.writer.flush();
+    }
+
+    pub fn resize(&mut self, cols: u16, rows: u16) {
+        let _ = self.master.resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        });
+        self.termbuf.resize(cols as usize, rows as usize);
+    }
+}
+
+fn open_pty(cols: u16, rows: u16) -> Result<portable_pty::PtyPair> {
+    native_pty_system()
+        .openpty(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .context("opening PTY")
+}
+
+fn spawn_command(pair: &portable_pty::PtyPair, cmd: &str, args: &[&str]) -> Result<()> {
+    let mut builder = CommandBuilder::new(cmd);
+    for arg in args {
+        builder.arg(arg);
+    }
+    builder.env("TERM", "xterm-256color");
+    pair.slave
+        .spawn_command(builder)
+        .context("spawning command")?;
+    Ok(())
+}
+
+fn spawn_reader_thread(mut reader: Box<dyn Read + Send>) -> mpsc::Receiver<Vec<u8>> {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = [0u8; 8192];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if tx.send(buf[..n].to_vec()).is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+    rx
 }

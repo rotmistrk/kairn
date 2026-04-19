@@ -6,7 +6,6 @@ use crossterm::event::KeyEvent;
 use crate::config::Config;
 use crate::editor;
 use crate::highlight::Highlighter;
-use crate::input::SendTarget;
 use crate::keymap::{Action, Keymap};
 use crate::layout::{LayoutMode, PanelSizes};
 use crate::overlay::{LoadPicker, Overlay, OverlayAction, SavePrompt};
@@ -115,7 +114,13 @@ impl App {
                 self.main_view.scroll_by(delta, 20);
             }
             FocusedPanel::Interactive => {
-                self.interactive.tabs.scroll_active(delta, 20);
+                if let Some(tb) = self.interactive.tabs.active_termbuf_mut() {
+                    if delta < 0 {
+                        tb.scroll_up((-delta) as usize);
+                    } else {
+                        tb.scroll_down(delta as usize);
+                    }
+                }
             }
             FocusedPanel::Tree => {}
         }
@@ -317,10 +322,10 @@ impl App {
             Action::NewKiroTab => {
                 self.interactive
                     .tabs
-                    .add_kiro_tab_with_cmd("new", &self.config.kiro_command);
+                    .add_kiro_tab("new", &self.config.kiro_command, 80, 24);
             }
             Action::NewShellTab => {
-                self.interactive.tabs.add_shell_tab(self.config.shell());
+                self.interactive.tabs.add_shell_tab(80, 24);
             }
             Action::NextTab => self.interactive.tabs.next_tab(),
             Action::PrevTab => self.interactive.tabs.prev_tab(),
@@ -362,9 +367,6 @@ impl App {
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
             }
-            PanelAction::SendInput { text, target } => {
-                self.dispatch_input(&text, target);
-            }
             PanelAction::Quit => self.should_quit = true,
         }
     }
@@ -398,17 +400,6 @@ impl App {
                 ratatui::text::Line::from(spans)
             })
             .collect()
-    }
-
-    fn dispatch_input(&mut self, text: &str, target: SendTarget) {
-        match target {
-            SendTarget::Kiro => {
-                self.interactive.tabs.send_to_active_kiro(text);
-            }
-            SendTarget::Terminal => {
-                self.interactive.tabs.run_in_active(text);
-            }
-        }
     }
 }
 
