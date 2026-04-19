@@ -213,6 +213,9 @@ impl App {
             }
             Action::ToggleTree => self.panel_sizes.toggle_tree(),
             Action::CycleFocus => self.focus = self.focus.next(),
+            Action::FocusTree => self.focus = FocusedPanel::Tree,
+            Action::FocusMain => self.focus = FocusedPanel::Main,
+            Action::FocusTerminal => self.focus = FocusedPanel::Interactive,
             Action::ResizeTree(d) => self.panel_sizes.resize_tree(d),
             Action::ResizeInteractive(d) => {
                 self.panel_sizes.resize_interactive(d);
