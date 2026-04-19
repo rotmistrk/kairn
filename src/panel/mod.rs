@@ -37,6 +37,7 @@ pub enum PanelAction {
     None,
     OpenFile(String),
     PreviewFile(String),
+    SwitchMode,
     PushOutput(crate::buffer::OutputBuffer),
     Quit,
 }

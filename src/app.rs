@@ -381,6 +381,7 @@ impl App {
             PanelAction::None => {}
             PanelAction::OpenFile(path) => self.open_file(&path),
             PanelAction::PreviewFile(path) => self.open_file(&path),
+            PanelAction::SwitchMode => self.apply_view_mode(),
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
             }
@@ -388,7 +389,21 @@ impl App {
         }
     }
 
+    fn apply_view_mode(&mut self) {
+        use crate::panel::main_view::ViewMode;
+        let path = match &self.main_view.current_path {
+            Some(p) => p.clone(),
+            None => return,
+        };
+        match self.main_view.mode {
+            ViewMode::File => self.open_file(&path),
+            ViewMode::Diff => self.diff_current_file(),
+            ViewMode::Log => self.show_git_log(),
+        }
+    }
+
     pub fn open_file(&mut self, path: &str) {
+        self.main_view.mode = crate::panel::main_view::ViewMode::File;
         let content =
             std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
         let owned_lines = self.highlight_to_owned(&content, path);

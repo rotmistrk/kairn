@@ -11,15 +11,48 @@ use ratatui::{
 use super::{Panel, PanelAction};
 use crate::buffer::{BufferKind, OutputBuffer};
 
+/// What the main panel is showing for the current file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ViewMode {
+    #[default]
+    File,
+    Diff,
+    Log,
+}
+
+impl ViewMode {
+    pub fn next(self) -> Self {
+        match self {
+            Self::File => Self::Diff,
+            Self::Diff => Self::Log,
+            Self::Log => Self::File,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::File => "File",
+            Self::Diff => "Diff",
+            Self::Log => "Log",
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct MainViewPanel {
     pub buffer: Option<OutputBuffer>,
     pub highlighted_lines: Vec<Line<'static>>,
     pub scroll: usize,
+    pub mode: ViewMode,
+    /// Path of the current file (for mode switching).
+    pub current_path: Option<String>,
 }
 
 impl MainViewPanel {
     pub fn set_buffer(&mut self, buf: OutputBuffer) {
+        if let BufferKind::FilePreview { ref path } = buf.kind {
+            self.current_path = Some(path.clone());
+        }
         self.buffer = Some(buf);
         self.highlighted_lines.clear();
         self.scroll = 0;
@@ -65,7 +98,7 @@ impl Panel for MainViewPanel {
         };
 
         let title = match &self.buffer {
-            Some(buf) => format!(" {} ", buf.title),
+            Some(buf) => format!(" {} [{}] ", buf.title, self.mode.label()),
             None => " Main ".to_string(),
         };
         let line_info = format!(" L{}/{} ", self.scroll + 1, self.total_lines());
@@ -101,6 +134,12 @@ impl Panel for MainViewPanel {
             KeyCode::Home => self.scroll = 0,
             KeyCode::End => {
                 self.scroll = self.total_lines();
+            }
+            KeyCode::Tab => {
+                if self.current_path.is_some() {
+                    self.mode = self.mode.next();
+                    return Ok(PanelAction::SwitchMode);
+                }
             }
             _ => {}
         }
