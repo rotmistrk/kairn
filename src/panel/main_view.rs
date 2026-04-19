@@ -11,6 +11,26 @@ use ratatui::{
 use super::{Panel, PanelAction};
 use crate::buffer::{BufferKind, OutputBuffer};
 
+/// Info for rendering visual selection.
+pub enum VisualInfo {
+    Line((usize, usize)),
+    Stream {
+        anchor: (usize, usize),
+        cursor: (usize, usize),
+    },
+    Block {
+        rows: (usize, usize),
+        cols: (usize, usize),
+    },
+}
+
+fn safe_slice(s: &str, start: usize, end: usize) -> &str {
+    let len = s.len();
+    let s_byte = start.min(len);
+    let e_byte = (end + 1).min(len);
+    &s[s_byte..e_byte]
+}
+
 /// What the main panel is showing for the current file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ViewMode {
@@ -41,6 +61,21 @@ impl ViewMode {
     }
 }
 
+/// Cursor/selection state for the main panel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CursorMode {
+    #[default]
+    Off,
+    /// Cursor visible, no selection.
+    Normal,
+    /// v: stream (character) selection.
+    VisualStream,
+    /// V: line selection.
+    VisualLine,
+    /// Ctrl-V: block (column) selection.
+    VisualBlock,
+}
+
 #[derive(Default)]
 pub struct MainViewPanel {
     pub buffer: Option<OutputBuffer>,
@@ -48,8 +83,12 @@ pub struct MainViewPanel {
     pub scroll: usize,
     pub mode: ViewMode,
     pub current_path: Option<String>,
-    /// Line selection: (anchor, cursor). None = no selection.
-    pub selection: Option<(usize, usize)>,
+    /// Cursor mode.
+    pub cursor_mode: CursorMode,
+    /// Cursor position: (row, col).
+    pub cursor: (usize, usize),
+    /// Anchor position for visual modes: (row, col).
+    pub anchor: (usize, usize),
 }
 
 impl MainViewPanel {
@@ -86,33 +125,83 @@ impl MainViewPanel {
         }
     }
 
-    fn extend_selection(&mut self, delta: isize) {
-        let max = self.total_lines().saturating_sub(1);
-        let (anchor, cursor) = self.selection.unwrap_or((self.scroll, self.scroll));
-        let new_cursor = (cursor as isize + delta).clamp(0, max as isize) as usize;
-        self.selection = Some((anchor, new_cursor));
-        // Auto-scroll to keep cursor visible
-        if new_cursor < self.scroll {
-            self.scroll = new_cursor;
-        } else if new_cursor >= self.scroll + 20 {
-            self.scroll = new_cursor.saturating_sub(19);
+    fn move_cursor(&mut self, dr: isize, dc: isize) {
+        let max_row = self.total_lines().saturating_sub(1);
+        let r = (self.cursor.0 as isize + dr).clamp(0, max_row as isize) as usize;
+        let c = (self.cursor.1 as isize + dc).max(0) as usize;
+        self.cursor = (r, c);
+        // Auto-scroll
+        if r < self.scroll {
+            self.scroll = r;
+        } else if r >= self.scroll + 20 {
+            self.scroll = r.saturating_sub(19);
         }
     }
 
-    fn take_selection_text(&mut self) -> Option<String> {
-        let (a, b) = self.selection.take()?;
-        let start = a.min(b);
-        let end = a.max(b);
-        let content = self.buffer.as_ref()?.content.clone();
-        let lines: Vec<&str> = content.lines().collect();
-        let selected: Vec<&str> = lines
-            .get(start..=end.min(lines.len().saturating_sub(1)))?
-            .to_vec();
-        Some(selected.join("\n"))
+    fn start_visual(&mut self, mode: CursorMode) {
+        self.anchor = self.cursor;
+        self.cursor_mode = mode;
     }
 
-    pub fn selection_range(&self) -> Option<(usize, usize)> {
-        self.selection.map(|(a, b)| (a.min(b), a.max(b)))
+    fn take_selection_text(&mut self) -> Option<String> {
+        let content = self.buffer.as_ref()?.content.clone();
+        let lines: Vec<&str> = content.lines().collect();
+        let text = match self.cursor_mode {
+            CursorMode::VisualLine => {
+                let (sr, er) = self.sel_rows();
+                lines.get(sr..=er.min(lines.len() - 1))?.join("\n")
+            }
+            CursorMode::VisualStream => {
+                let (sr, er) = self.sel_rows();
+                if sr == er {
+                    let (sc, ec) = self.sel_cols();
+                    let line = lines.get(sr)?;
+                    safe_slice(line, sc, ec).to_string()
+                } else {
+                    lines.get(sr..=er.min(lines.len() - 1))?.join("\n")
+                }
+            }
+            CursorMode::VisualBlock => {
+                let (sr, er) = self.sel_rows();
+                let (sc, ec) = self.sel_cols();
+                let mut out = Vec::new();
+                for line in lines.iter().take(er.min(lines.len() - 1) + 1).skip(sr) {
+                    out.push(safe_slice(line, sc, ec));
+                }
+                out.join("\n")
+            }
+            _ => return None,
+        };
+        self.cursor_mode = CursorMode::Normal;
+        Some(text)
+    }
+
+    fn sel_rows(&self) -> (usize, usize) {
+        let a = self.anchor.0;
+        let b = self.cursor.0;
+        (a.min(b), a.max(b))
+    }
+
+    fn sel_cols(&self) -> (usize, usize) {
+        let a = self.anchor.1;
+        let b = self.cursor.1;
+        (a.min(b), a.max(b))
+    }
+
+    /// Get selection info for rendering.
+    pub fn visual_info(&self) -> Option<VisualInfo> {
+        match self.cursor_mode {
+            CursorMode::VisualLine => Some(VisualInfo::Line(self.sel_rows())),
+            CursorMode::VisualStream => Some(VisualInfo::Stream {
+                anchor: self.anchor,
+                cursor: self.cursor,
+            }),
+            CursorMode::VisualBlock => Some(VisualInfo::Block {
+                rows: self.sel_rows(),
+                cols: self.sel_cols(),
+            }),
+            _ => None,
+        }
     }
 
     pub fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
@@ -130,8 +219,15 @@ impl Panel for MainViewPanel {
             Color::DarkGray
         };
 
+        let cursor_label = match self.cursor_mode {
+            CursorMode::Off => "",
+            CursorMode::Normal => " ●",
+            CursorMode::VisualStream => " v",
+            CursorMode::VisualLine => " V",
+            CursorMode::VisualBlock => " ^V",
+        };
         let title = match &self.buffer {
-            Some(buf) => format!(" {} [{}] ", buf.title, self.mode.label()),
+            Some(buf) => format!(" {} [{}]{cursor_label} ", buf.title, self.mode.label()),
             None => " Main ".to_string(),
         };
         let line_info = format!(" L{}/{} ", self.scroll + 1, self.total_lines());
@@ -157,39 +253,60 @@ impl Panel for MainViewPanel {
             frame.render_widget(para, area);
         }
 
-        // Highlight selected lines
-        highlight_selection(frame, area, self.selection_range(), self.scroll);
+        // Highlight cursor line and visual selection
+        render_cursor_and_selection(frame, area, self);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
         use crossterm::event::KeyModifiers;
-        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = key.modifiers.contains(KeyModifiers::ALT);
 
-        if let Some(action) = self.handle_selection_key(shift, key.code) {
-            return Ok(action);
+        // Alt-Space toggles cursor mode
+        if alt && key.code == KeyCode::Char(' ') {
+            self.cursor_mode = match self.cursor_mode {
+                CursorMode::Off => {
+                    self.cursor = (self.scroll, 0);
+                    CursorMode::Normal
+                }
+                _ => CursorMode::Off,
+            };
+            return Ok(PanelAction::None);
         }
+
+        // In cursor mode: handle cursor keys and visual modes
+        if self.cursor_mode != CursorMode::Off {
+            return self.handle_cursor_key(key.code, ctrl);
+        }
+
+        // Scroll mode (default)
         self.handle_nav_key(key.code)
     }
 }
 
 impl MainViewPanel {
-    fn handle_selection_key(&mut self, shift: bool, code: KeyCode) -> Option<PanelAction> {
-        match (shift, code) {
-            (true, KeyCode::Up) => {
-                self.extend_selection(-1);
-                Some(PanelAction::None)
+    fn handle_cursor_key(&mut self, code: KeyCode, ctrl: bool) -> Result<PanelAction> {
+        match code {
+            KeyCode::Up => self.move_cursor(-1, 0),
+            KeyCode::Down => self.move_cursor(1, 0),
+            KeyCode::Left => self.move_cursor(0, -1),
+            KeyCode::Right => self.move_cursor(0, 1),
+            KeyCode::Home => self.cursor.1 = 0,
+            KeyCode::End => self.cursor.1 = 999,
+            KeyCode::PageUp => self.move_cursor(-20, 0),
+            KeyCode::PageDown => self.move_cursor(20, 0),
+            KeyCode::Char('v') if !ctrl => self.start_visual(CursorMode::VisualStream),
+            KeyCode::Char('V') => self.start_visual(CursorMode::VisualLine),
+            KeyCode::Char('v') if ctrl => self.start_visual(CursorMode::VisualBlock),
+            KeyCode::Enter => {
+                if let Some(text) = self.take_selection_text() {
+                    return Ok(PanelAction::SendToKiro(text));
+                }
             }
-            (true, KeyCode::Down) => {
-                self.extend_selection(1);
-                Some(PanelAction::None)
-            }
-            (false, KeyCode::Enter) => self.take_selection_text().map(PanelAction::SendToKiro),
-            (false, KeyCode::Esc) => {
-                self.selection = None;
-                Some(PanelAction::None)
-            }
-            _ => None,
+            KeyCode::Esc => self.cursor_mode = CursorMode::Normal,
+            _ => {}
         }
+        Ok(PanelAction::None)
     }
 
     fn handle_nav_key(&mut self, code: KeyCode) -> Result<PanelAction> {
@@ -206,26 +323,74 @@ impl MainViewPanel {
     }
 }
 
-fn highlight_selection(
-    frame: &mut Frame,
-    area: Rect,
-    range: Option<(usize, usize)>,
-    scroll: usize,
-) {
-    let (start, end) = match range {
-        Some(r) => r,
-        None => return,
-    };
+fn render_cursor_and_selection(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     let inner_y = area.y + 1;
     let inner_h = area.height.saturating_sub(2) as usize;
+    let inner_x = area.x + 1;
+    let inner_w = area.width.saturating_sub(2) as usize;
+    let scroll = panel.scroll;
     let buf = frame.buffer_mut();
+
+    // Cursor line highlight
+    if panel.cursor_mode != CursorMode::Off {
+        let cr = panel.cursor.0;
+        if cr >= scroll && cr < scroll + inner_h {
+            let y = inner_y + (cr - scroll) as u16;
+            for x in inner_x..inner_x + inner_w as u16 {
+                if y < area.bottom() && x < area.right() {
+                    buf[(x, y)].set_bg(Color::Indexed(236));
+                }
+            }
+        }
+    }
+
+    // Visual selection highlight
+    if let Some(vi) = panel.visual_info() {
+        match vi {
+            VisualInfo::Line((sr, er)) => {
+                highlight_rows(buf, area, inner_y, inner_w, scroll, inner_h, sr, er);
+            }
+            VisualInfo::Stream { .. } => {
+                let (sr, er) = panel.sel_rows();
+                highlight_rows(buf, area, inner_y, inner_w, scroll, inner_h, sr, er);
+            }
+            VisualInfo::Block { rows, cols } => {
+                for r in rows.0..=rows.1 {
+                    if r < scroll || r >= scroll + inner_h {
+                        continue;
+                    }
+                    let y = inner_y + (r - scroll) as u16;
+                    for c in cols.0..=cols.1 {
+                        let x = inner_x + c as u16;
+                        if y < area.bottom() && x < area.right() {
+                            buf[(x, y)].set_bg(Color::DarkGray);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn highlight_rows(
+    buf: &mut ratatui::buffer::Buffer,
+    area: Rect,
+    inner_y: u16,
+    inner_w: usize,
+    scroll: usize,
+    inner_h: usize,
+    start: usize,
+    end: usize,
+) {
     for line in start..=end {
         if line < scroll || line >= scroll + inner_h {
             continue;
         }
         let y = inner_y + (line - scroll) as u16;
-        for x in (area.x + 1)..area.right().saturating_sub(1) {
-            if y < area.bottom() {
+        let x_start = area.x + 1;
+        for x in x_start..x_start + inner_w as u16 {
+            if y < area.bottom() && x < area.right() {
                 buf[(x, y)].set_bg(Color::DarkGray);
             }
         }
