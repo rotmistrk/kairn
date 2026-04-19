@@ -567,8 +567,13 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     if panel.search_query.is_empty() {
         return;
     }
+    let gutter_w = if panel.line_numbers && panel.buffer.is_some() {
+        4u16
+    } else {
+        0
+    };
     let inner_y = area.y + 1;
-    let inner_x = area.x + 1;
+    let inner_x = area.x + 1 + gutter_w;
     let inner_h = area.height.saturating_sub(2) as usize;
     let qlen = panel.search_query.len();
     let buf = frame.buffer_mut();

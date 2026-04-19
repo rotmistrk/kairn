@@ -851,7 +851,9 @@ fn build_full_help(cfg: &Config) -> String {
     h.push_str(&format!("- {}\n", kb("close_tab")));
     h.push_str(&format!("- {}\n", kb("prev_tab")));
     h.push_str(&format!("- {}\n", kb("next_tab")));
-    h.push_str("- `PgUp`/`PgDn` — scroll back in terminal\n\n");
+    h.push_str("- `PgUp`/`PgDn` — scroll back in terminal\n");
+    h.push_str("- `Ctrl-R` — rename active tab\n");
+    h.push_str("- `Ctrl-Enter` — expand @macros and send (see Template Variables)\n\n");
 
     h.push_str("## Session & System\n\n");
     h.push_str(&format!("- {}\n", kb("save_session")));
