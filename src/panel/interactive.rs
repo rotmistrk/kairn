@@ -27,8 +27,10 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        // Scroll-back: Shift+Up/Down/PgUp/PgDn handled here, not forwarded
-        if key.modifiers.contains(KeyModifiers::SHIFT) {
+        // Scroll-back: Ctrl+Shift+arrows/pgup/pgdn (Shift alone eaten by iTerm)
+        let ctrl_shift = key.modifiers.contains(KeyModifiers::SHIFT)
+            && key.modifiers.contains(KeyModifiers::CONTROL);
+        if ctrl_shift {
             if let Some(tb) = self.tabs.active_termbuf_mut() {
                 match key.code {
                     KeyCode::Up => {
