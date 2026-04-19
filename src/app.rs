@@ -16,13 +16,23 @@ use crate::panel::{FocusedPanel, Panel, PanelAction};
 use crate::search::{FileSearch, SearchAction};
 use crate::session::{self, Session};
 
+/// Which panel is shown on the left.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LeftPanelMode {
+    #[default]
+    FileTree,
+    CommitTree,
+}
+
 /// Top-level application state.
 pub struct App {
     pub workspace_root: PathBuf,
     pub layout_mode: LayoutMode,
     pub panel_sizes: PanelSizes,
     pub focus: FocusedPanel,
+    pub left_mode: LeftPanelMode,
     pub file_tree: FileTreePanel,
+    pub commit_tree: crate::panel::commit_tree::CommitTreePanel,
     pub main_view: MainViewPanel,
     pub interactive: InteractivePanel,
     pub should_quit: bool,
@@ -45,11 +55,13 @@ impl App {
         let config = Config::load(&ws);
         let keymap = Keymap::from_config(&config);
         let mut app = Self {
-            workspace_root: ws,
+            workspace_root: ws.clone(),
             layout_mode: LayoutMode::default(),
             panel_sizes: PanelSizes::default(),
             focus: FocusedPanel::default(),
+            left_mode: LeftPanelMode::default(),
             file_tree: FileTreePanel::new(workspace_root),
+            commit_tree: crate::panel::commit_tree::CommitTreePanel::new(ws.clone()),
             main_view: MainViewPanel::default(),
             interactive: InteractivePanel::default(),
             should_quit: false,
@@ -231,6 +243,12 @@ impl App {
             Action::ScrollBottom => self.scroll_focused(100_000),
             Action::CycleModeNext => self.cycle_mode(true),
             Action::CycleModePrev => self.cycle_mode(false),
+            Action::ToggleLeftPanel => {
+                self.left_mode = match self.left_mode {
+                    LeftPanelMode::FileTree => LeftPanelMode::CommitTree,
+                    LeftPanelMode::CommitTree => LeftPanelMode::FileTree,
+                };
+            }
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
             }
@@ -360,6 +378,22 @@ impl App {
         out
     }
 
+    fn show_commit_diff(&mut self, hash: &str) {
+        let output = std::process::Command::new("git")
+            .args(["show", "--stat", "--patch", hash])
+            .current_dir(&self.workspace_root)
+            .env("TERM", "dumb")
+            .output();
+        let text = match output {
+            Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
+            Err(e) => format!("Error: {e}"),
+        };
+        let lines = self.highlight_to_owned(&text, "commit.diff");
+        let buf = crate::buffer::OutputBuffer::plain(format!("commit {hash}"), text);
+        self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(lines);
+    }
+
     fn show_help(&mut self) {
         let text = build_full_help(&self.config);
         let lines = self.highlight_to_owned(&text, "help.md");
@@ -429,7 +463,10 @@ impl App {
 
     fn forward_to_panel(&mut self, key: KeyEvent) -> Result<()> {
         let panel_action = match self.focus {
-            FocusedPanel::Tree => self.file_tree.handle_key(key)?,
+            FocusedPanel::Tree => match self.left_mode {
+                LeftPanelMode::FileTree => self.file_tree.handle_key(key)?,
+                LeftPanelMode::CommitTree => self.commit_tree.handle_key(key)?,
+            },
             FocusedPanel::Main => self.main_view.handle_key(key)?,
             FocusedPanel::Interactive => self.interactive.handle_key(key)?,
         };
@@ -465,6 +502,9 @@ impl App {
             PanelAction::SendToKiro(text) => {
                 let expanded = self.expand_macros(&text);
                 self.interactive.tabs.write_to_active(expanded.as_bytes());
+            }
+            PanelAction::PreviewCommit(hash) => {
+                self.show_commit_diff(&hash);
             }
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);

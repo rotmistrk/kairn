@@ -156,8 +156,15 @@ fn render_panels(frame: &mut Frame, app: &App) {
     let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
 
     if let Some(tree_rect) = c.tree {
-        app.file_tree
-            .render(frame, tree_rect, app.focus == panel::FocusedPanel::Tree);
+        let focused = app.focus == panel::FocusedPanel::Tree;
+        match app.left_mode {
+            app::LeftPanelMode::FileTree => {
+                app.file_tree.render(frame, tree_rect, focused);
+            }
+            app::LeftPanelMode::CommitTree => {
+                app.commit_tree.render(frame, tree_rect, focused);
+            }
+        }
     }
 
     app.main_view
@@ -339,7 +346,12 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         panel::FocusedPanel::Main => "Main",
         panel::FocusedPanel::Interactive => "Terminal",
     };
-    let tree_mode = app.file_tree.filter.label();
+    let tree_mode = match app.left_mode {
+        app::LeftPanelMode::FileTree => {
+            format!("Files:{}", app.file_tree.filter.label())
+        }
+        app::LeftPanelMode::CommitTree => "Commits".to_string(),
+    };
     let main_mode = app.main_view.mode.label();
     let tab_name = app.interactive.tabs.active_title();
 
@@ -350,8 +362,8 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let mut spans = vec![
         Span::styled(" [", label),
         Span::styled(focus_name, value),
-        Span::styled("]  Tree:", label),
-        Span::styled(tree_mode, value),
+        Span::styled("  Left:", label),
+        Span::styled(&tree_mode, value),
         Span::styled("  Main:", label),
         Span::styled(main_mode, value),
         Span::styled("  Tab:", label),

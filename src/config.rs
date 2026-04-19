@@ -111,6 +111,7 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("scroll_bottom", "ctrl+end"),
         ("cycle_mode_next", "ctrl+shift+down"),
         ("cycle_mode_prev", "ctrl+shift+up"),
+        ("toggle_left_panel", "f6"),
     ];
     pairs
         .into_iter()

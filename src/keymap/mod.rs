@@ -39,6 +39,7 @@ pub enum Action {
     ScrollBottom,
     CycleModeNext,
     CycleModePrev,
+    ToggleLeftPanel,
     /// Key not mapped at app level — forward to focused panel.
     Forward(KeyEvent),
 }
@@ -98,6 +99,7 @@ fn name_to_action(name: &str) -> Option<Action> {
         "scroll_bottom" => Action::ScrollBottom,
         "cycle_mode_next" => Action::CycleModeNext,
         "cycle_mode_prev" => Action::CycleModePrev,
+        "toggle_left_panel" => Action::ToggleLeftPanel,
         "new_kiro_tab" => Action::NewKiroTab,
         "new_shell_tab" => Action::NewShellTab,
         "close_tab" => Action::CloseTab,

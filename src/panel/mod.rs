@@ -1,3 +1,4 @@
+pub mod commit_tree;
 pub mod file_tree;
 pub mod interactive;
 pub mod main_view;
@@ -39,6 +40,7 @@ pub enum PanelAction {
     PreviewFile(String),
     SwitchMode,
     SendToKiro(String),
+    PreviewCommit(String),
     PushOutput(crate::buffer::OutputBuffer),
     Quit,
 }
