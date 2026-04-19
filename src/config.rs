@@ -11,6 +11,24 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct KeyCombo(pub String);
 
+/// Where a keybinding came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeySource {
+    Default,
+    Global,
+    Project,
+}
+
+impl KeySource {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Global => "~/.kairnrc",
+            Self::Project => ".kairnrc",
+        }
+    }
+}
+
 /// Full configuration.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -20,6 +38,9 @@ pub struct Config {
     pub line_numbers: bool,
     #[serde(default)]
     pub keys: HashMap<String, KeyCombo>,
+    /// Source of each keybinding (not serialized).
+    #[serde(skip)]
+    pub key_sources: HashMap<String, KeySource>,
 }
 
 fn default_kiro_command() -> String {
@@ -38,10 +59,16 @@ impl Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let keys = default_keys();
+        let key_sources = keys
+            .keys()
+            .map(|k| (k.clone(), KeySource::Default))
+            .collect();
         Self {
             kiro_command: default_kiro_command(),
             line_numbers: true,
-            keys: default_keys(),
+            keys,
+            key_sources,
         }
     }
 }
@@ -56,7 +83,6 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("focus_tree", "alt+1"),
         ("focus_main", "alt+2"),
         ("focus_terminal", "alt+3"),
-        ("toggle_pin_output", ""),
         ("peek_screen", "ctrl+o"),
         ("launch_editor", "ctrl+e"),
         ("suspend_to_shell", "ctrl+t"),
@@ -100,12 +126,12 @@ impl Config {
         let mut cfg = Self::default();
         // Apply global overrides
         if let Some(global) = load_rc_file(&global_rc_path()) {
-            merge_into(&mut cfg, global);
+            merge_into(&mut cfg, global, KeySource::Global);
         }
         // Apply local overrides
         let local_path = workspace.join(".kairnrc");
         if let Some(local) = load_rc_file(&local_path) {
-            merge_into(&mut cfg, local);
+            merge_into(&mut cfg, local, KeySource::Project);
         }
         cfg
     }
@@ -138,6 +164,13 @@ impl Config {
             .unwrap_or_else(|| "unbound".to_string())
     }
 
+    pub fn key_source(&self, action: &str) -> KeySource {
+        self.key_sources
+            .get(action)
+            .copied()
+            .unwrap_or(KeySource::Default)
+    }
+
     /// Path to the global rc file.
     pub fn global_rc() -> PathBuf {
         global_rc_path()
@@ -167,11 +200,12 @@ fn load_rc_file(path: &Path) -> Option<Config> {
 }
 
 /// Merge overrides into base. Only non-default fields from overlay are applied.
-fn merge_into(base: &mut Config, overlay: Config) {
+fn merge_into(base: &mut Config, overlay: Config, source: KeySource) {
     if overlay.kiro_command != default_kiro_command() {
         base.kiro_command = overlay.kiro_command;
     }
     for (action, combo) in overlay.keys {
-        base.keys.insert(action, combo);
+        base.keys.insert(action.clone(), combo);
+        base.key_sources.insert(action, source);
     }
 }
