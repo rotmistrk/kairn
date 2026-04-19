@@ -382,6 +382,10 @@ impl App {
             PanelAction::OpenFile(path) => self.open_file(&path),
             PanelAction::PreviewFile(path) => self.open_file(&path),
             PanelAction::SwitchMode => self.apply_view_mode(),
+            PanelAction::SendToKiro(text) => {
+                // Write selected text to active kiro/shell tab's PTY
+                self.interactive.tabs.write_to_active(text.as_bytes());
+            }
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
             }

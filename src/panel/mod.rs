@@ -38,6 +38,7 @@ pub enum PanelAction {
     OpenFile(String),
     PreviewFile(String),
     SwitchMode,
+    SendToKiro(String),
     PushOutput(crate::buffer::OutputBuffer),
     Quit,
 }

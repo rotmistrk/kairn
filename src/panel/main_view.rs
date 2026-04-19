@@ -44,8 +44,9 @@ pub struct MainViewPanel {
     pub highlighted_lines: Vec<Line<'static>>,
     pub scroll: usize,
     pub mode: ViewMode,
-    /// Path of the current file (for mode switching).
     pub current_path: Option<String>,
+    /// Line selection: (anchor, cursor). None = no selection.
+    pub selection: Option<(usize, usize)>,
 }
 
 impl MainViewPanel {
@@ -80,6 +81,35 @@ impl MainViewPanel {
                 .as_ref()
                 .map_or(1, |b| b.content.lines().count().max(1))
         }
+    }
+
+    fn extend_selection(&mut self, delta: isize) {
+        let max = self.total_lines().saturating_sub(1);
+        let (anchor, cursor) = self.selection.unwrap_or((self.scroll, self.scroll));
+        let new_cursor = (cursor as isize + delta).clamp(0, max as isize) as usize;
+        self.selection = Some((anchor, new_cursor));
+        // Auto-scroll to keep cursor visible
+        if new_cursor < self.scroll {
+            self.scroll = new_cursor;
+        } else if new_cursor >= self.scroll + 20 {
+            self.scroll = new_cursor.saturating_sub(19);
+        }
+    }
+
+    fn take_selection_text(&mut self) -> Option<String> {
+        let (a, b) = self.selection.take()?;
+        let start = a.min(b);
+        let end = a.max(b);
+        let content = self.buffer.as_ref()?.content.clone();
+        let lines: Vec<&str> = content.lines().collect();
+        let selected: Vec<&str> = lines
+            .get(start..=end.min(lines.len().saturating_sub(1)))?
+            .to_vec();
+        Some(selected.join("\n"))
+    }
+
+    pub fn selection_range(&self) -> Option<(usize, usize)> {
+        self.selection.map(|(a, b)| (a.min(b), a.max(b)))
     }
 
     pub fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
@@ -123,18 +153,50 @@ impl Panel for MainViewPanel {
                 .scroll((self.scroll as u16, 0));
             frame.render_widget(para, area);
         }
+
+        // Highlight selected lines
+        highlight_selection(frame, area, self.selection_range(), self.scroll);
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        match key.code {
+        use crossterm::event::KeyModifiers;
+        let shift = key.modifiers.contains(KeyModifiers::SHIFT);
+
+        if let Some(action) = self.handle_selection_key(shift, key.code) {
+            return Ok(action);
+        }
+        self.handle_nav_key(key.code)
+    }
+}
+
+impl MainViewPanel {
+    fn handle_selection_key(&mut self, shift: bool, code: KeyCode) -> Option<PanelAction> {
+        match (shift, code) {
+            (true, KeyCode::Up) => {
+                self.extend_selection(-1);
+                Some(PanelAction::None)
+            }
+            (true, KeyCode::Down) => {
+                self.extend_selection(1);
+                Some(PanelAction::None)
+            }
+            (false, KeyCode::Enter) => self.take_selection_text().map(PanelAction::SendToKiro),
+            (false, KeyCode::Esc) => {
+                self.selection = None;
+                Some(PanelAction::None)
+            }
+            _ => None,
+        }
+    }
+
+    fn handle_nav_key(&mut self, code: KeyCode) -> Result<PanelAction> {
+        match code {
             KeyCode::Up => self.scroll_by(-1, 20),
             KeyCode::Down => self.scroll_by(1, 20),
             KeyCode::PageUp => self.scroll_by(-20, 20),
             KeyCode::PageDown => self.scroll_by(20, 20),
             KeyCode::Home => self.scroll = 0,
-            KeyCode::End => {
-                self.scroll = self.total_lines();
-            }
+            KeyCode::End => self.scroll = self.total_lines(),
             KeyCode::Tab => {
                 if self.current_path.is_some() {
                     self.mode = self.mode.next();
@@ -144,5 +206,31 @@ impl Panel for MainViewPanel {
             _ => {}
         }
         Ok(PanelAction::None)
+    }
+}
+
+fn highlight_selection(
+    frame: &mut Frame,
+    area: Rect,
+    range: Option<(usize, usize)>,
+    scroll: usize,
+) {
+    let (start, end) = match range {
+        Some(r) => r,
+        None => return,
+    };
+    let inner_y = area.y + 1;
+    let inner_h = area.height.saturating_sub(2) as usize;
+    let buf = frame.buffer_mut();
+    for line in start..=end {
+        if line < scroll || line >= scroll + inner_h {
+            continue;
+        }
+        let y = inner_y + (line - scroll) as u16;
+        for x in (area.x + 1)..area.right().saturating_sub(1) {
+            if y < area.bottom() {
+                buf[(x, y)].set_bg(Color::DarkGray);
+            }
+        }
     }
 }
