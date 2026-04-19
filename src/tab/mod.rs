@@ -120,7 +120,7 @@ impl TabManager {
 
     /// Resize the active tab's PTY.
     pub fn resize_active(&mut self, cols: u16, rows: u16) {
-        if let Some(tab) = self.tabs.get_mut(self.active) {
+        for tab in &mut self.tabs {
             if let Some(pty) = &mut tab.pty {
                 pty.resize(cols, rows);
             }

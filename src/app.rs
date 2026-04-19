@@ -320,18 +320,20 @@ impl App {
     fn handle_tab_action(&mut self, action: Action) {
         match action {
             Action::NewKiroTab => {
+                let (cols, rows) = self.interactive.inner_size();
                 self.interactive.tabs.add_kiro_tab(
                     "new",
                     &self.config.kiro_command,
-                    80,
-                    24,
+                    cols,
+                    rows,
                     &self.workspace_root,
                 );
             }
             Action::NewShellTab => {
+                let (cols, rows) = self.interactive.inner_size();
                 self.interactive
                     .tabs
-                    .add_shell_tab(80, 24, &self.workspace_root);
+                    .add_shell_tab(cols, rows, &self.workspace_root);
             }
             Action::NextTab => self.interactive.tabs.next_tab(),
             Action::PrevTab => self.interactive.tabs.prev_tab(),

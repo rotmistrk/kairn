@@ -23,14 +23,18 @@ pub struct InteractivePanel {
 impl InteractivePanel {
     /// Resize PTY to match panel dimensions.
     pub fn sync_size(&mut self, area: Rect) {
-        // Inner area = area minus borders (1 each side) minus tab bar (1)
         let cols = area.width.saturating_sub(2);
-        let rows = area.height.saturating_sub(3); // borders + tab bar
+        let rows = area.height.saturating_sub(3);
         if cols != self.last_cols || rows != self.last_rows {
             self.last_cols = cols;
             self.last_rows = rows;
             self.tabs.resize_active(cols, rows);
         }
+    }
+
+    /// Current inner dimensions for spawning new tabs.
+    pub fn inner_size(&self) -> (u16, u16) {
+        (self.last_cols.max(80), self.last_rows.max(24))
     }
 }
 
