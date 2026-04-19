@@ -319,6 +319,9 @@ impl Panel for MainViewPanel {
         let inner = block.inner(area);
         frame.render_widget(block, area);
 
+        // Clear inner area to prevent artifacts
+        frame.render_widget(ratatui::widgets::Clear, inner);
+
         // Gutter width: 4 chars if line numbers on, 0 otherwise
         let gutter_w = if self.line_numbers && self.buffer.is_some() {
             4u16
