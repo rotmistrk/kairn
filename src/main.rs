@@ -433,7 +433,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         .width
         .saturating_sub(left_len as u16 + right_len as u16);
     spans.push(Span::styled(" ".repeat(pad as usize), bg));
-    spans.push(Span::styled("C-S-←/→:", label));
+    spans.push(Span::styled("C-S-↑/↓:", label));
     spans.push(Span::styled("mode  ", value));
     spans.push(Span::styled("F2:", label));
     spans.push(Span::styled("focus  ", value));

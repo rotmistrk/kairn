@@ -34,8 +34,9 @@ pub struct App {
     pub keymap: Keymap,
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
-    /// Track consecutive Esc presses for double-Esc quit.
     last_esc: bool,
+    /// Cache: path → (content, highlighted lines)
+    file_cache: std::collections::HashMap<String, (String, Vec<ratatui::text::Line<'static>>)>,
 }
 
 impl App {
@@ -61,6 +62,7 @@ impl App {
             search: None,
             overlay: None,
             last_esc: false,
+            file_cache: std::collections::HashMap::new(),
         };
         // Try auto-restore, otherwise show welcome
         if !app.try_auto_restore() {
@@ -459,10 +461,17 @@ impl App {
     }
 
     pub fn open_file(&mut self, path: &str) {
-        // Mode is sticky — don't reset
-        let content =
-            std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
-        let owned_lines = self.highlight_to_owned(&content, path);
+        // Use cache if available
+        let (content, owned_lines) = if let Some(cached) = self.file_cache.get(path) {
+            (cached.0.clone(), cached.1.clone())
+        } else {
+            let c = std::fs::read_to_string(path)
+                .unwrap_or_else(|e| format!("Error reading {path}: {e}"));
+            let lines = self.highlight_to_owned(&c, path);
+            self.file_cache
+                .insert(path.to_string(), (c.clone(), lines.clone()));
+            (c, lines)
+        };
         let buf = crate::buffer::OutputBuffer {
             title: path.to_string(),
             content,

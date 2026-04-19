@@ -74,8 +74,8 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("scroll_down", "ctrl+down"),
         ("scroll_top", "ctrl+home"),
         ("scroll_bottom", "ctrl+end"),
-        ("cycle_mode_next", "ctrl+shift+right"),
-        ("cycle_mode_prev", "ctrl+shift+left"),
+        ("cycle_mode_next", "ctrl+shift+down"),
+        ("cycle_mode_prev", "ctrl+shift+up"),
     ];
     pairs
         .into_iter()
