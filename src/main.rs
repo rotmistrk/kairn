@@ -100,6 +100,8 @@ fn run_loop(
         let area = Rect::new(0, 0, size.width, size.height.saturating_sub(1));
         let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
         app.interactive.sync_size(c.interactive);
+        // Main panel viewport height (inner area minus borders and gutter)
+        app.main_view.viewport_h = c.main.height.saturating_sub(2) as usize;
 
         terminal.draw(|frame| {
             render_panels(frame, app);

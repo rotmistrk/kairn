@@ -99,6 +99,8 @@ pub struct MainViewPanel {
     /// (row, col) of each match.
     pub search_matches: Vec<(usize, usize)>,
     pub search_index: usize,
+    /// Last known viewport height (set during render).
+    pub viewport_h: usize,
 }
 
 impl MainViewPanel {
@@ -298,8 +300,15 @@ impl MainViewPanel {
     }
 
     pub fn scroll_by(&mut self, delta: isize, _viewport_h: usize) {
-        // Allow scrolling so last line can be at top of viewport
-        let max = self.total_lines().saturating_sub(1);
+        // Use stored viewport_h if available, otherwise estimate
+        let vh = if self.viewport_h > 0 {
+            self.viewport_h
+        } else {
+            20
+        };
+        let total = self.total_lines();
+        // Max scroll: last line at bottom of viewport
+        let max = total.saturating_sub(vh);
         let new = (self.scroll as isize).saturating_add(delta);
         self.scroll = (new.max(0) as usize).min(max);
     }
@@ -371,6 +380,27 @@ impl Panel for MainViewPanel {
             };
             let para = Paragraph::new(text).scroll((self.scroll as u16, 0));
             frame.render_widget(para, content_area);
+        }
+
+        // EOF marker
+        let total = self.total_lines();
+        let vh = content_area.height as usize;
+        if self.scroll + vh > total && self.buffer.is_some() {
+            let eof_row = total.saturating_sub(self.scroll);
+            if eof_row < vh {
+                let y = content_area.y + eof_row as u16;
+                if y < content_area.bottom() {
+                    let buf = frame.buffer_mut();
+                    let eof = " ⏚ EOF ";
+                    for (i, ch) in eof.chars().enumerate() {
+                        let x = content_area.x + i as u16;
+                        if x < content_area.right() {
+                            buf[(x, y)].set_char(ch);
+                            buf[(x, y)].set_style(Style::default().fg(Color::DarkGray));
+                        }
+                    }
+                }
+            }
         }
 
         // Highlight cursor line and visual selection
