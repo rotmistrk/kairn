@@ -389,22 +389,20 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     ];
 
     let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
-    let right = "C-S-←/→:mode  F2:focus  F1:help  Esc²:quit ";
-    let right_len = right.len();
+    let right_content = "C-S-↑/↓:mode/tab  F3/4/5:panel  F1:help  Esc²:quit";
+    let right_len = right_content.len() + 2; // +2 safety margin
     let pad = area
         .width
         .saturating_sub(left_len as u16 + right_len as u16);
     spans.push(Span::styled(" ".repeat(pad as usize), bg));
     spans.push(Span::styled("C-S-↑/↓:", label));
     spans.push(Span::styled("mode/tab  ", value));
-    spans.push(Span::styled("F2:", label));
-    spans.push(Span::styled("focus  ", value));
     spans.push(Span::styled("F3/4/5:", label));
     spans.push(Span::styled("panel  ", value));
     spans.push(Span::styled("F1:", label));
     spans.push(Span::styled("help  ", value));
     spans.push(Span::styled("Esc²:", label));
-    spans.push(Span::styled("quit ", value));
+    spans.push(Span::styled("quit", value));
 
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }
