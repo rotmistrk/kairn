@@ -37,15 +37,30 @@ pub struct TabManager {
 }
 
 impl TabManager {
+    fn next_ordinal(&self, prefix: &str) -> usize {
+        self.tabs
+            .iter()
+            .filter_map(|t| {
+                t.meta
+                    .title
+                    .strip_prefix(prefix)
+                    .and_then(|n| n.parse::<usize>().ok())
+            })
+            .max()
+            .map(|n| n + 1)
+            .unwrap_or(1)
+    }
+
     pub fn add_shell_tab(&mut self, cols: u16, rows: u16, cwd: &std::path::Path) -> TabId {
         let id = TabId(self.next_id);
         self.next_id += 1;
+        let n = self.next_ordinal("shell:");
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
         let pty = PtyTab::spawn(&shell, &[], cols, rows, cwd).ok();
         let meta = Tab {
             id,
             kind: TabKind::Shell,
-            title: "sh".to_string(),
+            title: format!("shell:{n}"),
         };
         self.tabs.push(LiveTab { meta, pty });
         self.active = self.tabs.len() - 1;
@@ -54,7 +69,6 @@ impl TabManager {
 
     pub fn add_kiro_tab(
         &mut self,
-        session_name: &str,
         kiro_cmd: &str,
         cols: u16,
         rows: u16,
@@ -62,13 +76,14 @@ impl TabManager {
     ) -> TabId {
         let id = TabId(self.next_id);
         self.next_id += 1;
+        let n = self.next_ordinal("kiro:");
         let pty = PtyTab::spawn(kiro_cmd, &["chat", "--classic"], cols, rows, cwd).ok();
         let meta = Tab {
             id,
             kind: TabKind::Kiro {
-                session_name: session_name.to_string(),
+                session_name: format!("{n}"),
             },
-            title: format!("kiro:{session_name}"),
+            title: format!("kiro:{n}"),
         };
         self.tabs.push(LiveTab { meta, pty });
         self.active = self.tabs.len() - 1;

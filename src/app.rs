@@ -440,7 +440,6 @@ impl App {
             Action::NewKiroTab => {
                 let (cols, rows) = self.interactive.inner_size();
                 self.interactive.tabs.add_kiro_tab(
-                    "new",
                     &self.config.kiro_command,
                     cols,
                     rows,
