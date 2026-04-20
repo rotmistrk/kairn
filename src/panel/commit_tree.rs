@@ -98,6 +98,9 @@ impl Panel for CommitTreePanel {
             KeyCode::PageDown => {
                 self.cursor = (self.cursor + 20).min(count.saturating_sub(1));
             }
+            KeyCode::Right => {
+                return Ok(PanelAction::FocusRight);
+            }
             _ => {}
         }
         if let Some(hash) = self.selected_hash() {
