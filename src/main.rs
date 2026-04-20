@@ -144,6 +144,12 @@ fn run_loop(
             }
         }
 
+        // Lazy load: expand file content when scrolling near bottom
+        let near_bottom = app.main_view.scroll + 50 >= app.main_view.highlighted_lines.len();
+        if near_bottom && app.main_view.current_path.is_some() {
+            app.ensure_full_content();
+        }
+
         app.interactive.tabs.poll_output();
         poll_capture(app, &mut capture);
     }

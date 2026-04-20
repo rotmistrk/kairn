@@ -587,12 +587,51 @@ impl App {
         path: &str,
         mtime: u64,
     ) -> (String, Vec<ratatui::text::Line<'static>>) {
-        let c =
+        let full =
             std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
+        let total_lines = full.lines().count();
+        // Lazy: only highlight first 1000 lines initially
+        let limit = 1000;
+        let c = if total_lines > limit {
+            let truncated: String = full.lines().take(limit).collect::<Vec<_>>().join("\n");
+            format!(
+                "{truncated}\n\n... ({} more lines, scroll down to load) ...",
+                total_lines - limit
+            )
+        } else {
+            full.clone()
+        };
         let lines = self.highlight_to_owned(&c, path);
+        // Cache full content for later loading
         self.file_cache
-            .insert(path.to_string(), (mtime, c.clone(), lines.clone()));
+            .insert(path.to_string(), (mtime, full, lines.clone()));
         (c, lines)
+    }
+
+    /// Load full file content if we were showing truncated version.
+    pub fn ensure_full_content(&mut self) {
+        let path = match &self.main_view.current_path {
+            Some(p) => p.clone(),
+            None => return,
+        };
+        if let Some(cached) = self.file_cache.get(&path) {
+            let full = &cached.1;
+            let current_lines = self.main_view.highlighted_lines.len();
+            let full_lines = full.lines().count();
+            if current_lines < full_lines {
+                let lines = self.highlight_to_owned(full, &path);
+                let buf = crate::buffer::OutputBuffer {
+                    title: path.clone(),
+                    content: full.clone(),
+                    kind: crate::buffer::BufferKind::FilePreview { path },
+                    scroll_offset: 0,
+                };
+                let scroll = self.main_view.scroll;
+                self.main_view.set_buffer(buf);
+                self.main_view.set_highlighted(lines);
+                self.main_view.scroll = scroll;
+            }
+        }
     }
 
     fn highlight_to_owned(&self, content: &str, path: &str) -> Vec<ratatui::text::Line<'static>> {
@@ -938,9 +977,6 @@ fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
     use ratatui::style::{Color, Modifier, Style};
     use ratatui::text::{Line, Span};
 
-    let mut styled = Vec::new();
-    let mut raw = String::new();
-
     let reader = csv::ReaderBuilder::new().flexible(true).from_path(path);
     let mut reader = match reader {
         Ok(r) => r,
@@ -950,7 +986,6 @@ fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
         }
     };
 
-    // Compute column widths
     let headers: Vec<String> = reader
         .headers()
         .map(|h| h.iter().map(|s| s.to_string()).collect())
@@ -964,6 +999,8 @@ fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
         .len()
         .max(rows.iter().map(|r| r.len()).max().unwrap_or(0));
     let mut widths = vec![0usize; ncols];
+    let numeric = detect_numeric_cols(&headers, &rows, ncols);
+
     for (i, h) in headers.iter().enumerate() {
         widths[i] = widths[i].max(h.len());
     }
@@ -975,49 +1012,70 @@ fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
         }
     }
 
-    // Render header
-    let header_style = Style::default()
+    let mut styled = Vec::new();
+    let mut raw = String::new();
+    let hdr_style = Style::default()
         .fg(Color::Cyan)
         .add_modifier(Modifier::BOLD);
     let sep_style = Style::default().fg(Color::DarkGray);
-    let header_line = format_table_row(&headers, &widths);
-    raw.push_str(&header_line);
-    raw.push('\n');
-    styled.push(Line::from(Span::styled(header_line, header_style)));
+    let row_style = Style::default().fg(Color::White);
 
-    // Separator
+    let hl = fmt_row(&headers, &widths, &numeric);
+    raw.push_str(&hl);
+    raw.push('\n');
+    styled.push(Line::from(Span::styled(hl, hdr_style)));
+
     let sep: String = widths
         .iter()
         .map(|w| "─".repeat(w + 2))
         .collect::<Vec<_>>()
         .join("┼");
-    let sep_line = format!("─{sep}─");
-    raw.push_str(&sep_line);
+    let sl = format!("─{sep}─");
+    raw.push_str(&sl);
     raw.push('\n');
-    styled.push(Line::from(Span::styled(sep_line, sep_style)));
+    styled.push(Line::from(Span::styled(sl, sep_style)));
 
-    // Data rows
-    let row_style = Style::default().fg(Color::White);
     for row in &rows {
-        let line = format_table_row(row, &widths);
-        raw.push_str(&line);
+        let rl = fmt_row(row, &widths, &numeric);
+        raw.push_str(&rl);
         raw.push('\n');
-        styled.push(Line::from(Span::styled(line, row_style)));
+        styled.push(Line::from(Span::styled(rl, row_style)));
     }
 
     if rows.is_empty() && headers.is_empty() {
         styled.push(Line::from("(empty or not a CSV file)"));
-        raw.push_str("(empty or not a CSV file)\n");
     }
-
     (styled, raw)
 }
 
-fn format_table_row(cells: &[String], widths: &[usize]) -> String {
-    let mut parts = Vec::new();
-    for (i, w) in widths.iter().enumerate() {
-        let cell = cells.get(i).map(|s| s.as_str()).unwrap_or("");
-        parts.push(format!(" {cell:<w$} "));
-    }
+fn detect_numeric_cols(_headers: &[String], rows: &[Vec<String>], ncols: usize) -> Vec<bool> {
+    (0..ncols)
+        .map(|i| {
+            let non_empty: Vec<&str> = rows
+                .iter()
+                .filter_map(|r| r.get(i).map(|s| s.trim()))
+                .filter(|s| !s.is_empty())
+                .collect();
+            if non_empty.is_empty() {
+                return false;
+            }
+            non_empty.iter().all(|s| s.parse::<f64>().is_ok())
+        })
+        .collect()
+}
+
+fn fmt_row(cells: &[String], widths: &[usize], numeric: &[bool]) -> String {
+    let parts: Vec<String> = widths
+        .iter()
+        .enumerate()
+        .map(|(i, w)| {
+            let cell = cells.get(i).map(|s| s.as_str()).unwrap_or("");
+            if numeric.get(i).copied().unwrap_or(false) {
+                format!(" {cell:>w$} ")
+            } else {
+                format!(" {cell:<w$} ")
+            }
+        })
+        .collect();
     format!("│{}│", parts.join("│"))
 }
