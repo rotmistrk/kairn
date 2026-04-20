@@ -40,6 +40,9 @@ thiserror = "2"
 # CLI argument parsing
 clap = { version = "4", features = ["derive"] }
 
+# CSV parsing
+csv = "1"
+
 # Terminal emulation
 vte = "0.13"
 portable-pty = "0.8"

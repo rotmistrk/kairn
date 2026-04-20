@@ -39,6 +39,7 @@ pub enum ViewMode {
     Diff,
     Log,
     Blame,
+    Table,
 }
 
 impl ViewMode {
@@ -47,7 +48,8 @@ impl ViewMode {
             Self::File => Self::Diff,
             Self::Diff => Self::Log,
             Self::Log => Self::Blame,
-            Self::Blame => Self::File,
+            Self::Blame => Self::Table,
+            Self::Table => Self::File,
         }
     }
 
@@ -57,6 +59,7 @@ impl ViewMode {
             Self::Diff => "Diff",
             Self::Log => "Log",
             Self::Blame => "Blame",
+            Self::Table => "Table",
         }
     }
 }

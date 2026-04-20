@@ -423,6 +423,17 @@ impl App {
         self.main_view.set_highlighted(styled);
     }
 
+    fn show_table(&mut self) {
+        let path = match &self.main_view.current_path {
+            Some(p) => p.clone(),
+            None => return,
+        };
+        let (styled, raw) = csv_to_table(&path);
+        let buf = crate::buffer::OutputBuffer::plain(format!("table: {path}"), raw);
+        self.main_view.set_buffer(buf);
+        self.main_view.set_highlighted(styled);
+    }
+
     fn handle_search_key(&mut self, key: KeyEvent) -> Result<()> {
         let action = match &mut self.search {
             Some(search) => search.handle_key(key),
@@ -544,6 +555,7 @@ impl App {
             ViewMode::Diff => self.diff_current_file(),
             ViewMode::Log => self.show_git_log(),
             ViewMode::Blame => self.show_blame(),
+            ViewMode::Table => self.show_table(),
         }
     }
 
@@ -920,4 +932,92 @@ fn build_full_help(cfg: &Config) -> String {
         h.push('\n');
     }
     h
+}
+
+fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+
+    let mut styled = Vec::new();
+    let mut raw = String::new();
+
+    let reader = csv::ReaderBuilder::new().flexible(true).from_path(path);
+    let mut reader = match reader {
+        Ok(r) => r,
+        Err(e) => {
+            let msg = format!("Cannot parse CSV: {e}");
+            return (vec![Line::from(msg.clone())], msg);
+        }
+    };
+
+    // Compute column widths
+    let headers: Vec<String> = reader
+        .headers()
+        .map(|h| h.iter().map(|s| s.to_string()).collect())
+        .unwrap_or_default();
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for record in reader.records().flatten() {
+        rows.push(record.iter().map(|s| s.to_string()).collect());
+    }
+
+    let ncols = headers
+        .len()
+        .max(rows.iter().map(|r| r.len()).max().unwrap_or(0));
+    let mut widths = vec![0usize; ncols];
+    for (i, h) in headers.iter().enumerate() {
+        widths[i] = widths[i].max(h.len());
+    }
+    for row in &rows {
+        for (i, cell) in row.iter().enumerate() {
+            if i < ncols {
+                widths[i] = widths[i].max(cell.len());
+            }
+        }
+    }
+
+    // Render header
+    let header_style = Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD);
+    let sep_style = Style::default().fg(Color::DarkGray);
+    let header_line = format_table_row(&headers, &widths);
+    raw.push_str(&header_line);
+    raw.push('\n');
+    styled.push(Line::from(Span::styled(header_line, header_style)));
+
+    // Separator
+    let sep: String = widths
+        .iter()
+        .map(|w| "─".repeat(w + 2))
+        .collect::<Vec<_>>()
+        .join("┼");
+    let sep_line = format!("─{sep}─");
+    raw.push_str(&sep_line);
+    raw.push('\n');
+    styled.push(Line::from(Span::styled(sep_line, sep_style)));
+
+    // Data rows
+    let row_style = Style::default().fg(Color::White);
+    for row in &rows {
+        let line = format_table_row(row, &widths);
+        raw.push_str(&line);
+        raw.push('\n');
+        styled.push(Line::from(Span::styled(line, row_style)));
+    }
+
+    if rows.is_empty() && headers.is_empty() {
+        styled.push(Line::from("(empty or not a CSV file)"));
+        raw.push_str("(empty or not a CSV file)\n");
+    }
+
+    (styled, raw)
+}
+
+fn format_table_row(cells: &[String], widths: &[usize]) -> String {
+    let mut parts = Vec::new();
+    for (i, w) in widths.iter().enumerate() {
+        let cell = cells.get(i).map(|s| s.as_str()).unwrap_or("");
+        parts.push(format!(" {cell:<w$} "));
+    }
+    format!("│{}│", parts.join("│"))
 }
