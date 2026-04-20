@@ -20,6 +20,7 @@ pub struct InteractivePanel {
     last_rows: u16,
     pub renaming: bool,
     pub rename_buf: String,
+    last_esc: bool,
 }
 
 impl InteractivePanel {
@@ -67,6 +68,22 @@ impl Panel for InteractivePanel {
             self.renaming = true;
             self.rename_buf = self.tabs.active_title().to_string();
             return Ok(PanelAction::None);
+        }
+
+        // Esc-Esc or Ctrl-] escapes to main panel
+        if key.code == KeyCode::Esc {
+            if self.last_esc {
+                self.last_esc = false;
+                return Ok(PanelAction::FocusLeft);
+            }
+            self.last_esc = true;
+            // Don't send Esc yet — wait to see if it's double-Esc
+            return Ok(PanelAction::None);
+        }
+        // If previous key was Esc but this one isn't, flush the buffered Esc
+        if self.last_esc {
+            self.last_esc = false;
+            self.tabs.write_to_active(&[0x1b]);
         }
 
         // Ctrl-] escapes to main panel
