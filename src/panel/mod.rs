@@ -42,6 +42,7 @@ pub enum PanelAction {
     SendToKiro(String),
     PreviewCommit(String),
     ExpandLine,
+    Yank(String),
     FocusRight,
     FocusLeft,
     PushOutput(crate::buffer::OutputBuffer),

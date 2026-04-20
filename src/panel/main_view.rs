@@ -166,6 +166,38 @@ impl MainViewPanel {
         self.cursor_mode = mode;
     }
 
+    fn get_selection_text(&self) -> Option<String> {
+        let content = self.buffer.as_ref()?.content.clone();
+        let lines: Vec<&str> = content.lines().collect();
+        match self.cursor_mode {
+            CursorMode::VisualLine => {
+                let (sr, er) = self.sel_rows();
+                Some(lines.get(sr..=er.min(lines.len() - 1))?.join("\n"))
+            }
+            CursorMode::VisualStream => {
+                let (sr, er) = self.sel_rows();
+                if sr == er {
+                    let (sc, ec) = self.sel_cols();
+                    Some(safe_slice(lines.get(sr)?, sc, ec).to_string())
+                } else {
+                    Some(lines.get(sr..=er.min(lines.len() - 1))?.join("\n"))
+                }
+            }
+            CursorMode::VisualBlock => {
+                let (sr, er) = self.sel_rows();
+                let (sc, ec) = self.sel_cols();
+                let out: Vec<&str> = lines
+                    .iter()
+                    .take(er.min(lines.len() - 1) + 1)
+                    .skip(sr)
+                    .map(|l| safe_slice(l, sc, ec))
+                    .collect();
+                Some(out.join("\n"))
+            }
+            _ => None,
+        }
+    }
+
     fn take_selection_text(&mut self) -> Option<String> {
         let content = self.buffer.as_ref()?.content.clone();
         let lines: Vec<&str> = content.lines().collect();
@@ -498,6 +530,11 @@ impl MainViewPanel {
             KeyCode::Enter => {
                 if let Some(text) = self.take_selection_text() {
                     return Ok(PanelAction::SendToKiro(text));
+                }
+            }
+            KeyCode::Char('y') => {
+                if let Some(text) = self.get_selection_text() {
+                    return Ok(PanelAction::Yank(text));
                 }
             }
             KeyCode::Esc => self.cursor_mode = CursorMode::Normal,

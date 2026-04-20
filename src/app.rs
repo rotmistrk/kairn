@@ -523,6 +523,9 @@ impl App {
             PanelAction::ExpandLine => {
                 self.expand_and_send_line();
             }
+            PanelAction::Yank(text) => {
+                osc52_copy(&text);
+            }
             PanelAction::FocusRight => {
                 self.focus = match self.focus {
                     FocusedPanel::Tree => FocusedPanel::Main,
@@ -835,6 +838,40 @@ fn blame_to_styled(
     }
 
     (styled, raw)
+}
+
+/// Copy text to system clipboard via OSC 52 escape sequence.
+/// Works through ssh + tmux + iTerm2 chain.
+fn osc52_copy(text: &str) {
+    use std::io::Write;
+    let encoded = base64_encode(text.as_bytes());
+    let seq = format!("\x1b]52;c;{encoded}\x07");
+    let _ = std::io::stdout().write_all(seq.as_bytes());
+    let _ = std::io::stdout().flush();
+}
+
+fn base64_encode(data: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        out.push(CHARS[((n >> 18) & 63) as usize] as char);
+        out.push(CHARS[((n >> 12) & 63) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(CHARS[((n >> 6) & 63) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(CHARS[(n & 63) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
 }
 
 fn file_mtime(path: &str) -> u64 {
