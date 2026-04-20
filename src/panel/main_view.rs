@@ -582,28 +582,50 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     };
     let inner_y = area.y + 1;
     let inner_x = area.x + 1 + gutter_w;
+    let inner_w = area.width.saturating_sub(2 + gutter_w) as usize;
     let inner_h = area.height.saturating_sub(2) as usize;
-    let qlen = panel.search_query.len();
+    let query_lower = panel.search_query.to_lowercase();
+    let qlen = query_lower.len();
     let buf = frame.buffer_mut();
 
-    for (i, &(row, col)) in panel.search_matches.iter().enumerate() {
-        if row < panel.scroll || row >= panel.scroll + inner_h {
-            continue;
+    let mut vis_match = 0usize;
+    for row in 0..inner_h {
+        let y = inner_y + row as u16;
+        if y >= area.bottom() {
+            break;
         }
-        let y = inner_y + (row - panel.scroll) as u16;
-        let bg = if i == panel.search_index {
-            Color::Yellow
-        } else {
-            Color::Indexed(58) // dark yellow
-        };
-        for c in 0..qlen {
-            let x = inner_x + (col + c) as u16;
-            if x < area.right().saturating_sub(1) && y < area.bottom() {
-                buf[(x, y)].set_bg(bg);
-                if i == panel.search_index {
-                    buf[(x, y)].set_fg(Color::Black);
+        // Read rendered characters from buffer cells
+        let line: String = (0..inner_w)
+            .map(|c| {
+                let x = inner_x + c as u16;
+                if x < area.right() {
+                    buf[(x, y)].symbol().chars().next().unwrap_or(' ')
+                } else {
+                    ' '
+                }
+            })
+            .collect();
+        let line_lower = line.to_lowercase();
+        let mut start = 0;
+        while let Some(pos) = line_lower[start..].find(&query_lower) {
+            let col = start + pos;
+            let is_current = vis_match == panel.search_index;
+            let bg = if is_current {
+                Color::Yellow
+            } else {
+                Color::Indexed(58)
+            };
+            for c in 0..qlen {
+                let x = inner_x + (col + c) as u16;
+                if x < area.right() {
+                    buf[(x, y)].set_bg(bg);
+                    if is_current {
+                        buf[(x, y)].set_fg(Color::Black);
+                    }
                 }
             }
+            vis_match += 1;
+            start = col + qlen;
         }
     }
 }
