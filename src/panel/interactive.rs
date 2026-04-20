@@ -69,6 +69,11 @@ impl Panel for InteractivePanel {
             return Ok(PanelAction::None);
         }
 
+        // Ctrl-] escapes to main panel
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char(']') {
+            return Ok(PanelAction::FocusLeft);
+        }
+
         // Scroll-back: PgUp/PgDn
         match key.code {
             KeyCode::PageUp => {
