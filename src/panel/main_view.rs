@@ -106,6 +106,10 @@ impl MainViewPanel {
         self.buffer = Some(buf);
         self.highlighted_lines.clear();
         self.scroll = 0;
+        self.search_active = false;
+        self.search_query.clear();
+        self.search_matches.clear();
+        self.search_index = 0;
     }
 
     pub fn set_highlighted(&mut self, lines: Vec<Line<'static>>) {

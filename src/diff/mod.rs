@@ -154,7 +154,7 @@ fn build_log_entry(
         }
     }
 
-    let hash_short = format!("{:.7}", commit.id);
+    let hash_short: String = format!("{}", commit.id).chars().take(7).collect();
     let author = decoded.author.name.to_string();
     let date = format_epoch(decoded.author.time.seconds, decoded.author.time.offset);
     let msg = decoded.message.to_str_lossy();
