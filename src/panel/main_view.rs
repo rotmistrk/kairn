@@ -323,7 +323,11 @@ impl Panel for MainViewPanel {
         frame.render_widget(ratatui::widgets::Clear, inner);
 
         // Gutter width: 4 chars if line numbers on, 0 otherwise
-        let gutter_w = if self.line_numbers && self.buffer.is_some() {
+        let is_file = self
+            .buffer
+            .as_ref()
+            .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
+        let gutter_w = if self.line_numbers && is_file {
             4u16
         } else {
             0
@@ -360,7 +364,7 @@ impl Panel for MainViewPanel {
         }
 
         // Line numbers gutter
-        if self.line_numbers && self.buffer.is_some() {
+        if self.line_numbers && is_file {
             render_line_numbers(frame, area, self.scroll, self.total_lines());
         }
     }
@@ -567,7 +571,11 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     if panel.search_query.is_empty() {
         return;
     }
-    let gutter_w = if panel.line_numbers && panel.buffer.is_some() {
+    let is_file = panel
+        .buffer
+        .as_ref()
+        .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
+    let gutter_w = if panel.line_numbers && is_file {
         4u16
     } else {
         0

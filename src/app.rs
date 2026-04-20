@@ -44,7 +44,6 @@ pub struct App {
     pub keymap: Keymap,
     pub search: Option<FileSearch>,
     pub overlay: Option<Overlay>,
-    last_esc: bool,
     /// Cache: path → (mtime_secs, content, highlighted lines)
     file_cache: std::collections::HashMap<String, (u64, String, Vec<ratatui::text::Line<'static>>)>,
 }
@@ -73,7 +72,6 @@ impl App {
             keymap,
             search: None,
             overlay: None,
-            last_esc: false,
             file_cache: std::collections::HashMap::new(),
         };
         app.main_view.line_numbers = app.config.line_numbers;
@@ -193,22 +191,6 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
-        // Double-Esc to quit (works even if Ctrl-Q is eaten by terminal)
-        if key.code == crossterm::event::KeyCode::Esc {
-            if self.overlay.is_some() || self.search.is_some() {
-                // First Esc closes overlay/search, reset
-                self.last_esc = false;
-            } else if self.last_esc {
-                self.should_quit = true;
-                return Ok(());
-            } else {
-                self.last_esc = true;
-                return Ok(());
-            }
-        } else {
-            self.last_esc = false;
-        }
-
         if self.overlay.is_some() {
             return self.handle_overlay_key(key);
         }
