@@ -133,9 +133,16 @@ impl MainViewPanel {
         if !self.highlighted_lines.is_empty() {
             self.highlighted_lines.len()
         } else {
-            self.buffer
-                .as_ref()
-                .map_or(1, |b| b.content.lines().count().max(1))
+            self.buffer.as_ref().map_or(1, |b| {
+                let content = &b.content;
+                if content.is_empty() {
+                    1
+                } else {
+                    // Count lines properly even without trailing newline
+                    content.lines().count() // handles missing trailing newline
+                }
+                .max(1)
+            })
         }
     }
 
@@ -290,8 +297,9 @@ impl MainViewPanel {
         }
     }
 
-    pub fn scroll_by(&mut self, delta: isize, viewport_h: usize) {
-        let max = self.total_lines().saturating_sub(viewport_h);
+    pub fn scroll_by(&mut self, delta: isize, _viewport_h: usize) {
+        // Allow scrolling so last line can be at top of viewport
+        let max = self.total_lines().saturating_sub(1);
         let new = (self.scroll as isize).saturating_add(delta);
         self.scroll = (new.max(0) as usize).min(max);
     }

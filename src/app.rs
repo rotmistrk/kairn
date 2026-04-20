@@ -590,8 +590,8 @@ impl App {
         let full =
             std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
         let total_lines = full.lines().count();
-        // Lazy: only highlight first 1000 lines initially
-        let limit = 1000;
+        // Lazy: only highlight first 5000 lines initially
+        let limit = 5000;
         let c = if total_lines > limit {
             let truncated: String = full.lines().take(limit).collect::<Vec<_>>().join("\n");
             format!(
