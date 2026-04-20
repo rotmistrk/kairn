@@ -40,6 +40,7 @@ pub enum Action {
     CycleModeNext,
     CycleModePrev,
     ToggleLeftPanel,
+    Redraw,
     /// Key not mapped at app level — forward to focused panel.
     Forward(KeyEvent),
 }
@@ -100,6 +101,7 @@ fn name_to_action(name: &str) -> Option<Action> {
         "cycle_mode_next" => Action::CycleModeNext,
         "cycle_mode_prev" => Action::CycleModePrev,
         "toggle_left_panel" => Action::ToggleLeftPanel,
+        "redraw" => Action::Redraw,
         "new_kiro_tab" => Action::NewKiroTab,
         "new_shell_tab" => Action::NewShellTab,
         "close_tab" => Action::CloseTab,

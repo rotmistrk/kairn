@@ -127,6 +127,11 @@ fn run_loop(
             terminal.clear()?;
             continue;
         }
+        if app.pending_redraw {
+            app.pending_redraw = false;
+            terminal.clear()?;
+            continue;
+        }
 
         if event::poll(std::time::Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {

@@ -39,6 +39,7 @@ pub struct App {
     pub pending_editor: Option<String>,
     pub pending_shell: bool,
     pub pending_peek: bool,
+    pub pending_redraw: bool,
     pub highlighter: Highlighter,
     pub config: Config,
     pub keymap: Keymap,
@@ -67,6 +68,7 @@ impl App {
             pending_editor: None,
             pending_shell: false,
             pending_peek: false,
+            pending_redraw: false,
             highlighter: Highlighter::new(),
             config,
             keymap,
@@ -230,6 +232,9 @@ impl App {
                     LeftPanelMode::FileTree => LeftPanelMode::CommitTree,
                     LeftPanelMode::CommitTree => LeftPanelMode::FileTree,
                 };
+            }
+            Action::Redraw => {
+                self.pending_redraw = true;
             }
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);

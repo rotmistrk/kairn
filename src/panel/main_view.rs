@@ -653,6 +653,9 @@ fn render_search_bar(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     let w = area.width.saturating_sub(2);
     let bar_area = Rect::new(area.x + 1, y, w, 1);
 
+    // Clear the bar area first to avoid inherited colors
+    frame.render_widget(ratatui::widgets::Clear, bar_area);
+
     let match_info = if panel.search_matches.is_empty() {
         "no matches".to_string()
     } else {
