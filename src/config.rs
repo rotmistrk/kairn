@@ -124,16 +124,27 @@ impl Config {
     /// Load config: merge $PWD/.kairnrc over $HOME/.kairnrc over defaults.
     /// Auto-creates $HOME/.kairnrc from defaults if absent.
     pub fn load(workspace: &Path) -> Self {
+        Self::load_with_override(workspace, None)
+    }
+
+    pub fn load_with_override(workspace: &Path, explicit: Option<&Path>) -> Self {
         ensure_global_rc();
         let mut cfg = Self::default();
-        // Apply global overrides
         if let Some(global) = load_rc_file(&global_rc_path()) {
             merge_into(&mut cfg, global, KeySource::Global);
         }
-        // Apply local overrides
         let local_path = workspace.join(".kairnrc");
         if let Some(local) = load_rc_file(&local_path) {
             merge_into(&mut cfg, local, KeySource::Project);
+        }
+        // Explicit -C/--config overrides everything
+        if let Some(path) = explicit {
+            if let Some(over) = load_rc_file(path) {
+                merge_into(&mut cfg, over, KeySource::Project);
+            } else {
+                eprintln!("kairn: cannot load config: {}", path.display());
+                std::process::exit(78); // EX_CONFIG
+            }
         }
         cfg
     }

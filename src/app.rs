@@ -50,9 +50,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(workspace_root: String) -> Self {
+    pub fn new(workspace_root: String, config_override: Option<&std::path::Path>) -> Self {
         let ws = PathBuf::from(&workspace_root);
-        let config = Config::load(&ws);
+        let config = Config::load_with_override(&ws, config_override);
         let keymap = Keymap::from_config(&config);
         let mut app = Self {
             workspace_root: ws.clone(),

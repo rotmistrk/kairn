@@ -6,6 +6,7 @@
 mod app;
 mod buffer;
 mod capture;
+mod cli;
 mod config;
 mod diff;
 mod editor;
@@ -44,7 +45,11 @@ use panel::Panel;
 use search::FileSearch;
 
 fn main() -> Result<()> {
-    // Nesting guard: prevent running kairn inside kairn
+    // Parse CLI args (handles -h/--help, -V/--version, exits on error)
+    let cli = cli::Cli::parse_args();
+    let project_path = cli.resolve_path();
+
+    // Nesting guard
     if std::env::var("KAIRN_PID").is_ok() {
         eprintln!("kairn: already running (KAIRN_PID is set). Use the existing instance.");
         std::process::exit(1);
@@ -53,10 +58,7 @@ fn main() -> Result<()> {
 
     install_panic_handler();
 
-    let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
-
-    // Create capture pipe before entering TUI
-    let capture = capture::CapturePipe::create(&cwd).ok();
+    let capture = capture::CapturePipe::create(&project_path).ok();
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -65,7 +67,10 @@ fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let mut app = App::new(cwd.to_string_lossy().to_string());
+    let mut app = App::new(
+        project_path.to_string_lossy().to_string(),
+        cli.config.as_deref(),
+    );
 
     // Init panel sizes from actual terminal dimensions
     let ts = terminal.size()?;
