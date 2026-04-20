@@ -508,6 +508,20 @@ impl App {
             PanelAction::ExpandLine => {
                 self.expand_and_send_line();
             }
+            PanelAction::FocusRight => {
+                self.focus = match self.focus {
+                    FocusedPanel::Tree => FocusedPanel::Main,
+                    FocusedPanel::Main => FocusedPanel::Interactive,
+                    FocusedPanel::Interactive => FocusedPanel::Interactive,
+                };
+            }
+            PanelAction::FocusLeft => {
+                self.focus = match self.focus {
+                    FocusedPanel::Tree => FocusedPanel::Tree,
+                    FocusedPanel::Main => FocusedPanel::Tree,
+                    FocusedPanel::Interactive => FocusedPanel::Main,
+                };
+            }
             PanelAction::PushOutput(buf) => {
                 self.main_view.set_buffer(buf);
             }

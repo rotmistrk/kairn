@@ -314,10 +314,16 @@ impl Panel for MainViewPanel {
             None => " Main ".to_string(),
         };
         let line_info = format!(" L{}/{} ", self.scroll + 1, self.total_lines());
+        let border_type = if self.cursor_mode != CursorMode::Off {
+            ratatui::widgets::BorderType::Double
+        } else {
+            ratatui::widgets::BorderType::Plain
+        };
         let block = Block::default()
             .title(title)
             .title_bottom(Line::from(line_info).right_aligned())
             .borders(Borders::ALL)
+            .border_type(border_type)
             .border_style(Style::default().fg(border_color));
 
         let inner = block.inner(area);
@@ -461,6 +467,8 @@ impl MainViewPanel {
 
     fn handle_nav_key(&mut self, code: KeyCode) -> Result<PanelAction> {
         match code {
+            KeyCode::Left => return Ok(PanelAction::FocusLeft),
+            KeyCode::Right => return Ok(PanelAction::FocusRight),
             KeyCode::Up => self.scroll_by(-1, 20),
             KeyCode::Down => self.scroll_by(1, 20),
             KeyCode::PageUp => self.scroll_by(-20, 20),

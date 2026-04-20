@@ -182,8 +182,19 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
                 panel.cursor += 1;
             }
         }
-        KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => {
+        KeyCode::Enter | KeyCode::Char('l') => {
             return handle_enter_or_expand(panel);
+        }
+        KeyCode::Right => {
+            // Right on file → focus main panel; on dir → expand
+            let flat = panel.filtered_flat();
+            if let Some(entry) = flat.get(panel.cursor) {
+                if entry.node.is_dir() {
+                    return handle_enter_or_expand(panel);
+                } else {
+                    return Ok(PanelAction::FocusRight);
+                }
+            }
         }
         KeyCode::Left | KeyCode::Char('h') => {
             collapse_current(panel);
