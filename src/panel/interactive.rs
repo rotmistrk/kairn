@@ -86,8 +86,11 @@ impl Panel for InteractivePanel {
             self.tabs.write_to_active(&[0x1b]);
         }
 
-        // Ctrl-] escapes to main panel
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char(']') {
+        // Ctrl-] escapes to main panel (0x1d = GS)
+        let is_ctrl_bracket = (key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char(']'))
+            || key.code == KeyCode::Char('\x1d');
+        if is_ctrl_bracket {
             return Ok(PanelAction::FocusLeft);
         }
 
