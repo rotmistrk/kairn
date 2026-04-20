@@ -598,15 +598,22 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     let inner_h = area.height.saturating_sub(2) as usize;
     let query_lower = panel.search_query.to_lowercase();
     let qlen = query_lower.len();
-    let buf = frame.buffer_mut();
 
-    let mut vis_match = 0usize;
+    // Current match row (from raw text search) for "active" highlight
+    let current_row = panel
+        .search_matches
+        .get(panel.search_index)
+        .map(|&(r, _)| r);
+
+    let buf = frame.buffer_mut();
     for row in 0..inner_h {
         let y = inner_y + row as u16;
         if y >= area.bottom() {
             break;
         }
-        // Read rendered characters from buffer cells
+        let screen_row = panel.scroll + row;
+        let is_current_row = current_row == Some(screen_row);
+
         let line: String = (0..inner_w)
             .map(|c| {
                 let x = inner_x + c as u16;
@@ -617,12 +624,12 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
                 }
             })
             .collect();
+
         let line_lower = line.to_lowercase();
         let mut start = 0;
         while let Some(pos) = line_lower[start..].find(&query_lower) {
             let col = start + pos;
-            let is_current = vis_match == panel.search_index;
-            let bg = if is_current {
+            let bg = if is_current_row {
                 Color::Yellow
             } else {
                 Color::Indexed(58)
@@ -631,12 +638,11 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
                 let x = inner_x + (col + c) as u16;
                 if x < area.right() {
                     buf[(x, y)].set_bg(bg);
-                    if is_current {
+                    if is_current_row {
                         buf[(x, y)].set_fg(Color::Black);
                     }
                 }
             }
-            vis_match += 1;
             start = col + qlen;
         }
     }
