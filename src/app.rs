@@ -77,6 +77,7 @@ impl App {
             file_cache: std::collections::HashMap::new(),
         };
         app.main_view.line_numbers = app.config.line_numbers;
+        app.main_view.tab_width = app.config.tab_width;
         // Try auto-restore, otherwise show welcome
         if !app.try_auto_restore() {
             app.show_welcome();
@@ -590,8 +591,11 @@ impl App {
         path: &str,
         mtime: u64,
     ) -> (String, Vec<ratatui::text::Line<'static>>) {
-        let full =
+        let raw =
             std::fs::read_to_string(path).unwrap_or_else(|e| format!("Error reading {path}: {e}"));
+        // Expand tabs to spaces
+        let tab_str = " ".repeat(self.main_view.tab_width.max(1));
+        let full = raw.replace('\t', &tab_str);
         let total_lines = full.lines().count();
         // Lazy: only highlight first 5000 lines initially
         let limit = 5000;
@@ -645,7 +649,12 @@ impl App {
                 let spans: Vec<ratatui::text::Span<'static>> = line
                     .spans
                     .into_iter()
-                    .map(|s| ratatui::text::Span::styled(s.content.to_string(), s.style))
+                    .map(|s| {
+                        ratatui::text::Span::styled(
+                            s.content.trim_end_matches(&['\n', '\r'][..]).to_string(),
+                            s.style,
+                        )
+                    })
                     .collect();
                 ratatui::text::Line::from(spans)
             })

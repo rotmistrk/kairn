@@ -36,6 +36,8 @@ pub struct Config {
     pub kiro_command: String,
     #[serde(default = "default_true")]
     pub line_numbers: bool,
+    #[serde(default = "default_tab_width")]
+    pub tab_width: usize,
     #[serde(default)]
     pub keys: HashMap<String, KeyCombo>,
     /// Source of each keybinding (not serialized).
@@ -48,6 +50,9 @@ fn default_kiro_command() -> String {
 }
 fn default_true() -> bool {
     true
+}
+fn default_tab_width() -> usize {
+    4
 }
 
 impl Config {
@@ -67,6 +72,7 @@ impl Default for Config {
         Self {
             kiro_command: default_kiro_command(),
             line_numbers: true,
+            tab_width: 4,
             keys,
             key_sources,
         }

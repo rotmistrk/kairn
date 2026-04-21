@@ -101,6 +101,7 @@ pub struct MainViewPanel {
     pub search_index: usize,
     /// Last known viewport height (set during render).
     pub viewport_h: usize,
+    pub tab_width: usize,
 }
 
 impl MainViewPanel {
