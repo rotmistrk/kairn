@@ -81,7 +81,15 @@ impl Default for Config {
 
 /// Built-in default keybindings.
 pub fn default_keys() -> HashMap<String, KeyCombo> {
-    let pairs = [
+    let pairs: Vec<(&str, &str)> = [default_nav_keys(), default_action_keys()].concat();
+    pairs
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), KeyCombo(v.to_string())))
+        .collect()
+}
+
+fn default_nav_keys() -> Vec<(&'static str, &'static str)> {
+    vec![
         ("quit", "ctrl+q"),
         ("rotate_layout", "ctrl+l"),
         ("toggle_tree", "ctrl+b"),
@@ -98,6 +106,11 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("show_help", "f1"),
         ("save_session", "ctrl+shift+s"),
         ("load_session", "ctrl+shift+o"),
+    ]
+}
+
+fn default_action_keys() -> Vec<(&'static str, &'static str)> {
+    vec![
         ("new_kiro_tab", "ctrl+shift+k"),
         ("new_shell_tab", "ctrl+shift+n"),
         ("close_tab", "ctrl+w"),
@@ -119,11 +132,7 @@ pub fn default_keys() -> HashMap<String, KeyCombo> {
         ("cycle_mode_prev", "ctrl+shift+up"),
         ("toggle_left_panel", "f6"),
         ("redraw", "f12"),
-    ];
-    pairs
-        .into_iter()
-        .map(|(k, v)| (k.to_string(), KeyCombo(v.to_string())))
-        .collect()
+    ]
 }
 
 impl Config {

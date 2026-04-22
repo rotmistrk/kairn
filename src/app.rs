@@ -234,43 +234,27 @@ impl App {
     fn dispatch_action(&mut self, action: Action) -> Result<()> {
         match action {
             Action::Quit => self.should_quit = true,
-            Action::RotateLayout => {
-                self.layout_mode = self.layout_mode.next();
-            }
+            Action::RotateLayout => self.layout_mode = self.layout_mode.next(),
             Action::ToggleTree => self.panel_sizes.toggle_tree(),
             Action::CycleFocus => self.focus = self.focus.next(),
             Action::FocusTree => self.focus = FocusedPanel::Tree,
             Action::FocusMain => self.focus = FocusedPanel::Main,
             Action::FocusTerminal => self.focus = FocusedPanel::Interactive,
             Action::ResizeTree(d) => self.panel_sizes.resize_tree(d),
-            Action::ResizeInteractive(d) => {
-                self.panel_sizes.resize_interactive(d);
+            Action::ResizeInteractive(d) => self.panel_sizes.resize_interactive(d),
+            Action::PeekScreen => self.pending_peek = true,
+            Action::Redraw => self.pending_redraw = true,
+            Action::SuspendToShell => self.pending_shell = true,
+            Action::LaunchEditor => {
+                self.pending_editor = self.main_view.current_file_path().map(String::from);
             }
-            Action::TogglePinOutput => {}
-            Action::PeekScreen => {
-                self.pending_peek = true;
-            }
+            Action::ToggleLeftPanel => self.toggle_left(),
             Action::ScrollUp => self.scroll_focused(-20),
             Action::ScrollDown => self.scroll_focused(20),
             Action::ScrollTop => self.scroll_focused(-100_000),
             Action::ScrollBottom => self.scroll_focused(100_000),
             Action::CycleModeNext => self.cycle_mode(true),
             Action::CycleModePrev => self.cycle_mode(false),
-            Action::ToggleLeftPanel => {
-                self.left_mode = match self.left_mode {
-                    LeftPanelMode::FileTree => LeftPanelMode::CommitTree,
-                    LeftPanelMode::CommitTree => LeftPanelMode::FileTree,
-                };
-            }
-            Action::Redraw => {
-                self.pending_redraw = true;
-            }
-            Action::LaunchEditor => {
-                self.pending_editor = self.main_view.current_file_path().map(String::from);
-            }
-            Action::SuspendToShell => {
-                self.pending_shell = true;
-            }
             Action::OpenSearch => self.open_search(),
             Action::DiffCurrentFile => self.diff_current_file(),
             Action::GitLog => self.show_git_log(),
@@ -281,6 +265,13 @@ impl App {
             action => self.handle_tab_action(action),
         }
         Ok(())
+    }
+
+    fn toggle_left(&mut self) {
+        self.left_mode = match self.left_mode {
+            LeftPanelMode::FileTree => LeftPanelMode::CommitTree,
+            LeftPanelMode::CommitTree => LeftPanelMode::FileTree,
+        };
     }
 
     fn open_save_prompt(&mut self) {
@@ -925,17 +916,33 @@ fn file_mtime(path: &str) -> u64 {
 }
 
 fn build_full_help(cfg: &Config) -> String {
-    let kb = |name: &str| {
-        let key = cfg.display_key(name);
-        let src = cfg.key_source(name).label();
-        format!("`{key}` — {name} *({src})*")
-    };
     let mut h = String::new();
+    help_header(&mut h);
+    help_navigation(&mut h, cfg);
+    help_panels(&mut h, cfg);
+    help_operations(&mut h, cfg);
+    help_config(&mut h, cfg);
+    h
+}
 
+fn help_kb(cfg: &Config, name: &str) -> String {
+    let key = cfg.display_key(name);
+    let src = cfg.key_source(name).label();
+    format!("`{key}` — {name} *({src})*")
+}
+
+fn help_header(h: &mut String) {
     h.push_str("# kairn v0.1.0\n\n");
-    h.push_str("```\n  ╦╔═╔═╗╦╦═╗╔╗╔\n  ╠╩╗╠═╣║╠╦╝║║║\n  ╩ ╩╩ ╩╩╩╚═╝╚╝\n```\n\n");
-    h.push_str("A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n");
+    h.push_str("```\n  ╦╔═╔═╗╦╦═╗╔╗╔\n");
+    h.push_str("  ╠╩╗╠═╣║╠╦╝║║║\n");
+    h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝\n```\n\n");
+    h.push_str(
+        "A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n",
+    );
+}
 
+fn help_navigation(h: &mut String, cfg: &Config) {
+    let kb = |n| help_kb(cfg, n);
     h.push_str("## Navigation\n\n");
     h.push_str("Three panels: **Tree ←→ Main ←→ Terminal**\n\n");
     h.push_str("**Spatial (arrow keys):**\n");
@@ -944,33 +951,33 @@ fn build_full_help(cfg: &Config) -> String {
     h.push_str("- Main (cursor mode): arrows move cursor within panel\n");
     h.push_str("- Terminal: `Esc Esc` or `Ctrl-]` → Main\n\n");
     h.push_str("**Direct focus:**\n");
-    h.push_str(&format!("- {}\n", kb("focus_tree")));
-    h.push_str(&format!("- {}\n", kb("focus_main")));
-    h.push_str(&format!("- {}\n", kb("focus_terminal")));
-    h.push_str(&format!("- {}\n", kb("cycle_focus")));
+    for name in ["focus_tree", "focus_main", "focus_terminal", "cycle_focus"] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
     h.push('\n');
-
     h.push_str("**Layout:**\n");
     h.push_str(&format!("- {}\n", kb("rotate_layout")));
     h.push_str(&format!("- {}\n", kb("toggle_tree")));
-    h.push_str(&format!(
-        "- {} — toggle Files / Commits\n",
-        kb("toggle_left_panel")
-    ));
+    h.push_str(&format!("- {} — toggle Files / Commits\n", kb("toggle_left_panel")));
     h.push('\n');
-
     h.push_str("**Mode cycling** (`Ctrl-Shift-↑/↓` — context-aware):\n");
     h.push_str("- Tree focused: filter **All → Modified → Untracked**\n");
     h.push_str("- Main focused: view **File → Diff → Log → Blame**\n");
     h.push_str("- Terminal focused: switch tabs\n\n");
-
     h.push_str("**Resize:**\n");
-    h.push_str(&format!("- {}\n", kb("resize_tree_shrink")));
-    h.push_str(&format!("- {}\n", kb("resize_tree_grow")));
-    h.push_str(&format!("- {}\n", kb("resize_interactive_shrink")));
-    h.push_str(&format!("- {}\n", kb("resize_interactive_grow")));
+    for name in [
+        "resize_tree_shrink",
+        "resize_tree_grow",
+        "resize_interactive_shrink",
+        "resize_interactive_grow",
+    ] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
     h.push_str("- Shift variants resize by 5\n\n");
+}
 
+fn help_panels(h: &mut String, cfg: &Config) {
+    let kb = |n| help_kb(cfg, n);
     h.push_str("## Main Panel\n\n");
     h.push_str("**Scroll mode** (default):\n");
     h.push_str("- `↑`/`↓`/`PgUp`/`PgDn` — scroll\n");
@@ -982,39 +989,34 @@ fn build_full_help(cfg: &Config) -> String {
     h.push_str("- `v` stream / `V` line / `Ctrl-V` block select\n");
     h.push_str("- `Enter` — send selection to active terminal tab\n");
     h.push_str("- `Esc` — clear selection | `Space` — exit cursor mode\n\n");
-
     h.push_str("## File Tree\n\n");
     h.push_str("- `j`/`k` `↑`/`↓` — navigate (auto-preview in main)\n");
     h.push_str("- `Enter`/`l` — open file / expand dir\n");
     h.push_str("- `→` on file — focus main panel\n");
     h.push_str("- `h`/`←` — collapse dir\n");
     h.push_str("- Git: **yellow**=modified **green**=added **red**=deleted\n\n");
-
     h.push_str("## Terminal Tabs\n\n");
-    h.push_str(&format!("- {}\n", kb("new_kiro_tab")));
-    h.push_str(&format!("- {}\n", kb("new_shell_tab")));
-    h.push_str(&format!("- {}\n", kb("close_tab")));
+    for name in ["new_kiro_tab", "new_shell_tab", "close_tab"] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
     h.push_str("- `PgUp`/`PgDn` — scroll back\n");
     h.push_str("- `Ctrl-R` — rename tab\n");
     h.push_str("- `Ctrl-Enter` — expand @macros and send\n");
     h.push_str("- `Esc Esc` or `Ctrl-]` — escape to main panel\n\n");
+}
 
+fn help_operations(h: &mut String, cfg: &Config) {
+    let kb = |n| help_kb(cfg, n);
     h.push_str("## File & Git Operations\n\n");
-    h.push_str(&format!("- {}\n", kb("open_search")));
-    h.push_str(&format!("- {}\n", kb("launch_editor")));
-    h.push_str(&format!("- {}\n", kb("diff_current_file")));
-    h.push_str(&format!("- {}\n", kb("git_log")));
-    h.push_str(&format!("- {}\n", kb("show_help")));
+    for name in ["open_search", "launch_editor", "diff_current_file", "git_log", "show_help"] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
     h.push('\n');
-
     h.push_str("## Session & System\n\n");
-    h.push_str(&format!("- {}\n", kb("save_session")));
-    h.push_str(&format!("- {}\n", kb("load_session")));
-    h.push_str(&format!("- {}\n", kb("suspend_to_shell")));
-    h.push_str(&format!("- {}\n", kb("peek_screen")));
-    h.push_str(&format!("- {}\n", kb("quit")));
+    for name in ["save_session", "load_session", "suspend_to_shell", "peek_screen", "quit"] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
     h.push('\n');
-
     h.push_str("## Template Variables\n\n");
     h.push_str("Expand with `Ctrl-Enter` in terminal, or `Enter` from selection:\n\n");
     h.push_str("| Variable | Expands to |\n");
@@ -1023,23 +1025,21 @@ fn build_full_help(cfg: &Config) -> String {
     h.push_str("| `@name` | Current file name |\n");
     h.push_str("| `@dir`  | Workspace root |\n");
     h.push_str("| `@line` | Cursor line number |\n\n");
+}
 
+fn help_config(h: &mut String, cfg: &Config) {
     h.push_str("## Configuration\n\n");
-    h.push_str(&format!(
-        "- **Global:** `{}`\n",
-        Config::global_rc().display()
-    ));
+    h.push_str(&format!("- **Global:** `{}`\n", Config::global_rc().display()));
     h.push_str("- **Project:** `$PWD/.kairnrc` (overrides global)\n");
     h.push_str("- **State:** `$PWD/.kairn.state` (auto-saved on quit)\n\n");
     h.push_str("```json\n");
-    h.push_str("{\n  \"kiro_command\": \"kiro-cli\",\n  \"line_numbers\": true,\n");
+    h.push_str("{\n  \"kiro_command\": \"kiro-cli\",\n");
+    h.push_str("  \"line_numbers\": true,\n");
     h.push_str("  \"keys\": { \"quit\": \"ctrl+q\" }\n}\n```\n\n");
-
     h.push_str("## Environment Variables\n\n");
     h.push_str("- `KAIRN_PID` — prevents nested instances\n");
     h.push_str("- `KAIRN_CAPTURE` — pipe: `cmd > $KAIRN_CAPTURE` → main panel\n");
     h.push_str("- `SHELL` — shell tabs | `EDITOR` — Ctrl-E\n\n");
-
     let conflicts = cfg.detect_collisions();
     if !conflicts.is_empty() {
         h.push_str("## ⚠ Key Conflicts\n\n");
@@ -1048,12 +1048,10 @@ fn build_full_help(cfg: &Config) -> String {
         }
         h.push('\n');
     }
-    h
 }
 
 fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
-    use ratatui::style::{Color, Modifier, Style};
-    use ratatui::text::{Line, Span};
+    use ratatui::text::Line;
 
     let reader = csv::ReaderBuilder::new().flexible(true).from_path(path);
     let mut reader = match reader {
@@ -1076,50 +1074,57 @@ fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
     let ncols = headers
         .len()
         .max(rows.iter().map(|r| r.len()).max().unwrap_or(0));
-    let mut widths = vec![0usize; ncols];
+    let widths = compute_col_widths(&headers, &rows, ncols);
     let numeric = detect_numeric_cols(&headers, &rows, ncols);
+    render_csv_table(&headers, &rows, &widths, &numeric)
+}
 
+fn compute_col_widths(
+    headers: &[String],
+    rows: &[Vec<String>],
+    ncols: usize,
+) -> Vec<usize> {
+    let mut widths = vec![0usize; ncols];
     for (i, h) in headers.iter().enumerate() {
         widths[i] = widths[i].max(h.len());
     }
-    for row in &rows {
+    for row in rows {
         for (i, cell) in row.iter().enumerate() {
             if i < ncols {
                 widths[i] = widths[i].max(cell.len());
             }
         }
     }
+    widths
+}
+
+fn render_csv_table(
+    headers: &[String],
+    rows: &[Vec<String>],
+    widths: &[usize],
+    numeric: &[bool],
+) -> (Vec<ratatui::text::Line<'static>>, String) {
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
 
     let mut styled = Vec::new();
     let mut raw = String::new();
-    let hdr_style = Style::default()
-        .fg(Color::Cyan)
-        .add_modifier(Modifier::BOLD);
-    let sep_style = Style::default().fg(Color::DarkGray);
-    let row_style = Style::default().fg(Color::White);
+    let hdr = Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD);
+    let sep = Style::default().fg(Color::DarkGray);
+    let row_s = Style::default().fg(Color::White);
 
-    let hl = fmt_row(&headers, &widths, &numeric);
-    raw.push_str(&hl);
-    raw.push('\n');
-    styled.push(Line::from(Span::styled(hl, hdr_style)));
-
-    let sep: String = widths
-        .iter()
-        .map(|w| "─".repeat(w + 2))
-        .collect::<Vec<_>>()
-        .join("┼");
-    let sl = format!("─{sep}─");
-    raw.push_str(&sl);
-    raw.push('\n');
-    styled.push(Line::from(Span::styled(sl, sep_style)));
-
-    for row in &rows {
-        let rl = fmt_row(row, &widths, &numeric);
-        raw.push_str(&rl);
+    let mut push = |text: String, style: Style| {
+        raw.push_str(&text);
         raw.push('\n');
-        styled.push(Line::from(Span::styled(rl, row_style)));
-    }
+        styled.push(Line::from(Span::styled(text, style)));
+    };
 
+    push(fmt_row(headers, widths, numeric), hdr);
+    let divider: String = widths.iter().map(|w| "─".repeat(w + 2)).collect::<Vec<_>>().join("┼");
+    push(format!("─{divider}─"), sep);
+    for row in rows {
+        push(fmt_row(row, widths, numeric), row_s);
+    }
     if rows.is_empty() && headers.is_empty() {
         styled.push(Line::from("(empty or not a CSV file)"));
     }

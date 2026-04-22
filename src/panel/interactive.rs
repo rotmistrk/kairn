@@ -58,67 +58,74 @@ impl Panel for InteractivePanel {
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Result<PanelAction> {
-        // Rename mode
         if self.renaming {
             return Ok(self.handle_rename_key(key.code));
         }
-
-        // Ctrl-R starts rename
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('r') {
+        if key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char('r')
+        {
             self.renaming = true;
             self.rename_buf = self.tabs.active_title().to_string();
             return Ok(PanelAction::None);
         }
+        if let Some(action) = self.handle_escape(key) {
+            return Ok(action);
+        }
+        if let Some(action) = self.handle_scroll(key) {
+            return Ok(action);
+        }
+        self.forward_to_pty(key)
+    }
+}
 
-        // Esc-Esc or Ctrl-] escapes to main panel
+impl InteractivePanel {
+    fn handle_escape(&mut self, key: KeyEvent) -> Option<PanelAction> {
         if key.code == KeyCode::Esc {
             if self.last_esc {
                 self.last_esc = false;
-                return Ok(PanelAction::FocusLeft);
+                return Some(PanelAction::FocusLeft);
             }
             self.last_esc = true;
-            // Don't send Esc yet — wait to see if it's double-Esc
-            return Ok(PanelAction::None);
+            return Some(PanelAction::None);
         }
-        // If previous key was Esc but this one isn't, flush the buffered Esc
         if self.last_esc {
             self.last_esc = false;
             self.tabs.write_to_active(&[0x1b]);
         }
-
-        // Ctrl-] escapes to main panel (0x1d = GS)
         let is_ctrl_bracket = (key.modifiers.contains(KeyModifiers::CONTROL)
             && key.code == KeyCode::Char(']'))
             || key.code == KeyCode::Char('\x1d');
         if is_ctrl_bracket {
-            return Ok(PanelAction::FocusLeft);
+            return Some(PanelAction::FocusLeft);
         }
+        None
+    }
 
-        // Scroll-back: PgUp/PgDn
+    fn handle_scroll(&mut self, key: KeyEvent) -> Option<PanelAction> {
         match key.code {
             KeyCode::PageUp => {
                 if let Some(tb) = self.tabs.active_termbuf_mut() {
                     tb.scroll_up(tb.rows() / 2);
                 }
-                return Ok(PanelAction::None);
+                Some(PanelAction::None)
             }
             KeyCode::PageDown => {
                 if let Some(tb) = self.tabs.active_termbuf_mut() {
                     tb.scroll_down(tb.rows() / 2);
                 }
-                return Ok(PanelAction::None);
+                Some(PanelAction::None)
             }
-            _ => {}
+            _ => None,
         }
+    }
 
+    fn forward_to_pty(&mut self, key: KeyEvent) -> Result<PanelAction> {
         let bytes = key_to_bytes(key);
         if !bytes.is_empty() {
-            // Ctrl-Enter: read current line, expand macros, send
             let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
             if ctrl && key.code == KeyCode::Enter {
                 return Ok(PanelAction::ExpandLine);
             }
-            // Snap to bottom on any input
             if let Some(tb) = self.tabs.active_termbuf_mut() {
                 tb.scroll_to_bottom();
             }

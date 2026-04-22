@@ -111,6 +111,10 @@ impl Keymap {
 }
 
 fn name_to_action(name: &str) -> Option<Action> {
+    name_to_global_action(name).or_else(|| name_to_tab_action(name))
+}
+
+fn name_to_global_action(name: &str) -> Option<Action> {
     Some(match name {
         "quit" => Action::Quit,
         "rotate_layout" => Action::RotateLayout,
@@ -119,7 +123,6 @@ fn name_to_action(name: &str) -> Option<Action> {
         "focus_tree" => Action::FocusTree,
         "focus_main" => Action::FocusMain,
         "focus_terminal" => Action::FocusTerminal,
-        "toggle_pin_output" => return None,
         "peek_screen" => Action::PeekScreen,
         "launch_editor" => Action::LaunchEditor,
         "suspend_to_shell" => Action::SuspendToShell,
@@ -137,6 +140,12 @@ fn name_to_action(name: &str) -> Option<Action> {
         "cycle_mode_prev" => Action::CycleModePrev,
         "toggle_left_panel" => Action::ToggleLeftPanel,
         "redraw" => Action::Redraw,
+        _ => return None,
+    })
+}
+
+fn name_to_tab_action(name: &str) -> Option<Action> {
+    Some(match name {
         "new_kiro_tab" => Action::NewKiroTab,
         "new_shell_tab" => Action::NewShellTab,
         "close_tab" => Action::CloseTab,

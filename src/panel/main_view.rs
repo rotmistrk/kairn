@@ -349,52 +349,11 @@ impl MainViewPanel {
 
 impl Panel for MainViewPanel {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool) {
-        let border_color = if focused {
-            Color::Cyan
-        } else {
-            Color::DarkGray
-        };
-
-        let cursor_label = match self.cursor_mode {
-            CursorMode::Off => "",
-            CursorMode::Normal => " ●",
-            CursorMode::VisualStream => " v",
-            CursorMode::VisualLine => " V",
-            CursorMode::VisualBlock => " ^V",
-        };
-        let title = match &self.buffer {
-            Some(buf) => format!(" {} [{}]{cursor_label} ", buf.title, self.mode.label()),
-            None => " Main ".to_string(),
-        };
-        let line_info = format!(" L{}/{} ", self.scroll + 1, self.total_lines());
-        let border_type = if self.cursor_mode != CursorMode::Off {
-            ratatui::widgets::BorderType::Double
-        } else {
-            ratatui::widgets::BorderType::Plain
-        };
-        let block = Block::default()
-            .title(title)
-            .title_bottom(Line::from(line_info).right_aligned())
-            .borders(Borders::ALL)
-            .border_type(border_type)
-            .border_style(Style::default().fg(border_color));
-
+        let (block, gutter_w) = self.build_block(focused);
         let inner = block.inner(area);
         frame.render_widget(block, area);
-
-        // Clear inner area to prevent artifacts
         frame.render_widget(ratatui::widgets::Clear, inner);
 
-        // Gutter width: 4 chars if line numbers on, 0 otherwise
-        let is_file = self
-            .buffer
-            .as_ref()
-            .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
-        let gutter_w = if self.line_numbers && is_file {
-            4u16
-        } else {
-            0
-        };
         let content_area = Rect::new(
             inner.x + gutter_w,
             inner.y,
@@ -402,52 +361,17 @@ impl Panel for MainViewPanel {
             inner.height,
         );
 
-        if !self.highlighted_lines.is_empty() {
-            let para =
-                Paragraph::new(self.highlighted_lines.clone()).scroll((self.scroll as u16, 0));
-            frame.render_widget(para, content_area);
-        } else {
-            let text = match &self.buffer {
-                Some(buf) => buf.content.as_str(),
-                None => "No content. Open a file or pin tab output.",
-            };
-            let para = Paragraph::new(text).scroll((self.scroll as u16, 0));
-            frame.render_widget(para, content_area);
-        }
-
-        // EOF marker
-        let total = self.total_lines();
-        let vh = content_area.height as usize;
-        if self.scroll + vh > total && self.buffer.is_some() {
-            let eof_row = total.saturating_sub(self.scroll);
-            if eof_row < vh {
-                let y = content_area.y + eof_row as u16;
-                if y < content_area.bottom() {
-                    let buf = frame.buffer_mut();
-                    let eof = " ⏚ EOF ";
-                    for (i, ch) in eof.chars().enumerate() {
-                        let x = content_area.x + i as u16;
-                        if x < content_area.right() {
-                            buf[(x, y)].set_char(ch);
-                            buf[(x, y)].set_style(Style::default().fg(Color::DarkGray));
-                        }
-                    }
-                }
-            }
-        }
-
-        // Highlight cursor line and visual selection
+        self.render_content(frame, content_area);
+        self.render_eof(frame, content_area);
         render_cursor_and_selection(frame, area, self);
-
-        // Highlight search matches
         render_search_matches(frame, area, self);
 
-        // Search input bar
         if self.search_active {
             render_search_bar(frame, area, self);
         }
-
-        // Line numbers gutter
+        let is_file = self.buffer.as_ref().is_some_and(|b| {
+            matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
+        });
         if self.line_numbers && is_file {
             render_line_numbers(frame, area, self.scroll, self.total_lines());
         }
@@ -458,42 +382,53 @@ impl Panel for MainViewPanel {
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         let alt = key.modifiers.contains(KeyModifiers::ALT);
 
-        // Search input mode
         if self.search_active {
             return Ok(self.handle_search_input(key.code));
         }
-
-        // n/N for next/prev match (when not in search input)
-        if self.cursor_mode != CursorMode::Off || !self.search_matches.is_empty() {
-            match key.code {
-                KeyCode::Char('n') if !ctrl => {
-                    self.next_match();
-                    return Ok(PanelAction::None);
-                }
-                KeyCode::Char('N') => {
-                    self.prev_match();
-                    return Ok(PanelAction::None);
-                }
-                KeyCode::Char('/') if !ctrl => {
-                    self.search_active = true;
-                    self.search_query.clear();
-                    return Ok(PanelAction::None);
-                }
-                _ => {}
-            }
+        if let Some(a) = self.handle_match_nav(key.code, ctrl) {
+            return Ok(a);
         }
+        if let Some(a) = self.handle_mode_toggle(key.code, ctrl, alt) {
+            return Ok(a);
+        }
+        if self.cursor_mode != CursorMode::Off {
+            return self.handle_cursor_key(key.code, ctrl);
+        }
+        self.handle_nav_key(key.code)
+    }
+}
 
-        // / to start search (also works in scroll mode)
-        if key.code == KeyCode::Char('/') && !ctrl {
+impl MainViewPanel {
+    fn handle_match_nav(&mut self, code: KeyCode, ctrl: bool) -> Option<PanelAction> {
+        if self.cursor_mode == CursorMode::Off && self.search_matches.is_empty() {
+            return None;
+        }
+        match code {
+            KeyCode::Char('n') if !ctrl => { self.next_match(); Some(PanelAction::None) }
+            KeyCode::Char('N') => { self.prev_match(); Some(PanelAction::None) }
+            KeyCode::Char('/') if !ctrl => {
+                self.search_active = true;
+                self.search_query.clear();
+                Some(PanelAction::None)
+            }
+            _ => None,
+        }
+    }
+
+    fn handle_mode_toggle(
+        &mut self,
+        code: KeyCode,
+        ctrl: bool,
+        alt: bool,
+    ) -> Option<PanelAction> {
+        if code == KeyCode::Char('/') && !ctrl {
             self.search_active = true;
             self.search_query.clear();
             self.cursor_mode = CursorMode::Normal;
             self.cursor = (self.scroll, 0);
-            return Ok(PanelAction::None);
+            return Some(PanelAction::None);
         }
-
-        // Space toggles cursor mode
-        if key.code == KeyCode::Char(' ') && !ctrl && !alt {
+        if code == KeyCode::Char(' ') && !ctrl && !alt {
             self.cursor_mode = match self.cursor_mode {
                 CursorMode::Off => {
                     self.cursor = (self.scroll, 0);
@@ -501,20 +436,11 @@ impl Panel for MainViewPanel {
                 }
                 _ => CursorMode::Off,
             };
-            return Ok(PanelAction::None);
+            return Some(PanelAction::None);
         }
-
-        // In cursor mode: handle cursor keys and visual modes
-        if self.cursor_mode != CursorMode::Off {
-            return self.handle_cursor_key(key.code, ctrl);
-        }
-
-        // Scroll mode (default)
-        self.handle_nav_key(key.code)
+        None
     }
-}
 
-impl MainViewPanel {
     fn handle_cursor_key(&mut self, code: KeyCode, ctrl: bool) -> Result<PanelAction> {
         match code {
             KeyCode::Up => self.move_cursor(-1, 0),
@@ -561,49 +487,149 @@ impl MainViewPanel {
 }
 
 fn render_cursor_and_selection(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
-    let inner_y = area.y + 1;
-    let inner_h = area.height.saturating_sub(2) as usize;
-    let inner_x = area.x + 1;
-    let inner_w = area.width.saturating_sub(2) as usize;
-    let scroll = panel.scroll;
+    let inner = InnerArea::from_panel(area, panel.scroll);
     let buf = frame.buffer_mut();
 
-    // Cursor line highlight
     if panel.cursor_mode != CursorMode::Off {
-        let cr = panel.cursor.0;
-        if cr >= scroll && cr < scroll + inner_h {
-            let y = inner_y + (cr - scroll) as u16;
-            for x in inner_x..inner_x + inner_w as u16 {
-                if y < area.bottom() && x < area.right() {
-                    buf[(x, y)].set_bg(Color::Indexed(236));
-                }
-            }
+        render_cursor_line(buf, &inner, panel.cursor.0);
+    }
+    if let Some(vi) = panel.visual_info() {
+        render_visual(buf, area, &inner, panel, vi);
+    }
+}
+
+struct InnerArea {
+    y: u16,
+    x: u16,
+    h: usize,
+    w: usize,
+    scroll: usize,
+}
+
+impl InnerArea {
+    fn from_panel(area: Rect, scroll: usize) -> Self {
+        Self {
+            y: area.y + 1,
+            x: area.x + 1,
+            h: area.height.saturating_sub(2) as usize,
+            w: area.width.saturating_sub(2) as usize,
+            scroll,
+        }
+    }
+}
+
+fn render_cursor_line(buf: &mut ratatui::buffer::Buffer, inner: &InnerArea, row: usize) {
+    if row < inner.scroll || row >= inner.scroll + inner.h {
+        return;
+    }
+    let y = inner.y + (row - inner.scroll) as u16;
+    for x in inner.x..inner.x + inner.w as u16 {
+        buf[(x, y)].set_bg(Color::Indexed(236));
+    }
+}
+
+fn render_visual(
+    buf: &mut ratatui::buffer::Buffer,
+    area: Rect,
+    inner: &InnerArea,
+    panel: &MainViewPanel,
+    vi: VisualInfo,
+) {
+    match vi {
+        VisualInfo::Line((sr, er)) => highlight_rows(buf, area, inner, sr, er),
+        VisualInfo::Stream { .. } => {
+            let (sr, er) = panel.sel_rows();
+            highlight_rows(buf, area, inner, sr, er);
+        }
+        VisualInfo::Block { rows, cols } => highlight_block(buf, inner, rows, cols),
+    }
+}
+
+fn highlight_block(
+    buf: &mut ratatui::buffer::Buffer,
+    inner: &InnerArea,
+    rows: (usize, usize),
+    cols: (usize, usize),
+) {
+    for r in rows.0..=rows.1 {
+        if r < inner.scroll || r >= inner.scroll + inner.h {
+            continue;
+        }
+        let y = inner.y + (r - inner.scroll) as u16;
+        for c in cols.0..=cols.1 {
+            let x = inner.x + c as u16;
+            buf[(x, y)].set_bg(Color::DarkGray);
+        }
+    }
+}
+
+impl MainViewPanel {
+    fn build_block(&self, focused: bool) -> (Block<'_>, u16) {
+        let border_color = if focused { Color::Cyan } else { Color::DarkGray };
+        let cursor_label = match self.cursor_mode {
+            CursorMode::Off => "",
+            CursorMode::Normal => " ●",
+            CursorMode::VisualStream => " v",
+            CursorMode::VisualLine => " V",
+            CursorMode::VisualBlock => " ^V",
+        };
+        let title = match &self.buffer {
+            Some(buf) => format!(" {} [{}]{cursor_label} ", buf.title, self.mode.label()),
+            None => " Main ".to_string(),
+        };
+        let line_info = format!(" L{}/{} ", self.scroll + 1, self.total_lines());
+        let border_type = if self.cursor_mode != CursorMode::Off {
+            ratatui::widgets::BorderType::Double
+        } else {
+            ratatui::widgets::BorderType::Plain
+        };
+        let is_file = self.buffer.as_ref().is_some_and(|b| {
+            matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
+        });
+        let gutter_w = if self.line_numbers && is_file { 4u16 } else { 0 };
+        let block = Block::default()
+            .title(title)
+            .title_bottom(Line::from(line_info).right_aligned())
+            .borders(Borders::ALL)
+            .border_type(border_type)
+            .border_style(Style::default().fg(border_color));
+        (block, gutter_w)
+    }
+
+    fn render_content(&self, frame: &mut Frame, area: Rect) {
+        if !self.highlighted_lines.is_empty() {
+            let para = Paragraph::new(self.highlighted_lines.clone())
+                .scroll((self.scroll as u16, 0));
+            frame.render_widget(para, area);
+        } else {
+            let text = match &self.buffer {
+                Some(buf) => buf.content.as_str(),
+                None => "No content. Open a file or pin tab output.",
+            };
+            frame.render_widget(Paragraph::new(text).scroll((self.scroll as u16, 0)), area);
         }
     }
 
-    // Visual selection highlight
-    if let Some(vi) = panel.visual_info() {
-        match vi {
-            VisualInfo::Line((sr, er)) => {
-                highlight_rows(buf, area, inner_y, inner_w, scroll, inner_h, sr, er);
-            }
-            VisualInfo::Stream { .. } => {
-                let (sr, er) = panel.sel_rows();
-                highlight_rows(buf, area, inner_y, inner_w, scroll, inner_h, sr, er);
-            }
-            VisualInfo::Block { rows, cols } => {
-                for r in rows.0..=rows.1 {
-                    if r < scroll || r >= scroll + inner_h {
-                        continue;
-                    }
-                    let y = inner_y + (r - scroll) as u16;
-                    for c in cols.0..=cols.1 {
-                        let x = inner_x + c as u16;
-                        if y < area.bottom() && x < area.right() {
-                            buf[(x, y)].set_bg(Color::DarkGray);
-                        }
-                    }
-                }
+    fn render_eof(&self, frame: &mut Frame, content_area: Rect) {
+        let total = self.total_lines();
+        let vh = content_area.height as usize;
+        if self.scroll + vh <= total || self.buffer.is_none() {
+            return;
+        }
+        let eof_row = total.saturating_sub(self.scroll);
+        if eof_row >= vh {
+            return;
+        }
+        let y = content_area.y + eof_row as u16;
+        if y >= content_area.bottom() {
+            return;
+        }
+        let buf = frame.buffer_mut();
+        for (i, ch) in " ⏚ EOF ".chars().enumerate() {
+            let x = content_area.x + i as u16;
+            if x < content_area.right() {
+                buf[(x, y)].set_char(ch);
+                buf[(x, y)].set_style(Style::default().fg(Color::DarkGray));
             }
         }
     }
@@ -613,20 +639,17 @@ fn render_cursor_and_selection(frame: &mut Frame, area: Rect, panel: &MainViewPa
 fn highlight_rows(
     buf: &mut ratatui::buffer::Buffer,
     area: Rect,
-    inner_y: u16,
-    inner_w: usize,
-    scroll: usize,
-    inner_h: usize,
+    inner: &InnerArea,
     start: usize,
     end: usize,
 ) {
     for line in start..=end {
-        if line < scroll || line >= scroll + inner_h {
+        if line < inner.scroll || line >= inner.scroll + inner.h {
             continue;
         }
-        let y = inner_y + (line - scroll) as u16;
+        let y = inner.y + (line - inner.scroll) as u16;
         let x_start = area.x + 1;
-        for x in x_start..x_start + inner_w as u16 {
+        for x in x_start..x_start + inner.w as u16 {
             if y < area.bottom() && x < area.right() {
                 buf[(x, y)].set_bg(Color::DarkGray);
             }
@@ -662,68 +685,66 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     if panel.search_query.is_empty() {
         return;
     }
-    let is_file = panel
-        .buffer
-        .as_ref()
-        .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
-    let gutter_w = if panel.line_numbers && is_file {
-        4u16
-    } else {
-        0
-    };
+    let is_file = panel.buffer.as_ref().is_some_and(|b| {
+        matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
+    });
+    let gutter_w = if panel.line_numbers && is_file { 4u16 } else { 0 };
     let inner_y = area.y + 1;
     let inner_x = area.x + 1 + gutter_w;
     let inner_w = area.width.saturating_sub(2 + gutter_w) as usize;
     let inner_h = area.height.saturating_sub(2) as usize;
     let query_lower = panel.search_query.to_lowercase();
-    let qlen = query_lower.len();
-
-    // Current match row (from raw text search) for "active" highlight
-    let current_row = panel
-        .search_matches
-        .get(panel.search_index)
-        .map(|&(r, _)| r);
-
+    let current_row = panel.search_matches.get(panel.search_index).map(|&(r, _)| r);
     let buf = frame.buffer_mut();
+
     for row in 0..inner_h {
         let y = inner_y + row as u16;
         if y >= area.bottom() {
             break;
         }
         let screen_row = panel.scroll + row;
-        let is_current_row = current_row == Some(screen_row);
+        let is_current = current_row == Some(screen_row);
+        highlight_row_matches(buf, inner_x, y, inner_w, area, &query_lower, is_current);
+    }
+}
 
-        let line: String = (0..inner_w)
-            .map(|c| {
-                let x = inner_x + c as u16;
-                if x < area.right() {
-                    buf[(x, y)].symbol().chars().next().unwrap_or(' ')
-                } else {
-                    ' '
-                }
-            })
-            .collect();
-
-        let line_lower = line.to_lowercase();
-        let mut start = 0;
-        while let Some(pos) = line_lower[start..].find(&query_lower) {
-            let col = start + pos;
-            let bg = if is_current_row {
-                Color::Yellow
+fn highlight_row_matches(
+    buf: &mut ratatui::buffer::Buffer,
+    inner_x: u16,
+    y: u16,
+    inner_w: usize,
+    area: Rect,
+    query: &str,
+    is_current: bool,
+) {
+    let line: String = (0..inner_w)
+        .map(|c| {
+            let x = inner_x + c as u16;
+            if x < area.right() {
+                buf[(x, y)].symbol().chars().next().unwrap_or(' ')
             } else {
-                Color::Indexed(58)
-            };
-            for c in 0..qlen {
-                let x = inner_x + (col + c) as u16;
-                if x < area.right() {
-                    buf[(x, y)].set_bg(bg);
-                    if is_current_row {
-                        buf[(x, y)].set_fg(Color::Black);
-                    }
-                }
+                ' '
             }
-            start = col + qlen;
+        })
+        .collect();
+
+    let line_lower = line.to_lowercase();
+    let qlen = query.len();
+    let bg = if is_current { Color::Yellow } else { Color::Indexed(58) };
+    let mut start = 0;
+    while let Some(pos) = line_lower[start..].find(query) {
+        let col = start + pos;
+        for c in 0..qlen {
+            let x = inner_x + (col + c) as u16;
+            if x >= area.right() {
+                continue;
+            }
+            buf[(x, y)].set_bg(bg);
+            if is_current {
+                buf[(x, y)].set_fg(Color::Black);
+            }
         }
+        start = col + qlen;
     }
 }
 

@@ -58,6 +58,7 @@ pub struct FileTreePanel {
     pub scroll_offset: usize,
     pub filter: TreeFilter,
     pub git_status: HashMap<String, GitStatus>,
+    viewport_height: std::cell::Cell<usize>,
 }
 
 impl FileTreePanel {
@@ -72,6 +73,7 @@ impl FileTreePanel {
             scroll_offset: 0,
             filter: TreeFilter::default(),
             git_status,
+            viewport_height: std::cell::Cell::new(0),
         }
     }
 
@@ -88,12 +90,15 @@ impl FileTreePanel {
                 if matching.is_empty() {
                     return Vec::new();
                 }
+                let prefix = |dir: &str, path: &str| -> bool {
+                    path.starts_with(dir)
+                        && path.as_bytes().get(dir.len()) == Some(&b'/')
+                };
                 flat.into_iter()
                     .filter(|e| {
                         let rel = self.rel_path(e.node);
                         if e.node.is_dir() {
-                            // Show dir only if a matching file is under it
-                            matching.iter().any(|m| m.starts_with(&rel))
+                            matching.iter().any(|m| prefix(&rel, m))
                         } else {
                             matching.contains(&rel)
                         }
@@ -143,6 +148,7 @@ impl Panel for FileTreePanel {
             .border_style(Style::default().fg(border_color));
 
         let inner_height = area.height.saturating_sub(2) as usize;
+        self.viewport_height.set(inner_height);
         let flat = self.filtered_flat();
         if flat.is_empty() && self.filter != TreeFilter::All {
             let msg = Paragraph::new("  (no matching files)")
@@ -185,17 +191,7 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         KeyCode::Enter | KeyCode::Char('l') => {
             return handle_enter_or_expand(panel);
         }
-        KeyCode::Right => {
-            // Right on file → focus main panel; on dir → expand
-            let flat = panel.filtered_flat();
-            if let Some(entry) = flat.get(panel.cursor) {
-                if entry.node.is_dir() {
-                    return handle_enter_or_expand(panel);
-                } else {
-                    return Ok(PanelAction::FocusRight);
-                }
-            }
-        }
+        KeyCode::Right => return handle_right(panel),
         KeyCode::Left | KeyCode::Char('h') => {
             collapse_current(panel);
         }
@@ -205,11 +201,35 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         }
         _ => {}
     }
+    panel.scroll_offset = adjust_scroll(
+        panel.cursor,
+        panel.scroll_offset,
+        panel.viewport_height.get(),
+    );
     preview_current(panel)
 }
 
+fn handle_right(panel: &mut FileTreePanel) -> Result<PanelAction> {
+    let flat = panel.filtered_flat();
+    if let Some(entry) = flat.get(panel.cursor) {
+        if entry.node.is_dir() {
+            return handle_enter_or_expand(panel);
+        }
+    }
+    Ok(PanelAction::FocusRight)
+}
+
 fn handle_enter_or_expand(panel: &mut FileTreePanel) -> Result<PanelAction> {
-    if let Some(node) = tree::node_at_mut(&mut panel.nodes, panel.cursor) {
+    // Resolve cursor through filtered view to get the actual node path.
+    let target = {
+        let flat = panel.filtered_flat();
+        flat.get(panel.cursor).map(|e| e.node.path.clone())
+    };
+    let target = match target {
+        Some(p) => p,
+        None => return Ok(PanelAction::None),
+    };
+    if let Some(node) = tree::node_by_path_mut(&mut panel.nodes, &target) {
         match &node.kind {
             NodeKind::Dir { expanded, .. } => {
                 let should_expand = !expanded;
@@ -238,9 +258,15 @@ fn preview_current(panel: &FileTreePanel) -> Result<PanelAction> {
 }
 
 fn collapse_current(panel: &mut FileTreePanel) {
-    if let Some(node) = tree::node_at_mut(&mut panel.nodes, panel.cursor) {
-        if node.is_dir() {
-            node.set_expanded(false);
+    let target = {
+        let flat = panel.filtered_flat();
+        flat.get(panel.cursor).map(|e| e.node.path.clone())
+    };
+    if let Some(target) = target {
+        if let Some(node) = tree::node_by_path_mut(&mut panel.nodes, &target) {
+            if node.is_dir() {
+                node.set_expanded(false);
+            }
         }
     }
 }

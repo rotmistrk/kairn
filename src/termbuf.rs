@@ -201,63 +201,10 @@ impl vte::Perform for TermBuf {
         action: char,
     ) {
         let p: Vec<u16> = params.iter().map(|s| s[0]).collect();
-
-        // DEC private modes: ESC [ ? N h/l
         if intermediates == [b'?'] {
-            let mode = p.first().copied().unwrap_or(0);
-            match (mode, action) {
-                (25, 'h') => self.cursor_visible = true,
-                (25, 'l') => self.cursor_visible = false,
-                _ => {} // ignore other private modes
-            }
-            return;
-        }
-
-        match action {
-            'm' => self.handle_sgr(&p),
-            'A' => self.cursor_up(p.first().copied().unwrap_or(1) as usize),
-            'B' => self.cursor_down(p.first().copied().unwrap_or(1) as usize),
-            'C' => self.cursor_forward(p.first().copied().unwrap_or(1) as usize),
-            'D' => self.cursor_back(p.first().copied().unwrap_or(1) as usize),
-            'H' | 'f' => {
-                let row = p.first().copied().unwrap_or(1) as usize;
-                let col = p.get(1).copied().unwrap_or(1) as usize;
-                self.cursor_row = row.saturating_sub(1).min(self.rows - 1);
-                self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
-            }
-            'J' => {
-                let mode = p.first().copied().unwrap_or(0);
-                self.erase_display(mode);
-            }
-            'K' => {
-                let mode = p.first().copied().unwrap_or(0);
-                self.erase_line(mode);
-            }
-            'G' => {
-                let col = p.first().copied().unwrap_or(1) as usize;
-                self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
-            }
-            'n' => {
-                // Device Status Report
-                if p.first().copied() == Some(6) {
-                    // Respond with cursor position: ESC [ row ; col R
-                    let resp = format!("\x1b[{};{}R", self.cursor_row + 1, self.cursor_col + 1);
-                    self.responses.push(resp.into_bytes());
-                }
-            }
-            's' => {
-                self.saved_cursor = (self.cursor_row, self.cursor_col);
-            }
-            'u' => {
-                self.cursor_row = self.saved_cursor.0.min(self.rows - 1);
-                self.cursor_col = self.saved_cursor.1.min(self.cols - 1);
-            }
-            'd' => {
-                // Vertical Position Absolute
-                let row = p.first().copied().unwrap_or(1) as usize;
-                self.cursor_row = row.saturating_sub(1).min(self.rows - 1);
-            }
-            _ => {}
+            self.handle_dec_mode(&p, action);
+        } else {
+            self.handle_csi(&p, action);
         }
     }
 
@@ -347,6 +294,55 @@ impl TermBuf {
         }
     }
 
+    fn handle_dec_mode(&mut self, p: &[u16], action: char) {
+        let mode = p.first().copied().unwrap_or(0);
+        match (mode, action) {
+            (25, 'h') => self.cursor_visible = true,
+            (25, 'l') => self.cursor_visible = false,
+            _ => {}
+        }
+    }
+
+    fn handle_csi(&mut self, p: &[u16], action: char) {
+        match action {
+            'm' => self.handle_sgr(p),
+            'A' => self.cursor_up(p.first().copied().unwrap_or(1).max(1) as usize),
+            'B' => self.cursor_down(p.first().copied().unwrap_or(1).max(1) as usize),
+            'C' => self.cursor_forward(p.first().copied().unwrap_or(1).max(1) as usize),
+            'D' => self.cursor_back(p.first().copied().unwrap_or(1).max(1) as usize),
+            'H' | 'f' => {
+                let row = p.first().copied().unwrap_or(1) as usize;
+                let col = p.get(1).copied().unwrap_or(1) as usize;
+                self.cursor_row = row.saturating_sub(1).min(self.rows - 1);
+                self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
+            }
+            'J' => self.erase_display(p.first().copied().unwrap_or(0)),
+            'K' => self.erase_line(p.first().copied().unwrap_or(0)),
+            'G' => {
+                let col = p.first().copied().unwrap_or(1) as usize;
+                self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
+            }
+            'n' if p.first().copied() == Some(6) => {
+                let resp = format!(
+                    "\x1b[{};{}R",
+                    self.cursor_row + 1,
+                    self.cursor_col + 1
+                );
+                self.responses.push(resp.into_bytes());
+            }
+            's' => self.saved_cursor = (self.cursor_row, self.cursor_col),
+            'u' => {
+                self.cursor_row = self.saved_cursor.0.min(self.rows - 1);
+                self.cursor_col = self.saved_cursor.1.min(self.cols - 1);
+            }
+            'd' => {
+                let row = p.first().copied().unwrap_or(1) as usize;
+                self.cursor_row = row.saturating_sub(1).min(self.rows - 1);
+            }
+            _ => {}
+        }
+    }
+
     fn handle_sgr(&mut self, params: &[u16]) {
         if params.is_empty() {
             self.current_style = Style::default();
@@ -354,44 +350,49 @@ impl TermBuf {
         }
         let mut i = 0;
         while i < params.len() {
-            match params[i] {
-                0 => self.current_style = Style::default(),
-                1 => self.current_style = self.current_style.add_modifier(Modifier::BOLD),
-                3 => self.current_style = self.current_style.add_modifier(Modifier::ITALIC),
-                4 => self.current_style = self.current_style.add_modifier(Modifier::UNDERLINED),
-                7 => self.current_style = self.current_style.add_modifier(Modifier::REVERSED),
-                22 => self.current_style = self.current_style.remove_modifier(Modifier::BOLD),
-                23 => self.current_style = self.current_style.remove_modifier(Modifier::ITALIC),
-                24 => self.current_style = self.current_style.remove_modifier(Modifier::UNDERLINED),
-                27 => self.current_style = self.current_style.remove_modifier(Modifier::REVERSED),
-                30..=37 => self.current_style = self.current_style.fg(ansi_color(params[i] - 30)),
-                38 => {
-                    i += 1;
-                    if let Some(c) = parse_extended_color(params, &mut i) {
-                        self.current_style = self.current_style.fg(c);
-                    }
-                    continue;
-                }
-                39 => self.current_style = self.current_style.fg(Color::Reset),
-                40..=47 => self.current_style = self.current_style.bg(ansi_color(params[i] - 40)),
-                48 => {
-                    i += 1;
-                    if let Some(c) = parse_extended_color(params, &mut i) {
-                        self.current_style = self.current_style.bg(c);
-                    }
-                    continue;
-                }
-                49 => self.current_style = self.current_style.bg(Color::Reset),
-                90..=97 => {
-                    self.current_style = self.current_style.fg(ansi_bright_color(params[i] - 90))
-                }
-                100..=107 => {
-                    self.current_style = self.current_style.bg(ansi_bright_color(params[i] - 100))
-                }
-                _ => {}
-            }
-            i += 1;
+            i += self.apply_sgr_code(params, i);
         }
+    }
+
+    /// Apply one SGR code at `params[i]`, return how many params consumed.
+    fn apply_sgr_code(&mut self, params: &[u16], i: usize) -> usize {
+        match params[i] {
+            0 => self.current_style = Style::default(),
+            1 => self.current_style = self.current_style.add_modifier(Modifier::BOLD),
+            3 => self.current_style = self.current_style.add_modifier(Modifier::ITALIC),
+            4 => self.current_style = self.current_style.add_modifier(Modifier::UNDERLINED),
+            7 => self.current_style = self.current_style.add_modifier(Modifier::REVERSED),
+            22 => self.current_style = self.current_style.remove_modifier(Modifier::BOLD),
+            23 => self.current_style = self.current_style.remove_modifier(Modifier::ITALIC),
+            24 => self.current_style = self.current_style.remove_modifier(Modifier::UNDERLINED),
+            27 => self.current_style = self.current_style.remove_modifier(Modifier::REVERSED),
+            30..=37 => self.current_style = self.current_style.fg(ansi_color(params[i] - 30)),
+            38 => {
+                let mut j = i + 1;
+                if let Some(c) = parse_extended_color(params, &mut j) {
+                    self.current_style = self.current_style.fg(c);
+                }
+                return j - i;
+            }
+            39 => self.current_style = self.current_style.fg(Color::Reset),
+            40..=47 => self.current_style = self.current_style.bg(ansi_color(params[i] - 40)),
+            48 => {
+                let mut j = i + 1;
+                if let Some(c) = parse_extended_color(params, &mut j) {
+                    self.current_style = self.current_style.bg(c);
+                }
+                return j - i;
+            }
+            49 => self.current_style = self.current_style.bg(Color::Reset),
+            90..=97 => {
+                self.current_style = self.current_style.fg(ansi_bright_color(params[i] - 90))
+            }
+            100..=107 => {
+                self.current_style = self.current_style.bg(ansi_bright_color(params[i] - 100))
+            }
+            _ => {}
+        }
+        1
     }
 }
 

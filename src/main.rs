@@ -45,51 +45,46 @@ use panel::Panel;
 use search::FileSearch;
 
 fn main() -> Result<()> {
-    // Parse CLI args (handles -h/--help, -V/--version, exits on error)
     let cli = cli::Cli::parse_args();
     let project_path = cli.resolve_path();
 
-    // Nesting guard
     if std::env::var("KAIRN_PID").is_ok() {
         eprintln!("kairn: already running (KAIRN_PID is set). Use the existing instance.");
         std::process::exit(1);
     }
     std::env::set_var("KAIRN_PID", std::process::id().to_string());
-
     install_panic_handler();
 
     let capture = capture::CapturePipe::create(&project_path).ok();
-
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
+    let mut terminal = init_terminal()?;
 
     let mut app = App::new(
         project_path.to_string_lossy().to_string(),
         cli.config.as_deref(),
     );
-
-    // Init panel sizes from actual terminal dimensions
     let ts = terminal.size()?;
     app.init_panel_size(ts.width, ts.height);
-
-    // Spawn live PTYs for any restored tabs (shell → fresh, kiro → resume)
     app.revive_tabs();
 
     let result = run_loop(&mut terminal, &mut app, capture);
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
+    restore_terminal(&mut terminal)?;
     result
+}
+
+fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
+    terminal.clear()?;
+    Ok(terminal)
+}
+
+fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    terminal.show_cursor()?;
+    Ok(())
 }
 
 fn run_loop(
@@ -98,13 +93,7 @@ fn run_loop(
     mut capture: Option<capture::CapturePipe>,
 ) -> Result<()> {
     loop {
-        // Sync PTY size to match panel dimensions
-        let size = terminal.size()?;
-        let area = Rect::new(0, 0, size.width, size.height.saturating_sub(1));
-        let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
-        app.interactive.sync_size(c.interactive);
-        // Main panel viewport height (inner area minus borders and gutter)
-        app.main_view.viewport_h = c.main.height.saturating_sub(2) as usize;
+        sync_sizes(terminal, app)?;
 
         terminal.draw(|frame| {
             render_panels(frame, app);
@@ -120,44 +109,77 @@ fn run_loop(
             app.auto_save();
             return Ok(());
         }
-
-        if app.pending_editor.is_some() {
-            app.run_pending_editor()?;
-            terminal.clear()?;
-            continue;
-        }
-        if app.pending_shell {
-            app.run_pending_shell()?;
-            terminal.clear()?;
-            continue;
-        }
-        if app.pending_peek {
-            app.pending_peek = false;
-            peek_screen()?;
-            terminal.clear()?;
-            continue;
-        }
-        if app.pending_redraw {
-            app.pending_redraw = false;
-            terminal.clear()?;
+        if handle_pending(terminal, app)? {
             continue;
         }
 
-        if event::poll(std::time::Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                app.handle_key(key)?;
-            }
-        }
+        drain_events(app)?;
 
-        // Lazy load: expand file content when scrolling near bottom
-        let near_bottom = app.main_view.scroll + 50 >= app.main_view.highlighted_lines.len();
-        if near_bottom && app.main_view.current_path.is_some() {
+        if app.main_view.scroll + 50 >= app.main_view.highlighted_lines.len()
+            && app.main_view.current_path.is_some()
+        {
             app.ensure_full_content();
         }
-
         app.interactive.tabs.poll_output();
         poll_capture(app, &mut capture);
     }
+}
+
+fn sync_sizes(
+    terminal: &Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> Result<()> {
+    let size = terminal.size()?;
+    let area = Rect::new(0, 0, size.width, size.height.saturating_sub(1));
+    let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
+    app.interactive.sync_size(c.interactive);
+    app.main_view.viewport_h = c.main.height.saturating_sub(2) as usize;
+    Ok(())
+}
+
+fn handle_pending(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> Result<bool> {
+    if app.pending_editor.is_some() {
+        app.run_pending_editor()?;
+        terminal.clear()?;
+        return Ok(true);
+    }
+    if app.pending_shell {
+        app.run_pending_shell()?;
+        terminal.clear()?;
+        return Ok(true);
+    }
+    if app.pending_peek {
+        app.pending_peek = false;
+        peek_screen()?;
+        terminal.clear()?;
+        return Ok(true);
+    }
+    if app.pending_redraw {
+        app.pending_redraw = false;
+        terminal.clear()?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn drain_events(app: &mut App) -> Result<()> {
+    if !event::poll(std::time::Duration::from_millis(50))? {
+        return Ok(());
+    }
+    loop {
+        if let Event::Key(key) = event::read()? {
+            app.handle_key(key)?;
+        }
+        if app.should_quit
+            || !event::poll(std::time::Duration::from_millis(0))?
+        {
+            break;
+        }
+    }
+    Ok(())
 }
 
 fn poll_capture(app: &mut App, capture: &mut Option<capture::CapturePipe>) {
@@ -362,59 +384,59 @@ fn peek_screen() -> Result<()> {
 }
 
 fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
+    let label = Style::default().fg(Color::LightCyan).bg(Color::Black);
+    let value = Style::default().fg(Color::White).bg(Color::Black);
+
+    let mut spans = status_left_spans(app, label, value);
+    let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
+    let right = status_right_spans(app, label, value);
+    let right_len: usize = right.iter().map(|s| s.content.len()).sum();
+
+    let pad = area.width.saturating_sub(left_len as u16 + right_len as u16);
+    spans.push(Span::styled(
+        " ".repeat(pad as usize),
+        Style::default().bg(Color::Black),
+    ));
+    spans.extend(right);
+    frame.render_widget(Paragraph::new(Line::from(spans)), area);
+}
+
+fn status_left_spans<'a>(app: &'a App, label: Style, value: Style) -> Vec<Span<'a>> {
     let focus_name = match app.focus {
         panel::FocusedPanel::Tree => "Tree",
         panel::FocusedPanel::Main => "Main",
         panel::FocusedPanel::Interactive => "Terminal",
     };
     let tree_mode = match app.left_mode {
-        app::LeftPanelMode::FileTree => {
-            format!("Files:{}", app.file_tree.filter.label())
-        }
+        app::LeftPanelMode::FileTree => format!("Files:{}", app.file_tree.filter.label()),
         app::LeftPanelMode::CommitTree => "Commits".to_string(),
     };
-    let main_mode = app.main_view.mode.label();
-    let tab_name = app.interactive.tabs.active_title();
-
-    let bg = Style::default().bg(Color::Black);
-    let label = Style::default().fg(Color::LightCyan).bg(Color::Black);
-    let value = Style::default().fg(Color::White).bg(Color::Black);
-
-    let mut spans = vec![
+    vec![
         Span::styled(" [", label),
         Span::styled(focus_name, value),
         Span::styled("  Left:", label),
-        Span::styled(&tree_mode, value),
+        Span::styled(tree_mode, value),
         Span::styled("  Main:", label),
-        Span::styled(main_mode, value),
+        Span::styled(app.main_view.mode.label(), value),
         Span::styled("  Tab:", label),
-        Span::styled(tab_name, value),
-    ];
+        Span::styled(app.interactive.tabs.active_title(), value),
+    ]
+}
 
-    let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
+fn status_right_spans(app: &App, label: Style, value: Style) -> Vec<Span<'static>> {
     let (tail_label, tail_value) = if app.focus == panel::FocusedPanel::Interactive {
         ("Esc²:".to_string(), "back")
     } else {
         (format!("{}:", app.config.display_key("quit")), "quit")
     };
-
-    let right_content = format!(
-        "C-S-↑/↓:mode/tab  F3/4/5:panel  F1:help  {}{}",
-        tail_label, tail_value
-    );
-    let right_len = right_content.len() + 2; // +2 safety margin
-    let pad = area
-        .width
-        .saturating_sub(left_len as u16 + right_len as u16);
-    spans.push(Span::styled(" ".repeat(pad as usize), bg));
-    spans.push(Span::styled("C-S-↑/↓:", label));
-    spans.push(Span::styled("mode/tab  ", value));
-    spans.push(Span::styled("F3/4/5:", label));
-    spans.push(Span::styled("panel  ", value));
-    spans.push(Span::styled("F1:", label));
-    spans.push(Span::styled("help  ", value));
-    spans.push(Span::styled(tail_label, label));
-    spans.push(Span::styled(tail_value, value));
-
-    frame.render_widget(Paragraph::new(Line::from(spans)), area);
+    vec![
+        Span::styled("C-S-↑/↓:", label),
+        Span::styled("mode/tab  ", value),
+        Span::styled("F3/4/5:", label),
+        Span::styled("panel  ", value),
+        Span::styled("F1:", label),
+        Span::styled("help  ", value),
+        Span::styled(tail_label, label),
+        Span::styled(tail_value, value),
+    ]
 }

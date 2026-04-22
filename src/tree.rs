@@ -95,6 +95,25 @@ pub fn node_at_mut(roots: &mut [FileNode], flat_idx: usize) -> Option<&mut FileN
     None
 }
 
+/// Find a node by its filesystem path.
+pub fn node_by_path_mut<'a>(
+    roots: &'a mut [FileNode],
+    target: &std::path::Path,
+) -> Option<&'a mut FileNode> {
+    for root in roots.iter_mut() {
+        if root.path == target {
+            return Some(root);
+        }
+        if let NodeKind::Dir { children, .. } = &mut root.kind {
+            let found = node_by_path_mut(children, target);
+            if found.is_some() {
+                return found;
+            }
+        }
+    }
+    None
+}
+
 fn node_at_mut_inner<'a>(
     node: &'a mut FileNode,
     target: usize,
