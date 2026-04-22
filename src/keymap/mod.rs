@@ -45,6 +45,41 @@ pub enum Action {
     Forward(KeyEvent),
 }
 
+impl Action {
+    /// Actions that should be intercepted even when the terminal
+    /// panel is focused (F-keys, Ctrl+Shift combos, quit, tab
+    /// management, resize, etc.).  Everything else is forwarded
+    /// to the PTY so readline editing keys work.
+    pub fn is_global(&self) -> bool {
+        matches!(
+            self,
+            Action::Quit
+                | Action::ShowHelp
+                | Action::FocusTree
+                | Action::FocusMain
+                | Action::FocusTerminal
+                | Action::CycleFocus
+                | Action::ToggleLeftPanel
+                | Action::Redraw
+                | Action::ResizeTree(_)
+                | Action::ResizeInteractive(_)
+                | Action::CycleModeNext
+                | Action::CycleModePrev
+                | Action::ScrollUp
+                | Action::ScrollDown
+                | Action::ScrollTop
+                | Action::ScrollBottom
+                | Action::NewKiroTab
+                | Action::NewShellTab
+                | Action::CloseTab
+                | Action::NextTab
+                | Action::PrevTab
+                | Action::SaveSession
+                | Action::LoadSession
+        )
+    }
+}
+
 /// Parsed keymap built from config at startup.
 pub struct Keymap {
     bindings: HashMap<(KeyModifiers, KeyCode), Action>,

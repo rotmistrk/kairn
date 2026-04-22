@@ -82,3 +82,38 @@ pub fn list_sessions() -> Result<Vec<String>> {
     names.sort();
     Ok(names)
 }
+
+/// Query `kiro-cli chat --list-sessions` and return session UUIDs (most recent first).
+pub fn list_kiro_sessions(kiro_cmd: &str) -> Vec<String> {
+    let output = std::process::Command::new(kiro_cmd)
+        .args(["chat", "--list-sessions"])
+        .output();
+    let output = match output {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    // Lines look like: "Chat SessionId: <ansi>UUID<ansi>"
+    // Strip ANSI and extract UUIDs after "Chat SessionId: "
+    let ansi_re = match regex::Regex::new(r"\x1b\[[0-9;]*m") {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let uuid_re = match regex::Regex::new(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    ) {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+
+    let mut ids = Vec::new();
+    for line in text.lines() {
+        let clean = ansi_re.replace_all(line, "");
+        if clean.contains("Chat SessionId:") {
+            if let Some(m) = uuid_re.find(&clean) {
+                ids.push(m.as_str().to_string());
+            }
+        }
+    }
+    ids
+}

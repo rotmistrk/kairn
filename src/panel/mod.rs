@@ -10,8 +10,8 @@ use ratatui::{layout::Rect, Frame};
 /// Which panel currently has keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FocusedPanel {
-    Tree,
     #[default]
+    Tree,
     Main,
     Interactive,
 }

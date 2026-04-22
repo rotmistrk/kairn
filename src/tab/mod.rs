@@ -7,7 +7,11 @@ use self::shell::PtyTab;
 /// Tab kind for serialization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TabKind {
-    Kiro { session_name: String },
+    Kiro {
+        session_name: String,
+        #[serde(default)]
+        session_id: Option<String>,
+    },
     Shell,
 }
 
@@ -82,6 +86,7 @@ impl TabManager {
             id,
             kind: TabKind::Kiro {
                 session_name: format!("{n}"),
+                session_id: None,
             },
             title: format!("kiro:{n}"),
         };
@@ -198,5 +203,51 @@ impl TabManager {
             .collect();
         self.active = active.min(self.tabs.len().saturating_sub(1));
         self.next_id = max_id + 1;
+    }
+
+    /// Spawn live PTYs for all restored tabs that lack one.
+    /// Shell tabs get a fresh shell; Kiro tabs resume via --resume-id
+    /// if a session_id is stored, otherwise start fresh.
+    pub fn revive_tabs(
+        &mut self,
+        kiro_cmd: &str,
+        cols: u16,
+        rows: u16,
+        cwd: &std::path::Path,
+    ) {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
+        for tab in &mut self.tabs {
+            if tab.pty.is_some() {
+                continue;
+            }
+            tab.pty = match &tab.meta.kind {
+                TabKind::Shell => {
+                    PtyTab::spawn(&shell, &[], cols, rows, cwd).ok()
+                }
+                TabKind::Kiro { session_id, .. } => {
+                    let mut args: Vec<&str> = vec!["chat", "--classic"];
+                    let id_owned;
+                    if let Some(id) = session_id {
+                        id_owned = id.clone();
+                        args.push("--resume-id");
+                        args.push(&id_owned);
+                    }
+                    PtyTab::spawn(kiro_cmd, &args, cols, rows, cwd).ok()
+                }
+            };
+        }
+    }
+
+    /// Update kiro tab session IDs from a list of known IDs (most recent first).
+    /// Assigns IDs round-robin to kiro tabs that don't already have one.
+    pub fn stamp_kiro_sessions(&mut self, session_ids: &[String]) {
+        let mut id_iter = session_ids.iter();
+        for tab in &mut self.tabs {
+            if let TabKind::Kiro { session_id, .. } = &mut tab.meta.kind {
+                if session_id.is_none() {
+                    *session_id = id_iter.next().cloned();
+                }
+            }
+        }
     }
 }

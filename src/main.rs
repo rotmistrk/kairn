@@ -76,6 +76,9 @@ fn main() -> Result<()> {
     let ts = terminal.size()?;
     app.init_panel_size(ts.width, ts.height);
 
+    // Spawn live PTYs for any restored tabs (shell → fresh, kiro → resume)
+    app.revive_tabs();
+
     let result = run_loop(&mut terminal, &mut app, capture);
 
     disable_raw_mode()?;
@@ -389,7 +392,16 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     ];
 
     let left_len: usize = spans.iter().map(|s| s.content.len()).sum();
-    let right_content = "C-S-↑/↓:mode/tab  F3/4/5:panel  F1:help  Esc²:quit";
+    let (tail_label, tail_value) = if app.focus == panel::FocusedPanel::Interactive {
+        ("Esc²:".to_string(), "back")
+    } else {
+        (format!("{}:", app.config.display_key("quit")), "quit")
+    };
+
+    let right_content = format!(
+        "C-S-↑/↓:mode/tab  F3/4/5:panel  F1:help  {}{}",
+        tail_label, tail_value
+    );
     let right_len = right_content.len() + 2; // +2 safety margin
     let pad = area
         .width
@@ -401,8 +413,8 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     spans.push(Span::styled("panel  ", value));
     spans.push(Span::styled("F1:", label));
     spans.push(Span::styled("help  ", value));
-    spans.push(Span::styled("Esc²:", label));
-    spans.push(Span::styled("quit", value));
+    spans.push(Span::styled(tail_label, label));
+    spans.push(Span::styled(tail_value, value));
 
     frame.render_widget(Paragraph::new(Line::from(spans)), area);
 }

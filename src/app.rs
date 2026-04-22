@@ -102,6 +102,17 @@ impl App {
         true
     }
 
+    /// Spawn live PTYs for restored tabs that have none.
+    pub fn revive_tabs(&mut self) {
+        let (cols, rows) = self.interactive.inner_size();
+        self.interactive.tabs.revive_tabs(
+            &self.config.kiro_command,
+            cols,
+            rows,
+            &self.workspace_root,
+        );
+    }
+
     fn restore_session(&mut self, sess: Session) {
         self.layout_mode = sess.layout_mode;
         self.panel_sizes = sess.panel_sizes;
@@ -126,7 +137,10 @@ impl App {
     }
 
     /// Auto-save state to $PWD/.kairn.state.
-    pub fn auto_save(&self) {
+    pub fn auto_save(&mut self) {
+        // Capture kiro-cli session IDs so we can resume them on restore.
+        let ids = session::list_kiro_sessions(&self.config.kiro_command);
+        self.interactive.tabs.stamp_kiro_sessions(&ids);
         let sess = self.snapshot_session("_auto");
         let _ = session::auto_save(&self.workspace_root, &sess);
     }
@@ -200,7 +214,21 @@ impl App {
         if self.search.is_some() {
             return self.handle_search_key(key);
         }
-        self.dispatch_action(self.keymap.map_key(key))
+        let action = self.keymap.map_key(key);
+        // When the terminal panel is focused, only intercept global
+        // bindings (F-keys, Ctrl+Shift, Ctrl+Q). Forward everything
+        // else so readline / shell editing keys reach the PTY.
+        if self.focus == FocusedPanel::Interactive {
+            if let Action::Forward(_) = action {
+                // not mapped — forward as usual
+            } else if action.is_global() {
+                // global binding — handle at app level
+            } else {
+                // app binding that conflicts with terminal input
+                return self.forward_to_panel(key);
+            }
+        }
+        self.dispatch_action(action)
     }
 
     fn dispatch_action(&mut self, action: Action) -> Result<()> {
@@ -288,7 +316,9 @@ impl App {
         Ok(())
     }
 
-    fn save_session(&self, name: &str) {
+    fn save_session(&mut self, name: &str) {
+        let ids = session::list_kiro_sessions(&self.config.kiro_command);
+        self.interactive.tabs.stamp_kiro_sessions(&ids);
         let sess = self.snapshot_session(name);
         let _ = session::save(&sess);
     }
@@ -462,12 +492,14 @@ impl App {
                     rows,
                     &self.workspace_root,
                 );
+                self.focus = FocusedPanel::Interactive;
             }
             Action::NewShellTab => {
                 let (cols, rows) = self.interactive.inner_size();
                 self.interactive
                     .tabs
                     .add_shell_tab(cols, rows, &self.workspace_root);
+                self.focus = FocusedPanel::Interactive;
             }
             Action::NextTab => self.interactive.tabs.next_tab(),
             Action::PrevTab => self.interactive.tabs.prev_tab(),

@@ -58,8 +58,8 @@ Press `F1` for full interactive help.
 | `F7`/`F8` | Resize tree (Shift: ×5) |
 | `F9`/`F10` | Resize terminal (Shift: ×5) |
 | `Ctrl-P` | Fuzzy file search |
-| `Ctrl-S` | New shell tab |
-| `Ctrl-K` | New Kiro tab |
+| `Ctrl-Shift-N` | New shell tab |
+| `Ctrl-Shift-K` | New Kiro tab |
 | `Ctrl-W` | Close tab |
 | `Ctrl-R` | Rename tab |
 | `Ctrl-D` | Diff vs HEAD |
@@ -103,7 +103,7 @@ $PWD/.kairn.state   Auto-saved on quit, restored on launch
   "line_numbers": true,
   "keys": {
     "quit": "ctrl+q",
-    "new_shell_tab": "ctrl+s",
+    "new_shell_tab": "ctrl+shift+n",
     "prev_tab": "ctrl+shift+left",
     "next_tab": "ctrl+shift+right"
   }
