@@ -41,6 +41,7 @@ pub enum Action {
     CycleModePrev,
     ToggleLeftPanel,
     Redraw,
+    RefreshTree,
     /// Key not mapped at app level — forward to focused panel.
     Forward(KeyEvent),
 }
@@ -76,6 +77,7 @@ impl Action {
                 | Action::PrevTab
                 | Action::SaveSession
                 | Action::LoadSession
+                | Action::RefreshTree
         )
     }
 }
@@ -140,6 +142,7 @@ fn name_to_global_action(name: &str) -> Option<Action> {
         "cycle_mode_prev" => Action::CycleModePrev,
         "toggle_left_panel" => Action::ToggleLeftPanel,
         "redraw" => Action::Redraw,
+        "refresh_tree" => Action::RefreshTree,
         _ => return None,
     })
 }

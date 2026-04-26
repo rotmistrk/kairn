@@ -244,6 +244,7 @@ impl App {
             Action::ResizeInteractive(d) => self.panel_sizes.resize_interactive(d),
             Action::PeekScreen => self.pending_peek = true,
             Action::Redraw => self.pending_redraw = true,
+            Action::RefreshTree => self.file_tree.refresh(),
             Action::SuspendToShell => self.pending_shell = true,
             Action::LaunchEditor => {
                 self.pending_editor = self.main_view.current_file_path().map(String::from);
@@ -583,6 +584,21 @@ impl App {
             ViewMode::Log => self.show_git_log(),
             ViewMode::Blame => self.show_blame(),
             ViewMode::Table => self.show_table(),
+        }
+    }
+
+    /// Reload the currently viewed file if its mtime changed on disk.
+    pub fn reload_if_changed(&mut self) {
+        let path = match self.main_view.current_file_path() {
+            Some(p) => p.to_string(),
+            None => return,
+        };
+        let disk_mtime = file_mtime(&path);
+        let cached_mtime = self.file_cache.get(&path).map(|c| c.0).unwrap_or(0);
+        if disk_mtime != cached_mtime {
+            let scroll = self.main_view.scroll;
+            self.open_file(&path);
+            self.main_view.scroll = scroll;
         }
     }
 
@@ -994,6 +1010,7 @@ fn help_panels(h: &mut String, cfg: &Config) {
     h.push_str("- `Enter`/`l` — open file / expand dir\n");
     h.push_str("- `→` on file — focus main panel\n");
     h.push_str("- `h`/`←` — collapse dir\n");
+    h.push_str(&format!("- {} — refresh file tree\n", kb("refresh_tree")));
     h.push_str("- Git: **yellow**=modified **green**=added **red**=deleted\n\n");
     h.push_str("## Terminal Tabs\n\n");
     for name in ["new_kiro_tab", "new_shell_tab", "close_tab"] {

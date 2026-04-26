@@ -131,6 +131,7 @@ fn default_action_keys() -> Vec<(&'static str, &'static str)> {
         ("cycle_mode_next", "ctrl+shift+down"),
         ("cycle_mode_prev", "ctrl+shift+up"),
         ("toggle_left_panel", "f6"),
+        ("refresh_tree", "f11"),
         ("redraw", "f12"),
     ]
 }

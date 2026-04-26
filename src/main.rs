@@ -122,6 +122,8 @@ fn run_loop(
         }
         app.interactive.tabs.poll_output();
         poll_capture(app, &mut capture);
+        app.file_tree.maybe_refresh(std::time::Duration::from_secs(2));
+        app.reload_if_changed();
     }
 }
 

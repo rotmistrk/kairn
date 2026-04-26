@@ -184,3 +184,31 @@ fn sort_nodes(nodes: &mut [FileNode]) {
         b_dir.cmp(&a_dir).then_with(|| a.name.cmp(&b.name))
     });
 }
+
+/// Collect paths of all expanded directories.
+pub fn expanded_paths(nodes: &[FileNode]) -> std::collections::HashSet<PathBuf> {
+    let mut set = std::collections::HashSet::new();
+    collect_expanded(nodes, &mut set);
+    set
+}
+
+fn collect_expanded(nodes: &[FileNode], set: &mut std::collections::HashSet<PathBuf>) {
+    for node in nodes {
+        if let NodeKind::Dir { children, expanded: true } = &node.kind {
+            set.insert(node.path.clone());
+            collect_expanded(children, set);
+        }
+    }
+}
+
+/// Restore expanded state from a set of paths.
+pub fn restore_expanded(nodes: &mut [FileNode], expanded: &std::collections::HashSet<PathBuf>) {
+    for node in nodes {
+        if let NodeKind::Dir { children, expanded: exp } = &mut node.kind {
+            if expanded.contains(&node.path) {
+                *exp = true;
+                restore_expanded(children, expanded);
+            }
+        }
+    }
+}

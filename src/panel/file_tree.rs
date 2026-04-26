@@ -59,6 +59,7 @@ pub struct FileTreePanel {
     pub filter: TreeFilter,
     pub git_status: HashMap<String, GitStatus>,
     viewport_height: std::cell::Cell<usize>,
+    last_refresh: std::time::Instant,
 }
 
 impl FileTreePanel {
@@ -74,7 +75,42 @@ impl FileTreePanel {
             filter: TreeFilter::default(),
             git_status,
             viewport_height: std::cell::Cell::new(0),
+            last_refresh: std::time::Instant::now(),
         }
+    }
+
+    /// Re-scan the workspace, preserving cursor on the same entry by path.
+    pub fn refresh(&mut self) {
+        let prev_path = self
+            .filtered_flat()
+            .get(self.cursor)
+            .map(|e| e.node.path.clone());
+        let prev_idx = self.cursor;
+        let expanded = tree::expanded_paths(&self.nodes);
+        self.nodes = tree::scan_workspace(&self.root_path).unwrap_or_default();
+        tree::restore_expanded(&mut self.nodes, &expanded);
+        self.git_status = collect_git_status(&self.root_path);
+        let count = self.visible_count();
+        if let Some(ref target) = prev_path {
+            self.cursor = self
+                .filtered_flat()
+                .iter()
+                .position(|e| e.node.path == *target)
+                .unwrap_or(prev_idx.min(count.saturating_sub(1)));
+        }
+        if self.cursor >= count {
+            self.cursor = count.saturating_sub(1);
+        }
+        self.last_refresh = std::time::Instant::now();
+    }
+
+    /// Auto-refresh if enough time has elapsed. Returns true if refreshed.
+    pub fn maybe_refresh(&mut self, interval: std::time::Duration) -> bool {
+        if self.last_refresh.elapsed() >= interval {
+            self.refresh();
+            return true;
+        }
+        false
     }
 
     fn visible_count(&self) -> usize {
