@@ -294,17 +294,39 @@ fn preview_current(panel: &FileTreePanel) -> Result<PanelAction> {
 }
 
 fn collapse_current(panel: &mut FileTreePanel) {
-    let target = {
-        let flat = panel.filtered_flat();
-        flat.get(panel.cursor).map(|e| e.node.path.clone())
+    let flat = panel.filtered_flat();
+    let entry = match flat.get(panel.cursor) {
+        Some(e) => e,
+        None => return,
     };
-    if let Some(target) = target {
+    let is_expanded_dir = matches!(
+        entry.node.kind,
+        tree::NodeKind::Dir { expanded: true, .. }
+    );
+    if is_expanded_dir {
+        let target = entry.node.path.clone();
+        drop(flat);
         if let Some(node) = tree::node_by_path_mut(&mut panel.nodes, &target) {
-            if node.is_dir() {
-                node.set_expanded(false);
-            }
+            node.set_expanded(false);
         }
+        return;
     }
+    // Leaf or collapsed dir — jump cursor to parent directory.
+    let parent_idx = find_parent_index(&flat, panel.cursor);
+    drop(flat);
+    if let Some(idx) = parent_idx {
+        panel.cursor = idx;
+    }
+}
+
+fn find_parent_index(flat: &[tree::FlatEntry<'_>], cursor: usize) -> Option<usize> {
+    let depth = flat.get(cursor)?.depth;
+    if depth == 0 {
+        return None;
+    }
+    (0..cursor)
+        .rev()
+        .find(|&i| flat[i].depth < depth && flat[i].node.is_dir())
 }
 
 fn build_list_items<'a>(

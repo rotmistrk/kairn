@@ -19,6 +19,8 @@ A TUI IDE oriented around [Kiro](https://kiro.dev) AI. Named after *cairn* — s
 - **Git integration**: diff, commit log, blame, file status colors, commit graph
 - **Fuzzy file search** (`Ctrl-P`) via nucleo
 - **Template macros**: `@file`, `@name`, `@dir`, `@line` expand in terminal input
+- **Two-chord key sequences**: Emacs-style `Ctrl-X` prefix bindings (status bar shows pending chord)
+- **Terminal capture**: scrape terminal output into main panel for review/saving
 - **Configurable keybindings** via `.kairnrc` (JSON, sparse overlay with source tracking)
 - **Session persistence**: auto-save on quit, auto-restore on launch
 
@@ -51,16 +53,18 @@ Press `F1` for full interactive help.
 
 ## Key Bindings
 
+Some bindings use a two-chord sequence: press the prefix (e.g. `Ctrl-X`), then the second key. The status bar shows the pending prefix.
+
 | Key | Action |
 |-----|--------|
 | `F1` | Help (full docs in main panel) |
 | `F6` | Toggle left panel: Files / Commits |
-| `F7`/`F8` | Resize tree (Shift: ×5) |
+| `F7`/`F8` | Resize tree (Shift: ×5; in stacked layouts, resizes terminal vertically when focused) |
 | `F9`/`F10` | Resize terminal (Shift: ×5) |
 | `Ctrl-P` | Fuzzy file search |
-| `Ctrl-Shift-N` | New shell tab |
-| `Ctrl-Shift-K` | New Kiro tab |
-| `Ctrl-W` | Close tab |
+| `Ctrl-X T` | New shell tab |
+| `Ctrl-X N` | New Kiro tab |
+| `Ctrl-X K` | Close tab |
 | `Ctrl-R` | Rename tab |
 | `Ctrl-D` | Diff vs HEAD |
 | `Ctrl-G` | Git commit log |
@@ -77,6 +81,11 @@ Press `F1` for full interactive help.
 | `v`/`V`/`Ctrl-V` | Visual select (stream/line/block) |
 | `Enter` | Send selection to terminal |
 | `PgUp`/`PgDn` | Scroll back in terminal |
+| `Ctrl-X O` | Capture last command output to main panel |
+| `Ctrl-X A` | Capture full terminal content to main panel |
+| `Ctrl-X Ctrl-S` | Save main panel buffer to file |
+| `Ctrl-X S` | Save session |
+| `Ctrl-Shift-O` | Load session |
 
 ## Layouts
 
@@ -103,9 +112,9 @@ $PWD/.kairn.state   Auto-saved on quit, restored on launch
   "line_numbers": true,
   "keys": {
     "quit": "ctrl+q",
-    "new_shell_tab": "ctrl+shift+n",
-    "prev_tab": "ctrl+shift+left",
-    "next_tab": "ctrl+shift+right"
+    "new_shell_tab": "ctrl+x t",
+    "prev_tab": "alt+left",
+    "next_tab": "alt+right"
   }
 }
 ```

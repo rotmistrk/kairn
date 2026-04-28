@@ -201,6 +201,67 @@ impl App {
         self.main_view.set_buffer(buf);
     }
 
+    /// Scrape the active terminal tab's full content into the main panel.
+    fn capture_all(&mut self) {
+        let title = format!("{} [all]", self.interactive.tabs.active_title());
+        let text = match self.interactive.tabs.active_termbuf() {
+            Some(tb) => crate::termbuf::extract_text(tb),
+            None => return,
+        };
+        let buf = crate::buffer::OutputBuffer::plain(title, text);
+        self.main_view.set_buffer(buf);
+        self.focus = FocusedPanel::Main;
+    }
+
+    /// Capture last output (since last prompt) from the active terminal.
+    fn capture_output(&mut self) {
+        let title = format!("{} [output]", self.interactive.tabs.active_title());
+        let text = match self.interactive.tabs.active_termbuf() {
+            Some(tb) => crate::termbuf::extract_last_output(tb),
+            None => return,
+        };
+        let buf = crate::buffer::OutputBuffer::plain(title, text);
+        self.main_view.set_buffer(buf);
+        self.focus = FocusedPanel::Main;
+    }
+
+    /// Open a prompt to save the current main panel buffer to a file.
+    fn open_save_buffer(&mut self) {
+        let default = self
+            .main_view
+            .buffer
+            .as_ref()
+            .map(|b| b.title.clone())
+            .unwrap_or_default();
+        let suggested = if default.contains('[') {
+            // For captured buffers, suggest a .txt filename
+            default
+                .split_whitespace()
+                .next()
+                .unwrap_or("output")
+                .to_string()
+                + ".txt"
+        } else {
+            default
+        };
+        self.overlay = Some(Overlay::SaveFilePrompt(
+            crate::overlay::SaveFilePrompt::new(&suggested),
+        ));
+    }
+
+    /// Write the current main panel buffer content to a file.
+    fn save_buffer_to_file(&mut self, path: &str) {
+        let content = self
+            .main_view
+            .buffer
+            .as_ref()
+            .map(|b| b.content.as_str())
+            .unwrap_or("");
+        if let Err(e) = std::fs::write(path, content) {
+            eprintln!("kairn: write failed: {e}");
+        }
+    }
+
     fn show_welcome(&mut self) {
         let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
         self.main_view.set_buffer(buf);
@@ -209,12 +270,18 @@ impl App {
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
         if self.overlay.is_some() {
+            self.keymap.cancel_pending();
             return self.handle_overlay_key(key);
         }
         if self.search.is_some() {
+            self.keymap.cancel_pending();
             return self.handle_search_key(key);
         }
-        let action = self.keymap.map_key(key);
+        let result = self.keymap.map_key(key);
+        let action = match result {
+            crate::keymap::MapResult::Pending => return Ok(()),
+            crate::keymap::MapResult::Action(a) => a,
+        };
         // When the terminal panel is focused, only intercept global
         // bindings (F-keys, Ctrl+Shift, Ctrl+Q). Forward everything
         // else so readline / shell editing keys reach the PTY.
@@ -234,13 +301,25 @@ impl App {
     fn dispatch_action(&mut self, action: Action) -> Result<()> {
         match action {
             Action::Quit => self.should_quit = true,
-            Action::RotateLayout => self.layout_mode = self.layout_mode.next(),
+            Action::RotateLayout => {
+                self.layout_mode = self.layout_mode.next();
+                self.pending_redraw = true;
+            }
             Action::ToggleTree => self.panel_sizes.toggle_tree(),
             Action::CycleFocus => self.focus = self.focus.next(),
             Action::FocusTree => self.focus = FocusedPanel::Tree,
             Action::FocusMain => self.focus = FocusedPanel::Main,
             Action::FocusTerminal => self.focus = FocusedPanel::Interactive,
-            Action::ResizeTree(d) => self.panel_sizes.resize_tree(d),
+            Action::ResizeTree(d) => {
+                if self.focus == FocusedPanel::Interactive
+                    && self.layout_mode != LayoutMode::Wide
+                {
+                    // In stacked layouts, F7/F8 resize the interactive panel vertically
+                    self.panel_sizes.resize_interactive(-d);
+                } else {
+                    self.panel_sizes.resize_tree(d);
+                }
+            }
             Action::ResizeInteractive(d) => self.panel_sizes.resize_interactive(d),
             Action::PeekScreen => self.pending_peek = true,
             Action::Redraw => self.pending_redraw = true,
@@ -262,6 +341,9 @@ impl App {
             Action::SaveSession => self.open_save_prompt(),
             Action::LoadSession => self.open_load_picker(),
             Action::ShowHelp => self.show_help(),
+            Action::CaptureAll => self.capture_all(),
+            Action::CaptureOutput => self.capture_output(),
+            Action::SaveBuffer => self.open_save_buffer(),
             Action::Forward(key) => self.forward_to_panel(key)?,
             action => self.handle_tab_action(action),
         }
@@ -290,6 +372,7 @@ impl App {
     fn handle_overlay_key(&mut self, key: KeyEvent) -> Result<()> {
         let action = match &mut self.overlay {
             Some(Overlay::SavePrompt(p)) => p.handle_key(key),
+            Some(Overlay::SaveFilePrompt(p)) => p.handle_key(key),
             Some(Overlay::LoadPicker(p)) => p.handle_key(key),
             None => return Ok(()),
         };
@@ -299,6 +382,10 @@ impl App {
             OverlayAction::Save(name) => {
                 self.overlay = None;
                 self.save_session(&name);
+            }
+            OverlayAction::SaveFile(path) => {
+                self.overlay = None;
+                self.save_buffer_to_file(&path);
             }
             OverlayAction::Load(name) => {
                 self.overlay = None;
@@ -955,6 +1042,8 @@ fn help_header(h: &mut String) {
     h.push_str(
         "A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n",
     );
+    h.push_str("**Two-chord keys:** some bindings use a prefix (e.g. `Ctrl-X`) ");
+    h.push_str("followed by a second key. The status bar shows the pending prefix.\n\n");
 }
 
 fn help_navigation(h: &mut String, cfg: &Config) {
@@ -989,7 +1078,8 @@ fn help_navigation(h: &mut String, cfg: &Config) {
     ] {
         h.push_str(&format!("- {}\n", kb(name)));
     }
-    h.push_str("- Shift variants resize by 5\n\n");
+    h.push_str("- Shift variants resize by 5\n");
+    h.push_str("- In stacked layouts, F7/F8 resize terminal vertically when focused\n\n");
 }
 
 fn help_panels(h: &mut String, cfg: &Config) {
@@ -1009,7 +1099,7 @@ fn help_panels(h: &mut String, cfg: &Config) {
     h.push_str("- `j`/`k` `↑`/`↓` — navigate (auto-preview in main)\n");
     h.push_str("- `Enter`/`l` — open file / expand dir\n");
     h.push_str("- `→` on file — focus main panel\n");
-    h.push_str("- `h`/`←` — collapse dir\n");
+    h.push_str("- `h`/`←` — collapse dir (on leaf/collapsed: jump to parent)\n");
     h.push_str(&format!("- {} — refresh file tree\n", kb("refresh_tree")));
     h.push_str("- Git: **yellow**=modified **green**=added **red**=deleted\n\n");
     h.push_str("## Terminal Tabs\n\n");
@@ -1020,6 +1110,13 @@ fn help_panels(h: &mut String, cfg: &Config) {
     h.push_str("- `Ctrl-R` — rename tab\n");
     h.push_str("- `Ctrl-Enter` — expand @macros and send\n");
     h.push_str("- `Esc Esc` or `Ctrl-]` — escape to main panel\n\n");
+    h.push_str("## Capture & Save\n\n");
+    for name in ["capture_all", "capture_output", "save_buffer"] {
+        h.push_str(&format!("- {}\n", kb(name)));
+    }
+    h.push_str("- capture_all scrapes the full terminal (scrollback + grid) into main\n");
+    h.push_str("- capture_output extracts only the last command output\n");
+    h.push_str("- save_buffer writes the current main panel content to a file\n\n");
 }
 
 fn help_operations(h: &mut String, cfg: &Config) {

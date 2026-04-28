@@ -104,16 +104,19 @@ fn default_nav_keys() -> Vec<(&'static str, &'static str)> {
         ("diff_current_file", "ctrl+d"),
         ("git_log", "ctrl+g"),
         ("show_help", "f1"),
-        ("save_session", "ctrl+shift+s"),
+        ("save_session", "ctrl+x s"),
         ("load_session", "ctrl+shift+o"),
     ]
 }
 
 fn default_action_keys() -> Vec<(&'static str, &'static str)> {
     vec![
-        ("new_kiro_tab", "ctrl+shift+k"),
-        ("new_shell_tab", "ctrl+shift+n"),
-        ("close_tab", "ctrl+w"),
+        ("new_kiro_tab", "ctrl+x n"),
+        ("new_shell_tab", "ctrl+x t"),
+        ("close_tab", "ctrl+x k"),
+        ("capture_output", "ctrl+x o"),
+        ("capture_all", "ctrl+x a"),
+        ("save_buffer", "ctrl+x ctrl+s"),
         ("prev_tab", "alt+left"),
         ("next_tab", "alt+right"),
         ("resize_tree_shrink", "f7"),

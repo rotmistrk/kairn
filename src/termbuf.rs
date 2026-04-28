@@ -76,10 +76,9 @@ impl TermBuf {
     pub fn resize(&mut self, cols: usize, rows: usize) {
         self.cols = cols;
         self.rows = rows;
-        self.grid.resize_with(rows, || vec![Cell::default(); cols]);
-        for row in &mut self.grid {
-            row.resize(cols, Cell::default());
-        }
+        // Clear grid so stale content from old dimensions doesn't linger
+        // while the child process repaints after SIGWINCH.
+        self.grid = vec![vec![Cell::default(); cols]; rows];
         self.cursor_row = self.cursor_row.min(rows.saturating_sub(1));
         self.cursor_col = self.cursor_col.min(cols.saturating_sub(1));
     }
@@ -455,4 +454,58 @@ fn parse_extended_color(params: &[u16], i: &mut usize) -> Option<Color> {
         }
         _ => None,
     }
+}
+
+/// Extract all text (scrollback + grid) from a TermBuf as a plain string.
+pub fn extract_text(tb: &TermBuf) -> String {
+    let lines = collect_all_lines(tb);
+    trim_trailing_empty(lines).join("\n")
+}
+
+/// Extract text after the last prompt-like line.
+/// Heuristic: scans backward for a line starting with `> `, `❯ `, `$ `,
+/// or `% ` (common CLI/kiro prompts). Returns everything after that line.
+/// Falls back to full content if no prompt is found.
+pub fn extract_last_output(tb: &TermBuf) -> String {
+    let lines = collect_all_lines(tb);
+    let trimmed = trim_trailing_empty(lines);
+    // Scan backward for the last prompt line.
+    for i in (0..trimmed.len()).rev() {
+        if is_prompt_line(&trimmed[i]) {
+            let output = &trimmed[i + 1..];
+            return output.join("\n");
+        }
+    }
+    trimmed.join("\n")
+}
+
+fn is_prompt_line(line: &str) -> bool {
+    let s = line.trim_start();
+    s.starts_with("> ")
+        || s.starts_with("❯ ")
+        || s.starts_with("$ ")
+        || s.starts_with("% ")
+}
+
+fn collect_all_lines(tb: &TermBuf) -> Vec<String> {
+    let mut lines = Vec::with_capacity(tb.scrollback.len() + tb.rows);
+    for row in &tb.scrollback {
+        lines.push(row_to_string(row));
+    }
+    for row in &tb.grid {
+        lines.push(row_to_string(row));
+    }
+    lines
+}
+
+fn trim_trailing_empty(mut lines: Vec<String>) -> Vec<String> {
+    while lines.last().is_some_and(|l| l.is_empty()) {
+        lines.pop();
+    }
+    lines
+}
+
+fn row_to_string(row: &[Cell]) -> String {
+    let s: String = row.iter().map(|c| c.ch).collect();
+    s.trim_end().to_string()
 }

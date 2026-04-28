@@ -1,4 +1,5 @@
 // Data-driven keymap: parses key combos from config strings.
+// Supports single-chord ("ctrl+q") and two-chord sequences ("ctrl+x k").
 
 use std::collections::HashMap;
 
@@ -42,8 +43,22 @@ pub enum Action {
     ToggleLeftPanel,
     Redraw,
     RefreshTree,
+    CaptureAll,
+    CaptureOutput,
+    SaveBuffer,
     /// Key not mapped at app level — forward to focused panel.
     Forward(KeyEvent),
+}
+
+type KeyChord = (KeyModifiers, KeyCode);
+
+/// Result of feeding a key event into the keymap.
+#[derive(Debug, Clone)]
+pub enum MapResult {
+    /// Resolved to a concrete action.
+    Action(Action),
+    /// First chord of a two-key sequence matched; waiting for second.
+    Pending,
 }
 
 impl Action {
@@ -78,38 +93,114 @@ impl Action {
                 | Action::SaveSession
                 | Action::LoadSession
                 | Action::RefreshTree
+                | Action::CaptureAll
+                | Action::CaptureOutput
+                | Action::SaveBuffer
         )
     }
 }
 
 /// Parsed keymap built from config at startup.
 pub struct Keymap {
-    bindings: HashMap<(KeyModifiers, KeyCode), Action>,
+    /// Single-chord bindings: one key → action.
+    single: HashMap<KeyChord, Action>,
+    /// Two-chord bindings: (prefix, second) → action.
+    seq: HashMap<(KeyChord, KeyChord), Action>,
+    /// Set of known prefix chords (derived from `seq` keys).
+    prefixes: std::collections::HashSet<KeyChord>,
+    /// Pending prefix chord, if any.
+    pending: Option<KeyChord>,
 }
 
 impl Keymap {
     /// Build keymap from config keybindings.
     pub fn from_config(config: &Config) -> Self {
-        let mut bindings = HashMap::new();
+        let mut single = HashMap::new();
+        let mut seq = HashMap::new();
         for (action_name, combo) in &config.keys {
-            if let Some(action) = name_to_action(action_name) {
-                if let Some((mods, code)) = parse_combo(&combo.0) {
-                    bindings.insert((mods, code), action);
+            let Some(action) = name_to_action(action_name) else {
+                continue;
+            };
+            let chords = parse_binding(&combo.0);
+            match chords.as_slice() {
+                [one] => {
+                    single.insert(*one, action);
                 }
+                [first, second] => {
+                    seq.insert((*first, *second), action);
+                }
+                _ => {}
             }
         }
-        Self { bindings }
+        let prefixes = seq.keys().map(|(p, _)| *p).collect();
+        Self {
+            single,
+            seq,
+            prefixes,
+            pending: None,
+        }
     }
 
-    /// Map a key event to an action.
-    pub fn map_key(&self, key: KeyEvent) -> Action {
-        let lookup_mods =
-            key.modifiers & (KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT);
-        self.bindings
-            .get(&(lookup_mods, key.code))
-            .cloned()
-            .unwrap_or(Action::Forward(key))
+    /// Feed a key event. Returns the mapping result.
+    pub fn map_key(&mut self, key: KeyEvent) -> MapResult {
+        let chord = normalize_chord(key);
+        if let Some(prefix) = self.pending.take() {
+            if let Some(action) = self.seq.get(&(prefix, chord)) {
+                return MapResult::Action(action.clone());
+            }
+            // Second key didn't match — discard prefix, forward key.
+            return MapResult::Action(Action::Forward(key));
+        }
+        // Check if this chord starts a sequence.
+        if self.prefixes.contains(&chord) {
+            self.pending = Some(chord);
+            return MapResult::Pending;
+        }
+        if let Some(action) = self.single.get(&chord) {
+            return MapResult::Action(action.clone());
+        }
+        MapResult::Action(Action::Forward(key))
     }
+
+    /// Whether a prefix chord is pending (for status bar display).
+    pub fn is_pending(&self) -> bool {
+        self.pending.is_some()
+    }
+
+    /// Cancel any pending prefix.
+    pub fn cancel_pending(&mut self) {
+        self.pending = None;
+    }
+
+    /// Human-readable label for the pending prefix, e.g. "C-x".
+    pub fn pending_label(&self) -> Option<String> {
+        self.pending.map(|(mods, code)| format_chord(mods, code))
+    }
+}
+
+fn normalize_chord(key: KeyEvent) -> KeyChord {
+    let mods = key.modifiers
+        & (KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT);
+    (mods, key.code)
+}
+
+fn format_chord(mods: KeyModifiers, code: KeyCode) -> String {
+    let mut s = String::new();
+    if mods.contains(KeyModifiers::CONTROL) {
+        s.push_str("C-");
+    }
+    if mods.contains(KeyModifiers::ALT) {
+        s.push_str("M-");
+    }
+    if mods.contains(KeyModifiers::SHIFT) {
+        s.push_str("S-");
+    }
+    match code {
+        KeyCode::Char(c) => s.push(c),
+        KeyCode::F(n) => s.push_str(&format!("F{n}")),
+        _ => s.push_str(&format!("{code:?}")),
+    }
+    s
 }
 
 fn name_to_action(name: &str) -> Option<Action> {
@@ -143,6 +234,9 @@ fn name_to_global_action(name: &str) -> Option<Action> {
         "toggle_left_panel" => Action::ToggleLeftPanel,
         "redraw" => Action::Redraw,
         "refresh_tree" => Action::RefreshTree,
+        "capture_all" => Action::CaptureAll,
+        "capture_output" => Action::CaptureOutput,
+        "save_buffer" => Action::SaveBuffer,
         _ => return None,
     })
 }
@@ -166,8 +260,17 @@ fn name_to_tab_action(name: &str) -> Option<Action> {
     })
 }
 
-/// Parse a combo string like "ctrl+shift+s" into (KeyModifiers, KeyCode).
-fn parse_combo(s: &str) -> Option<(KeyModifiers, KeyCode)> {
+/// Parse a binding string into one or two chords.
+/// Single: "ctrl+q"  →  [(Ctrl, Q)]
+/// Sequence: "ctrl+x k"  →  [(Ctrl, X), (None, K)]
+fn parse_binding(s: &str) -> Vec<KeyChord> {
+    s.split_whitespace()
+        .filter_map(parse_combo)
+        .collect()
+}
+
+/// Parse a single combo string like "ctrl+shift+s" into (KeyModifiers, KeyCode).
+fn parse_combo(s: &str) -> Option<KeyChord> {
     let parts: Vec<&str> = s.split('+').collect();
     let mut mods = KeyModifiers::empty();
     let mut key_part = "";

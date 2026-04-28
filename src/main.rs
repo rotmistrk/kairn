@@ -304,6 +304,9 @@ fn render_overlay(frame: &mut Frame, overlay: &Overlay) {
         Overlay::SavePrompt(p) => {
             render_save_prompt(frame, p, Rect::new(x, area.y + 3, w, 3));
         }
+        Overlay::SaveFilePrompt(p) => {
+            render_save_file_prompt(frame, p, Rect::new(x, area.y + 3, w, 3));
+        }
         Overlay::LoadPicker(p) => {
             let h = (p.sessions.len() as u16 + 2).min(15).min(area.height);
             render_load_picker(frame, p, Rect::new(x, area.y + 3, w, h));
@@ -320,6 +323,25 @@ fn render_save_prompt(frame: &mut Frame, prompt: &overlay::SavePrompt, area: Rec
     let para = Paragraph::new(prompt.name.as_str()).block(block);
     frame.render_widget(para, area);
     let cx = (area.x + 1 + prompt.cursor as u16).min(area.right().saturating_sub(2));
+    let cy = area.y + 1;
+    if cy < area.bottom().saturating_sub(1) {
+        frame.set_cursor_position((cx, cy));
+    }
+}
+
+fn render_save_file_prompt(
+    frame: &mut Frame,
+    prompt: &overlay::SaveFilePrompt,
+    area: Rect,
+) {
+    frame.render_widget(Clear, area);
+    let block = Block::default()
+        .title(" Save to file (Enter to write, Esc to cancel) ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Green));
+    let para = Paragraph::new(prompt.path.as_str()).block(block);
+    frame.render_widget(para, area);
+    let cx = (area.x + 1 + prompt.path.len() as u16).min(area.right().saturating_sub(2));
     let cy = area.y + 1;
     if cy < area.bottom().saturating_sub(1) {
         frame.set_cursor_position((cx, cy));
@@ -431,7 +453,14 @@ fn status_right_spans(app: &App, label: Style, value: Style) -> Vec<Span<'static
     } else {
         (format!("{}:", app.config.display_key("quit")), "quit")
     };
-    vec![
+    let mut spans = Vec::new();
+    if let Some(prefix) = app.keymap.pending_label() {
+        let pending_style = Style::default()
+            .fg(Color::Black)
+            .bg(Color::LightYellow);
+        spans.push(Span::styled(format!(" {prefix}- "), pending_style));
+    }
+    spans.extend([
         Span::styled("C-S-↑/↓:", label),
         Span::styled("mode/tab  ", value),
         Span::styled("F3/4/5:", label),
@@ -440,5 +469,6 @@ fn status_right_spans(app: &App, label: Style, value: Style) -> Vec<Span<'static
         Span::styled("help  ", value),
         Span::styled(tail_label, label),
         Span::styled(tail_value, value),
-    ]
+    ]);
+    spans
 }
