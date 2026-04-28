@@ -315,12 +315,18 @@ impl App {
                     && self.layout_mode != LayoutMode::Wide
                 {
                     // In stacked layouts, F7/F8 resize the interactive panel vertically
-                    self.panel_sizes.resize_interactive(-d);
+                    self.panel_sizes.resize_interactive_height(-d);
                 } else {
                     self.panel_sizes.resize_tree(d);
                 }
             }
-            Action::ResizeInteractive(d) => self.panel_sizes.resize_interactive(d),
+            Action::ResizeInteractive(d) => {
+                if self.layout_mode == LayoutMode::Wide {
+                    self.panel_sizes.resize_interactive_width(d);
+                } else {
+                    self.panel_sizes.resize_interactive_height(d);
+                }
+            }
             Action::PeekScreen => self.pending_peek = true,
             Action::Redraw => self.pending_redraw = true,
             Action::RefreshTree => self.file_tree.refresh(),

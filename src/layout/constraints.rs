@@ -25,7 +25,7 @@ impl LayoutConstraints {
     fn wide(area: Rect, tree_w: u16, has_tree: bool, sizes: &PanelSizes) -> Self {
         let content_x = if has_tree { area.x + tree_w } else { area.x };
         let content_w = area.width.saturating_sub(if has_tree { tree_w } else { 0 });
-        let int_w = sizes.interactive_size.min(content_w / 2);
+        let int_w = sizes.interactive_width.min(content_w / 2);
         let main_w = content_w.saturating_sub(int_w);
         Self {
             tree: tree_rect(area, tree_w, has_tree, area.height),
@@ -37,7 +37,7 @@ impl LayoutConstraints {
     fn tall_right(area: Rect, tree_w: u16, has_tree: bool, sizes: &PanelSizes) -> Self {
         let content_x = if has_tree { area.x + tree_w } else { area.x };
         let content_w = area.width.saturating_sub(if has_tree { tree_w } else { 0 });
-        let int_h = sizes.interactive_size.min(area.height / 2);
+        let int_h = sizes.interactive_height.min(area.height.saturating_sub(3));
         let main_h = area.height.saturating_sub(int_h);
         Self {
             tree: tree_rect(area, tree_w, has_tree, area.height),
@@ -47,7 +47,7 @@ impl LayoutConstraints {
     }
 
     fn tall_bottom(area: Rect, tree_w: u16, has_tree: bool, sizes: &PanelSizes) -> Self {
-        let int_h = sizes.interactive_size.min(area.height / 2);
+        let int_h = sizes.interactive_height.min(area.height.saturating_sub(3));
         let top_h = area.height.saturating_sub(int_h);
         let content_x = if has_tree { area.x + tree_w } else { area.x };
         let content_w = area.width.saturating_sub(if has_tree { tree_w } else { 0 });

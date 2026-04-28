@@ -74,11 +74,15 @@ impl TermBuf {
 
     /// Resize the buffer. Preserves content where possible.
     pub fn resize(&mut self, cols: usize, rows: usize) {
+        let mut new_grid = vec![vec![Cell::default(); cols]; rows];
+        let copy_rows = self.rows.min(rows);
+        let copy_cols = self.cols.min(cols);
+        for r in 0..copy_rows {
+            new_grid[r][..copy_cols].clone_from_slice(&self.grid[r][..copy_cols]);
+        }
+        self.grid = new_grid;
         self.cols = cols;
         self.rows = rows;
-        // Clear grid so stale content from old dimensions doesn't linger
-        // while the child process repaints after SIGWINCH.
-        self.grid = vec![vec![Cell::default(); cols]; rows];
         self.cursor_row = self.cursor_row.min(rows.saturating_sub(1));
         self.cursor_col = self.cursor_col.min(cols.saturating_sub(1));
     }
