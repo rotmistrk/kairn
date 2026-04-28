@@ -237,7 +237,7 @@ fn handle_tree_key(panel: &mut FileTreePanel, key: KeyEvent) -> Result<PanelActi
         }
         _ => {}
     }
-    panel.scroll_offset = adjust_scroll(
+    panel.scroll_offset = super::adjust_scroll(
         panel.cursor,
         panel.scroll_offset,
         panel.viewport_height.get(),
@@ -337,7 +337,7 @@ fn build_list_items<'a>(
     git_status: &HashMap<String, GitStatus>,
     root: &std::path::Path,
 ) -> Vec<ListItem<'a>> {
-    let scroll = adjust_scroll(cursor, scroll_offset, height);
+    let scroll = super::adjust_scroll(cursor, scroll_offset, height);
 
     flat.iter()
         .enumerate()
@@ -417,18 +417,6 @@ pub fn collect_git_status(root: &std::path::Path) -> HashMap<String, GitStatus> 
     map
 }
 
-fn adjust_scroll(cursor: usize, current: usize, height: usize) -> usize {
-    if height == 0 {
-        return 0;
-    }
-    if cursor < current {
-        cursor
-    } else if cursor >= current + height {
-        cursor - height + 1
-    } else {
-        current
-    }
-}
 
 fn node_icon(node: &FileNode) -> &'static str {
     match &node.kind {

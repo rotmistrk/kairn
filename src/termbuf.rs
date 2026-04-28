@@ -77,8 +77,8 @@ impl TermBuf {
         let mut new_grid = vec![vec![Cell::default(); cols]; rows];
         let copy_rows = self.rows.min(rows);
         let copy_cols = self.cols.min(cols);
-        for r in 0..copy_rows {
-            new_grid[r][..copy_cols].clone_from_slice(&self.grid[r][..copy_cols]);
+        for (r, new_row) in new_grid.iter_mut().enumerate().take(copy_rows) {
+            new_row[..copy_cols].clone_from_slice(&self.grid[r][..copy_cols]);
         }
         self.grid = new_grid;
         self.cols = cols;

@@ -66,7 +66,7 @@ impl Panel for CommitTreePanel {
             .border_style(Style::default().fg(border_color));
 
         let inner_h = area.height.saturating_sub(2) as usize;
-        let scroll = adjust_scroll(self.cursor, self.scroll, inner_h);
+        let scroll = super::adjust_scroll(self.cursor, self.scroll, inner_h);
         let items: Vec<ListItem<'_>> = self
             .lines
             .iter()
@@ -182,15 +182,3 @@ fn parse_graph_line(line: &str) -> GraphLine {
     }
 }
 
-fn adjust_scroll(cursor: usize, current: usize, height: usize) -> usize {
-    if height == 0 {
-        return 0;
-    }
-    if cursor < current {
-        cursor
-    } else if cursor >= current + height {
-        cursor - height + 1
-    } else {
-        current
-    }
-}

@@ -26,6 +26,20 @@ impl FocusedPanel {
     }
 }
 
+/// Adjust scroll offset so `cursor` stays visible within `height` rows.
+pub fn adjust_scroll(cursor: usize, current: usize, height: usize) -> usize {
+    if height == 0 {
+        return 0;
+    }
+    if cursor < current {
+        cursor
+    } else if cursor >= current + height {
+        cursor - height + 1
+    } else {
+        current
+    }
+}
+
 /// Trait for renderable, focusable panels.
 pub trait Panel {
     fn render(&self, frame: &mut Frame, area: Rect, focused: bool);

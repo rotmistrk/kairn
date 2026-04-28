@@ -265,7 +265,7 @@ impl App {
     fn show_welcome(&mut self) {
         let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
         self.main_view.set_buffer(buf);
-        self.main_view.set_highlighted(welcome_lines(&self.config));
+        self.main_view.set_highlighted(crate::styled::welcome_lines(&self.config));
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
@@ -431,7 +431,7 @@ impl App {
             Ok(Some(lines)) => lines,
             _ => return,
         };
-        let styled = diff_lines_to_styled(&diff_lines);
+        let styled = crate::styled::diff_lines_to_styled(&diff_lines);
         let raw = diff_lines
             .iter()
             .map(|l| l.content.as_str())
@@ -455,7 +455,7 @@ impl App {
             Ok(e) => e,
             Err(_) => return,
         };
-        let (styled, raw) = log_entries_to_styled(&entries);
+        let (styled, raw) = crate::styled::log_entries_to_styled(&entries);
         let title = match &file_filter {
             Some(f) => format!("log: {f}"),
             None => "log: (all)".to_string(),
@@ -515,7 +515,7 @@ impl App {
     }
 
     fn show_help(&mut self) {
-        let text = build_full_help(&self.config);
+        let text = crate::help::build_full_help(&self.config);
         let lines = self.highlight_to_owned(&text, "help.md");
         let buf = crate::buffer::OutputBuffer::plain("kairn help".to_string(), text);
         self.main_view.set_buffer(buf);
@@ -533,7 +533,7 @@ impl App {
             Ok(l) => l,
             Err(_) => return,
         };
-        let (styled, raw) = blame_to_styled(&blame_lines);
+        let (styled, raw) = crate::styled::blame_to_styled(&blame_lines);
         let buf = crate::buffer::OutputBuffer::plain(format!("blame: {path}"), raw);
         self.main_view.set_buffer(buf);
         self.main_view.set_highlighted(styled);
@@ -544,7 +544,7 @@ impl App {
             Some(p) => p.clone(),
             None => return,
         };
-        let (styled, raw) = csv_to_table(&path);
+        let (styled, raw) = crate::csv_table::csv_to_table(&path);
         let buf = crate::buffer::OutputBuffer::plain(format!("table: {path}"), raw);
         self.main_view.set_buffer(buf);
         self.main_view.set_highlighted(styled);
@@ -642,7 +642,7 @@ impl App {
                 self.expand_and_send_line();
             }
             PanelAction::Yank(text) => {
-                osc52_copy(&text);
+                crate::styled::osc52_copy(&text);
             }
             PanelAction::FocusRight => {
                 self.focus = match self.focus {
@@ -794,226 +794,6 @@ impl App {
     }
 }
 
-fn diff_lines_to_styled(lines: &[crate::diff::DiffLine]) -> Vec<ratatui::text::Line<'static>> {
-    use crate::diff::DiffTag;
-    use ratatui::style::{Color, Modifier, Style};
-    use ratatui::text::{Line, Span};
-
-    lines
-        .iter()
-        .map(|dl| {
-            let style = match dl.tag {
-                DiffTag::Header => Style::default()
-                    .fg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-                DiffTag::Added => Style::default().fg(Color::Green),
-                DiffTag::Removed => Style::default().fg(Color::Red),
-                DiffTag::Context => Style::default().fg(Color::White),
-            };
-            Line::from(Span::styled(dl.content.clone(), style))
-        })
-        .collect()
-}
-
-fn log_entries_to_styled(
-    entries: &[crate::diff::LogEntry],
-) -> (Vec<ratatui::text::Line<'static>>, String) {
-    let mut lines = Vec::new();
-    let mut raw = String::new();
-
-    for e in entries {
-        raw.push_str(&format!(
-            "{} {} {} {}\n",
-            e.hash_short, e.date, e.author, e.message
-        ));
-        lines.push(log_entry_line(e));
-    }
-
-    if entries.is_empty() {
-        lines.push(ratatui::text::Line::from("(no commits found)"));
-        raw.push_str("(no commits found)\n");
-    }
-
-    (lines, raw)
-}
-
-fn log_entry_line(e: &crate::diff::LogEntry) -> ratatui::text::Line<'static> {
-    use ratatui::style::{Color, Modifier, Style};
-    use ratatui::text::Span;
-
-    ratatui::text::Line::from(vec![
-        Span::styled(
-            format!("{} ", e.hash_short),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(format!("{} ", e.date), Style::default().fg(Color::Cyan)),
-        Span::styled(format!("{} ", e.author), Style::default().fg(Color::Green)),
-        Span::styled(e.message.clone(), Style::default().fg(Color::White)),
-    ])
-}
-
-fn welcome_lines(cfg: &Config) -> Vec<ratatui::text::Line<'static>> {
-    use ratatui::style::{Color, Style};
-    use ratatui::text::{Line, Span};
-
-    let dim = Style::default().fg(Color::DarkGray);
-    let mut lines = welcome_banner();
-    lines.extend(welcome_keys(cfg));
-
-    for warn in cfg.detect_collisions() {
-        lines.push(Line::from(Span::styled(
-            format!("  {warn}"),
-            Style::default().fg(Color::Red),
-        )));
-    }
-    lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(
-        format!("  Config: {}", Config::global_rc().display()),
-        dim,
-    )));
-    lines
-}
-
-fn welcome_banner() -> Vec<ratatui::text::Line<'static>> {
-    use ratatui::style::{Color, Modifier, Style};
-    use ratatui::text::{Line, Span};
-
-    let bold = Style::default().add_modifier(Modifier::BOLD);
-    let cyan = bold.fg(Color::Cyan);
-    let dim = Style::default().fg(Color::DarkGray);
-    let white = Style::default().fg(Color::White);
-
-    vec![
-        Line::from(""),
-        Line::from(Span::styled("  ╦╔═╔═╗╦╦═╗╔╗╔", cyan)),
-        Line::from(Span::styled("  ╠╩╗╠═╣║╠╦╝║║║", cyan)),
-        Line::from(Span::styled("  ╩ ╩╩ ╩╩╩╚═╝╚╝", cyan)),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("  kairn", bold),
-            Span::styled(" v0.1.0", dim),
-        ]),
-        Line::from(""),
-        Line::from(Span::styled("  A TUI IDE oriented around Kiro AI.", white)),
-        Line::from(Span::styled(
-            "  Named after cairn — stones marking a trail.",
-            dim,
-        )),
-        Line::from(""),
-    ]
-}
-
-fn welcome_keys(cfg: &Config) -> Vec<ratatui::text::Line<'static>> {
-    use ratatui::style::{Color, Style};
-    use ratatui::text::{Line, Span};
-
-    let y = Style::default().fg(Color::Yellow);
-    let w = Style::default().fg(Color::White);
-    let k = |name: &str| cfg.display_key(name);
-
-    vec![
-        Line::from(Span::styled("  Quick start:", y)),
-        Line::from(Span::styled(
-            format!("  {:<14} Search files", k("open_search")),
-            w,
-        )),
-        Line::from(Span::styled(
-            format!("  {:<14} Open shell tab", k("new_shell_tab")),
-            w,
-        )),
-        Line::from(Span::styled(
-            format!("  {:<14} Open Kiro tab", k("new_kiro_tab")),
-            w,
-        )),
-        Line::from(Span::styled(
-            format!("  {:<14} Diff vs HEAD", k("diff_current_file")),
-            w,
-        )),
-        Line::from(Span::styled(format!("  {:<14} Git log", k("git_log")), w)),
-        Line::from(Span::styled(
-            format!("  {:<14} All keybindings", k("show_help")),
-            w,
-        )),
-    ]
-}
-
-fn blame_to_styled(
-    lines: &[crate::diff::BlameLine],
-) -> (Vec<ratatui::text::Line<'static>>, String) {
-    use ratatui::style::{Color, Style};
-    use ratatui::text::{Line, Span};
-
-    let mut styled = Vec::new();
-    let mut raw = String::new();
-
-    for bl in lines {
-        let line_str = format!(
-            "{} {:>12} {} │ {}",
-            bl.hash_short, bl.author, bl.date, bl.content
-        );
-        raw.push_str(&line_str);
-        raw.push('\n');
-
-        styled.push(Line::from(vec![
-            Span::styled(
-                format!("{} ", bl.hash_short),
-                Style::default().fg(Color::Yellow),
-            ),
-            Span::styled(
-                format!("{:>12} ", bl.author),
-                Style::default().fg(Color::Green),
-            ),
-            Span::styled(
-                format!("{} │ ", bl.date),
-                Style::default().fg(Color::DarkGray),
-            ),
-            Span::styled(bl.content.clone(), Style::default().fg(Color::White)),
-        ]));
-    }
-
-    if lines.is_empty() {
-        styled.push(Line::from("(no blame data)"));
-        raw.push_str("(no blame data)\n");
-    }
-
-    (styled, raw)
-}
-
-/// Copy text to system clipboard via OSC 52 escape sequence.
-/// Works through ssh + tmux + iTerm2 chain.
-fn osc52_copy(text: &str) {
-    use std::io::Write;
-    let encoded = base64_encode(text.as_bytes());
-    let seq = format!("\x1b]52;c;{encoded}\x07");
-    let _ = std::io::stdout().write_all(seq.as_bytes());
-    let _ = std::io::stdout().flush();
-}
-
-fn base64_encode(data: &[u8]) -> String {
-    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::new();
-    for chunk in data.chunks(3) {
-        let b0 = chunk[0] as u32;
-        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
-        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
-        let n = (b0 << 16) | (b1 << 8) | b2;
-        out.push(CHARS[((n >> 18) & 63) as usize] as char);
-        out.push(CHARS[((n >> 12) & 63) as usize] as char);
-        if chunk.len() > 1 {
-            out.push(CHARS[((n >> 6) & 63) as usize] as char);
-        } else {
-            out.push('=');
-        }
-        if chunk.len() > 2 {
-            out.push(CHARS[(n & 63) as usize] as char);
-        } else {
-            out.push('=');
-        }
-    }
-    out
-}
 
 fn file_mtime(path: &str) -> u64 {
     std::fs::metadata(path)
@@ -1024,261 +804,6 @@ fn file_mtime(path: &str) -> u64 {
         .unwrap_or(0)
 }
 
-fn build_full_help(cfg: &Config) -> String {
-    let mut h = String::new();
-    help_header(&mut h);
-    help_navigation(&mut h, cfg);
-    help_panels(&mut h, cfg);
-    help_operations(&mut h, cfg);
-    help_config(&mut h, cfg);
-    h
-}
 
-fn help_kb(cfg: &Config, name: &str) -> String {
-    let key = cfg.display_key(name);
-    let src = cfg.key_source(name).label();
-    format!("`{key}` — {name} *({src})*")
-}
 
-fn help_header(h: &mut String) {
-    h.push_str("# kairn v0.1.0\n\n");
-    h.push_str("```\n  ╦╔═╔═╗╦╦═╗╔╗╔\n");
-    h.push_str("  ╠╩╗╠═╣║╠╦╝║║║\n");
-    h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝\n```\n\n");
-    h.push_str(
-        "A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n",
-    );
-    h.push_str("**Two-chord keys:** some bindings use a prefix (e.g. `Ctrl-X`) ");
-    h.push_str("followed by a second key. The status bar shows the pending prefix.\n\n");
-}
 
-fn help_navigation(h: &mut String, cfg: &Config) {
-    let kb = |n| help_kb(cfg, n);
-    h.push_str("## Navigation\n\n");
-    h.push_str("Three panels: **Tree ←→ Main ←→ Terminal**\n\n");
-    h.push_str("**Spatial (arrow keys):**\n");
-    h.push_str("- Tree: `→` on file → focus Main | `→` on dir → expand\n");
-    h.push_str("- Main (scroll mode): `←` → Tree | `→` → Terminal\n");
-    h.push_str("- Main (cursor mode): arrows move cursor within panel\n");
-    h.push_str("- Terminal: `Esc Esc` or `Ctrl-]` → Main\n\n");
-    h.push_str("**Direct focus:**\n");
-    for name in ["focus_tree", "focus_main", "focus_terminal", "cycle_focus"] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push('\n');
-    h.push_str("**Layout:**\n");
-    h.push_str(&format!("- {}\n", kb("rotate_layout")));
-    h.push_str(&format!("- {}\n", kb("toggle_tree")));
-    h.push_str(&format!("- {} — toggle Files / Commits\n", kb("toggle_left_panel")));
-    h.push('\n');
-    h.push_str("**Mode cycling** (`Ctrl-Shift-↑/↓` — context-aware):\n");
-    h.push_str("- Tree focused: filter **All → Modified → Untracked**\n");
-    h.push_str("- Main focused: view **File → Diff → Log → Blame**\n");
-    h.push_str("- Terminal focused: switch tabs\n\n");
-    h.push_str("**Resize:**\n");
-    for name in [
-        "resize_tree_shrink",
-        "resize_tree_grow",
-        "resize_interactive_shrink",
-        "resize_interactive_grow",
-    ] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push_str("- Shift variants resize by 5\n");
-    h.push_str("- In stacked layouts, F7/F8 resize terminal vertically when focused\n\n");
-}
-
-fn help_panels(h: &mut String, cfg: &Config) {
-    let kb = |n| help_kb(cfg, n);
-    h.push_str("## Main Panel\n\n");
-    h.push_str("**Scroll mode** (default):\n");
-    h.push_str("- `↑`/`↓`/`PgUp`/`PgDn` — scroll\n");
-    h.push_str("- `←`/`→` — navigate to Tree / Terminal\n");
-    h.push_str("- `/` — search as you type, `n`/`N` next/prev\n");
-    h.push_str("- `Space` — enter cursor mode\n\n");
-    h.push_str("**Cursor mode** (double-line border):\n");
-    h.push_str("- `↑↓←→` — move cursor\n");
-    h.push_str("- `v` stream / `V` line / `Ctrl-V` block select\n");
-    h.push_str("- `Enter` — send selection to active terminal tab\n");
-    h.push_str("- `Esc` — clear selection | `Space` — exit cursor mode\n\n");
-    h.push_str("## File Tree\n\n");
-    h.push_str("- `j`/`k` `↑`/`↓` — navigate (auto-preview in main)\n");
-    h.push_str("- `Enter`/`l` — open file / expand dir\n");
-    h.push_str("- `→` on file — focus main panel\n");
-    h.push_str("- `h`/`←` — collapse dir (on leaf/collapsed: jump to parent)\n");
-    h.push_str(&format!("- {} — refresh file tree\n", kb("refresh_tree")));
-    h.push_str("- Git: **yellow**=modified **green**=added **red**=deleted\n\n");
-    h.push_str("## Terminal Tabs\n\n");
-    for name in ["new_kiro_tab", "new_shell_tab", "close_tab"] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push_str("- `PgUp`/`PgDn` — scroll back\n");
-    h.push_str("- `Ctrl-R` — rename tab\n");
-    h.push_str("- `Ctrl-Enter` — expand @macros and send\n");
-    h.push_str("- `Esc Esc` or `Ctrl-]` — escape to main panel\n\n");
-    h.push_str("## Capture & Save\n\n");
-    for name in ["capture_all", "capture_output", "save_buffer"] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push_str("- capture_all scrapes the full terminal (scrollback + grid) into main\n");
-    h.push_str("- capture_output extracts only the last command output\n");
-    h.push_str("- save_buffer writes the current main panel content to a file\n\n");
-}
-
-fn help_operations(h: &mut String, cfg: &Config) {
-    let kb = |n| help_kb(cfg, n);
-    h.push_str("## File & Git Operations\n\n");
-    for name in ["open_search", "launch_editor", "diff_current_file", "git_log", "show_help"] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push('\n');
-    h.push_str("## Session & System\n\n");
-    for name in ["save_session", "load_session", "suspend_to_shell", "peek_screen", "quit"] {
-        h.push_str(&format!("- {}\n", kb(name)));
-    }
-    h.push('\n');
-    h.push_str("## Template Variables\n\n");
-    h.push_str("Expand with `Ctrl-Enter` in terminal, or `Enter` from selection:\n\n");
-    h.push_str("| Variable | Expands to |\n");
-    h.push_str("|----------|------------|\n");
-    h.push_str("| `@file` | Current file path |\n");
-    h.push_str("| `@name` | Current file name |\n");
-    h.push_str("| `@dir`  | Workspace root |\n");
-    h.push_str("| `@line` | Cursor line number |\n\n");
-}
-
-fn help_config(h: &mut String, cfg: &Config) {
-    h.push_str("## Configuration\n\n");
-    h.push_str(&format!("- **Global:** `{}`\n", Config::global_rc().display()));
-    h.push_str("- **Project:** `$PWD/.kairnrc` (overrides global)\n");
-    h.push_str("- **State:** `$PWD/.kairn.state` (auto-saved on quit)\n\n");
-    h.push_str("```json\n");
-    h.push_str("{\n  \"kiro_command\": \"kiro-cli\",\n");
-    h.push_str("  \"line_numbers\": true,\n");
-    h.push_str("  \"keys\": { \"quit\": \"ctrl+q\" }\n}\n```\n\n");
-    h.push_str("## Environment Variables\n\n");
-    h.push_str("- `KAIRN_PID` — prevents nested instances\n");
-    h.push_str("- `KAIRN_CAPTURE` — pipe: `cmd > $KAIRN_CAPTURE` → main panel\n");
-    h.push_str("- `SHELL` — shell tabs | `EDITOR` — Ctrl-E\n\n");
-    let conflicts = cfg.detect_collisions();
-    if !conflicts.is_empty() {
-        h.push_str("## ⚠ Key Conflicts\n\n");
-        for c in &conflicts {
-            h.push_str(&format!("- {c}\n"));
-        }
-        h.push('\n');
-    }
-}
-
-fn csv_to_table(path: &str) -> (Vec<ratatui::text::Line<'static>>, String) {
-    use ratatui::text::Line;
-
-    let reader = csv::ReaderBuilder::new().flexible(true).from_path(path);
-    let mut reader = match reader {
-        Ok(r) => r,
-        Err(e) => {
-            let msg = format!("Cannot parse CSV: {e}");
-            return (vec![Line::from(msg.clone())], msg);
-        }
-    };
-
-    let headers: Vec<String> = reader
-        .headers()
-        .map(|h| h.iter().map(|s| s.to_string()).collect())
-        .unwrap_or_default();
-    let mut rows: Vec<Vec<String>> = Vec::new();
-    for record in reader.records().flatten() {
-        rows.push(record.iter().map(|s| s.to_string()).collect());
-    }
-
-    let ncols = headers
-        .len()
-        .max(rows.iter().map(|r| r.len()).max().unwrap_or(0));
-    let widths = compute_col_widths(&headers, &rows, ncols);
-    let numeric = detect_numeric_cols(&headers, &rows, ncols);
-    render_csv_table(&headers, &rows, &widths, &numeric)
-}
-
-fn compute_col_widths(
-    headers: &[String],
-    rows: &[Vec<String>],
-    ncols: usize,
-) -> Vec<usize> {
-    let mut widths = vec![0usize; ncols];
-    for (i, h) in headers.iter().enumerate() {
-        widths[i] = widths[i].max(h.len());
-    }
-    for row in rows {
-        for (i, cell) in row.iter().enumerate() {
-            if i < ncols {
-                widths[i] = widths[i].max(cell.len());
-            }
-        }
-    }
-    widths
-}
-
-fn render_csv_table(
-    headers: &[String],
-    rows: &[Vec<String>],
-    widths: &[usize],
-    numeric: &[bool],
-) -> (Vec<ratatui::text::Line<'static>>, String) {
-    use ratatui::style::{Color, Modifier, Style};
-    use ratatui::text::{Line, Span};
-
-    let mut styled = Vec::new();
-    let mut raw = String::new();
-    let hdr = Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD);
-    let sep = Style::default().fg(Color::DarkGray);
-    let row_s = Style::default().fg(Color::White);
-
-    let mut push = |text: String, style: Style| {
-        raw.push_str(&text);
-        raw.push('\n');
-        styled.push(Line::from(Span::styled(text, style)));
-    };
-
-    push(fmt_row(headers, widths, numeric), hdr);
-    let divider: String = widths.iter().map(|w| "─".repeat(w + 2)).collect::<Vec<_>>().join("┼");
-    push(format!("─{divider}─"), sep);
-    for row in rows {
-        push(fmt_row(row, widths, numeric), row_s);
-    }
-    if rows.is_empty() && headers.is_empty() {
-        styled.push(Line::from("(empty or not a CSV file)"));
-    }
-    (styled, raw)
-}
-
-fn detect_numeric_cols(_headers: &[String], rows: &[Vec<String>], ncols: usize) -> Vec<bool> {
-    (0..ncols)
-        .map(|i| {
-            let non_empty: Vec<&str> = rows
-                .iter()
-                .filter_map(|r| r.get(i).map(|s| s.trim()))
-                .filter(|s| !s.is_empty())
-                .collect();
-            if non_empty.is_empty() {
-                return false;
-            }
-            non_empty.iter().all(|s| s.parse::<f64>().is_ok())
-        })
-        .collect()
-}
-
-fn fmt_row(cells: &[String], widths: &[usize], numeric: &[bool]) -> String {
-    let parts: Vec<String> = widths
-        .iter()
-        .enumerate()
-        .map(|(i, w)| {
-            let cell = cells.get(i).map(|s| s.as_str()).unwrap_or("");
-            if numeric.get(i).copied().unwrap_or(false) {
-                format!(" {cell:>w$} ")
-            } else {
-                format!(" {cell:<w$} ")
-            }
-        })
-        .collect();
-    format!("│{}│", parts.join("│"))
-}
