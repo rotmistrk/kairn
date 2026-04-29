@@ -369,9 +369,10 @@ impl Panel for MainViewPanel {
         if self.search_active {
             render_search_bar(frame, area, self);
         }
-        let is_file = self.buffer.as_ref().is_some_and(|b| {
-            matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
-        });
+        let is_file = self
+            .buffer
+            .as_ref()
+            .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
         if self.line_numbers && is_file {
             render_line_numbers(frame, area, self.scroll, self.total_lines());
         }
@@ -404,8 +405,14 @@ impl MainViewPanel {
             return None;
         }
         match code {
-            KeyCode::Char('n') if !ctrl => { self.next_match(); Some(PanelAction::None) }
-            KeyCode::Char('N') => { self.prev_match(); Some(PanelAction::None) }
+            KeyCode::Char('n') if !ctrl => {
+                self.next_match();
+                Some(PanelAction::None)
+            }
+            KeyCode::Char('N') => {
+                self.prev_match();
+                Some(PanelAction::None)
+            }
             KeyCode::Char('/') if !ctrl => {
                 self.search_active = true;
                 self.search_query.clear();
@@ -415,12 +422,7 @@ impl MainViewPanel {
         }
     }
 
-    fn handle_mode_toggle(
-        &mut self,
-        code: KeyCode,
-        ctrl: bool,
-        alt: bool,
-    ) -> Option<PanelAction> {
+    fn handle_mode_toggle(&mut self, code: KeyCode, ctrl: bool, alt: bool) -> Option<PanelAction> {
         if code == KeyCode::Char('/') && !ctrl {
             self.search_active = true;
             self.search_query.clear();
@@ -565,7 +567,11 @@ fn highlight_block(
 
 impl MainViewPanel {
     fn build_block(&self, focused: bool) -> (Block<'_>, u16) {
-        let border_color = if focused { Color::Cyan } else { Color::DarkGray };
+        let border_color = if focused {
+            Color::Cyan
+        } else {
+            Color::DarkGray
+        };
         let cursor_label = match self.cursor_mode {
             CursorMode::Off => "",
             CursorMode::Normal => " ●",
@@ -583,10 +589,15 @@ impl MainViewPanel {
         } else {
             ratatui::widgets::BorderType::Plain
         };
-        let is_file = self.buffer.as_ref().is_some_and(|b| {
-            matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
-        });
-        let gutter_w = if self.line_numbers && is_file { 4u16 } else { 0 };
+        let is_file = self
+            .buffer
+            .as_ref()
+            .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
+        let gutter_w = if self.line_numbers && is_file {
+            4u16
+        } else {
+            0
+        };
         let block = Block::default()
             .title(title)
             .title_bottom(Line::from(line_info).right_aligned())
@@ -598,8 +609,8 @@ impl MainViewPanel {
 
     fn render_content(&self, frame: &mut Frame, area: Rect) {
         if !self.highlighted_lines.is_empty() {
-            let para = Paragraph::new(self.highlighted_lines.clone())
-                .scroll((self.scroll as u16, 0));
+            let para =
+                Paragraph::new(self.highlighted_lines.clone()).scroll((self.scroll as u16, 0));
             frame.render_widget(para, area);
         } else {
             let text = match &self.buffer {
@@ -685,16 +696,24 @@ fn render_search_matches(frame: &mut Frame, area: Rect, panel: &MainViewPanel) {
     if panel.search_query.is_empty() {
         return;
     }
-    let is_file = panel.buffer.as_ref().is_some_and(|b| {
-        matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. })
-    });
-    let gutter_w = if panel.line_numbers && is_file { 4u16 } else { 0 };
+    let is_file = panel
+        .buffer
+        .as_ref()
+        .is_some_and(|b| matches!(b.kind, crate::buffer::BufferKind::FilePreview { .. }));
+    let gutter_w = if panel.line_numbers && is_file {
+        4u16
+    } else {
+        0
+    };
     let inner_y = area.y + 1;
     let inner_x = area.x + 1 + gutter_w;
     let inner_w = area.width.saturating_sub(2 + gutter_w) as usize;
     let inner_h = area.height.saturating_sub(2) as usize;
     let query_lower = panel.search_query.to_lowercase();
-    let current_row = panel.search_matches.get(panel.search_index).map(|&(r, _)| r);
+    let current_row = panel
+        .search_matches
+        .get(panel.search_index)
+        .map(|&(r, _)| r);
     let buf = frame.buffer_mut();
 
     for row in 0..inner_h {
@@ -730,7 +749,11 @@ fn highlight_row_matches(
 
     let line_lower = line.to_lowercase();
     let qlen = query.len();
-    let bg = if is_current { Color::Yellow } else { Color::Indexed(58) };
+    let bg = if is_current {
+        Color::Yellow
+    } else {
+        Color::Indexed(58)
+    };
     let mut start = 0;
     while let Some(pos) = line_lower[start..].find(query) {
         let col = start + pos;

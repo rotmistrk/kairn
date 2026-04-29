@@ -28,11 +28,7 @@ pub fn csv_to_table(path: &str) -> (Vec<Line<'static>>, String) {
     render_table(&headers, &rows, &widths, &numeric)
 }
 
-fn compute_col_widths(
-    headers: &[String],
-    rows: &[Vec<String>],
-    ncols: usize,
-) -> Vec<usize> {
+fn compute_col_widths(headers: &[String], rows: &[Vec<String>], ncols: usize) -> Vec<usize> {
     let mut widths = vec![0usize; ncols];
     for (i, h) in headers.iter().enumerate() {
         widths[i] = widths[i].max(h.len());
@@ -55,7 +51,9 @@ fn render_table(
 ) -> (Vec<Line<'static>>, String) {
     let mut styled = Vec::new();
     let mut raw = String::new();
-    let hdr = Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD);
+    let hdr = Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD);
     let sep = Style::default().fg(Color::DarkGray);
     let row_s = Style::default().fg(Color::White);
 

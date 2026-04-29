@@ -21,9 +21,7 @@ fn help_header(h: &mut String) {
     h.push_str("```\n  ╦╔═╔═╗╦╦═╗╔╗╔\n");
     h.push_str("  ╠╩╗╠═╣║╠╦╝║║║\n");
     h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝\n```\n\n");
-    h.push_str(
-        "A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n",
-    );
+    h.push_str("A TUI IDE for Kiro AI. Named after *cairn* — stacked stones marking a trail.\n\n");
     h.push_str("**Two-chord keys:** some bindings use a prefix (e.g. `Ctrl-X`) ");
     h.push_str("followed by a second key. The status bar shows the pending prefix.\n\n");
 }
@@ -45,7 +43,10 @@ fn help_navigation(h: &mut String, cfg: &Config) {
     h.push_str("**Layout:**\n");
     h.push_str(&format!("- {}\n", kb("rotate_layout")));
     h.push_str(&format!("- {}\n", kb("toggle_tree")));
-    h.push_str(&format!("- {} — toggle Files / Commits\n", kb("toggle_left_panel")));
+    h.push_str(&format!(
+        "- {} — toggle Files / Commits\n",
+        kb("toggle_left_panel")
+    ));
     h.push('\n');
     h.push_str("**Mode cycling** (`Ctrl-Shift-↑/↓` — context-aware):\n");
     h.push_str("- Tree focused: filter **All → Modified → Untracked**\n");
@@ -104,12 +105,24 @@ fn help_panels(h: &mut String, cfg: &Config) {
 fn help_operations(h: &mut String, cfg: &Config) {
     let kb = |n| help_kb(cfg, n);
     h.push_str("## File & Git Operations\n\n");
-    for name in ["open_search", "launch_editor", "diff_current_file", "git_log", "show_help"] {
+    for name in [
+        "open_search",
+        "launch_editor",
+        "diff_current_file",
+        "git_log",
+        "show_help",
+    ] {
         h.push_str(&format!("- {}\n", kb(name)));
     }
     h.push('\n');
     h.push_str("## Session & System\n\n");
-    for name in ["save_session", "load_session", "suspend_to_shell", "peek_screen", "quit"] {
+    for name in [
+        "save_session",
+        "load_session",
+        "suspend_to_shell",
+        "peek_screen",
+        "quit",
+    ] {
         h.push_str(&format!("- {}\n", kb(name)));
     }
     h.push('\n');
@@ -125,7 +138,10 @@ fn help_operations(h: &mut String, cfg: &Config) {
 
 fn help_config(h: &mut String, cfg: &Config) {
     h.push_str("## Configuration\n\n");
-    h.push_str(&format!("- **Global:** `{}`\n", Config::global_rc().display()));
+    h.push_str(&format!(
+        "- **Global:** `{}`\n",
+        Config::global_rc().display()
+    ));
     h.push_str("- **Project:** `$PWD/.kairnrc` (overrides global)\n");
     h.push_str("- **State:** `$PWD/.kairn.state` (auto-saved on quit)\n\n");
     h.push_str("```json\n");

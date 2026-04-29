@@ -208,22 +208,14 @@ impl TabManager {
     /// Spawn live PTYs for all restored tabs that lack one.
     /// Shell tabs get a fresh shell; Kiro tabs resume via --resume-id
     /// if a session_id is stored, otherwise start fresh.
-    pub fn revive_tabs(
-        &mut self,
-        kiro_cmd: &str,
-        cols: u16,
-        rows: u16,
-        cwd: &std::path::Path,
-    ) {
+    pub fn revive_tabs(&mut self, kiro_cmd: &str, cols: u16, rows: u16, cwd: &std::path::Path) {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
         for tab in &mut self.tabs {
             if tab.pty.is_some() {
                 continue;
             }
             tab.pty = match &tab.meta.kind {
-                TabKind::Shell => {
-                    PtyTab::spawn(&shell, &[], cols, rows, cwd).ok()
-                }
+                TabKind::Shell => PtyTab::spawn(&shell, &[], cols, rows, cwd).ok(),
                 TabKind::Kiro { session_id, .. } => {
                     let mut args: Vec<&str> = vec!["chat", "--classic"];
                     let id_owned;

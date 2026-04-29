@@ -265,7 +265,18 @@ impl App {
     fn show_welcome(&mut self) {
         let buf = crate::buffer::OutputBuffer::plain("kairn".to_string(), String::new());
         self.main_view.set_buffer(buf);
-        self.main_view.set_highlighted(crate::styled::welcome_lines(&self.config));
+        self.main_view
+            .set_highlighted(crate::styled::welcome_lines(&self.config));
+    }
+
+    /// Handle paste event: send to PTY wrapped in bracketed paste markers.
+    pub fn handle_paste(&mut self, text: &str) {
+        if self.focus == FocusedPanel::Interactive {
+            // Wrap in bracketed paste so kiro/shell treats as single block
+            self.interactive.tabs.write_to_active(b"\x1b[200~");
+            self.interactive.tabs.write_to_active(text.as_bytes());
+            self.interactive.tabs.write_to_active(b"\x1b[201~");
+        }
     }
 
     pub fn handle_key(&mut self, key: KeyEvent) -> Result<()> {
@@ -311,9 +322,7 @@ impl App {
             Action::FocusMain => self.focus = FocusedPanel::Main,
             Action::FocusTerminal => self.focus = FocusedPanel::Interactive,
             Action::ResizeTree(d) => {
-                if self.focus == FocusedPanel::Interactive
-                    && self.layout_mode != LayoutMode::Wide
-                {
+                if self.focus == FocusedPanel::Interactive && self.layout_mode != LayoutMode::Wide {
                     // In stacked layouts, F7/F8 resize the interactive panel vertically
                     self.panel_sizes.resize_interactive_height(-d);
                 } else {
@@ -794,7 +803,6 @@ impl App {
     }
 }
 
-
 fn file_mtime(path: &str) -> u64 {
     std::fs::metadata(path)
         .and_then(|m| m.modified())
@@ -803,7 +811,3 @@ fn file_mtime(path: &str) -> u64 {
         .map(|d| d.as_secs())
         .unwrap_or(0)
 }
-
-
-
-

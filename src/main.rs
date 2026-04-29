@@ -77,7 +77,11 @@ fn main() -> Result<()> {
 fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        crossterm::event::EnableBracketedPaste
+    )?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout))?;
     terminal.clear()?;
     Ok(terminal)
@@ -85,7 +89,11 @@ fn init_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        crossterm::event::DisableBracketedPaste
+    )?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -125,15 +133,13 @@ fn run_loop(
         }
         app.interactive.tabs.poll_output();
         poll_capture(app, &mut capture);
-        app.file_tree.maybe_refresh(std::time::Duration::from_secs(2));
+        app.file_tree
+            .maybe_refresh(std::time::Duration::from_secs(2));
         app.reload_if_changed();
     }
 }
 
-fn sync_sizes(
-    terminal: &Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut App,
-) -> Result<()> {
+fn sync_sizes(terminal: &Terminal<CrosstermBackend<io::Stdout>>, app: &mut App) -> Result<()> {
     let size = terminal.size()?;
     let area = Rect::new(0, 0, size.width, size.height.saturating_sub(1));
     let c = LayoutConstraints::compute(area, app.layout_mode, &app.panel_sizes);
@@ -175,12 +181,12 @@ fn drain_events(app: &mut App) -> Result<()> {
         return Ok(());
     }
     loop {
-        if let Event::Key(key) = event::read()? {
-            app.handle_key(key)?;
+        match event::read()? {
+            Event::Key(key) => app.handle_key(key)?,
+            Event::Paste(text) => app.handle_paste(&text),
+            _ => {}
         }
-        if app.should_quit
-            || !event::poll(std::time::Duration::from_millis(0))?
-        {
+        if app.should_quit || !event::poll(std::time::Duration::from_millis(0))? {
             break;
         }
     }
@@ -332,11 +338,7 @@ fn render_save_prompt(frame: &mut Frame, prompt: &overlay::SavePrompt, area: Rec
     }
 }
 
-fn render_save_file_prompt(
-    frame: &mut Frame,
-    prompt: &overlay::SaveFilePrompt,
-    area: Rect,
-) {
+fn render_save_file_prompt(frame: &mut Frame, prompt: &overlay::SaveFilePrompt, area: Rect) {
     frame.render_widget(Clear, area);
     let block = Block::default()
         .title(" Save to file (Enter to write, Esc to cancel) ")
@@ -419,7 +421,9 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let right = status_right_spans(app, label, value);
     let right_len: usize = right.iter().map(|s| s.content.len()).sum();
 
-    let pad = area.width.saturating_sub(left_len as u16 + right_len as u16);
+    let pad = area
+        .width
+        .saturating_sub(left_len as u16 + right_len as u16);
     spans.push(Span::styled(
         " ".repeat(pad as usize),
         Style::default().bg(Color::Black),
@@ -458,9 +462,7 @@ fn status_right_spans(app: &App, label: Style, value: Style) -> Vec<Span<'static
     };
     let mut spans = Vec::new();
     if let Some(prefix) = app.keymap.pending_label() {
-        let pending_style = Style::default()
-            .fg(Color::Black)
-            .bg(Color::LightYellow);
+        let pending_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
         spans.push(Span::styled(format!(" {prefix}- "), pending_style));
     }
     spans.extend([

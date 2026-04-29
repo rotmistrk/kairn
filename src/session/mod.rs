@@ -99,12 +99,11 @@ pub fn list_kiro_sessions(kiro_cmd: &str) -> Vec<String> {
         Ok(r) => r,
         Err(_) => return Vec::new(),
     };
-    let uuid_re = match regex::Regex::new(
-        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-    ) {
-        Ok(r) => r,
-        Err(_) => return Vec::new(),
-    };
+    let uuid_re =
+        match regex::Regex::new(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}") {
+            Ok(r) => r,
+            Err(_) => return Vec::new(),
+        };
 
     let mut ids = Vec::new();
     for line in text.lines() {

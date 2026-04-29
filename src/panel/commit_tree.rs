@@ -181,4 +181,3 @@ fn parse_graph_line(line: &str) -> GraphLine {
         rest: rest.to_string(),
     }
 }
-

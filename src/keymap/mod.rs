@@ -179,8 +179,7 @@ impl Keymap {
 }
 
 fn normalize_chord(key: KeyEvent) -> KeyChord {
-    let mods = key.modifiers
-        & (KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT);
+    let mods = key.modifiers & (KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT);
     (mods, key.code)
 }
 
@@ -264,9 +263,7 @@ fn name_to_tab_action(name: &str) -> Option<Action> {
 /// Single: "ctrl+q"  →  [(Ctrl, Q)]
 /// Sequence: "ctrl+x k"  →  [(Ctrl, X), (None, K)]
 fn parse_binding(s: &str) -> Vec<KeyChord> {
-    s.split_whitespace()
-        .filter_map(parse_combo)
-        .collect()
+    s.split_whitespace().filter_map(parse_combo).collect()
 }
 
 /// Parse a single combo string like "ctrl+shift+s" into (KeyModifiers, KeyCode).

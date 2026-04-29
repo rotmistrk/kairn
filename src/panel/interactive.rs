@@ -61,9 +61,7 @@ impl Panel for InteractivePanel {
         if self.renaming {
             return Ok(self.handle_rename_key(key.code));
         }
-        if key.modifiers.contains(KeyModifiers::CONTROL)
-            && key.code == KeyCode::Char('r')
-        {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('r') {
             self.renaming = true;
             self.rename_buf = self.tabs.active_title().to_string();
             return Ok(PanelAction::None);

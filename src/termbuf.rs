@@ -326,11 +326,7 @@ impl TermBuf {
                 self.cursor_col = col.saturating_sub(1).min(self.cols - 1);
             }
             'n' if p.first().copied() == Some(6) => {
-                let resp = format!(
-                    "\x1b[{};{}R",
-                    self.cursor_row + 1,
-                    self.cursor_col + 1
-                );
+                let resp = format!("\x1b[{};{}R", self.cursor_row + 1, self.cursor_col + 1);
                 self.responses.push(resp.into_bytes());
             }
             's' => self.saved_cursor = (self.cursor_row, self.cursor_col),
@@ -485,10 +481,7 @@ pub fn extract_last_output(tb: &TermBuf) -> String {
 
 fn is_prompt_line(line: &str) -> bool {
     let s = line.trim_start();
-    s.starts_with("> ")
-        || s.starts_with("❯ ")
-        || s.starts_with("$ ")
-        || s.starts_with("% ")
+    s.starts_with("> ") || s.starts_with("❯ ") || s.starts_with("$ ") || s.starts_with("% ")
 }
 
 fn collect_all_lines(tb: &TermBuf) -> Vec<String> {

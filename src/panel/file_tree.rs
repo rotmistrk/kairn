@@ -127,8 +127,7 @@ impl FileTreePanel {
                     return Vec::new();
                 }
                 let prefix = |dir: &str, path: &str| -> bool {
-                    path.starts_with(dir)
-                        && path.as_bytes().get(dir.len()) == Some(&b'/')
+                    path.starts_with(dir) && path.as_bytes().get(dir.len()) == Some(&b'/')
                 };
                 flat.into_iter()
                     .filter(|e| {
@@ -299,10 +298,7 @@ fn collapse_current(panel: &mut FileTreePanel) {
         Some(e) => e,
         None => return,
     };
-    let is_expanded_dir = matches!(
-        entry.node.kind,
-        tree::NodeKind::Dir { expanded: true, .. }
-    );
+    let is_expanded_dir = matches!(entry.node.kind, tree::NodeKind::Dir { expanded: true, .. });
     if is_expanded_dir {
         let target = entry.node.path.clone();
         drop(flat);
@@ -416,7 +412,6 @@ pub fn collect_git_status(root: &std::path::Path) -> HashMap<String, GitStatus> 
     }
     map
 }
-
 
 fn node_icon(node: &FileNode) -> &'static str {
     match &node.kind {
