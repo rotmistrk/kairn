@@ -1,0 +1,14 @@
+[package]
+name = "rusticle"
+version = "0.1.0"
+edition = "2021"
+description = "A Tcl-compatible scripting language interpreter with modern enhancements"
+license = "MIT"
+
+[[bin]]
+name = "rusticle"
+path = "src/main.rs"
+
+[lib]
+name = "rusticle"
+path = "src/lib.rs"

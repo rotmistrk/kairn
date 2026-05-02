@@ -1,0 +1,21 @@
+[package]
+name = "rusticle-tk"
+version = "0.1.0"
+edition = "2021"
+description = "TUI application framework — rusticle scripts rendered via txv-widgets"
+license = "MIT"
+
+[[bin]]
+name = "rusticle-tk"
+path = "src/main.rs"
+
+[lib]
+name = "rusticle_tk"
+path = "src/lib.rs"
+
+[dependencies]
+rusticle = { path = "../rusticle" }
+txv = { path = "../txv" }
+txv-widgets = { path = "../txv-widgets" }
+crossterm = "0.28"
+ignore = "0.4"

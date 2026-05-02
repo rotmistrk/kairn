@@ -2205,6 +2205,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "rusticle"
+version = "0.1.0"
+
+[[package]]
+name = "rusticle-tk"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ignore",
+ "rusticle",
+ "txv",
+ "txv-widgets",
+]
+
+[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2737,6 +2752,25 @@ dependencies = [
  "thread_local",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "txv"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "unicode-width 0.2.0",
+ "vte",
+]
+
+[[package]]
+name = "txv-widgets"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ignore",
+ "tempfile",
+ "txv",
 ]
 
 [[package]]

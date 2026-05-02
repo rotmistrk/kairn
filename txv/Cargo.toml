@@ -1,0 +1,11 @@
+[package]
+name = "txv"
+version = "0.1.0"
+edition = "2021"
+description = "Terminal rendering library — cell grid, diff flush, layout, borders, VTE buffer"
+license = "MIT"
+
+[dependencies]
+crossterm = "0.28"
+vte = "0.13"
+unicode-width = "0.2"

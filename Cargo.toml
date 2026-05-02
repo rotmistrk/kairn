@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "rusticle", "txv", "txv-widgets", "rusticle-tk"]
+
 [package]
 name = "kairn"
 version = "0.1.0"
