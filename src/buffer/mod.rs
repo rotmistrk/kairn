@@ -1,4 +1,12 @@
+pub mod line_index;
+pub mod piece_table;
 pub mod render;
+pub mod undo;
+
+#[allow(unused_imports)]
+pub use piece_table::PieceTable;
+#[allow(unused_imports)]
+pub use piece_table::TextChange;
 
 use serde::{Deserialize, Serialize};
 
