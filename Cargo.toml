@@ -12,6 +12,8 @@ repository = "https://github.com/rotmistrk/kairn"
 [dependencies]
 # Workspace crates
 rusticle = { path = "rusticle" }
+txv = { path = "txv" }
+txv-widgets = { path = "txv-widgets" }
 
 # TUI framework
 ratatui = "0.29"
