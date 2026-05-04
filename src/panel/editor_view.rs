@@ -18,6 +18,8 @@ pub struct EditorView {
     scroll: ScrollView,
     show_line_numbers: bool,
     viewport_h: u16,
+    /// Diagnostics for the current file, keyed by line number.
+    pub diagnostics: Vec<crate::lsp::types::Diagnostic>,
 }
 
 impl EditorView {
@@ -32,6 +34,7 @@ impl EditorView {
             scroll: ScrollView::new(),
             show_line_numbers: true,
             viewport_h: 24,
+            diagnostics: Vec::new(),
         }
     }
 
@@ -42,6 +45,7 @@ impl EditorView {
         self.editor = Editor::new(buf, editor_keymap);
         self.keymap = VimKeymap::new();
         self.scroll = ScrollView::new();
+        self.diagnostics = Vec::new();
         Ok(())
     }
 
@@ -71,11 +75,33 @@ impl EditorView {
     /// Width of the line number gutter.
     fn gutter_width(&self) -> u16 {
         if !self.show_line_numbers {
-            return 0;
+            return if self.diagnostics.is_empty() { 0 } else { 2 };
         }
         let lines = self.editor.buffer().line_count().max(1);
         let digits = format!("{lines}").len() as u16;
-        digits + 3 // digits + space + "│" + space
+        // digits + space + "│" + space + optional diag column
+        let diag_col = if self.diagnostics.is_empty() { 0 } else { 2 };
+        digits + 3 + diag_col
+    }
+
+    /// Get the diagnostic severity for a given line.
+    fn line_diagnostic(&self, line: usize) -> Option<crate::lsp::types::DiagnosticSeverity> {
+        use crate::lsp::types::DiagnosticSeverity;
+        let mut worst: Option<DiagnosticSeverity> = None;
+        for d in &self.diagnostics {
+            if d.start_line as usize == line {
+                let sev = d.severity;
+                worst = Some(match worst {
+                    None => sev,
+                    Some(DiagnosticSeverity::Error) => DiagnosticSeverity::Error,
+                    Some(_) if sev == DiagnosticSeverity::Error => DiagnosticSeverity::Error,
+                    Some(DiagnosticSeverity::Warning) => DiagnosticSeverity::Warning,
+                    Some(_) if sev == DiagnosticSeverity::Warning => DiagnosticSeverity::Warning,
+                    Some(prev) => prev,
+                });
+            }
+        }
+        worst
     }
 
     /// Sync scroll state to keep cursor visible.
@@ -116,8 +142,31 @@ impl Widget for EditorView {
 
             // Line number gutter.
             if self.show_line_numbers && gw > 0 && line_idx < total_lines {
-                let num = format!("{:>width$}", line_idx + 1, width = (gw - 3) as usize,);
+                let diag_col = if self.diagnostics.is_empty() { 0 } else { 2 };
+                let num_width = (gw - 3 - diag_col) as usize;
+                let num = format!("{:>width$}", line_idx + 1, width = num_width);
                 surface.print(0, row, &num, gutter_style);
+
+                // Diagnostic marker.
+                if diag_col > 0 {
+                    if let Some(sev) = self.line_diagnostic(line_idx) {
+                        use crate::lsp::types::DiagnosticSeverity;
+                        let (ch, color) = match sev {
+                            DiagnosticSeverity::Error => ('E', txv::cell::Color::Rgb(251, 73, 52)),
+                            DiagnosticSeverity::Warning => {
+                                ('W', txv::cell::Color::Rgb(250, 189, 47))
+                            }
+                            DiagnosticSeverity::Info => ('I', txv::cell::Color::Rgb(131, 165, 152)),
+                            DiagnosticSeverity::Hint => ('H', txv::cell::Color::Rgb(142, 192, 124)),
+                        };
+                        let diag_style = Style {
+                            fg: color,
+                            ..Style::default()
+                        };
+                        surface.put(num_width as u16 + 1, row, ch, diag_style);
+                    }
+                }
+
                 surface.print(gw - 2, row, "│", gutter_style);
             }
 

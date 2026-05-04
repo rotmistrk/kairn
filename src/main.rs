@@ -19,6 +19,7 @@ mod help;
 mod highlight;
 mod keymap;
 mod layout;
+mod lsp;
 mod nav;
 mod overlay;
 mod panel;
@@ -74,7 +75,13 @@ fn run() -> Result<()> {
     let mut event_loop = EventLoop::new(screen);
     event_loop.set_tick_ms(50);
 
-    let mut app = App::new(workspace, cli.config.as_deref());
+    // Create tokio runtime for LSP async tasks.
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()?;
+
+    let mut app = App::new(workspace, cli.config.as_deref(), rt.handle().clone());
 
     event_loop.run(|ctx| {
         // Drain any pending pollers from the app and add them.

@@ -8,6 +8,8 @@ use txv_widgets::{EventResult, LoopControl, RunContext, StatusSpan, Widget, Widg
 
 use crate::config::Config;
 use crate::editor::command::{EditorAction, EditorMode};
+use crate::lsp::types::{DiagnosticSeverity, DocumentUri, LspEvent};
+use crate::lsp::LspClient;
 use crate::panel::bottom_panel::{BottomPanel, BottomTab};
 use crate::panel::editor_panel::EditorPanel;
 use crate::panel::status::AppStatusBar;
@@ -28,17 +30,28 @@ pub struct App {
     config: Config,
     /// PTY pollers: index matches bottom panel tab index.
     pollers: Vec<Option<PtyPoller>>,
+    /// LSP client for language server communication.
+    lsp_client: LspClient,
+    /// Diagnostics per file URI for gutter display.
+    diagnostics: std::collections::HashMap<String, Vec<crate::lsp::types::Diagnostic>>,
 }
 
 impl App {
     /// Create a new App for the given workspace.
-    pub fn new(workspace: PathBuf, config_override: Option<&Path>) -> Self {
+    pub fn new(
+        workspace: PathBuf,
+        config_override: Option<&Path>,
+        rt: tokio::runtime::Handle,
+    ) -> Self {
         let config = Config::load_with_override(&workspace, config_override);
 
         let tree = TreePanel::new(&workspace);
         let editor_panel = EditorPanel::new(tree);
         let bottom_panel = BottomPanel::new();
         let status_bar = AppStatusBar::new();
+
+        let ws_str = workspace.to_string_lossy().to_string();
+        let lsp_client = LspClient::new(Some(&ws_str), rt);
 
         Self {
             workspace,
@@ -51,6 +64,8 @@ impl App {
             pending_chord: None,
             config,
             pollers: Vec::new(),
+            lsp_client,
+            diagnostics: std::collections::HashMap::new(),
         }
     }
 
@@ -58,12 +73,14 @@ impl App {
     pub fn tick(&mut self, ctx: &mut RunContext<'_>) -> LoopControl {
         self.handle_events(&ctx.events);
         self.poll_pty_data();
+        self.poll_lsp_events();
 
         let w = ctx.screen.width();
         let h = ctx.screen.height();
         self.layout.resize(w, h);
 
         self.update_status_bar();
+        self.sync_diagnostics();
         self.render(ctx);
 
         if self.quit {
@@ -268,6 +285,7 @@ impl App {
                 if std::path::Path::new(&clean).is_file() {
                     let _ = self.editor_panel.open_file(&clean);
                     self.editor_panel.focus = TriptychFocus::Editor;
+                    self.notify_lsp_file_opened(&clean);
                 }
             }
             EventResult::Action(WidgetAction::Confirmed(text)) => {
@@ -353,6 +371,75 @@ impl App {
                 if let Some(data) = p.poll() {
                     self.bottom_panel.process_poll_data(idx, &data);
                 }
+            }
+        }
+    }
+
+    // ── LSP event polling ───────────────────────────────────────
+
+    fn poll_lsp_events(&mut self) {
+        let events = self.lsp_client.poll_events();
+        for event in events {
+            match event {
+                LspEvent::ServerReady(lang) => {
+                    self.lsp_client.handle_server_ready(&lang);
+                }
+                LspEvent::ServerCrashed(lang, msg) => {
+                    tracing::warn!("LSP {lang} crashed: {msg}");
+                    self.lsp_client.handle_crash(&lang);
+                }
+                LspEvent::Diagnostics { uri, diagnostics } => {
+                    // Store diagnostics keyed by file path.
+                    if let Some(path) = uri.to_path() {
+                        self.diagnostics.insert(path.to_string(), diagnostics);
+                    }
+                }
+                LspEvent::Definition { locations, .. } => {
+                    // Jump to first definition location.
+                    if let Some(loc) = locations.first() {
+                        if let Some(path) = loc.uri.to_path() {
+                            let _ = self.editor_panel.open_file(path);
+                            let cmd = crate::editor::command::Command::GotoLine(loc.line as usize);
+                            self.editor_panel.editor.execute(cmd);
+                        }
+                    }
+                }
+                _ => {
+                    // Other events (completions, hover, etc.)
+                    // handled in future iterations.
+                }
+            }
+        }
+    }
+
+    /// Notify LSP client that a file was opened.
+    fn notify_lsp_file_opened(&mut self, path: &str) {
+        let uri = DocumentUri::from_path(path);
+        let ext = std::path::Path::new(path)
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()));
+        if let Some(ext) = ext {
+            if let Some(lang) = self.lsp_client.language_for_extension(&ext).cloned() {
+                let content = self.editor_panel.editor.editor().buffer().content();
+                let _ = self.lsp_client.file_opened(&uri, &lang, &content);
+            }
+        }
+    }
+
+    /// Push stored diagnostics into the editor view for gutter display.
+    fn sync_diagnostics(&mut self) {
+        let path = self
+            .editor_panel
+            .editor
+            .editor()
+            .buffer()
+            .file_path()
+            .map(|s| s.to_string());
+        if let Some(path) = path {
+            if let Some(diags) = self.diagnostics.get(&path) {
+                self.editor_panel.editor.diagnostics = diags.clone();
+            } else {
+                self.editor_panel.editor.diagnostics.clear();
             }
         }
     }
@@ -520,7 +607,11 @@ mod tests {
 
     fn test_app() -> App {
         let workspace = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        App::new(workspace, None)
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        App::new(workspace, None, rt.handle().clone())
     }
 
     fn key(code: KeyCode) -> KeyEvent {

@@ -3,6 +3,8 @@
 pub mod command;
 pub mod ex;
 pub mod keymap;
+pub mod keymap_classic;
+pub mod keymap_emacs;
 pub mod keymap_vim;
 pub mod launcher;
 pub mod save;
@@ -12,6 +14,25 @@ pub use launcher::{launch_editor, launch_shell};
 
 use crate::buffer::PieceTable;
 use command::{Command, EditorAction, EditorMode, FocusTarget, VisualKind};
+
+/// Which keymap the editor is using.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeymapKind {
+    Vim,
+    Emacs,
+    Classic,
+}
+
+impl KeymapKind {
+    /// Create a boxed keymap for this kind.
+    pub fn create_keymap(self) -> Box<dyn keymap::Keymap> {
+        match self {
+            Self::Vim => Box::new(keymap_vim::VimKeymap::new()),
+            Self::Emacs => Box::new(keymap_emacs::EmacsKeymap::new()),
+            Self::Classic => Box::new(keymap_classic::ClassicKeymap::new()),
+        }
+    }
+}
 
 /// Visual selection anchor.
 struct Selection {
@@ -76,6 +97,13 @@ impl Editor {
     /// Set viewport height (for page up/down calculations).
     pub fn set_viewport_height(&mut self, h: usize) {
         self.viewport_height = h;
+    }
+
+    /// Switch to a different keymap at runtime. Resets mode to Normal.
+    pub fn set_keymap(&mut self, kind: KeymapKind) {
+        self.keymap = kind.create_keymap();
+        self.mode = EditorMode::Normal;
+        self.selection = None;
     }
 }
 
@@ -954,5 +982,21 @@ mod tests {
         let mut e = editor("hello");
         let a = e.execute(Command::FocusTree);
         assert_eq!(a, EditorAction::FocusChange(FocusTarget::Tree));
+    }
+
+    #[test]
+    fn keymap_switching() {
+        let mut e = editor("hello");
+        e.execute(Command::EnterInsertMode);
+        assert_eq!(e.mode(), EditorMode::Insert);
+
+        e.set_keymap(KeymapKind::Emacs);
+        assert_eq!(e.mode(), EditorMode::Normal);
+
+        e.set_keymap(KeymapKind::Classic);
+        assert_eq!(e.mode(), EditorMode::Normal);
+
+        e.set_keymap(KeymapKind::Vim);
+        assert_eq!(e.mode(), EditorMode::Normal);
     }
 }
