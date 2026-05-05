@@ -4,6 +4,7 @@
 //! (`~/.kairnrc.tcl`) → project (`$PWD/.kairnrc.tcl`). They share
 //! one interpreter instance so later files can override earlier ones.
 
+pub mod autosave;
 pub mod keybindings;
 pub mod themes;
 
@@ -46,6 +47,8 @@ pub struct KairnConfig {
     pub line_numbers: bool,
     /// Whether to auto-save on focus loss.
     pub auto_save: bool,
+    /// Auto-save interval in seconds.
+    pub auto_save_interval: u32,
     /// Active theme name.
     pub theme_name: String,
     /// Shell command (empty = $SHELL).
@@ -252,6 +255,12 @@ pub struct Config {
     /// Tab width in spaces.
     #[serde(default = "default_tab_width")]
     pub tab_width: usize,
+    /// Whether auto-save is enabled.
+    #[serde(default)]
+    pub auto_save: bool,
+    /// Auto-save interval in seconds.
+    #[serde(default = "default_auto_save_interval")]
+    pub auto_save_interval: u32,
     /// Keybindings: action name → key combo.
     #[serde(default)]
     pub keys: HashMap<String, KeyCombo>,
@@ -265,6 +274,9 @@ fn default_kiro_command() -> String {
 }
 fn default_true() -> bool {
     true
+}
+fn default_auto_save_interval() -> u32 {
+    30
 }
 fn default_tab_width() -> usize {
     4
@@ -358,6 +370,8 @@ impl Config {
             kiro_command: result.config.kiro_command,
             line_numbers: result.config.line_numbers,
             tab_width: result.config.tab_width as usize,
+            auto_save: result.config.auto_save,
+            auto_save_interval: result.config.auto_save_interval,
             keys,
             key_sources,
         }
@@ -393,6 +407,8 @@ impl Default for Config {
             kiro_command: default_kiro_command(),
             line_numbers: true,
             tab_width: 4,
+            auto_save: false,
+            auto_save_interval: default_auto_save_interval(),
             keys,
             key_sources,
         }
@@ -442,6 +458,7 @@ fn extract_config(interp: &Interpreter, warnings: &mut Vec<String>) -> KairnConf
         tab_width: get_ctx_int(interp, "kairn::tab-width", 4) as u16,
         line_numbers: get_ctx_bool(interp, "kairn::line-numbers", true),
         auto_save: get_ctx_bool(interp, "kairn::auto-save", false),
+        auto_save_interval: get_ctx_int(interp, "kairn::auto-save-interval", 30) as u32,
         theme_name: get_ctx_str(interp, "kairn::theme"),
         shell: get_ctx_str(interp, "kairn::shell"),
         kiro_command: get_ctx_str(interp, "kairn::kiro-command"),

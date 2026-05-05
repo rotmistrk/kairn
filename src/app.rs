@@ -6,6 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use txv::cell::{Color, Style};
 use txv_widgets::{EventResult, LoopControl, RunContext, StatusSpan, Widget, WidgetAction};
 
+use crate::config::autosave::AutoSave;
 use crate::config::Config;
 use crate::editor::command::{EditorAction, EditorMode};
 use crate::lsp::types::{DiagnosticSeverity, DocumentUri, LspEvent};
@@ -34,6 +35,10 @@ pub struct App {
     lsp_client: LspClient,
     /// Diagnostics per file URI for gutter display.
     diagnostics: std::collections::HashMap<String, Vec<crate::lsp::types::Diagnostic>>,
+    /// Timer-based autosave.
+    auto_save: AutoSave,
+    /// Border mode: true = pretty (box-drawing), false = copy-friendly.
+    pretty_borders: bool,
 }
 
 impl App {
@@ -53,6 +58,8 @@ impl App {
         let ws_str = workspace.to_string_lossy().to_string();
         let lsp_client = LspClient::new(Some(&ws_str), rt);
 
+        let auto_save = AutoSave::new(config.auto_save, config.auto_save_interval);
+
         Self {
             workspace,
             layout: LayoutState::default(),
@@ -66,6 +73,8 @@ impl App {
             pollers: Vec::new(),
             lsp_client,
             diagnostics: std::collections::HashMap::new(),
+            auto_save,
+            pretty_borders: true,
         }
     }
 
@@ -74,6 +83,7 @@ impl App {
         self.handle_events(&ctx.events);
         self.poll_pty_data();
         self.poll_lsp_events();
+        self.check_auto_save();
 
         let w = ctx.screen.width();
         let h = ctx.screen.height();
@@ -135,6 +145,7 @@ impl App {
         match key.code {
             // Ctrl-Q: quit
             KeyCode::Char('q') if ctrl => {
+                self.save_session_on_quit();
                 self.quit = true;
                 true
             }
@@ -272,6 +283,10 @@ impl App {
             KeyCode::Char('k') | KeyCode::Char('K') => {
                 self.bottom_panel.close_active_tab();
             }
+            // Ctrl-X B: toggle border mode
+            KeyCode::Char('b') | KeyCode::Char('B') => {
+                self.pretty_borders = !self.pretty_borders;
+            }
             _ => {} // Unknown chord — ignore.
         }
     }
@@ -342,6 +357,9 @@ impl App {
                 EditorAction::OpenFile(path) => {
                     let _ = self.editor_panel.open_file(&path);
                 }
+                EditorAction::SendToKiro(text) => {
+                    self.send_to_kiro(&text);
+                }
                 _ => {}
             }
         }
@@ -360,6 +378,55 @@ impl App {
                     .mark_saved();
             }
         }
+    }
+
+    /// Check autosave timer and save if due.
+    fn check_auto_save(&mut self) {
+        if !self.auto_save.should_save() {
+            return;
+        }
+        let editor = self.editor_panel.editor.editor();
+        if !editor.buffer().is_modified() {
+            return;
+        }
+        self.save_current_file();
+    }
+
+    /// Send text to the first Kiro tab, spawning one if needed.
+    fn send_to_kiro(&mut self, text: &str) {
+        // Find existing Kiro tab index.
+        let kiro_idx = self.find_kiro_tab_index();
+        let idx = match kiro_idx {
+            Some(i) => i,
+            None => {
+                self.spawn_kiro_tab();
+                // After spawning, the new tab is the last one.
+                self.bottom_panel.tab_count().saturating_sub(1)
+            }
+        };
+
+        // Switch to the Kiro tab and send input.
+        self.bottom_panel.tab_bar.set_active(idx);
+        if let Some(BottomTab::Kiro(ref mut term)) = self.bottom_panel.active_tab_mut() {
+            let payload = crate::kiro::KiroPayload::from_selection(text);
+            let input = payload.to_pty_input();
+            term.send_input(input.as_bytes());
+        }
+
+        // Focus the bottom panel.
+        self.bottom_panel.visible = true;
+        self.layout.bottom_visible = true;
+        self.focus = PanelFocus::Bottom;
+    }
+
+    /// Find the index of the first Kiro tab.
+    fn find_kiro_tab_index(&self) -> Option<usize> {
+        for i in 0..self.bottom_panel.tab_count() {
+            if let Some(BottomTab::Kiro(_)) = self.bottom_panel.tab_at(i) {
+                return Some(i);
+            }
+        }
+        None
     }
 
     // ── PTY polling ─────────────────────────────────────────────
@@ -469,6 +536,40 @@ impl App {
             self.bottom_panel.visible = true;
             self.layout.bottom_visible = true;
         }
+    }
+
+    // ── Session persistence ────────────────────────────────────
+
+    /// Save session state on quit.
+    fn save_session_on_quit(&self) {
+        let open_file = self
+            .editor_panel
+            .editor
+            .editor()
+            .buffer()
+            .file_path()
+            .map(|s| s.to_string());
+
+        let layout_mode = match self.layout.mode {
+            crate::panel::LayoutMode::Wide => crate::layout::LayoutMode::Wide,
+            crate::panel::LayoutMode::TallRight => crate::layout::LayoutMode::TallRight,
+            crate::panel::LayoutMode::TallBottom => crate::layout::LayoutMode::TallBottom,
+        };
+
+        let session = crate::session::Session {
+            name: String::new(),
+            workspace_root: self.workspace.to_string_lossy().to_string(),
+            layout_mode,
+            panel_sizes: crate::layout::PanelSizes {
+                tree_width: self.layout.tree_width,
+                interactive_width: self.layout.control_width,
+                interactive_height: self.layout.bottom_height_pct,
+            },
+            tabs: Vec::new(),
+            active_tab: self.bottom_panel.active_index(),
+            open_file,
+        };
+        let _ = crate::session::auto_save(&self.workspace, &session);
     }
 
     // ── Status bar ──────────────────────────────────────────────
@@ -815,5 +916,19 @@ mod tests {
         app.handle_key(ctrl('x'));
         app.handle_key(key(KeyCode::Char('\\'))); // toggle bottom off
         assert_eq!(app.focus, PanelFocus::Editor);
+    }
+
+    // ── Border mode toggle ──────────────────────────────────────
+
+    #[test]
+    fn ctrl_x_b_toggles_border_mode() {
+        let mut app = test_app();
+        assert!(app.pretty_borders);
+        app.handle_key(ctrl('x'));
+        app.handle_key(key(KeyCode::Char('b')));
+        assert!(!app.pretty_borders);
+        app.handle_key(ctrl('x'));
+        app.handle_key(key(KeyCode::Char('b')));
+        assert!(app.pretty_borders);
     }
 }

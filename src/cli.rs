@@ -17,6 +17,10 @@ pub struct Cli {
     #[arg(short = 'C', long = "config")]
     pub config: Option<PathBuf>,
 
+    /// Write default config template to ~/.kairnrc.tcl and exit
+    #[arg(long = "init-config")]
+    pub init_config: bool,
+
     /// Arguments to pass to kiro-cli
     #[arg(last = true)]
     pub kiro_args: Vec<String>,

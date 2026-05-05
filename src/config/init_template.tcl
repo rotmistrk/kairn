@@ -9,6 +9,7 @@
 # set kairn::tab-width 4
 # set kairn::line-numbers true
 # set kairn::auto-save false
+# set kairn::auto-save-interval 30
 # set kairn::theme "gruvbox-dark"
 # set kairn::shell ""            ;# empty = $SHELL
 # set kairn::kiro-command "kiro-cli"

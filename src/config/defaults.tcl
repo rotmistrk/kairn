@@ -6,6 +6,7 @@ context kairn {
     declare tab-width    : int
     declare line-numbers : bool
     declare auto-save    : bool
+    declare auto-save-interval : int
     declare theme        : string
     declare shell        : string
     declare kiro-command : string
@@ -14,6 +15,7 @@ context kairn {
     set tab-width    4
     set line-numbers true
     set auto-save    false
+    set auto-save-interval 30
     set theme        "gruvbox-dark"
     set shell        ""
     set kiro-command "kiro-cli"

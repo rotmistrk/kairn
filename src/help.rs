@@ -161,3 +161,25 @@ fn help_config(h: &mut String, cfg: &Config) {
         h.push('\n');
     }
 }
+
+/// Build the welcome screen shown on first launch (no session to restore).
+pub fn build_welcome() -> String {
+    let mut h = String::new();
+    h.push_str("```\n  ╦╔═╔═╗╦╦═╗╔╗╔\n");
+    h.push_str("  ╠╩╗╠═╣║╠╦╝║║║\n");
+    h.push_str("  ╩ ╩╩ ╩╩╩╚═╝╚╝\n```\n\n");
+    h.push_str("Welcome to **kairn** — a TUI IDE for Kiro AI.\n\n");
+    h.push_str("## Quick Start\n\n");
+    h.push_str("- **F3** — Focus file tree, select a file with Enter\n");
+    h.push_str("- **Ctrl-P** — Fuzzy file search\n");
+    h.push_str("- **Ctrl-X N** — Open Kiro AI tab\n");
+    h.push_str("- **Ctrl-X T** — Open shell tab\n");
+    h.push_str("- **F1** — Full help\n");
+    h.push_str("- **Ctrl-Q** — Quit\n\n");
+    h.push_str("## Navigation\n\n");
+    h.push_str("```\n← Tree ←→ Editor ←→ Terminal →\n```\n\n");
+    h.push_str("Use **F2** to cycle focus, or **F3/F4/F5** for direct panel focus.\n\n");
+    h.push_str("## Configuration\n\n");
+    h.push_str("Run `kairn --init-config` to create `~/.kairnrc.tcl`.\n");
+    h
+}

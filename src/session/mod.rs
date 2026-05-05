@@ -45,9 +45,18 @@ pub struct SessionExtras {
     /// Cursor positions per buffer: (line, col).
     #[serde(default)]
     pub cursor_positions: Vec<(usize, usize)>,
+    /// Scroll positions per buffer.
+    #[serde(default)]
+    pub scroll_positions: Vec<usize>,
     /// Active keymap name.
     #[serde(default)]
     pub keymap: Option<String>,
+    /// Panel focus state.
+    #[serde(default)]
+    pub panel_focus: Option<String>,
+    /// Active bottom panel tab index.
+    #[serde(default)]
+    pub bottom_active_tab: usize,
 }
 
 // ── Auto-state ($PWD/.kairn.state) ──────────

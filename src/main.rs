@@ -18,11 +18,13 @@ mod git;
 mod help;
 mod highlight;
 mod keymap;
+mod kiro;
 mod layout;
 mod lsp;
 mod nav;
 mod overlay;
 mod panel;
+mod runner;
 mod rusticle_bridge;
 mod search;
 mod session;
@@ -59,6 +61,25 @@ fn main() {
 
 fn run() -> Result<()> {
     let cli = Cli::parse_args();
+
+    // Handle --init-config: write template and exit.
+    if cli.init_config {
+        use crate::config::ConfigLoader;
+        match ConfigLoader::init_config() {
+            Ok(Some(path)) => {
+                println!("Created: {}", path.display());
+                return Ok(());
+            }
+            Ok(None) => {
+                println!("Config already exists (not overwritten).");
+                return Ok(());
+            }
+            Err(e) => {
+                anyhow::bail!("failed to write config: {e}");
+            }
+        }
+    }
+
     let workspace = cli.resolve_path();
 
     // Prevent nested instances.
