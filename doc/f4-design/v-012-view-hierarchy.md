@@ -306,3 +306,112 @@ application code: ~2000-3000 lines (vs the 19K mess we just deleted).
 3. **The App never knows what views exist.** It just runs the event loop.
 4. **Layout is declarative.** Groups specify constraints, not pixel positions.
 5. **Events flow down (dispatch) and up (bubbling).** Never sideways.
+
+## StatusLine role (from TXV)
+
+The StatusLine is NOT just a display. It is an **active key-to-command
+translator**. In TXV:
+
+1. StatusLine has a list of `(key, command_id, label)` items
+2. It sees key events BEFORE other views (via Program::getEvent)
+3. When a key matches, it emits the command and consumes the key
+4. It also displays the help text of the currently focused view
+
+In our architecture:
+- StatusBarView is inserted as the LAST child of the root Group
+- But it has `preprocess: true` flag — it sees events before siblings
+- It translates configured keybindings into commands
+- It renders: key hints on the left, context help on the right
+
+This means the keybinding system lives in the StatusBar, not in the App.
+The App has zero knowledge of keybindings.
+
+```rust
+struct StatusBarView {
+    bindings: Vec<(KeySpec, CommandId, String)>,  // key, command, label
+    help_text: String,  // set by the focused view
+}
+
+impl View for StatusBarView {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        if let Event::Key(key) = event {
+            for (spec, cmd, _) in &self.bindings {
+                if spec.matches(key) {
+                    // Emit command — parent Group will dispatch it
+                    return HandleResult::Command(*cmd);
+                }
+            }
+        }
+        HandleResult::Ignored
+    }
+}
+```
+
+Wait — this means HandleResult needs a Command variant:
+
+```rust
+pub enum HandleResult {
+    Consumed,
+    Ignored,
+    /// View produced a command to be dispatched by the parent.
+    Emit(CommandId, Option<Box<dyn Any + Send>>),
+}
+```
+
+When a view returns `Emit(cmd, data)`, the parent Group dispatches that
+command as a new event to all children (including itself).
+
+## Menu role (from TXV)
+
+The MenuBar is a **modal View**. When activated:
+1. It takes over the event loop (like a dialog)
+2. User navigates menus, selects an item
+3. Selected item produces a command
+4. Menu closes, command is dispatched normally
+
+In our architecture:
+- MenuBar is a View that can enter modal mode
+- Modal mode = it captures all events until dismissed
+- This is handled by Group: when a child is modal, only that child
+  receives events
+
+```rust
+pub trait View: Send {
+    // ... existing methods ...
+
+    /// Whether this view is currently modal (captures all events).
+    fn is_modal(&self) -> bool { false }
+}
+```
+
+Group dispatch changes when a child is modal:
+- If any child is modal, ONLY that child receives events
+- Other children are skipped entirely
+
+## Help role (from TXV)
+
+Help is just a Window (a View with a frame and title). It is:
+- Created when `cmHelp` command is received
+- Inserted into the desktop Group as a new child
+- Focused (brought to front)
+- Closed when user presses Esc or closes it
+
+No special wiring. The App handles `cmHelp` by creating a HelpView
+and inserting it into the appropriate Group. This is the ONLY place
+the App knows about specific view types — when creating them in
+response to commands.
+
+## Revised event dispatch in Group
+
+```
+Group::handle(event):
+    1. If any child is modal → dispatch only to that child
+    2. Otherwise:
+       a. Children with preprocess flag see event first
+       b. Focused child sees event
+       c. Children with postprocess flag see event last
+    3. If child returns Emit(cmd, data):
+       → Create Event::Command(cmd, data)
+       → Dispatch to all children (including self)
+    4. Group handles commands it knows (CM_FOCUS_NEXT, etc.)
+```
