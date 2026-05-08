@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use crossterm::event::{KeyCode, KeyEvent};
+use txv::cell::Style;
 use txv::surface::Surface;
 
 use crate::scroll_view::ScrollView;
@@ -187,6 +188,9 @@ impl<D: TreeData> Widget for TreeView<D> {
         let h = surface.height();
         let w = surface.width();
         let range = self.scroll.visible_range(h);
+
+        // Clear entire surface to avoid stale content from previous frame.
+        surface.fill(' ', Style::default());
 
         for (row_idx, flat_idx) in range.enumerate() {
             let node = &self.flat_nodes[flat_idx];

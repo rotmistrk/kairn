@@ -8,21 +8,23 @@ use txv::surface::Surface;
 
 use crate::tree_view::TreeData;
 
-/// Icon for a file based on extension.
-fn file_icon(path: &Path) -> &'static str {
+/// Icon for a file based on extension — single-width ASCII characters.
+fn file_icon(path: &Path) -> char {
     match path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or_default()
     {
-        "rs" => "🦀",
-        "java" => "☕",
-        "go" => "🐹",
-        "ts" | "tsx" => "🔷",
-        "js" | "jsx" => "📜",
-        "toml" | "yaml" | "yml" | "json" => "⚙",
-        "md" => "📝",
-        _ => "📄",
+        "rs" => 'R',
+        "java" => 'J',
+        "go" => 'G',
+        "ts" | "tsx" => 'T',
+        "js" | "jsx" => 'j',
+        "toml" | "yaml" | "yml" | "json" => '*',
+        "md" => 'M',
+        "html" | "css" => 'W',
+        "sh" | "bash" | "zsh" => '$',
+        _ => '-',
     }
 }
 
@@ -147,45 +149,49 @@ impl TreeData for FileTreeData {
         selected: bool,
     ) {
         let is_dir = self.is_dir(id);
-        let icon = if is_dir {
-            if expanded {
-                "📂"
-            } else {
-                "📁"
-            }
-        } else {
-            file_icon(id)
-        };
-
         let name = id.file_name().and_then(|n| n.to_str()).unwrap_or("?");
 
-        let indent = depth as u16 * 2;
-        let text = format!("{icon} {name}");
-
         let fg = if is_dir {
-            Color::Ansi(4) // blue
+            Color::Ansi(6) // cyan for dirs
+        } else {
+            Color::Reset
+        };
+
+        let bg = if selected {
+            Color::Ansi(4) // dark blue background
         } else {
             Color::Reset
         };
 
         let style = Style {
             fg,
-            bg: if selected {
-                Color::Ansi(0)
-            } else {
-                Color::Reset
-            },
+            bg,
             attrs: Attrs {
-                reverse: selected,
                 bold: is_dir,
+                underline: selected,
                 ..Attrs::default()
             },
         };
 
-        if selected {
-            surface.fill(' ', style);
+        // Fill entire row with background style first.
+        surface.fill(' ', Style { fg: Color::Reset, bg, attrs: Attrs::default() });
+
+        let indent = depth as u16 * 2;
+
+        // Draw expand/collapse indicator for directories.
+        if is_dir {
+            let indicator = if expanded { "▾" } else { "▸" };
+            surface.print(indent, 0, indicator, style);
         }
-        surface.print(indent, 0, &text, style);
+
+        // Draw name after indicator.
+        let text_col = indent + if is_dir { 2 } else { 0 };
+        if is_dir {
+            let dir_name = format!(" {}", name);
+            surface.print(text_col, 0, &dir_name, style);
+        } else {
+            surface.print(text_col, 0, name, style);
+        }
     }
 }
 

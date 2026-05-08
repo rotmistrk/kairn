@@ -1,6 +1,7 @@
 //! Scrollable list with single selection.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use txv::cell::Style;
 use txv::surface::Surface;
 
 use crate::scroll_view::ScrollView;
@@ -83,6 +84,8 @@ impl<D: ListData> Widget for ListView<D> {
         let h = surface.height();
         let w = surface.width();
         let range = self.scroll.visible_range(h);
+
+        surface.fill(' ', Style::default());
 
         for (row_idx, item_idx) in range.enumerate() {
             let mut row_surface = surface.sub(0, row_idx as u16, w, 1);
