@@ -239,27 +239,112 @@ impl App {
 The App does NOT know what's inside `root`. It could be an editor, a
 file manager, a dashboard — doesn't matter. It just dispatches and draws.
 
-## View tree for kairn
+## Application structure
 
-```
-App (Group, Layout::Split vertical)
-├── EditorGroup (Group, Layout::Split horizontal)
-│   ├── TreeView (leaf View — file tree)
-│   ├── EditorView (leaf View — text editor)
-│   └── ControlView (leaf View — outline/diagnostics)
-├── BottomGroup (Group, Layout::Stack)
-│   ├── TerminalView (leaf View — PTY terminal)
-│   ├── ErrorListView (leaf View — compiler errors)
-│   ├── SearchResultsView (leaf View — grep results)
-│   └── TestResultsView (leaf View — test output)
-└── StatusBarView (leaf View — status line, not focusable)
+The App owns exactly two things: a Desktop (any View) and a StatusBar.
+
+```rust
+struct App {
+    desktop: Box<dyn View>,  // SlottedDesktop OR FlatDesktop
+    status_bar: StatusBarView,
+    running: bool,
+}
 ```
 
-Each leaf View is self-contained:
-- `TreeView` handles j/k/Enter, draws the tree, emits `cmOpenFile`
-- `EditorView` handles vim/emacs keys, draws the buffer, emits `cmSave`
-- `TerminalView` handles all keys (forwards to PTY), draws TermBuf
-- `StatusBarView` is not focusable, just renders status info
+The App does NOT know which desktop implementation is in use.
+Switching from slotted to flat layout changes ONE constructor call.
+
+### SlottedDesktop (kairn default)
+
+Tiled layout with 4 named slots, each containing tabs:
+
+```
+┌──────────┬────────────────────────────┬──────────────┐
+│ left     │ center                     │ right        │
+│ [tabs]   │ [tabs]                     │ [tabs]       │
+├──────────┴────────────────────────────┴──────────────┤
+│ bottom [tabs]                                        │
+└──────────────────────────────────────────────────────┘
+```
+
+- 4 slots: left, center, right, bottom
+- Each slot has tabs (stack of views, one visible)
+- Slots can be hidden/shown, resized
+- Zoom: focused slot expands to fill all space, unzoom restores
+- Handles: focus cycling, tab switching, resize, zoom, layout modes
+
+### FlatDesktop (traditional F4/TXV style)
+
+Floating windows, manually positioned:
+
+- Children are windows with position + size
+- Windows can overlap, be moved, resized, cascaded, tiled
+- Z-order: focused window on top
+- Handles: focus cycling, window move/resize, cascade, tile
+
+### Both implement View
+
+```rust
+impl View for SlottedDesktop { ... }
+impl View for FlatDesktop { ... }
+```
+
+The App calls `desktop.handle()` and `desktop.draw()`. It never
+inspects the desktop's internals. It only creates views and sends
+commands to insert them:
+
+```rust
+impl App {
+    fn handle_command(&mut self, cmd: CommandId, data: ...) {
+        match cmd {
+            CM_OPEN_FILE => {
+                let view = EditorView::open(path);
+                self.desktop.handle(&Event::Command(
+                    CM_INSERT_VIEW, Some(Box::new(view))
+                ));
+            }
+            CM_QUIT => self.running = false,
+            _ => {} // everything else handled by desktop/status
+        }
+    }
+}
+```
+
+### SlottedDesktop details
+
+```rust
+struct SlottedDesktop {
+    slots: [Slot; 4],       // Left, Center, Right, Bottom
+    focused: SlotId,
+    zoomed: Option<SlotId>,
+    layout: DesktopLayout,
+}
+
+struct Slot {
+    tabs: Vec<Box<dyn View>>,
+    active_tab: usize,
+    visible: bool,
+    size: u16,
+}
+
+enum SlotId { Left, Center, Right, Bottom }
+
+enum DesktopLayout { Standard, Compact }
+```
+
+Commands handled by SlottedDesktop:
+
+| Command | Action |
+|---------|--------|
+| CM_ZOOM_TOGGLE | Zoom/unzoom focused slot |
+| CM_FOCUS_LEFT/CENTER/RIGHT/BOTTOM | Direct focus |
+| CM_FOCUS_NEXT_SLOT / CM_FOCUS_PREV_SLOT | Cycle |
+| CM_TAB_NEXT / CM_TAB_PREV | Cycle tabs in focused slot |
+| CM_TAB_CLOSE | Close current tab |
+| CM_SLOT_GROW / CM_SLOT_SHRINK | Resize focused slot |
+| CM_SLOT_TOGGLE(id) | Show/hide a slot |
+| CM_CYCLE_LAYOUT | Switch Standard/Compact |
+| CM_INSERT_VIEW(slot_id, view) | Add view as tab in slot |
 
 ## What changes in txv-widgets
 
