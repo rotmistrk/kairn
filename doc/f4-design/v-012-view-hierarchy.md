@@ -332,19 +332,84 @@ enum SlotId { Left, Center, Right, Bottom }
 enum DesktopLayout { Standard, Compact }
 ```
 
-Commands handled by SlottedDesktop:
+## Chrome rendering (SlottedDesktop responsibility)
 
-| Command | Action |
-|---------|--------|
-| CM_ZOOM_TOGGLE | Zoom/unzoom focused slot |
-| CM_FOCUS_LEFT/CENTER/RIGHT/BOTTOM | Direct focus |
-| CM_FOCUS_NEXT_SLOT / CM_FOCUS_PREV_SLOT | Cycle |
-| CM_TAB_NEXT / CM_TAB_PREV | Cycle tabs in focused slot |
-| CM_TAB_CLOSE | Close current tab |
-| CM_SLOT_GROW / CM_SLOT_SHRINK | Resize focused slot |
-| CM_SLOT_TOGGLE(id) | Show/hide a slot |
-| CM_CYCLE_LAYOUT | Switch Standard/Compact |
-| CM_INSERT_VIEW(slot_id, view) | Add view as tab in slot |
+The desktop draws all borders, dividers, and tab bars. Views get clean
+inner surfaces with no knowledge of chrome.
+
+### Layout
+
+```
+Row 0:     ─(Tab1)(Tab2)──┬─(File.rs)(Lib.rs)──┬─(Kiro:1)(Shell)──
+Row 1..N:  │ left content  │ center content     │ right content
+           │               │                    │
+Row N+1:   ───────────────┬┴────────────────────┴────────────────── (if bottom visible)
+Row N+2:   │ bottom content                                       │
+Row last:  status bar (owned by App, not desktop)
+```
+
+### Rules
+
+- **No outer borders** — terminal edge is the border
+- **Vertical dividers** (`│`) — only between visible adjacent top slots, full height
+- **Top line** — horizontal `─` with `┬` at vertical divider positions
+- **Tab bars** — embedded in top line, format: `(TabName)` per tab
+- **Active tab** — bright cyan on dark blue
+- **Inactive tabs** — white on dark gray
+- **Bottom divider** — horizontal `─` only if bottom slot visible, with `┴` at vertical positions and `┬` where bottom meets verticals from above
+- **If bottom hidden** — verticals extend to status bar row
+
+### Tab naming
+
+- Title stored by desktop: `Vec<(String, Box<dyn View>)>` per slot
+- Files: show filename only (`main.rs`)
+- Disambiguate: if two tabs have same name, add shortest distinguishing path prefix (`src/.../MyClass.java`)
+- Max tabs: what fits in the slot's tab bar width
+- Overflow: LRU drop (oldest non-pinned)
+- Pin: hotkey toggles pin on current tab
+
+### What desktop computes
+
+1. Row 0: top chrome (tabs + dividers)
+2. If bottom visible: reserve `bottom_size + 1` rows from bottom (content + divider)
+3. Remaining height: top slots content area
+4. Width: divide among visible top slots, minus 1 col per divider
+5. Each view gets inner rect (no chrome)
+
+### StatusBar (owned by App, below desktop)
+
+StatusBar occupies the very last row. It has StatusItems:
+
+```rust
+struct StatusItem {
+    key: KeySpec,       // what key triggers it
+    command: CommandId, // what command to emit
+    label: String,      // what to display
+}
+```
+
+StatusBar both:
+- Draws labels: `F1:Help  F5:Zoom  ::Cmd`
+- Translates keys: F1 → CM_SHOW_HELP, F5 → CM_ZOOM_TOGGLE
+
+Right side shows context: `vi:NORMAL  main.rs  3:1`
+
+### Key bindings (via StatusItems)
+
+| Key | Command | Label |
+|-----|---------|-------|
+| F1 | CM_SHOW_HELP | Help |
+| F2 | CM_FOCUS_LEFT | Tree |
+| F3 | CM_FOCUS_CENTER | Main |
+| F4 | CM_FOCUS_RIGHT | Tools |
+| F5 | CM_ZOOM_TOGGLE | Zoom |
+| Alt-Tab | CM_FOCUS_NEXT_SLOT | — |
+| Ctrl-Shift-Left | CM_TAB_PREV | — |
+| Ctrl-Shift-Right | CM_TAB_NEXT | — |
+| Ctrl-Shift-Up | CM_FOCUS_PREV_SLOT | — |
+| Ctrl-Shift-Down | CM_FOCUS_NEXT_SLOT | — |
+| `:` or Alt-`:` | CM_COMMAND_MODE | Cmd |
+| Ctrl-Q | CM_QUIT | Quit |
 
 ## What changes in txv-widgets
 
