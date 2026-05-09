@@ -183,13 +183,19 @@ impl View for App {
                 if let Event::Command { id, ref data } = ev {
                     self.handle_command(id, data, queue);
                 }
-                queue.put(ev);
             }
             return HandleResult::Consumed;
         }
 
         // Desktop handles the rest
         if self.desktop.handle(event, queue) == HandleResult::Consumed {
+            // Process any commands emitted by views inside desktop
+            let events = queue.drain();
+            for ev in events {
+                if let Event::Command { id, ref data } = ev {
+                    self.handle_command(id, data, queue);
+                }
+            }
             return HandleResult::Consumed;
         }
 

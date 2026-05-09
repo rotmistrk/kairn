@@ -55,6 +55,15 @@ impl KairnStatusBar {
             CM_COMMAND_MODE,
             "M-x",
         );
+        // macOS sends ≈ for Alt-x in some terminal configs
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Char('≈'),
+                modifiers: KeyMod::default(),
+            },
+            CM_COMMAND_MODE,
+            "",
+        );
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Char('q'),
