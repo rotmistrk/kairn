@@ -49,6 +49,9 @@ impl EditorView {
     }
 
     fn gutter_width(&self) -> u16 {
+        if !self.editor.options.number {
+            return 0;
+        }
         let lines = self.editor.buffer.line_count();
         let digits = if lines == 0 { 1 } else { (lines as f64).log10() as u16 + 1 };
         digits + 1
@@ -102,12 +105,14 @@ impl View for EditorView {
             }
 
             // Line number
-            let num = format!(
-                "{:>width$} ",
-                line_idx + 1,
-                width = (gutter_w - 1) as usize,
-            );
-            surface.print(b.x, y, &num, gutter_style);
+            if gutter_w > 0 {
+                let num = format!(
+                    "{:>width$} ",
+                    line_idx + 1,
+                    width = (gutter_w - 1) as usize,
+                );
+                surface.print(b.x, y, &num, gutter_style);
+            }
 
             // Line content with syntax highlighting
             let line = self.editor.buffer.line(line_idx).unwrap_or_default();
@@ -146,10 +151,27 @@ impl View for EditorView {
                         span.style
                     };
 
-                    surface.put(x, y, ch, style);
+                    // Render character (list mode substitutes invisibles)
+                    let (display_ch, display_style) = if self.editor.options.list {
+                        let list_style = Style { fg: Color::Ansi(8), ..style };
+                        match ch {
+                            ' ' => ('\u{00B7}', list_style),  // ·
+                            '\t' => ('\u{2192}', list_style), // →
+                            _ => (ch, style),
+                        }
+                    } else {
+                        (ch, style)
+                    };
+                    surface.put(x, y, display_ch, display_style);
                     col_offset += 1;
                     byte_pos += ch.len_utf8();
                 }
+            }
+
+            // List mode: show EOL marker
+            if self.editor.options.list && (col_offset as usize) < avail {
+                let list_style = Style { fg: Color::Ansi(8), ..Style::default() };
+                surface.put(text_x + col_offset, y, '$', list_style);
             }
 
             // If line is empty or shorter, still show cursor

@@ -145,11 +145,15 @@ impl VimKeymap {
         match (prefix, ch) {
             ('d', 'd') => Command::DeleteLine,
             ('d', 'w') => Command::DeleteWord,
+            ('d', 'b') => Command::DeleteWordBackward,
+            ('d', '0') => Command::DeleteToStart,
             ('d', '$') => Command::DeleteToEnd,
             ('c', 'c') => Command::ChangeLine,
             ('c', 'w') => Command::ChangeWord,
             ('c', '$') => Command::ChangeToEnd,
             ('y', 'y') => Command::YankLine,
+            ('y', 'w') => Command::YankWord,
+            ('y', '$') => Command::YankToEnd,
             ('g', 'g') => {
                 if let Some(n) = self.pending_count.take() {
                     Command::GotoLine(n)
@@ -165,13 +169,13 @@ impl VimKeymap {
             ('t', _) => Command::TillChar(ch),
             ('T', _) => Command::TillCharBack(ch),
             // Operator + motion: return the operator, let editor handle motion
-            ('d', 'e') | ('d', 'b') | ('d', '0') | ('d', '^') => {
+            ('d', 'e') | ('d', '^') => {
                 Command::OperatorDelete
             }
             ('c', 'e') | ('c', 'b') | ('c', '0') | ('c', '^') => {
                 Command::OperatorChange
             }
-            ('y', 'w') | ('y', 'e') | ('y', 'b') | ('y', '$') | ('y', '0') | ('y', '^') => {
+            ('y', 'e') | ('y', 'b') | ('y', '0') | ('y', '^') => {
                 Command::OperatorYank
             }
             _ => { self.pending_count = None; Command::Noop }
@@ -214,8 +218,10 @@ impl VimKeymap {
             KeyCode::Char('g') => Command::MoveFileStart,
             KeyCode::Char('d') | KeyCode::Char('x') => Command::VisualDelete,
             KeyCode::Char('y') => Command::VisualYank,
+            KeyCode::Char('c') => Command::VisualChange,
             KeyCode::Char('>') => Command::VisualIndent,
             KeyCode::Char('<') => Command::VisualUnindent,
+            KeyCode::Char(':') => Command::VisualExCommand,
             _ => Command::Noop,
         }
     }
@@ -223,12 +229,19 @@ impl VimKeymap {
 
 impl Keymap for VimKeymap {
     fn handle_key(&mut self, key: &KeyEvent, mode: EditorMode) -> Command {
-        match mode {
+        let cmd = match mode {
             EditorMode::Normal => self.normal_key(key),
             EditorMode::Insert => self.insert_key(key),
             EditorMode::Visual | EditorMode::VisualLine => self.visual_key(key),
             EditorMode::Command | EditorMode::Search => Command::Noop,
+        };
+        // Apply pending count to the command
+        if cmd != Command::Noop {
+            if let Some(n) = self.pending_count.take() {
+                return Command::Repeat(n, Box::new(cmd));
+            }
         }
+        cmd
     }
 
     fn mode_label(&self, mode: EditorMode) -> &str {

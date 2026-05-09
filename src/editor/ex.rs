@@ -121,9 +121,7 @@ fn parse_address(addr: &str, cursor: usize, total: usize) -> Option<usize> {
         "." => Some(cursor),
         "$" => Some(total.saturating_sub(1)),
         _ => {
-            if let Ok(n) = addr.parse::<usize>() {
-                return Some(n.saturating_sub(1));
-            }
+            // Check relative offsets BEFORE plain number ("+2".parse::<usize>() succeeds in Rust!)
             if let Some(rest) = addr.strip_prefix(".+") {
                 let offset: usize = rest.parse().ok()?;
                 return Some((cursor + offset).min(total.saturating_sub(1)));
@@ -139,6 +137,10 @@ fn parse_address(addr: &str, cursor: usize, total: usize) -> Option<usize> {
             if let Some(rest) = addr.strip_prefix('-') {
                 let offset: usize = rest.parse().ok()?;
                 return Some(cursor.saturating_sub(offset));
+            }
+            // Plain line number
+            if let Ok(n) = addr.parse::<usize>() {
+                return Some(n.saturating_sub(1));
             }
             None
         }
@@ -199,3 +201,11 @@ mod tests {
         assert_eq!(result, Some(ExCommand::Yank { start: 0, end: 4 }));
     }
 }
+
+    #[test]
+    fn test_parse_relative_range() {
+        let result = parse_ex_full(".,+2d", 1, 5);
+        assert_eq!(result, Some(ExCommand::Delete { start: 1, end: 3 }));
+        let result = parse_ex_full(".,+2y", 1, 5);
+        assert_eq!(result, Some(ExCommand::Yank { start: 1, end: 3 }));
+    }

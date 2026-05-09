@@ -24,6 +24,8 @@ pub enum EditorAction {
     SaveRequested,
     CloseRequested,
     ModeChanged,
+    OpenFile(String),
+    ShellOutput(String),
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.
@@ -49,6 +51,23 @@ pub struct Editor {
     pub last_command: Option<Command>,
     // Status message
     pub status: String,
+    // Editor options (:set)
+    pub options: EditorOptions,
+}
+
+/// Editor display options controlled by :set.
+#[derive(Debug, Clone)]
+pub struct EditorOptions {
+    /// Show invisible characters (spaces, tabs, EOL).
+    pub list: bool,
+    /// Show line numbers in gutter.
+    pub number: bool,
+}
+
+impl Default for EditorOptions {
+    fn default() -> Self {
+        Self { list: false, number: true }
+    }
 }
 
 impl Editor {
@@ -78,6 +97,7 @@ impl Editor {
             last_find: None,
             last_command: None,
             status: String::new(),
+            options: EditorOptions::default(),
         }
     }
 
@@ -137,7 +157,9 @@ impl Editor {
             Command::DeleteCharBackward => { self.delete_char_backward(); EditorAction::ContentChanged }
             Command::DeleteLine => { self.delete_line(); EditorAction::ContentChanged }
             Command::DeleteWord => { self.delete_word(); EditorAction::ContentChanged }
+            Command::DeleteWordBackward => { self.delete_word_backward(); EditorAction::ContentChanged }
             Command::DeleteToEnd => { self.delete_to_end(); EditorAction::ContentChanged }
+            Command::DeleteToStart => { self.delete_to_start(); EditorAction::ContentChanged }
             Command::ChangeWord => { self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
             Command::ChangeLine => { self.change_line(); EditorAction::ContentChanged }
             Command::ChangeToEnd => { self.delete_to_end(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
@@ -160,6 +182,8 @@ impl Editor {
 
             // Clipboard
             Command::YankLine => { self.register = self.buffer.line(self.cursor_line).unwrap_or_default(); EditorAction::None }
+            Command::YankWord => { self.yank_word(); EditorAction::None }
+            Command::YankToEnd => { self.yank_to_end(); EditorAction::None }
             Command::Paste => { self.paste_after(); EditorAction::ContentChanged }
             Command::PasteBefore => { self.paste_before(); EditorAction::ContentChanged }
 
@@ -169,8 +193,10 @@ impl Editor {
             Command::ExitVisual => { self.exit_visual(); EditorAction::ModeChanged }
             Command::VisualDelete => { self.visual_delete(); EditorAction::ContentChanged }
             Command::VisualYank => { self.visual_yank(); EditorAction::None }
+            Command::VisualChange => { self.visual_change(); EditorAction::ContentChanged }
             Command::VisualIndent => { self.visual_indent(); EditorAction::ContentChanged }
             Command::VisualUnindent => { self.visual_unindent(); EditorAction::ContentChanged }
+            Command::VisualExCommand => { self.visual_ex_command(); EditorAction::ModeChanged }
 
             // Search
             Command::EnterSearchMode => { self.mode = EditorMode::Search; self.command_buf.clear(); EditorAction::ModeChanged }
@@ -195,6 +221,32 @@ impl Editor {
                     self.dispatch(last)
                 } else {
                     EditorAction::None
+                }
+            }
+
+            // Count repeat
+            Command::Repeat(n, cmd) => {
+                match *cmd {
+                    // Line-oriented commands: apply to N lines from cursor
+                    Command::YankLine => { self.yank_lines(n); EditorAction::None }
+                    Command::DeleteLine => { self.delete_lines(n); EditorAction::ContentChanged }
+                    Command::ChangeLine => { self.change_lines(n); EditorAction::ContentChanged }
+                    Command::Indent => { self.indent_lines(n); EditorAction::ContentChanged }
+                    Command::Unindent => { self.unindent_lines(n); EditorAction::ContentChanged }
+                    Command::JoinLines => {
+                        for _ in 0..n {
+                            self.join_lines();
+                        }
+                        EditorAction::ContentChanged
+                    }
+                    // All other commands: just repeat N times
+                    other => {
+                        let mut last_action = EditorAction::None;
+                        for _ in 0..n {
+                            last_action = self.dispatch(other.clone());
+                        }
+                        last_action
+                    }
                 }
             }
         }
@@ -470,6 +522,30 @@ impl Editor {
         }
     }
 
+    fn delete_word_backward(&mut self) {
+        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let (new_line, new_col) = motions::word_backward(&self.buffer, self.cursor_line, self.cursor_col);
+        let start_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(end_offset);
+        if end_offset > start_offset {
+            let content = self.buffer.content();
+            self.register = content[start_offset..end_offset].to_string();
+            self.buffer.delete(start_offset, end_offset);
+            self.cursor_line = new_line;
+            self.cursor_col = new_col;
+        }
+    }
+
+    fn delete_to_start(&mut self) {
+        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start_offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
+        if end_offset > start_offset {
+            let content = self.buffer.content();
+            self.register = content[start_offset..end_offset].to_string();
+            self.buffer.delete(start_offset, end_offset);
+            self.cursor_col = 0;
+        }
+    }
+
     fn delete_to_end(&mut self) {
         let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
@@ -590,6 +666,85 @@ impl Editor {
             }
         }
     }
+
+    fn yank_word(&mut self) {
+        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let (nl, nc) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
+        let end = self.buffer.line_col_to_offset(nl, nc).unwrap_or(start);
+        if end > start {
+            let content = self.buffer.content();
+            self.register = content[start..end].to_string();
+        }
+    }
+
+    fn yank_to_end(&mut self) {
+        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let line_len = self.buffer.line_len(self.cursor_line);
+        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        if end > start {
+            let content = self.buffer.content();
+            self.register = content[start..end].to_string();
+        }
+    }
+
+    fn apply_set_option(&mut self, opt: &str) {
+        match opt {
+            "list" | "li" => self.options.list = true,
+            "nolist" | "noli" => self.options.list = false,
+            "number" | "nu" => self.options.number = true,
+            "nonumber" | "nonu" => self.options.number = false,
+            _ => { self.status = format!("Unknown option: {opt}"); }
+        }
+    }
+
+    fn yank_lines(&mut self, n: usize) {
+        let end_line = (self.cursor_line + n).min(self.buffer.line_count());
+        let mut result = String::new();
+        for i in self.cursor_line..end_line {
+            result.push_str(&self.buffer.line(i).unwrap_or_default());
+            result.push('\n');
+        }
+        self.register = result;
+    }
+
+    fn delete_lines(&mut self, n: usize) {
+        for _ in 0..n {
+            self.delete_line();
+        }
+    }
+
+    fn change_lines(&mut self, n: usize) {
+        for _ in 0..n {
+            self.delete_line();
+        }
+        // Insert empty line at cursor and enter insert mode
+        let offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
+        self.buffer.insert(offset, "\n");
+        self.cursor_col = 0;
+        self.mode = EditorMode::Insert;
+    }
+
+    fn indent_lines(&mut self, n: usize) {
+        let end_line = (self.cursor_line + n).min(self.buffer.line_count());
+        for line in self.cursor_line..end_line {
+            if let Some(offset) = self.buffer.line_col_to_offset(line, 0) {
+                self.buffer.insert(offset, "    ");
+            }
+        }
+    }
+
+    fn unindent_lines(&mut self, n: usize) {
+        let end_line = (self.cursor_line + n).min(self.buffer.line_count());
+        for line in self.cursor_line..end_line {
+            let text = self.buffer.line(line).unwrap_or_default();
+            let spaces = text.chars().take(4).take_while(|c| *c == ' ').count();
+            if spaces > 0 {
+                if let Some(offset) = self.buffer.line_col_to_offset(line, 0) {
+                    self.buffer.delete(offset, offset + spaces);
+                }
+            }
+        }
+    }
 }
 
 // --- Visual mode methods ---
@@ -681,6 +836,22 @@ impl Editor {
         }
         self.exit_visual();
         self.status = "yanked".to_string();
+    }
+
+    fn visual_change(&mut self) {
+        self.visual_delete();
+        self.mode = EditorMode::Insert;
+    }
+
+    fn visual_ex_command(&mut self) {
+        let range = if self.mode == EditorMode::VisualLine {
+            "'<,'>".to_string()
+        } else {
+            "'<,'>".to_string()
+        };
+        self.exit_visual();
+        self.mode = EditorMode::Command;
+        self.command_buf = range;
     }
 
     fn visual_indent(&mut self) {
@@ -807,9 +978,40 @@ impl Editor {
         // Simple commands
         match trimmed {
             "w" => return EditorAction::SaveRequested,
-            "q" | "q!" => return EditorAction::CloseRequested,
+            "q" => {
+                if self.buffer.is_dirty() {
+                    self.status = "No write since last change (use :q! to override)".to_string();
+                    return EditorAction::None;
+                }
+                return EditorAction::CloseRequested;
+            }
+            "q!" => return EditorAction::CloseRequested,
             "wq" | "x" => return EditorAction::SaveRequested,
             _ => {}
+        }
+
+        // :e filename — open file
+        if let Some(filename) = trimmed.strip_prefix("e ") {
+            let filename = filename.trim();
+            if !filename.is_empty() {
+                return EditorAction::OpenFile(filename.to_string());
+            }
+        }
+
+        // :!command (bare, no range) — run and show output
+        if let Some(cmd) = trimmed.strip_prefix('!') {
+            let cmd = cmd.trim();
+            if !cmd.is_empty() {
+                let output = match std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(cmd)
+                    .output()
+                {
+                    Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+                    Err(e) => { self.status = format!("Shell error: {e}"); return EditorAction::None; }
+                };
+                return EditorAction::ShellOutput(output);
+            }
         }
 
         // Goto line
@@ -836,7 +1038,10 @@ impl Editor {
                     self.ex_shell(start, end, &command);
                     return EditorAction::ContentChanged;
                 }
-                ex::ExCommand::Set(_) => return EditorAction::None,
+                ex::ExCommand::Set(opt) => {
+                    self.apply_set_option(&opt);
+                    return EditorAction::None;
+                }
             }
         }
 

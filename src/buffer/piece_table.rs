@@ -204,6 +204,10 @@ impl PieceTable {
         self.modified = false;
     }
 
+    pub fn is_dirty(&self) -> bool {
+        self.modified
+    }
+
     // --- Internal ---
 
     fn save_undo(&mut self) {

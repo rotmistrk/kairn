@@ -37,7 +37,9 @@ pub enum Command {
     DeleteCharBackward,
     DeleteLine,
     DeleteWord,
+    DeleteWordBackward,
     DeleteToEnd,
+    DeleteToStart,
     ChangeWord,
     ChangeLine,
     ChangeToEnd,
@@ -62,6 +64,8 @@ pub enum Command {
 
     // Clipboard
     YankLine,
+    YankWord,
+    YankToEnd,
     Paste,
     PasteBefore,
 
@@ -80,8 +84,10 @@ pub enum Command {
     // Visual mode operations
     VisualDelete,
     VisualYank,
+    VisualChange,
     VisualIndent,
     VisualUnindent,
+    VisualExCommand,
 
     // Search
     SearchForward(String),
@@ -102,6 +108,9 @@ pub enum Command {
 
     // Repeat
     DotRepeat,
+
+    /// Repeat a command N times (count prefix).
+    Repeat(usize, Box<Command>),
 
     // No-op
     Noop,
