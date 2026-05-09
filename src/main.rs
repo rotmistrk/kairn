@@ -1,7 +1,6 @@
 //! kairn — TUI IDE entry point.
-use txv_core::view::{View, EventQueue};
-use txv_core::event::Event;
 
+use txv_core::view::View;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -99,17 +98,16 @@ fn main() -> anyhow::Result<()> {
             }
             CM_FOCUS_LEFT | CM_FOCUS_CENTER | CM_FOCUS_RIGHT | CM_FOCUS_BOTTOM
             | CM_ZOOM_TOGGLE | CM_TAB_NEXT | CM_TAB_PREV => {
-                // These are desktop commands — re-dispatch to desktop
-                let ev = Event::Command { id: ctx.command, data: None };
-                let mut q = EventQueue::new();
-                ctx.desktop.handle(&ev, &mut q);
+                // Desktop handles these — they should have been consumed by re-dispatch.
+                // If we get here, desktop didn't handle them (shouldn't happen).
+                log::warn!("Desktop command {} not consumed", ctx.command);
             }
             CM_SHOW_HELP => {
                 log::info!("Help requested");
                 // TODO: open help view in center slot
             }
             _ => {
-                log::debug!("Unhandled command: {}", ctx.command);
+                log::warn!("Unhandled command: {}", ctx.command);
             }
         }
     });

@@ -128,13 +128,19 @@ impl Program {
             let events = queue.drain();
             let mut quit = false;
             for ev in events {
-                if let Event::Command { id, ref data } = ev {
+                if let Event::Command { id, .. } = &ev {
                     log::debug!("Program: command {}", id);
-                    if id == CM_QUIT {
+                    if *id == CM_QUIT {
                         quit = true;
                         break;
                     }
-                    // Give handler access to desktop
+                }
+                // Re-dispatch through the group (Desktop handles its own commands)
+                if self.group.dispatch(&ev, &mut queue) == HandleResult::Consumed {
+                    continue;
+                }
+                // Unhandled command → app handler (fallback)
+                if let Event::Command { id, ref data } = ev {
                     let desktop = &mut *self.group.children[1];
                     let mut ctx = CommandContext {
                         command: id,
@@ -143,9 +149,6 @@ impl Program {
                         desktop,
                     };
                     handler(&mut ctx);
-                } else {
-                    // Non-command events in queue: re-dispatch
-                    self.group.dispatch(&ev, &mut queue);
                 }
             }
 
