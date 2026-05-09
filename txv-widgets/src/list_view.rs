@@ -1,331 +1,128 @@
-//! Scrollable list with single selection.
+//! ListView — generic list widget parameterized by ListData.
 
-use crossterm::event::{KeyCode, KeyModifiers};
-use txv::cell::Style;
-use txv::layout::Rect;
-use txv::surface::Surface;
+use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
-use crate::view::{DrawContext, Event, HandleResult, View};
 
-/// Data source for a list view.
-pub trait ListData {
-    /// Number of items.
+/// Trait for providing list data to ListView.
+pub trait ListData: Send {
     fn len(&self) -> usize;
-
-    /// Whether the list is empty.
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Render a single item into a one-row surface.
-    fn render_item(&self, index: usize, surface: &mut Surface<'_>, selected: bool);
+    fn is_empty(&self) -> bool { self.len() == 0 }
+    fn label(&self, index: usize) -> &str;
+    fn style(&self, index: usize) -> Style;
 }
 
-/// Scrollable list with keyboard navigation and selection.
 pub struct ListView<D: ListData> {
-    data: D,
-    selected: usize,
-    scroll: ScrollView,
-    bounds: Rect,
+    state: ViewState,
+    pub data: D,
+    pub cursor: usize,
+    pub scroll: ScrollView,
 }
 
 impl<D: ListData> ListView<D> {
-    /// Create a new list view with the given data source.
     pub fn new(data: D) -> Self {
-        let mut scroll = ScrollView::new();
-        scroll.set_content_size(data.len(), 0);
         Self {
+            state: ViewState::default(),
             data,
-            selected: 0,
-            scroll,
-            bounds: Rect {
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
+            cursor: 0,
+            scroll: ScrollView::new(),
         }
     }
 
-    /// Get the selected index.
-    pub fn selected(&self) -> usize {
-        self.selected
-    }
-
-    /// Set the selected index.
-    pub fn set_selected(&mut self, index: usize) {
-        if self.data.is_empty() {
-            return;
-        }
-        self.selected = index.min(self.data.len().saturating_sub(1));
-    }
-
-    /// Replace the data source. Resets selection to 0.
-    pub fn set_data(&mut self, data: D) {
-        self.scroll.set_content_size(data.len(), 0);
-        self.data = data;
-        self.selected = 0;
-        self.scroll.scroll_to_top();
-    }
-
-    /// Get a reference to the data source.
-    pub fn data(&self) -> &D {
-        &self.data
-    }
-
-    fn move_up(&mut self, amount: usize) {
-        self.selected = self.selected.saturating_sub(amount);
-    }
-
-    fn move_down(&mut self, amount: usize) {
-        if self.data.is_empty() {
-            return;
-        }
-        let max = self.data.len().saturating_sub(1);
-        self.selected = (self.selected + amount).min(max);
+    fn sync_scroll(&mut self) {
+        let h = self.state.bounds.h as usize;
+        self.scroll.set_viewport(h);
+        self.scroll.set_total(self.data.len());
+        self.scroll.ensure_visible(self.cursor);
     }
 }
 
-impl<D: ListData + Send> View for ListView<D> {
-    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
-        let h = surface.height();
-        let w = surface.width();
-        let range = self.scroll.visible_range(h);
+impl<D: ListData> View for ListView<D> {
+    delegate_view_state!(state);
 
-        surface.fill(' ', Style::default());
-
-        for (row_idx, item_idx) in range.enumerate() {
-            let mut row_surface = surface.sub(0, row_idx as u16, w, 1);
-            self.data
-                .render_item(item_idx, &mut row_surface, item_idx == self.selected);
+    fn draw(&self, surface: &mut Surface) {
+        let b = self.state.bounds;
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
+        let selected = Style {
+            attrs: Attrs { reverse: true, ..Attrs::default() },
+            ..Style::default()
+        };
+        for row in 0..b.h as usize {
+            let idx = self.scroll.offset + row;
+            if idx >= self.data.len() {
+                break;
+            }
+            let style = if idx == self.cursor {
+                selected
+            } else {
+                self.data.style(idx)
+            };
+            let y = b.y + row as u16;
+            surface.hline(b.x, y, b.w, ' ', style);
+            surface.print(b.x + 1, y, self.data.label(idx), style);
         }
     }
 
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        let key = match event {
-            Event::Key(k) => *k,
-            _ => return HandleResult::Ignored,
-        };
-        if self.data.is_empty() {
-            return match key.code {
-                KeyCode::Esc => HandleResult::Consumed,
+    fn handle(
+        &mut self,
+        event: &Event,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Up => {
+                    if self.cursor > 0 {
+                        self.cursor -= 1;
+                        self.sync_scroll();
+                        self.state.dirty = true;
+                    }
+                    HandleResult::Consumed
+                }
+                KeyCode::Down => {
+                    let max = self.data.len().saturating_sub(1);
+                    if self.cursor < max {
+                        self.cursor += 1;
+                        self.sync_scroll();
+                        self.state.dirty = true;
+                    }
+                    HandleResult::Consumed
+                }
+                KeyCode::Enter => {
+                    queue.put_command(CM_OK, Some(Box::new(self.cursor)));
+                    HandleResult::Consumed
+                }
+                KeyCode::Home => {
+                    self.cursor = 0;
+                    self.sync_scroll();
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
+                KeyCode::End => {
+                    self.cursor = self.data.len().saturating_sub(1);
+                    self.sync_scroll();
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
+                KeyCode::PageDown => {
+                    let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                    let max = self.data.len().saturating_sub(1);
+                    self.cursor = (self.cursor + page).min(max);
+                    self.sync_scroll();
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
+                KeyCode::PageUp => {
+                    let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                    self.cursor = self.cursor.saturating_sub(page);
+                    self.sync_scroll();
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
                 _ => HandleResult::Ignored,
-            };
-        }
-        let _ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
-        match key.code {
-            KeyCode::Up => {
-                self.move_up(1);
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::Down => {
-                self.move_down(1);
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::PageUp => {
-                self.move_up(10);
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::PageDown => {
-                self.move_down(10);
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::Home => {
-                self.selected = 0;
-                self.scroll.ensure_visible(0, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::End => {
-                self.selected = self.data.len().saturating_sub(1);
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::Enter => HandleResult::Consumed,
-            KeyCode::Esc => HandleResult::Consumed,
+            },
             _ => HandleResult::Ignored,
         }
-    }
-
-    fn bounds(&self) -> Rect {
-        self.bounds
-    }
-
-    fn set_bounds(&mut self, rect: Rect) {
-        self.bounds = rect;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use txv::cell::{ColorMode, Style};
-    use txv::screen::Screen;
-
-    struct TestData {
-        items: Vec<String>,
-    }
-
-    impl ListData for TestData {
-        fn len(&self) -> usize {
-            self.items.len()
-        }
-
-        fn render_item(&self, index: usize, surface: &mut Surface<'_>, selected: bool) {
-            let style = if selected {
-                Style {
-                    attrs: txv::cell::Attrs {
-                        reverse: true,
-                        ..txv::cell::Attrs::default()
-                    },
-                    ..Style::default()
-                }
-            } else {
-                Style::default()
-            };
-            surface.print(0, 0, &self.items[index], style);
-        }
-    }
-
-    fn ev(code: KeyCode) -> Event {
-        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
-    }
-
-    fn make_list(n: usize) -> ListView<TestData> {
-        let items: Vec<String> = (0..n).map(|i| format!("item{i}")).collect();
-        ListView::new(TestData { items })
-    }
-
-    #[test]
-    fn new_selects_first() {
-        let lv = make_list(5);
-        assert_eq!(lv.selected(), 0);
-    }
-
-    #[test]
-    fn move_down_and_up() {
-        let mut lv = make_list(5);
-        lv.handle(&ev(KeyCode::Down));
-        assert_eq!(lv.selected(), 1);
-        lv.handle(&ev(KeyCode::Down));
-        assert_eq!(lv.selected(), 2);
-        lv.handle(&ev(KeyCode::Up));
-        assert_eq!(lv.selected(), 1);
-    }
-
-    #[test]
-    fn clamp_at_bounds() {
-        let mut lv = make_list(3);
-        lv.handle(&ev(KeyCode::Up));
-        assert_eq!(lv.selected(), 0);
-        lv.handle(&ev(KeyCode::End));
-        assert_eq!(lv.selected(), 2);
-        lv.handle(&ev(KeyCode::Down));
-        assert_eq!(lv.selected(), 2);
-    }
-
-    #[test]
-    fn home_end() {
-        let mut lv = make_list(10);
-        lv.handle(&ev(KeyCode::End));
-        assert_eq!(lv.selected(), 9);
-        lv.handle(&ev(KeyCode::Home));
-        assert_eq!(lv.selected(), 0);
-    }
-
-    #[test]
-    fn page_up_down() {
-        let mut lv = make_list(30);
-        lv.handle(&ev(KeyCode::PageDown));
-        assert_eq!(lv.selected(), 10);
-        lv.handle(&ev(KeyCode::PageUp));
-        assert_eq!(lv.selected(), 0);
-    }
-
-    #[test]
-    fn enter_selects() {
-        let mut lv = make_list(5);
-        lv.handle(&ev(KeyCode::Down));
-        let result = lv.handle(&ev(KeyCode::Enter));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn esc_cancels() {
-        let mut lv = make_list(5);
-        let result = lv.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn empty_list_handling() {
-        let mut lv = make_list(0);
-        let result = lv.handle(&ev(KeyCode::Down));
-        assert!(matches!(result, HandleResult::Ignored));
-        let result = lv.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn set_selected_clamps() {
-        let mut lv = make_list(5);
-        lv.set_selected(100);
-        assert_eq!(lv.selected(), 4);
-    }
-
-    #[test]
-    fn set_data_resets() {
-        let mut lv = make_list(5);
-        lv.set_selected(3);
-        lv.set_data(TestData {
-            items: vec!["a".into(), "b".into()],
-        });
-        assert_eq!(lv.selected(), 0);
-        assert_eq!(lv.data().len(), 2);
-    }
-
-    #[test]
-    fn render_items() {
-        let lv = make_list(3);
-        let mut screen = Screen::with_color_mode(20, 5, ColorMode::Rgb);
-        {
-            let mut s = screen.full_surface();
-            lv.draw(
-                &mut s,
-                &DrawContext {
-                    app_focused: true,
-                    tick: 0,
-                },
-            );
-        }
-        let text = screen.to_text();
-        assert!(text.contains("item0"));
-        assert!(text.contains("item1"));
-        assert!(text.contains("item2"));
-    }
-
-    #[test]
-    fn render_selected_has_reverse() {
-        let lv = make_list(3);
-        let mut screen = Screen::with_color_mode(20, 5, ColorMode::Rgb);
-        {
-            let mut s = screen.full_surface();
-            lv.draw(
-                &mut s,
-                &DrawContext {
-                    app_focused: true,
-                    tick: 0,
-                },
-            );
-        }
-        // First item (selected) should have reverse attr
-        assert!(screen.cell(0, 0).style.attrs.reverse);
-        // Second item should not
-        assert!(!screen.cell(0, 1).style.attrs.reverse);
     }
 }

@@ -1,112 +1,47 @@
-//! Horizontal tab strip widget.
+//! TabBar — horizontal tab strip.
 
-use txv::cell::Style;
-use txv::layout::Rect;
-use txv::surface::Surface;
-use txv::text::display_width;
+use txv_core::prelude::*;
 
-use crate::view::{DrawContext, Event, HandleResult, View};
-
-/// A single tab entry.
-pub struct TabEntry {
-    /// Tab title.
-    pub title: String,
-    /// Whether the tab has unsaved changes.
-    pub modified: bool,
+pub struct Tab {
+    pub label: String,
+    pub command: CommandId,
 }
 
-/// Horizontal tab bar showing a strip of tabs.
 pub struct TabBar {
-    tabs: Vec<TabEntry>,
-    active: usize,
-    bounds: Rect,
-    /// Style for the active tab.
-    pub active_style: Style,
-    /// Style for inactive tabs.
-    pub inactive_style: Style,
+    state: ViewState,
+    pub tabs: Vec<Tab>,
+    pub active: usize,
 }
 
 impl TabBar {
-    /// Create an empty tab bar.
     pub fn new() -> Self {
         Self {
+            state: ViewState::default(),
             tabs: Vec::new(),
             active: 0,
-            bounds: Rect {
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
-            active_style: Style {
-                attrs: txv::cell::Attrs {
-                    bold: true,
-                    ..txv::cell::Attrs::default()
-                },
-                ..Style::default()
-            },
-            inactive_style: Style::default(),
         }
     }
 
-    /// Add a tab.
-    pub fn add(&mut self, entry: TabEntry) {
-        self.tabs.push(entry);
+    pub fn add_tab(&mut self, label: impl Into<String>, command: CommandId) {
+        self.tabs.push(Tab { label: label.into(), command });
+        self.state.dirty = true;
     }
 
-    /// Remove a tab by index. Adjusts active index if needed.
-    pub fn remove(&mut self, index: usize) {
-        if index >= self.tabs.len() {
-            return;
-        }
-        self.tabs.remove(index);
-        if self.tabs.is_empty() {
-            self.active = 0;
-        } else if self.active >= self.tabs.len() {
-            self.active = self.tabs.len() - 1;
+    pub fn remove_tab(&mut self, index: usize) {
+        if index < self.tabs.len() {
+            self.tabs.remove(index);
+            if self.active >= self.tabs.len() && self.active > 0 {
+                self.active -= 1;
+            }
+            self.state.dirty = true;
         }
     }
 
-    /// Get the active tab index.
-    pub fn active(&self) -> usize {
-        self.active
-    }
-
-    /// Set the active tab index.
     pub fn set_active(&mut self, index: usize) {
         if index < self.tabs.len() {
             self.active = index;
+            self.state.dirty = true;
         }
-    }
-
-    /// Get the active tab's title, or empty if no tabs.
-    pub fn active_title(&self) -> &str {
-        self.tabs
-            .get(self.active)
-            .map(|t| t.title.as_str())
-            .unwrap_or("")
-    }
-
-    /// Number of tabs.
-    pub fn len(&self) -> usize {
-        self.tabs.len()
-    }
-
-    /// Whether there are no tabs.
-    pub fn is_empty(&self) -> bool {
-        self.tabs.is_empty()
-    }
-
-    /// Get a tab entry by index.
-    pub fn get(&self, index: usize) -> Option<&TabEntry> {
-        self.tabs.get(index)
-    }
-
-    fn tab_label(&self, index: usize) -> String {
-        let tab = &self.tabs[index];
-        let marker = if index == self.active { "▸" } else { " " };
-        let modified = if tab.modified { "[+]" } else { "" };
-        format!("{marker}{}{modified} ", tab.title)
     }
 }
 
@@ -117,188 +52,58 @@ impl Default for TabBar {
 }
 
 impl View for TabBar {
-    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
-        let w = surface.width();
-        surface.hline(0, 0, w, ' ', self.inactive_style);
+    delegate_view_state!(state);
 
-        let mut col: u16 = 0;
-        for i in 0..self.tabs.len() {
-            let label = self.tab_label(i);
-            let lw = display_width(&label) as u16;
-            if col + lw > w {
+    fn draw(&self, surface: &mut Surface) {
+        let b = self.state.bounds;
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
+        let normal = Style::default();
+        let active_style = Style {
+            attrs: Attrs { bold: true, reverse: true, ..Attrs::default() },
+            ..Style::default()
+        };
+        surface.hline(b.x, b.y, b.w, ' ', normal);
+        let mut x = b.x;
+        for (i, tab) in self.tabs.iter().enumerate() {
+            let style = if i == self.active { active_style } else { normal };
+            let label = format!(" {} ", tab.label);
+            let len = label.len() as u16;
+            if x + len > b.x + b.w {
                 break;
             }
-            let style = if i == self.active {
-                self.active_style
-            } else {
-                self.inactive_style
-            };
-            surface.print(col, 0, &label, style);
-            col += lw;
+            surface.print(x, b.y, &label, style);
+            x += len;
         }
     }
 
-    fn handle(&mut self, _event: &Event) -> HandleResult {
-        HandleResult::Ignored
-    }
-
-    fn focusable(&self) -> bool {
-        false
-    }
-
-    fn bounds(&self) -> Rect {
-        self.bounds
-    }
-
-    fn set_bounds(&mut self, rect: Rect) {
-        self.bounds = rect;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use txv::cell::ColorMode;
-    use txv::screen::Screen;
-
-    use crate::view::{DrawContext, Event, HandleResult};
-
-    fn render_bar(bar: &TabBar, width: u16) -> String {
-        let mut screen = Screen::with_color_mode(width, 1, ColorMode::Rgb);
-        {
-            let mut s = screen.full_surface();
-            bar.draw(
-                &mut s,
-                &DrawContext {
-                    app_focused: true,
-                    tick: 0,
-                },
-            );
+    fn handle(
+        &mut self,
+        event: &Event,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
+        };
+        match key.code {
+            KeyCode::Left => {
+                if self.active > 0 {
+                    self.active -= 1;
+                    self.state.dirty = true;
+                    queue.put_command(self.tabs[self.active].command, None);
+                }
+                HandleResult::Consumed
+            }
+            KeyCode::Right => {
+                if self.active + 1 < self.tabs.len() {
+                    self.active += 1;
+                    self.state.dirty = true;
+                    queue.put_command(self.tabs[self.active].command, None);
+                }
+                HandleResult::Consumed
+            }
+            _ => HandleResult::Ignored,
         }
-        screen.to_text().trim_end_matches('\n').to_string()
-    }
-
-    #[test]
-    fn empty_bar() {
-        let bar = TabBar::new();
-        assert!(bar.is_empty());
-        assert_eq!(bar.len(), 0);
-        assert_eq!(bar.active_title(), "");
-    }
-
-    #[test]
-    fn add_and_active() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "Tab1".into(),
-            modified: false,
-        });
-        bar.add(TabEntry {
-            title: "Tab2".into(),
-            modified: false,
-        });
-        assert_eq!(bar.len(), 2);
-        assert_eq!(bar.active(), 0);
-        assert_eq!(bar.active_title(), "Tab1");
-    }
-
-    #[test]
-    fn set_active() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "A".into(),
-            modified: false,
-        });
-        bar.add(TabEntry {
-            title: "B".into(),
-            modified: false,
-        });
-        bar.set_active(1);
-        assert_eq!(bar.active(), 1);
-        assert_eq!(bar.active_title(), "B");
-    }
-
-    #[test]
-    fn set_active_out_of_bounds() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "A".into(),
-            modified: false,
-        });
-        bar.set_active(5);
-        assert_eq!(bar.active(), 0); // unchanged
-    }
-
-    #[test]
-    fn remove_adjusts_active() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "A".into(),
-            modified: false,
-        });
-        bar.add(TabEntry {
-            title: "B".into(),
-            modified: false,
-        });
-        bar.set_active(1);
-        bar.remove(1);
-        assert_eq!(bar.active(), 0);
-        assert_eq!(bar.len(), 1);
-    }
-
-    #[test]
-    fn remove_last_tab() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "A".into(),
-            modified: false,
-        });
-        bar.remove(0);
-        assert!(bar.is_empty());
-        assert_eq!(bar.active(), 0);
-    }
-
-    #[test]
-    fn render_shows_active_marker() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "T1".into(),
-            modified: false,
-        });
-        bar.add(TabEntry {
-            title: "T2".into(),
-            modified: false,
-        });
-        let text = render_bar(&bar, 30);
-        assert!(text.contains("▸T1"));
-        assert!(text.contains(" T2"));
-    }
-
-    #[test]
-    fn render_modified_marker() {
-        let mut bar = TabBar::new();
-        bar.add(TabEntry {
-            title: "F".into(),
-            modified: true,
-        });
-        let text = render_bar(&bar, 20);
-        assert!(text.contains("[+]"));
-    }
-
-    #[test]
-    fn not_focusable() {
-        let bar = TabBar::new();
-        assert!(!bar.focusable());
-    }
-
-    #[test]
-    fn handle_key_ignored() {
-        let mut bar = TabBar::new();
-        let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
-        assert!(matches!(
-            bar.handle(&Event::Key(key)),
-            HandleResult::Ignored
-        ));
     }
 }

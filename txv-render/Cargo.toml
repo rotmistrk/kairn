@@ -1,0 +1,11 @@
+[package]
+name = "txv-render"
+version = "0.1.0"
+edition = "2021"
+description = "Terminal backend for txv — CrosstermBackend, TermBuf, color, text utilities"
+
+[dependencies]
+txv-core = { path = "../txv-core" }
+crossterm = "0.28"
+vte = "0.13"
+unicode-width = "0.2"

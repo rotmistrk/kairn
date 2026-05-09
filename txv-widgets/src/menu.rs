@@ -1,436 +1,125 @@
-//! Popup menu with keyboard navigation.
+//! Menu — modal popup menu.
 
-use crossterm::event::KeyCode;
-use txv::border::{draw_border, BorderMode, BorderStyle};
-use txv::cell::{Attrs, Color, Style};
-use txv::layout::Rect;
-use txv::surface::Surface;
+use txv_core::prelude::*;
 
-use crate::scroll_view::ScrollView;
-use crate::view::{DrawContext, Event, HandleResult, View};
-
-/// A single menu item or separator.
 pub struct MenuItem {
-    /// Display label.
     pub label: String,
-    /// Keyboard shortcut hint (display only).
-    pub key_hint: String,
-    /// Whether this item can be selected.
+    pub command: CommandId,
     pub enabled: bool,
-    /// If true, renders as a horizontal divider line.
-    pub separator: bool,
 }
 
 impl MenuItem {
-    /// Create a normal enabled menu item.
-    pub fn new(label: impl Into<String>, key_hint: impl Into<String>) -> Self {
-        Self {
-            label: label.into(),
-            key_hint: key_hint.into(),
-            enabled: true,
-            separator: false,
-        }
-    }
-
-    /// Create a separator line.
-    pub fn separator() -> Self {
-        Self {
-            label: String::new(),
-            key_hint: String::new(),
-            enabled: false,
-            separator: true,
-        }
+    pub fn new(label: impl Into<String>, command: CommandId) -> Self {
+        Self { label: label.into(), command, enabled: true }
     }
 }
 
-/// Popup menu widget.
 pub struct Menu {
-    items: Vec<MenuItem>,
-    selected: usize,
-    scroll: ScrollView,
-    bounds: Rect,
+    state: ViewState,
+    pub items: Vec<MenuItem>,
+    pub cursor: usize,
 }
 
 impl Menu {
-    /// Create a new menu. Selects the first selectable item.
     pub fn new(items: Vec<MenuItem>) -> Self {
-        let mut menu = Self {
+        Self {
+            state: ViewState::new(ViewOptions {
+                modal: true,
+                focusable: true,
+                ..ViewOptions::default()
+            }),
             items,
-            selected: 0,
-            scroll: ScrollView::new(),
-            bounds: Rect {
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
-        };
-        menu.scroll.set_content_size(menu.items.len(), 0);
-        menu.move_to_next_selectable(0, 1);
-        menu
-    }
-
-    /// The currently selected item, if any.
-    pub fn selected_item(&self) -> Option<&MenuItem> {
-        self.items
-            .get(self.selected)
-            .filter(|i| i.enabled && !i.separator)
-    }
-
-    /// The currently selected index.
-    pub fn selected_index(&self) -> usize {
-        self.selected
-    }
-
-    /// Computed width: max(label + key_hint) + padding + border.
-    pub fn width(&self) -> u16 {
-        let content_w = self
-            .items
-            .iter()
-            .map(|i| i.label.len() + i.key_hint.len() + 4) // " label  hint "
-            .max()
-            .unwrap_or(10);
-        (content_w + 2) as u16 // +2 for border
-    }
-
-    /// Total height including border.
-    pub fn height(&self) -> u16 {
-        (self.items.len() + 2) as u16 // +2 for border
-    }
-
-    fn is_selectable(&self, idx: usize) -> bool {
-        self.items
-            .get(idx)
-            .map(|i| i.enabled && !i.separator)
-            .unwrap_or(false)
-    }
-
-    fn move_to_next_selectable(&mut self, start: usize, dir: isize) {
-        if self.items.is_empty() {
-            return;
-        }
-        let len = self.items.len();
-        let mut idx = start;
-        for _ in 0..len {
-            if self.is_selectable(idx) {
-                self.selected = idx;
-                return;
-            }
-            idx = (idx as isize + dir).rem_euclid(len as isize) as usize;
-        }
-    }
-
-    fn move_down(&mut self) {
-        let start = (self.selected + 1) % self.items.len();
-        self.move_to_next_selectable(start, 1);
-    }
-
-    fn move_up(&mut self) {
-        let len = self.items.len();
-        let start = (self.selected + len - 1) % len;
-        self.move_to_next_selectable(start, -1);
-    }
-
-    fn jump_to_first(&mut self) {
-        self.move_to_next_selectable(0, 1);
-    }
-
-    fn jump_to_last(&mut self) {
-        let last = self.items.len().saturating_sub(1);
-        self.move_to_next_selectable(last, -1);
-    }
-
-    fn jump_to_letter(&mut self, ch: char) {
-        let lower = ch.to_ascii_lowercase();
-        let len = self.items.len();
-        for offset in 1..=len {
-            let idx = (self.selected + offset) % len;
-            if self.is_selectable(idx) {
-                let first = self.items[idx]
-                    .label
-                    .chars()
-                    .next()
-                    .map(|c| c.to_ascii_lowercase());
-                if first == Some(lower) {
-                    self.selected = idx;
-                    return;
-                }
-            }
-        }
-    }
-
-    fn render_item(&self, idx: usize, surface: &mut Surface<'_>, content_w: u16) {
-        let item = &self.items[idx];
-        let is_selected = idx == self.selected;
-
-        if item.separator {
-            let sep_style = Style {
-                fg: Color::Ansi(8),
-                ..Style::default()
-            };
-            surface.hline(0, 0, content_w, '─', sep_style);
-            return;
-        }
-
-        let style = if !item.enabled {
-            Style {
-                fg: Color::Ansi(8),
-                attrs: Attrs {
-                    dim: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            }
-        } else if is_selected {
-            Style {
-                fg: Color::Reset,
-                bg: Color::Ansi(4),
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-            }
-        } else {
-            Style::default()
-        };
-
-        if is_selected {
-            surface.fill(' ', style);
-        }
-
-        let label = format!(" {}", item.label);
-        surface.print(0, 0, &label, style);
-
-        if !item.key_hint.is_empty() {
-            let hint = format!("{} ", item.key_hint);
-            let col = content_w.saturating_sub(hint.len() as u16);
-            surface.print(col, 0, &hint, style);
+            cursor: 0,
         }
     }
 }
 
 impl View for Menu {
-    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
-        let border_style = BorderStyle {
-            mode: BorderMode::Pretty,
-            active: Style {
-                fg: Color::Reset,
-                ..Style::default()
-            },
-            inactive: Style {
-                fg: Color::Ansi(8),
-                ..Style::default()
-            },
+    delegate_view_state!(state);
+
+    fn draw(&self, surface: &mut Surface) {
+        let b = self.state.bounds;
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
+        let normal = Style::default();
+        let selected = Style {
+            attrs: Attrs { reverse: true, ..Attrs::default() },
+            ..Style::default()
+        };
+        let disabled = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
         };
 
-        let rect = Rect {
-            x: 0,
-            y: 0,
-            w: surface.width(),
-            h: surface.height(),
-        };
-        let inner = draw_border(surface, rect, "", &border_style, true);
+        // Draw border
+        surface.hline(b.x, b.y, b.w, '─', normal);
+        surface.hline(b.x, b.y + b.h.saturating_sub(1), b.w, '─', normal);
+        for row in 1..b.h.saturating_sub(1) {
+            surface.put(b.x, b.y + row, '│', normal);
+            surface.put(b.x + b.w.saturating_sub(1), b.y + row, '│', normal);
+        }
+        surface.put(b.x, b.y, '┌', normal);
+        surface.put(b.x + b.w.saturating_sub(1), b.y, '┐', normal);
+        surface.put(b.x, b.y + b.h.saturating_sub(1), '└', normal);
+        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), '┘', normal);
 
-        let vh = inner.h;
-        let range = self.scroll.visible_range(vh);
-        for (row_idx, item_idx) in range.enumerate() {
-            let mut row = surface.sub(inner.x, inner.y + row_idx as u16, inner.w, 1);
-            self.render_item(item_idx, &mut row, inner.w);
+        // Draw items
+        let inner_w = b.w.saturating_sub(2);
+        for (i, item) in self.items.iter().enumerate() {
+            let row = i as u16 + 1;
+            if row >= b.h.saturating_sub(1) {
+                break;
+            }
+            let y = b.y + row;
+            let style = if !item.enabled {
+                disabled
+            } else if i == self.cursor {
+                selected
+            } else {
+                normal
+            };
+            surface.hline(b.x + 1, y, inner_w, ' ', style);
+            surface.print(b.x + 2, y, &item.label, style);
         }
     }
 
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        let key = match event {
-            Event::Key(k) => *k,
-            _ => return HandleResult::Ignored,
+    fn handle(
+        &mut self,
+        event: &Event,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Consumed; // modal captures all
         };
-
-        if self.items.is_empty() {
-            return match key.code {
-                KeyCode::Esc => HandleResult::Consumed,
-                _ => HandleResult::Ignored,
-            };
-        }
         match key.code {
             KeyCode::Up => {
-                self.move_up();
-                self.scroll.ensure_visible(self.selected, 0);
+                if self.cursor > 0 {
+                    self.cursor -= 1;
+                    self.state.dirty = true;
+                }
                 HandleResult::Consumed
             }
             KeyCode::Down => {
-                self.move_down();
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::Home => {
-                self.jump_to_first();
-                self.scroll.ensure_visible(self.selected, 0);
-                HandleResult::Consumed
-            }
-            KeyCode::End => {
-                self.jump_to_last();
-                self.scroll.ensure_visible(self.selected, 0);
+                if self.cursor + 1 < self.items.len() {
+                    self.cursor += 1;
+                    self.state.dirty = true;
+                }
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
-                if self.selected_item().is_some() {
-                    HandleResult::Consumed
-                } else {
-                    HandleResult::Ignored
+                if let Some(item) = self.items.get(self.cursor) {
+                    if item.enabled {
+                        queue.put_command(item.command, None);
+                    }
                 }
-            }
-            KeyCode::Esc => HandleResult::Consumed,
-            KeyCode::Char(ch) if ch.is_ascii_alphabetic() => {
-                self.jump_to_letter(ch);
-                self.scroll.ensure_visible(self.selected, 0);
                 HandleResult::Consumed
             }
-            _ => HandleResult::Ignored,
+            KeyCode::Esc => {
+                queue.put_command(CM_CANCEL, None);
+                HandleResult::Consumed
+            }
+            _ => HandleResult::Consumed, // modal swallows all keys
         }
-    }
-
-    fn bounds(&self) -> Rect {
-        self.bounds
-    }
-
-    fn set_bounds(&mut self, rect: Rect) {
-        self.bounds = rect;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::{KeyEvent, KeyModifiers};
-
-    fn ev(code: KeyCode) -> Event {
-        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
-    }
-
-    fn sample_items() -> Vec<MenuItem> {
-        vec![
-            MenuItem::new("Open", "Ctrl-O"),
-            MenuItem::separator(),
-            MenuItem::new("Save", "Ctrl-S"),
-            {
-                let mut item = MenuItem::new("Disabled", "");
-                item.enabled = false;
-                item
-            },
-            MenuItem::new("Quit", "Ctrl-Q"),
-        ]
-    }
-
-    #[test]
-    fn selects_first_selectable() {
-        let menu = Menu::new(sample_items());
-        assert_eq!(menu.selected_index(), 0);
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Open"));
-    }
-
-    #[test]
-    fn navigation_skips_separators() {
-        let mut menu = Menu::new(sample_items());
-        menu.handle(&ev(KeyCode::Down));
-        assert_eq!(menu.selected_index(), 2);
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Save"));
-    }
-
-    #[test]
-    fn navigation_skips_disabled() {
-        let mut menu = Menu::new(sample_items());
-        menu.selected = 2; // Save
-        menu.handle(&ev(KeyCode::Down));
-        assert_eq!(menu.selected_index(), 4);
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
-    }
-
-    #[test]
-    fn up_wraps_around() {
-        let mut menu = Menu::new(sample_items());
-        menu.handle(&ev(KeyCode::Up));
-        assert_eq!(menu.selected_index(), 4);
-    }
-
-    #[test]
-    fn down_wraps_around() {
-        let mut menu = Menu::new(sample_items());
-        menu.selected = 4; // Quit
-        menu.handle(&ev(KeyCode::Down));
-        assert_eq!(menu.selected_index(), 0);
-    }
-
-    #[test]
-    fn first_letter_jump() {
-        let mut menu = Menu::new(sample_items());
-        menu.handle(&ev(KeyCode::Char('q')));
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
-    }
-
-    #[test]
-    fn first_letter_skips_disabled() {
-        let mut menu = Menu::new(sample_items());
-        menu.handle(&ev(KeyCode::Char('d')));
-        assert_eq!(menu.selected_index(), 0);
-    }
-
-    #[test]
-    fn enter_produces_consumed() {
-        let mut menu = Menu::new(sample_items());
-        let result = menu.handle(&ev(KeyCode::Enter));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn esc_produces_consumed() {
-        let mut menu = Menu::new(sample_items());
-        let result = menu.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn home_end() {
-        let mut menu = Menu::new(sample_items());
-        menu.handle(&ev(KeyCode::End));
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
-        menu.handle(&ev(KeyCode::Home));
-        assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Open"));
-    }
-
-    #[test]
-    fn empty_menu() {
-        let mut menu = Menu::new(vec![]);
-        assert!(menu.selected_item().is_none());
-        let result = menu.handle(&ev(KeyCode::Down));
-        assert!(matches!(result, HandleResult::Ignored));
-        let result = menu.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn separator_only_menu() {
-        let menu = Menu::new(vec![MenuItem::separator()]);
-        assert!(menu.selected_item().is_none());
-    }
-
-    #[test]
-    fn width_and_height() {
-        let menu = Menu::new(sample_items());
-        assert!(menu.width() > 2);
-        assert_eq!(menu.height(), 7); // 5 items + 2 border
-    }
-
-    #[test]
-    fn render_no_panic() {
-        let menu = Menu::new(sample_items());
-        let mut screen = txv::screen::Screen::with_color_mode(30, 10, txv::cell::ColorMode::Rgb);
-        let mut s = screen.full_surface();
-        menu.draw(
-            &mut s,
-            &DrawContext {
-                app_focused: true,
-                tick: 0,
-            },
-        );
     }
 }

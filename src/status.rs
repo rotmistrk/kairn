@@ -1,157 +1,208 @@
-//! StatusBarView — key-to-command translator and hint display.
-//!
-//! The status bar sees key events FIRST (preprocess role). When a key
-//! matches a configured binding, it emits the corresponding command
-//! via the outbox. It also renders key hints and context info.
+//! KairnStatusBar — status bar with Normal mode (key labels) and Prompt mode (M-x input).
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use txv::cell::Style;
-use txv::layout::Rect;
-use txv::surface::Surface;
-use txv::text::display_width;
-use txv_widgets::view::{DrawContext, Event, HandleResult, View};
-use txv_widgets::CommandId;
+use txv_core::prelude::*;
+use txv_widgets::{InputLine, StatusBar};
 
-use crate::types::CommandOutbox;
+use crate::commands::*;
 
-/// A key specification for matching.
-#[derive(Debug, Clone)]
-pub struct KeySpec {
-    pub code: KeyCode,
-    pub modifiers: KeyModifiers,
+/// Status bar mode.
+enum Mode {
+    Normal,
+    Prompt,
 }
 
-impl KeySpec {
-    /// Check if a key event matches this spec.
-    pub fn matches(&self, key: &KeyEvent) -> bool {
-        self.code == key.code && self.modifiers == key.modifiers
-    }
+/// Application status bar with command mode support.
+pub struct KairnStatusBar {
+    inner: StatusBar,
+    input: InputLine,
+    mode: Mode,
+    completer: Option<Box<dyn Completer>>,
 }
 
-/// A single keybinding entry.
-pub struct Binding {
-    pub key: KeySpec,
-    pub command: CommandId,
-    pub label: String,
-}
-
-/// Status bar: translates keys to commands, renders hints.
-pub struct StatusBarView {
-    bindings: Vec<Binding>,
-    context_text: String,
-    bounds: Rect,
-    pub outbox: CommandOutbox,
-    style: Style,
-}
-
-impl StatusBarView {
-    /// Create a status bar with the given bindings.
-    pub fn new(bindings: Vec<Binding>) -> Self {
+impl KairnStatusBar {
+    pub fn new() -> Self {
+        let mut bar = StatusBar::new();
+        bar.add_item(
+            KeyEvent { code: KeyCode::F(1), modifiers: KeyMod::default() },
+            CM_SHOW_HELP,
+            "F1:Help",
+        );
+        bar.add_item(
+            KeyEvent { code: KeyCode::F(2), modifiers: KeyMod::default() },
+            CM_FOCUS_LEFT,
+            "F2:Tree",
+        );
+        bar.add_item(
+            KeyEvent { code: KeyCode::F(3), modifiers: KeyMod::default() },
+            CM_FOCUS_CENTER,
+            "F3:Main",
+        );
+        bar.add_item(
+            KeyEvent { code: KeyCode::F(4), modifiers: KeyMod::default() },
+            CM_FOCUS_RIGHT,
+            "F4:Term",
+        );
+        bar.add_item(
+            KeyEvent { code: KeyCode::F(5), modifiers: KeyMod::default() },
+            CM_ZOOM_TOGGLE,
+            "F5:Zoom",
+        );
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Char('x'),
+                modifiers: KeyMod { ctrl: false, alt: true, shift: false },
+            },
+            CM_COMMAND_MODE,
+            "M-x",
+        );
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyMod { ctrl: true, alt: false, shift: false },
+            },
+            CM_QUIT,
+            "^Q:Quit",
+        );
         Self {
-            bindings,
-            context_text: String::new(),
-            bounds: Rect { x: 0, y: 0, w: 0, h: 1 },
-            outbox: CommandOutbox::default(),
-            style: Style {
-                fg: txv::cell::Color::Ansi(0),
-                bg: txv::cell::Color::Ansi(7),
-                ..Style::default()
-            },
+            inner: bar,
+            input: InputLine::new(),
+            mode: Mode::Normal,
+            completer: None,
         }
     }
 
-    /// Set the right-aligned context text.
-    pub fn set_context(&mut self, text: String) {
-        self.context_text = text;
+    pub fn set_context(&mut self, ctx: impl Into<String>) {
+        self.inner.set_context(ctx);
     }
 
-    /// Create default keybindings for kairn per spec.
-    pub fn default_bindings() -> Vec<Binding> {
-        use crate::commands::*;
-        vec![
-            Binding {
-                key: KeySpec { code: KeyCode::F(1), modifiers: KeyModifiers::NONE },
-                command: CM_SHOW_HELP,
-                label: "F1:Help".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::F(2), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_LEFT,
-                label: "F2:Tree".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::F(3), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_CENTER,
-                label: "F3:Main".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::F(4), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_RIGHT,
-                label: "F4:Tools".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::F(5), modifiers: KeyModifiers::NONE },
-                command: CM_ZOOM_TOGGLE,
-                label: "F5:Zoom".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::Char('q'), modifiers: KeyModifiers::CONTROL },
-                command: CM_QUIT,
-                label: "^Q:Quit".into(),
-            },
-        ]
+    pub fn set_completer(&mut self, completer: Box<dyn Completer>) {
+        self.completer = Some(completer);
+    }
+
+    fn enter_prompt(&mut self) {
+        self.mode = Mode::Prompt;
+        self.input.clear();
+    }
+
+    fn exit_prompt(&mut self) {
+        self.mode = Mode::Normal;
+        self.input.clear();
+    }
+
+    fn try_complete(&mut self) {
+        if let Some(ref completer) = self.completer {
+            let completions = completer.complete(&self.input.text, self.input.cursor);
+            if completions.len() == 1 {
+                self.input.set_text(&completions[0].text);
+            } else if !completions.is_empty() {
+                // Store display strings for potential popup (future)
+                self.input.completions = completions.iter()
+                    .map(|c| c.display.clone())
+                    .collect();
+            }
+        }
     }
 }
 
-impl View for StatusBarView {
-    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
-        let w = surface.width();
-        // Fill background
-        surface.hline(0, 0, w, ' ', self.style);
-
-        // Render key hints left-aligned
-        let mut col: u16 = 0;
-        for binding in &self.bindings {
-            let text = format!(" {} ", binding.label);
-            let tw = display_width(&text) as u16;
-            if col + tw > w {
-                break;
-            }
-            surface.print(col, 0, &text, self.style);
-            col += tw;
+impl View for KairnStatusBar {
+    fn bounds(&self) -> Rect { self.inner.bounds() }
+    fn set_bounds(&mut self, r: Rect) {
+        self.inner.set_bounds(r);
+        self.input.set_bounds(r);
+    }
+    fn options(&self) -> ViewOptions {
+        ViewOptions {
+            preprocess: true,
+            focusable: false,
+            ..ViewOptions::default()
         }
+    }
+    fn title(&self) -> &str { "" }
+    fn needs_redraw(&self) -> bool {
+        match self.mode {
+            Mode::Normal => self.inner.needs_redraw(),
+            Mode::Prompt => self.input.needs_redraw(),
+        }
+    }
+    fn mark_redrawn(&mut self) {
+        self.inner.mark_redrawn();
+        self.input.mark_redrawn();
+    }
+    fn select(&mut self) {}
+    fn unselect(&mut self) {}
 
-        // Render context text right-aligned
-        if !self.context_text.is_empty() {
-            let rw = display_width(&self.context_text) as u16;
-            let start = w.saturating_sub(rw + 1);
-            if start > col {
-                surface.print(start, 0, &self.context_text, self.style);
+    fn draw(&self, surface: &mut Surface) {
+        match self.mode {
+            Mode::Normal => self.inner.draw(surface),
+            Mode::Prompt => {
+                let b = self.inner.bounds();
+                let style = Style {
+                    attrs: Attrs { reverse: true, ..Attrs::default() },
+                    ..Style::default()
+                };
+                // Draw prompt prefix
+                surface.hline(b.x, b.y, b.w, ' ', style);
+                surface.print(b.x, b.y, ":", style);
+                // Draw input after the ":"
+                self.input.draw(surface);
             }
         }
     }
 
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        if let Event::Key(key) = event {
-            for binding in &self.bindings {
-                if binding.key.matches(key) {
-                    self.outbox.emit(binding.command);
+    fn handle(
+        &mut self,
+        event: &Event,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
+        match self.mode {
+            Mode::Normal => {
+                // Check for CM_COMMAND_MODE command to enter prompt
+                if let Event::Command { id, .. } = event {
+                    if *id == CM_COMMAND_MODE {
+                        self.enter_prompt();
+                        return HandleResult::Consumed;
+                    }
+                }
+                // Normal key→command translation
+                self.inner.handle(event, queue)
+            }
+            Mode::Prompt => {
+                let Event::Key(key) = event else {
+                    return HandleResult::Ignored;
+                };
+                // Tab triggers completion
+                if key.code == KeyCode::Tab {
+                    self.try_complete();
                     return HandleResult::Consumed;
                 }
+                // Forward to InputLine
+                let result = self.input.handle(event, queue);
+                // Check if InputLine emitted CM_OK (Enter) or CM_CANCEL (Esc)
+                let events = queue.drain();
+                for ev in events {
+                    if let Event::Command { id, data } = &ev {
+                        if *id == CM_OK {
+                            // Extract command text and emit CM_EXECUTE_COMMAND
+                            if let Some(boxed) = data.as_ref() {
+                                if let Some(text) = boxed.downcast_ref::<String>() {
+                                    let cmd_text = text.clone();
+                                    self.exit_prompt();
+                                    queue.put_command(
+                                        CM_EXECUTE_COMMAND,
+                                        Some(Box::new(cmd_text)),
+                                    );
+                                    return HandleResult::Consumed;
+                                }
+                            }
+                        } else if *id == CM_CANCEL {
+                            self.exit_prompt();
+                            return HandleResult::Consumed;
+                        }
+                    }
+                    queue.put(ev);
+                }
+                result
             }
         }
-        HandleResult::Ignored
-    }
-
-    fn bounds(&self) -> Rect {
-        self.bounds
-    }
-
-    fn set_bounds(&mut self, rect: Rect) {
-        self.bounds = rect;
-    }
-
-    fn focusable(&self) -> bool {
-        false
     }
 }

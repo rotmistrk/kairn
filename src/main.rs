@@ -1,51 +1,45 @@
-//! kairn — a TUI IDE oriented around Kiro AI.
+//! kairn — TUI IDE entry point.
 
-use std::path::PathBuf;
-use std::process;
-
-use clap::Parser;
+#![allow(dead_code)]
 
 mod app;
-mod buffer;
+mod broker;
 mod commands;
-mod config;
-mod content_search;
+mod completer;
 mod desktop;
-mod editor;
-mod git;
-mod kiro;
-mod lsp;
-mod nav;
-mod runner;
 mod status;
 mod views;
-mod types;
 
-/// A TUI IDE oriented around Kiro AI.
+use std::path::PathBuf;
+
+use clap::Parser;
+use txv_core::geometry::Rect;
+use txv_core::run::run;
+use txv_core::view::View;
+use txv_render::backend::CrosstermBackend;
+use txv_render::color::detect_color_mode;
+
+use app::App;
+
 #[derive(Parser)]
-#[command(name = "kairn", version, about)]
+#[command(name = "kairn", about = "TUI IDE")]
 struct Cli {
-    /// Directory or file to open.
+    /// Directory to open
     #[arg(default_value = ".")]
     path: PathBuf,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let root_dir = std::fs::canonicalize(&cli.path)?;
 
-    let root = if cli.path.is_file() {
-        cli.path
-            .parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        cli.path.clone()
-    };
+    let color_mode = detect_color_mode();
+    let mut backend = CrosstermBackend::new(color_mode);
 
-    let mut app = app::App::new(&root);
+    let (w, h) = txv_core::run::Backend::size(&backend);
+    let mut app = App::new(root_dir);
+    app.set_bounds(Rect::new(0, 0, w, h));
 
-    if let Err(e) = app.run() {
-        eprintln!("kairn: {e}");
-        process::exit(1);
-    }
+    run(&mut app, &mut backend);
+    Ok(())
 }

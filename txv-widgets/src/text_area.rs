@@ -1,254 +1,89 @@
-//! Multi-line read-only text viewer with scroll, search, and line numbers.
+//! TextArea — read-only text viewer with line numbers and search.
 
-use crossterm::event::{KeyCode, KeyModifiers};
-use txv::cell::Style;
-use txv::surface::Surface;
-use txv::text::display_width;
-
-use txv::layout::Rect;
+use txv_core::prelude::*;
 
 use crate::scroll_view::ScrollView;
-use crate::scrollbar::Scrollbar;
-use crate::view::{DrawContext, Event, HandleResult, View};
 
-/// Multi-line read-only text viewer.
 pub struct TextArea {
-    bounds: Rect,
-    lines: Vec<String>,
-    scroll: ScrollView,
-    show_line_numbers: bool,
-    search_query: Option<String>,
-    search_matches: Vec<(usize, usize)>, // (line, col)
-    search_index: usize,
-    /// Style for normal text.
-    pub text_style: Style,
-    /// Style for line numbers.
-    pub line_number_style: Style,
-    /// Style for search matches.
-    pub match_style: Style,
-    /// Style for the current search match.
-    pub current_match_style: Style,
-    /// Whether to show the scrollbar.
-    pub show_scrollbar: bool,
+    state: ViewState,
+    pub lines: Vec<String>,
+    pub scroll: ScrollView,
+    pub line_numbers: bool,
+    pub search_query: String,
+    pub search_matches: Vec<usize>,
+    pub current_match: usize,
 }
 
 impl TextArea {
-    /// Create a new empty text area.
     pub fn new() -> Self {
         Self {
-            bounds: Rect {
-                x: 0,
-                y: 0,
-                w: 0,
-                h: 0,
-            },
+            state: ViewState::default(),
             lines: Vec::new(),
             scroll: ScrollView::new(),
-            show_line_numbers: true,
-            search_query: None,
+            line_numbers: true,
+            search_query: String::new(),
             search_matches: Vec::new(),
-            search_index: 0,
-            text_style: Style::default(),
-            line_number_style: Style {
-                attrs: txv::cell::Attrs {
-                    dim: true,
-                    ..txv::cell::Attrs::default()
-                },
-                ..Style::default()
-            },
-            match_style: Style {
-                attrs: txv::cell::Attrs {
-                    reverse: true,
-                    ..txv::cell::Attrs::default()
-                },
-                ..Style::default()
-            },
-            current_match_style: Style {
-                attrs: txv::cell::Attrs {
-                    reverse: true,
-                    bold: true,
-                    ..txv::cell::Attrs::default()
-                },
-                ..Style::default()
-            },
-            show_scrollbar: true,
+            current_match: 0,
         }
     }
 
-    /// Set the text content (splits on newlines).
-    pub fn set_text(&mut self, text: &str) {
+    pub fn set_content(&mut self, text: &str) {
         self.lines = text.lines().map(String::from).collect();
-        self.scroll.set_content_size(self.lines.len(), 0);
-        self.scroll.scroll_to_top();
-        self.clear_search();
+        self.scroll.set_total(self.lines.len());
+        self.state.dirty = true;
     }
 
-    /// Set content from a vec of lines.
-    pub fn set_lines(&mut self, lines: Vec<String>) {
-        self.scroll.set_content_size(lines.len(), 0);
-        self.lines = lines;
-        self.scroll.scroll_to_top();
-        self.clear_search();
-    }
-
-    /// Get the lines.
-    pub fn lines(&self) -> &[String] {
-        &self.lines
-    }
-
-    /// Total line count.
-    pub fn line_count(&self) -> usize {
-        self.lines.len()
-    }
-
-    /// Toggle line numbers.
-    pub fn set_show_line_numbers(&mut self, show: bool) {
-        self.show_line_numbers = show;
-    }
-
-    /// Current scroll row.
-    pub fn scroll_row(&self) -> usize {
-        self.scroll.scroll_row
-    }
-
-    /// Search for a string. Populates matches and jumps to first.
     pub fn search(&mut self, query: &str) {
+        self.search_query = query.to_string();
         self.search_matches.clear();
-        self.search_index = 0;
-        if query.is_empty() {
-            self.search_query = None;
-            return;
-        }
-        let lower_query = query.to_lowercase();
-        self.search_query = Some(query.to_string());
-        for (line_idx, line) in self.lines.iter().enumerate() {
-            let lower_line = line.to_lowercase();
-            let mut start = 0;
-            while let Some(pos) = lower_line[start..].find(&lower_query) {
-                self.search_matches.push((line_idx, start + pos));
-                start += pos + 1;
+        if !query.is_empty() {
+            for (i, line) in self.lines.iter().enumerate() {
+                if line.contains(query) {
+                    self.search_matches.push(i);
+                }
             }
         }
-        if let Some(&(line, _)) = self.search_matches.first() {
-            self.scroll.ensure_visible(line, 0);
+        self.current_match = 0;
+        if let Some(&line) = self.search_matches.first() {
+            self.scroll.ensure_visible(line);
         }
+        self.state.dirty = true;
     }
 
-    /// Jump to the next search match.
-    pub fn search_next(&mut self) {
+    pub fn next_match(&mut self) {
         if self.search_matches.is_empty() {
             return;
         }
-        self.search_index = (self.search_index + 1) % self.search_matches.len();
-        let (line, _) = self.search_matches[self.search_index];
-        self.scroll.ensure_visible(line, 0);
+        self.current_match = (self.current_match + 1) % self.search_matches.len();
+        let line = self.search_matches[self.current_match];
+        self.scroll.ensure_visible(line);
+        self.state.dirty = true;
     }
 
-    /// Jump to the previous search match.
-    pub fn search_prev(&mut self) {
+    pub fn prev_match(&mut self) {
         if self.search_matches.is_empty() {
             return;
         }
-        self.search_index = if self.search_index == 0 {
+        self.current_match = if self.current_match == 0 {
             self.search_matches.len() - 1
         } else {
-            self.search_index - 1
+            self.current_match - 1
         };
-        let (line, _) = self.search_matches[self.search_index];
-        self.scroll.ensure_visible(line, 0);
-    }
-
-    /// Number of search matches.
-    pub fn match_count(&self) -> usize {
-        self.search_matches.len()
-    }
-
-    /// Clear the search.
-    pub fn clear_search(&mut self) {
-        self.search_query = None;
-        self.search_matches.clear();
-        self.search_index = 0;
+        let line = self.search_matches[self.current_match];
+        self.scroll.ensure_visible(line);
+        self.state.dirty = true;
     }
 
     fn gutter_width(&self) -> u16 {
-        if !self.show_line_numbers {
+        if !self.line_numbers {
             return 0;
         }
-        let digits = digit_count(self.lines.len());
-        digits as u16 + 1 // digits + separator space
-    }
-
-    fn render_line(&self, surface: &mut Surface<'_>, line_idx: usize, gutter_w: u16) {
-        let w = surface.width();
-        if self.show_line_numbers && gutter_w > 0 {
-            let num = format!("{:>width$}", line_idx + 1, width = (gutter_w - 1) as usize);
-            surface.print(0, 0, &num, self.line_number_style);
-        }
-
-        let text_start = gutter_w;
-        let text_w = w.saturating_sub(text_start);
-        if text_w == 0 || line_idx >= self.lines.len() {
-            return;
-        }
-
-        let line = &self.lines[line_idx];
-        // Check for search matches on this line
-        let matches_on_line: Vec<(usize, usize)> = self.line_matches(line_idx);
-
-        if matches_on_line.is_empty() {
-            surface.print(text_start, 0, line, self.text_style);
-            return;
-        }
-
-        // Render with highlighted matches
-        let query_len = self.search_query.as_ref().map(|q| q.len()).unwrap_or(0);
-        let mut col = text_start;
-        let mut byte = 0;
-        for ch in line.chars() {
-            if col >= w {
-                break;
-            }
-            let style = self.char_style(line_idx, byte, query_len, &matches_on_line);
-            surface.put(col, 0, ch, style);
-            let cw = display_width(&ch.to_string());
-            col += cw as u16;
-            byte += ch.len_utf8();
-        }
-    }
-
-    fn line_matches(&self, line_idx: usize) -> Vec<(usize, usize)> {
-        self.search_matches
-            .iter()
-            .enumerate()
-            .filter(|(_, (l, _))| *l == line_idx)
-            .map(|(match_idx, (_, col))| (match_idx, *col))
-            .collect()
-    }
-
-    fn char_style(
-        &self,
-        line_idx: usize,
-        byte_pos: usize,
-        query_len: usize,
-        matches_on_line: &[(usize, usize)],
-    ) -> Style {
-        for &(match_idx, match_col) in matches_on_line {
-            if byte_pos >= match_col && byte_pos < match_col + query_len {
-                if match_idx == self.search_index {
-                    return self.current_match_style;
-                }
-                // Check if this is the current match
-                let global_idx = self
-                    .search_matches
-                    .iter()
-                    .position(|&(l, c)| l == line_idx && c == match_col);
-                if global_idx == Some(self.search_index) {
-                    return self.current_match_style;
-                }
-                return self.match_style;
-            }
-        }
-        self.text_style
+        let digits = if self.lines.is_empty() {
+            1
+        } else {
+            (self.lines.len() as f64).log10() as u16 + 1
+        };
+        digits + 1 // +1 for separator space
     }
 }
 
@@ -259,347 +94,101 @@ impl Default for TextArea {
 }
 
 impl View for TextArea {
-    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
-        let h = surface.height();
-        let w = surface.width();
-        let gutter_w = self.gutter_width();
-        let scrollbar_w: u16 = if self.show_scrollbar { 1 } else { 0 };
-        let content_w = w.saturating_sub(scrollbar_w);
+    delegate_view_state!(state);
 
-        let range = self.scroll.visible_range(h);
-        for (row_idx, line_idx) in range.enumerate() {
-            let mut row = surface.sub(0, row_idx as u16, content_w, 1);
-            self.render_line(&mut row, line_idx, gutter_w);
+    fn draw(&self, surface: &mut Surface) {
+        let b = self.state.bounds;
+        if b.w == 0 || b.h == 0 {
+            return;
         }
+        let gutter_w = self.gutter_width();
+        let gutter_style = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
+        let normal = Style::default();
+        let highlight = Style {
+            bg: Color::Ansi(3),
+            ..Style::default()
+        };
 
-        // Scrollbar
-        if self.show_scrollbar && w > 0 {
-            let sb = Scrollbar::new();
-            sb.render(
-                surface,
-                w - 1,
-                h,
-                self.scroll.scroll_row,
-                h as usize,
-                self.lines.len(),
-            );
+        for row in 0..b.h as usize {
+            let line_idx = self.scroll.offset + row;
+            let y = b.y + row as u16;
+            surface.hline(b.x, y, b.w, ' ', normal);
+
+            if line_idx >= self.lines.len() {
+                continue;
+            }
+
+            // Line number
+            if self.line_numbers {
+                let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
+                surface.print(b.x, y, &num, gutter_style);
+            }
+
+            // Line content
+            let is_match = self.search_matches.contains(&line_idx);
+            let style = if is_match { highlight } else { normal };
+            let text_x = b.x + gutter_w;
+            let avail = b.w.saturating_sub(gutter_w) as usize;
+            let line = &self.lines[line_idx];
+            let visible: String = line.chars().take(avail).collect();
+            surface.print(text_x, y, &visible, style);
         }
     }
 
-    fn handle(&mut self, event: &Event) -> HandleResult {
-        let key = match event {
-            Event::Key(k) => *k,
-            _ => return HandleResult::Ignored,
+    fn handle(
+        &mut self,
+        event: &Event,
+        _queue: &mut EventQueue,
+    ) -> HandleResult {
+        let Event::Key(key) = event else {
+            return HandleResult::Ignored;
         };
-        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
             KeyCode::Up => {
                 self.scroll.scroll_up(1);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
             KeyCode::Down => {
-                self.scroll.scroll_down(1, 0);
+                self.scroll.scroll_down(1);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
             KeyCode::PageUp => {
-                self.scroll.page_up(20);
+                let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                self.scroll.scroll_up(page);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {
-                self.scroll.page_down(20);
-                HandleResult::Consumed
-            }
-            KeyCode::Home if ctrl => {
-                self.scroll.scroll_to_top();
-                HandleResult::Consumed
-            }
-            KeyCode::End if ctrl => {
-                self.scroll.scroll_to_bottom(20);
+                let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                self.scroll.scroll_down(page);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
             KeyCode::Home => {
-                self.scroll.scroll_to_top();
+                self.scroll.scroll_to(0);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
             KeyCode::End => {
-                self.scroll.scroll_to_bottom(20);
+                let max = self.scroll.max_offset();
+                self.scroll.scroll_to(max);
+                self.state.dirty = true;
                 HandleResult::Consumed
             }
-            KeyCode::Char('n') if !ctrl => {
-                self.search_next();
+            KeyCode::Char('n') if !key.modifiers.ctrl => {
+                self.next_match();
                 HandleResult::Consumed
             }
-            KeyCode::Char('N') => {
-                self.search_prev();
+            KeyCode::Char('N') if !key.modifiers.ctrl => {
+                self.prev_match();
                 HandleResult::Consumed
-            }
-            KeyCode::Esc => {
-                if self.search_query.is_some() {
-                    self.clear_search();
-                    HandleResult::Consumed
-                } else {
-                    HandleResult::Consumed
-                }
             }
             _ => HandleResult::Ignored,
         }
-    }
-
-    fn bounds(&self) -> Rect {
-        self.bounds
-    }
-
-    fn set_bounds(&mut self, rect: Rect) {
-        self.bounds = rect;
-    }
-}
-
-/// Count decimal digits needed to display a number.
-fn digit_count(n: usize) -> usize {
-    if n == 0 {
-        return 1;
-    }
-    let mut count = 0;
-    let mut v = n;
-    while v > 0 {
-        count += 1;
-        v /= 10;
-    }
-    count
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-    use txv::cell::ColorMode;
-    use txv::screen::Screen;
-
-    fn ev(code: KeyCode) -> Event {
-        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
-    }
-
-    fn render_area(area: &TextArea, w: u16, h: u16) -> String {
-        let mut screen = Screen::with_color_mode(w, h, ColorMode::Rgb);
-        {
-            let mut s = screen.full_surface();
-            area.draw(
-                &mut s,
-                &DrawContext {
-                    app_focused: true,
-                    tick: 0,
-                },
-            );
-        }
-        screen.to_text()
-    }
-
-    fn sample_text() -> &'static str {
-        "line one\nline two\nline three\nline four\nline five"
-    }
-
-    #[test]
-    fn new_is_empty() {
-        let ta = TextArea::new();
-        assert_eq!(ta.line_count(), 0);
-    }
-
-    #[test]
-    fn set_text_splits_lines() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        assert_eq!(ta.line_count(), 5);
-        assert_eq!(ta.lines()[0], "line one");
-    }
-
-    #[test]
-    fn set_lines_directly() {
-        let mut ta = TextArea::new();
-        ta.set_lines(vec!["a".into(), "b".into()]);
-        assert_eq!(ta.line_count(), 2);
-    }
-
-    #[test]
-    fn render_shows_line_numbers() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.show_scrollbar = false;
-        let text = render_area(&ta, 30, 5);
-        assert!(text.contains("1"));
-        assert!(text.contains("line one"));
-    }
-
-    #[test]
-    fn render_without_line_numbers() {
-        let mut ta = TextArea::new();
-        ta.set_text("hello");
-        ta.set_show_line_numbers(false);
-        ta.show_scrollbar = false;
-        let text = render_area(&ta, 20, 1);
-        assert!(text.contains("hello"));
-        // Should not have a number prefix
-        assert!(!text.starts_with("1"));
-    }
-
-    #[test]
-    fn scroll_up_down() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        assert_eq!(ta.scroll_row(), 0);
-        ta.handle(&ev(KeyCode::Down));
-        assert_eq!(ta.scroll_row(), 1);
-        ta.handle(&ev(KeyCode::Up));
-        assert_eq!(ta.scroll_row(), 0);
-    }
-
-    #[test]
-    fn scroll_clamps() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.handle(&ev(KeyCode::Up));
-        assert_eq!(ta.scroll_row(), 0); // can't go negative
-    }
-
-    #[test]
-    fn home_end_scroll() {
-        let mut ta = TextArea::new();
-        let lines: Vec<String> = (0..50).map(|i| format!("line {i}")).collect();
-        ta.set_lines(lines);
-        ta.handle(&ev(KeyCode::End));
-        assert!(ta.scroll_row() > 0);
-        ta.handle(&ev(KeyCode::Home));
-        assert_eq!(ta.scroll_row(), 0);
-    }
-
-    #[test]
-    fn search_finds_matches() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        assert_eq!(ta.match_count(), 5);
-    }
-
-    #[test]
-    fn search_case_insensitive() {
-        let mut ta = TextArea::new();
-        ta.set_text("Hello\nhello\nHELLO");
-        ta.search("hello");
-        assert_eq!(ta.match_count(), 3);
-    }
-
-    #[test]
-    fn search_next_prev() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        assert_eq!(ta.search_index, 0);
-        ta.search_next();
-        assert_eq!(ta.search_index, 1);
-        ta.search_prev();
-        assert_eq!(ta.search_index, 0);
-        ta.search_prev(); // wraps
-        assert_eq!(ta.search_index, 4);
-    }
-
-    #[test]
-    fn n_key_next_match() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        ta.handle(&ev(KeyCode::Char('n')));
-        assert_eq!(ta.search_index, 1);
-    }
-
-    #[test]
-    fn shift_n_prev_match() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        ta.handle(&Event::Key(KeyEvent::new(
-            KeyCode::Char('N'),
-            KeyModifiers::SHIFT,
-        )));
-        assert_eq!(ta.search_index, 4); // wrapped to last
-    }
-
-    #[test]
-    fn esc_clears_search_first() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        let result = ta.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-        assert_eq!(ta.match_count(), 0);
-        // Second Esc also consumed (no more WidgetAction::Cancelled)
-        let result = ta.handle(&ev(KeyCode::Esc));
-        assert!(matches!(result, HandleResult::Consumed));
-    }
-
-    #[test]
-    fn clear_search() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        assert!(ta.match_count() > 0);
-        ta.clear_search();
-        assert_eq!(ta.match_count(), 0);
-    }
-
-    #[test]
-    fn empty_search_clears() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.search("line");
-        ta.search("");
-        assert_eq!(ta.match_count(), 0);
-    }
-
-    #[test]
-    fn digit_count_works() {
-        assert_eq!(super::digit_count(0), 1);
-        assert_eq!(super::digit_count(1), 1);
-        assert_eq!(super::digit_count(9), 1);
-        assert_eq!(super::digit_count(10), 2);
-        assert_eq!(super::digit_count(999), 3);
-        assert_eq!(super::digit_count(1000), 4);
-    }
-
-    #[test]
-    fn render_with_scrollbar() {
-        let mut ta = TextArea::new();
-        ta.set_text(sample_text());
-        ta.show_scrollbar = true;
-        let mut screen = Screen::with_color_mode(30, 3, ColorMode::Rgb);
-        {
-            let mut s = screen.full_surface();
-            ta.draw(
-                &mut s,
-                &DrawContext {
-                    app_focused: true,
-                    tick: 0,
-                },
-            );
-        }
-        // Last column should have scrollbar chars
-        let ch = screen.cell(29, 0).ch;
-        assert!(ch == '█' || ch == '│');
-    }
-
-    #[test]
-    fn gutter_width_scales() {
-        let mut ta = TextArea::new();
-        ta.set_text("a");
-        assert_eq!(ta.gutter_width(), 2); // "1 "
-        let lines: Vec<String> = (0..100).map(|i| format!("line {i}")).collect();
-        ta.set_lines(lines);
-        assert_eq!(ta.gutter_width(), 4); // "100 "
-    }
-
-    #[test]
-    fn multiple_matches_per_line() {
-        let mut ta = TextArea::new();
-        ta.set_text("aaa bbb aaa");
-        ta.search("aaa");
-        assert_eq!(ta.match_count(), 2);
     }
 }

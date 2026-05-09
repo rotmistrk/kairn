@@ -2,13 +2,8 @@
 name = "txv-widgets"
 version = "0.1.0"
 edition = "2021"
-description = "Reusable interactive TUI widgets built on txv"
-license = "MIT"
+description = "Concrete View implementations — ready-to-use interactive TUI components"
 
 [dependencies]
-txv = { path = "../txv" }
-crossterm = "0.28"
+txv-core = { path = "../txv-core" }
 ignore = "0.4"
-
-[dev-dependencies]
-tempfile = "3"
