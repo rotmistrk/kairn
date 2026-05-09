@@ -475,3 +475,39 @@ assert_eq!(backend.surface().cell(0, 0).ch, 'x');
 ```
 
 No need for a real terminal in any test.
+
+## Mouse events
+
+The Event enum includes mouse actions. Views can handle or ignore them.
+Backends produce them if the platform supports it. Terminal backend does
+NOT enable mouse by default.
+
+```rust
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MouseButton { Left, Right, Middle }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MouseAction {
+    Press(MouseButton),
+    Release(MouseButton),
+    Move,
+    ScrollUp,
+    ScrollDown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MouseEvent {
+    pub x: u16,
+    pub y: u16,
+    pub action: MouseAction,
+    pub modifiers: KeyMod,
+}
+
+// Added to Event enum:
+// Mouse(MouseEvent),
+```
+
+Views receive mouse events with coordinates relative to their surface.
+The Group translates absolute coordinates to child-relative before
+dispatching. A view at position (10, 5) receiving a click at screen
+(12, 7) sees `MouseEvent { x: 2, y: 2, ... }`.
