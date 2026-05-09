@@ -59,11 +59,12 @@ pub struct Editor {
 pub struct EditorOptions {
     pub list: bool,
     pub number: bool,
+    pub wrap: bool,
 }
 
 impl Default for EditorOptions {
     fn default() -> Self {
-        Self { list: false, number: true }
+        Self { list: false, number: true, wrap: true }
     }
 }
 

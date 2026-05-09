@@ -44,14 +44,16 @@ impl Editor {
             Command::TillCharBack(ch) => { self.find_char('T', ch); EditorAction::CursorMoved }
             Command::RepeatFind => { self.repeat_find(false); EditorAction::CursorMoved }
             Command::RepeatFindReverse => { self.repeat_find(true); EditorAction::CursorMoved }
-            Command::EnterInsertMode => { self.mode = EditorMode::Insert; EditorAction::ModeChanged }
+            Command::EnterInsertMode => { self.buffer.begin_group(); self.mode = EditorMode::Insert; EditorAction::ModeChanged }
             Command::EnterInsertAfter => { self.enter_insert_after(); EditorAction::ModeChanged }
             Command::EnterInsertLineEnd => {
+                self.buffer.begin_group();
                 self.mode = EditorMode::Insert;
                 self.cursor_col = self.buffer.line_len(self.cursor_line);
                 EditorAction::ModeChanged
             }
             Command::EnterInsertLineStart => {
+                self.buffer.begin_group();
                 self.mode = EditorMode::Insert;
                 self.cursor_col = motions::first_non_blank(&self.buffer, self.cursor_line);
                 EditorAction::ModeChanged
@@ -68,10 +70,10 @@ impl Editor {
             Command::DeleteWordBackward => { self.delete_word_backward(); EditorAction::ContentChanged }
             Command::DeleteToEnd => { self.delete_to_end(); EditorAction::ContentChanged }
             Command::DeleteToStart => { self.delete_to_start(); EditorAction::ContentChanged }
-            Command::ChangeWord => { self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
+            Command::ChangeWord => { self.buffer.begin_group(); self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
             Command::ChangeLine => { self.change_line(); EditorAction::ContentChanged }
-            Command::ChangeToEnd => { self.delete_to_end(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
-            Command::Substitute => { self.delete_char_forward(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
+            Command::ChangeToEnd => { self.buffer.begin_group(); self.delete_to_end(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
+            Command::Substitute => { self.buffer.begin_group(); self.delete_char_forward(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
             Command::SubstituteLine => { self.change_line(); EditorAction::ContentChanged }
             Command::JoinLines => { self.join_lines(); EditorAction::ContentChanged }
             Command::ToggleCase => { self.toggle_case(); EditorAction::ContentChanged }
@@ -79,7 +81,7 @@ impl Editor {
             Command::Indent => { self.indent_line(); EditorAction::ContentChanged }
             Command::Unindent => { self.unindent_line(); EditorAction::ContentChanged }
             Command::OperatorDelete => { self.delete_word(); EditorAction::ContentChanged }
-            Command::OperatorChange => { self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
+            Command::OperatorChange => { self.buffer.begin_group(); self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
             Command::OperatorYank => { self.register = self.buffer.line(self.cursor_line).unwrap_or_default(); EditorAction::None }
             Command::Undo => { self.buffer.undo(); self.clamp_cursor(); EditorAction::ContentChanged }
             Command::Redo => { self.buffer.redo(); self.clamp_cursor(); EditorAction::ContentChanged }

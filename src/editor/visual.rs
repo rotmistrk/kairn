@@ -93,6 +93,7 @@ impl Editor {
     }
 
     pub(super) fn visual_change(&mut self) {
+        self.buffer.begin_group();
         self.visual_delete();
         self.mode = EditorMode::Insert;
     }

@@ -23,6 +23,7 @@ pub struct PieceTable {
     line_index: LineIndex,
     history: UndoHistory,
     modified: bool,
+    grouping: bool,
     pub file_path: Option<String>,
 }
 
@@ -35,7 +36,7 @@ impl PieceTable {
         Self {
             original: String::new(), add_buf: String::new(),
             pieces: Vec::new(), line_index: LineIndex::build(""),
-            history: UndoHistory::new(), modified: false, file_path: None,
+            history: UndoHistory::new(), modified: false, grouping: false, file_path: None,
         }
     }
 
@@ -45,7 +46,7 @@ impl PieceTable {
         Self {
             original: content.to_string(), add_buf: String::new(), pieces,
             line_index: LineIndex::build(content),
-            history: UndoHistory::new(), modified: false, file_path: None,
+            history: UndoHistory::new(), modified: false, grouping: false, file_path: None,
         }
     }
 
@@ -149,7 +150,22 @@ impl PieceTable {
     pub fn mark_saved(&mut self) { self.modified = false; }
     pub fn is_dirty(&self) -> bool { self.modified }
 
+    /// Begin an undo group. Saves one snapshot now; subsequent edits won't push.
+    pub fn begin_group(&mut self) {
+        if !self.grouping {
+            let record = EditRecord { pieces: self.pieces.clone(), line_starts: self.line_index.line_starts.clone() };
+            self.history.push(record);
+            self.grouping = true;
+        }
+    }
+
+    /// End the current undo group.
+    pub fn end_group(&mut self) {
+        self.grouping = false;
+    }
+
     fn save_undo(&mut self) {
+        if self.grouping { return; }
         let record = EditRecord { pieces: self.pieces.clone(), line_starts: self.line_index.line_starts.clone() };
         self.history.push(record);
     }

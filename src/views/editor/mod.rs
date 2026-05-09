@@ -32,6 +32,17 @@ impl EditorView {
         Self { state: ViewState::default(), editor, path: path.to_path_buf(), highlighter: Highlighter::new(), file_ext }
     }
 
+    pub fn from_text(content: &str) -> Self {
+        let editor = Editor::from_text(content);
+        Self {
+            state: ViewState::default(),
+            editor,
+            path: PathBuf::from("[cmd output]"),
+            highlighter: Highlighter::new(),
+            file_ext: String::new(),
+        }
+    }
+
     pub fn path(&self) -> &Path { &self.path }
 
     fn gutter_width(&self) -> u16 {
@@ -117,6 +128,9 @@ impl EditorView {
                 queue.put_command(CM_SAVE, None);
             }
             EditorAction::CloseRequested => { queue.put_command(CM_TAB_CLOSE, None); }
+            EditorAction::ShellOutput(output) => {
+                queue.put_command(crate::commands::CM_SHELL_OUTPUT, Some(Box::new(output)));
+            }
             _ => {}
         }
     }

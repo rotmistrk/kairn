@@ -53,6 +53,8 @@ impl Editor {
             "nolist" | "noli" => self.options.list = false,
             "number" | "nu" => self.options.number = true,
             "nonumber" | "nonu" => self.options.number = false,
+            "wrap" => self.options.wrap = true,
+            "nowrap" => self.options.wrap = false,
             _ => { self.status = format!("Unknown option: {opt}"); }
         }
     }

@@ -51,6 +51,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
             }
         }
+        CM_SHELL_OUTPUT => handle_shell_output(ctx),
         _ => {
             log::debug!("Unhandled command: {}", ctx.command);
         }
@@ -134,6 +135,15 @@ pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut SlottedDesktop> {
     let ptr = view as *mut dyn View;
     // SAFETY: we know the desktop is a SlottedDesktop (we created it).
     unsafe { (ptr as *mut SlottedDesktop).as_mut() }
+}
+
+fn handle_shell_output(ctx: &mut CommandContext) {
+    let Some(boxed) = ctx.data.as_ref() else { return; };
+    let Some(output) = boxed.downcast_ref::<String>() else { return; };
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        let view = EditorView::from_text(output);
+        desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));
+    }
 }
 
 /// Build the standard kairn desktop with tree and terminal.

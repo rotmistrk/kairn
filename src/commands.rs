@@ -27,3 +27,4 @@ pub const CM_SHOW_HELP: CommandId = 120;
 // Command mode
 pub const CM_COMMAND_MODE: CommandId = 130;
 pub const CM_EXECUTE_COMMAND: CommandId = 131;
+pub const CM_SHELL_OUTPUT: CommandId = 132;

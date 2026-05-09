@@ -6,17 +6,20 @@ use super::Editor;
 
 impl Editor {
     pub(super) fn enter_insert_after(&mut self) {
+        self.buffer.begin_group();
         self.mode = EditorMode::Insert;
         let len = self.buffer.line_len(self.cursor_line);
         if self.cursor_col < len { self.cursor_col += 1; }
     }
 
     pub(super) fn exit_insert(&mut self) {
+        self.buffer.end_group();
         self.mode = EditorMode::Normal;
         if self.cursor_col > 0 { self.cursor_col -= 1; }
     }
 
     pub(super) fn open_line_below(&mut self) {
+        self.buffer.begin_group();
         self.mode = EditorMode::Insert;
         let line_len = self.buffer.line_len(self.cursor_line);
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, line_len) {
@@ -27,6 +30,7 @@ impl Editor {
     }
 
     pub(super) fn open_line_above(&mut self) {
+        self.buffer.begin_group();
         self.mode = EditorMode::Insert;
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, 0) {
             self.buffer.insert(offset, "\n");
@@ -150,6 +154,7 @@ impl Editor {
     }
 
     pub(super) fn change_line(&mut self) {
+        self.buffer.begin_group();
         let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
         let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
