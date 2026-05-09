@@ -617,3 +617,82 @@ Views receive mouse events with coordinates relative to their surface.
 The Group translates absolute coordinates to child-relative before
 dispatching. A view at position (10, 5) receiving a click at screen
 (12, 7) sees `MouseEvent { x: 2, y: 2, ... }`.
+
+## DRY: ViewState / GroupState / WindowState composition
+
+Views MUST NOT duplicate trait boilerplate. Use composition:
+
+```rust
+/// Common view state — embed in every view.
+pub struct ViewState {
+    pub bounds: Rect,
+    pub options: ViewOptions,
+    pub dirty: bool,
+    pub focused: bool,
+    pub title: String,
+}
+
+/// Common group state — embed in any view that owns children.
+pub struct GroupState {
+    pub view: ViewState,
+    pub children: Vec<Box<dyn View>>,
+    pub focused: usize,
+}
+
+/// Common window state — embed in framed views.
+pub struct WindowState {
+    pub group: GroupState,
+    pub frame: FrameStyle,
+    pub shadow: bool,
+}
+```
+
+Use a macro to delegate trait methods:
+
+```rust
+macro_rules! delegate_view_state {
+    ($field:ident) => {
+        fn bounds(&self) -> Rect { self.$field.bounds }
+        fn set_bounds(&mut self, r: Rect) { self.$field.bounds = r; self.$field.dirty = true; }
+        fn options(&self) -> ViewOptions { self.$field.options }
+        fn title(&self) -> &str { &self.$field.title }
+        fn needs_redraw(&self) -> bool { self.$field.dirty }
+        fn mark_redrawn(&mut self) { self.$field.dirty = false; }
+        fn select(&mut self) { self.$field.focused = true; self.$field.dirty = true; }
+        fn unselect(&mut self) { self.$field.focused = false; self.$field.dirty = true; }
+    };
+}
+
+// Usage:
+impl View for FileTreeView {
+    delegate_view_state!(state);
+    fn draw(&self, surface: &mut Surface) { /* custom */ }
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult { /* custom */ }
+}
+```
+
+Each view implements ONLY draw() and handle(). Everything else is one macro line.
+
+## Duplication detection
+
+Run `dupfinder` to catch code duplication:
+
+```makefile
+lint-dup:
+	dupfinder txv-core/src txv-widgets/src src --min-lines 5
+```
+
+Rule: if dupfinder reports >5 duplicate lines, extract to shared code.
+Add to pre-commit and agent verification steps.
+
+## Steering rules for agents
+
+```
+MANDATORY DRY RULES:
+- Every view struct MUST embed ViewState (or GroupState for groups)
+- Use delegate_view_state! macro for trait boilerplate
+- NEVER hand-write bounds/set_bounds/options/title/needs_redraw/select/unselect
+- BEFORE writing any code, search for existing similar implementations
+- If >3 lines would be duplicated, extract to a shared function/struct
+- Run dupfinder after implementation — fix any reported duplicates
+```
