@@ -54,7 +54,10 @@ impl<D: TreeData> View for TreeView<D> {
         }
         let normal = Style::default();
         let selected = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         for row in 0..b.h as usize {
@@ -66,30 +69,29 @@ impl<D: TreeData> View for TreeView<D> {
             let depth = self.data.depth(id);
             let indent = (depth * 2) as u16;
             let marker = if self.data.is_expandable(id) {
-                if self.data.is_expanded(id) { "▼ " } else { "▶ " }
+                if self.data.is_expanded(id) {
+                    "▼ "
+                } else {
+                    "▶ "
+                }
             } else {
                 "  "
             };
-            let style = if idx == self.cursor { selected } else { normal };
+            let style = if idx == self.cursor {
+                selected
+            } else {
+                normal
+            };
             let y = b.y + row as u16;
             // Clear line
             surface.hline(b.x, y, b.w, ' ', style);
             let x = b.x + indent;
             surface.print(x, y, marker, style);
-            surface.print(
-                x + 2,
-                y,
-                self.data.label(id),
-                style,
-            );
+            surface.print(x + 2, y, self.data.label(id), style);
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         match event {
             Event::Key(key) => match key.code {
                 KeyCode::Up => {
@@ -117,10 +119,7 @@ impl<D: TreeData> View for TreeView<D> {
                             self.sync_scroll();
                             self.state.dirty = true;
                         } else {
-                            queue.put_command(
-                                CM_OK,
-                                Some(Box::new(id)),
-                            );
+                            queue.put_command(CM_OK, Some(Box::new(id)));
                         }
                     }
                     HandleResult::Consumed

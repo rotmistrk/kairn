@@ -62,11 +62,7 @@ fn split_pipe_segments(line: &str) -> Vec<String> {
                 brace_depth -= 1;
             }
         }
-        let is_pipe = ch == '|'
-            && brace_depth == 0
-            && bracket_depth == 0
-            && !in_quotes
-            && !is_double_pipe(&chars, i);
+        let is_pipe = ch == '|' && brace_depth == 0 && bracket_depth == 0 && !in_quotes && !is_double_pipe(&chars, i);
         if is_pipe {
             segments.push(current.trim().to_string());
             current = String::new();

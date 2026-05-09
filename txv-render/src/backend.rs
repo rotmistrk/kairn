@@ -9,9 +9,7 @@ use crossterm::{
     terminal,
 };
 use txv_core::cell::{Attrs, Color, Style};
-use txv_core::event::{
-    Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent,
-};
+use txv_core::event::{Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
 use txv_core::run::Backend;
 use txv_core::surface::Surface;
 
@@ -36,21 +34,11 @@ impl CrosstermBackend {
 impl Backend for CrosstermBackend {
     fn enter(&mut self) {
         terminal::enable_raw_mode().ok();
-        execute!(
-            io::stdout(),
-            terminal::EnterAlternateScreen,
-            cursor::Hide
-        )
-        .ok();
+        execute!(io::stdout(), terminal::EnterAlternateScreen, cursor::Hide).ok();
     }
 
     fn leave(&mut self) {
-        execute!(
-            io::stdout(),
-            cursor::Show,
-            terminal::LeaveAlternateScreen
-        )
-        .ok();
+        execute!(io::stdout(), cursor::Show, terminal::LeaveAlternateScreen).ok();
         terminal::disable_raw_mode().ok();
     }
 
@@ -218,27 +206,13 @@ fn translate_mouse(m: ct_event::MouseEvent) -> Option<Event> {
     };
 
     let action = match m.kind {
-        ct_event::MouseEventKind::Down(ct_event::MouseButton::Left) => {
-            MouseAction::Press(MouseButton::Left)
-        }
-        ct_event::MouseEventKind::Down(ct_event::MouseButton::Right) => {
-            MouseAction::Press(MouseButton::Right)
-        }
-        ct_event::MouseEventKind::Down(ct_event::MouseButton::Middle) => {
-            MouseAction::Press(MouseButton::Middle)
-        }
-        ct_event::MouseEventKind::Up(ct_event::MouseButton::Left) => {
-            MouseAction::Release(MouseButton::Left)
-        }
-        ct_event::MouseEventKind::Up(ct_event::MouseButton::Right) => {
-            MouseAction::Release(MouseButton::Right)
-        }
-        ct_event::MouseEventKind::Up(ct_event::MouseButton::Middle) => {
-            MouseAction::Release(MouseButton::Middle)
-        }
-        ct_event::MouseEventKind::Moved | ct_event::MouseEventKind::Drag(_) => {
-            MouseAction::Move
-        }
+        ct_event::MouseEventKind::Down(ct_event::MouseButton::Left) => MouseAction::Press(MouseButton::Left),
+        ct_event::MouseEventKind::Down(ct_event::MouseButton::Right) => MouseAction::Press(MouseButton::Right),
+        ct_event::MouseEventKind::Down(ct_event::MouseButton::Middle) => MouseAction::Press(MouseButton::Middle),
+        ct_event::MouseEventKind::Up(ct_event::MouseButton::Left) => MouseAction::Release(MouseButton::Left),
+        ct_event::MouseEventKind::Up(ct_event::MouseButton::Right) => MouseAction::Release(MouseButton::Right),
+        ct_event::MouseEventKind::Up(ct_event::MouseButton::Middle) => MouseAction::Release(MouseButton::Middle),
+        ct_event::MouseEventKind::Moved | ct_event::MouseEventKind::Drag(_) => MouseAction::Move,
         ct_event::MouseEventKind::ScrollUp => MouseAction::ScrollUp,
         ct_event::MouseEventKind::ScrollDown => MouseAction::ScrollDown,
         _ => return None,

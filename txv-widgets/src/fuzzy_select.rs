@@ -86,11 +86,17 @@ impl View for FuzzySelect {
         }
         let normal = Style::default();
         let selected_style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let input_style = Style {
-            attrs: Attrs { underline: true, ..Attrs::default() },
+            attrs: Attrs {
+                underline: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
 
@@ -111,7 +117,11 @@ impl View for FuzzySelect {
                 surface.hline(b.x, y, b.w, ' ', normal);
                 continue;
             }
-            let style = if idx == self.selected { selected_style } else { normal };
+            let style = if idx == self.selected {
+                selected_style
+            } else {
+                normal
+            };
             surface.hline(b.x, y, b.w, ' ', style);
             let item_idx = self.filtered[idx];
             let text: String = self.items[item_idx].chars().take(b.w as usize).collect();
@@ -119,11 +129,7 @@ impl View for FuzzySelect {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };

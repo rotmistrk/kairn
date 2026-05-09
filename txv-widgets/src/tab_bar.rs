@@ -23,7 +23,10 @@ impl TabBar {
     }
 
     pub fn add_tab(&mut self, label: impl Into<String>, command: CommandId) {
-        self.tabs.push(Tab { label: label.into(), command });
+        self.tabs.push(Tab {
+            label: label.into(),
+            command,
+        });
         self.state.dirty = true;
     }
 
@@ -61,13 +64,21 @@ impl View for TabBar {
         }
         let normal = Style::default();
         let active_style = Style {
-            attrs: Attrs { bold: true, reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         surface.hline(b.x, b.y, b.w, ' ', normal);
         let mut x = b.x;
         for (i, tab) in self.tabs.iter().enumerate() {
-            let style = if i == self.active { active_style } else { normal };
+            let style = if i == self.active {
+                active_style
+            } else {
+                normal
+            };
             let label = format!(" {} ", tab.label);
             let len = label.len() as u16;
             if x + len > b.x + b.w {
@@ -78,11 +89,7 @@ impl View for TabBar {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

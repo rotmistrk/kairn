@@ -8,11 +8,7 @@ fn eval(script: &str) -> String {
 fn eval_var(script: &str, var: &str) -> String {
     let mut interp = Interpreter::new();
     interp.eval(script).unwrap();
-    interp
-        .eval(&format!("set {var}"))
-        .unwrap()
-        .as_str()
-        .into_owned()
+    interp.eval(&format!("set {var}")).unwrap().as_str().into_owned()
 }
 
 #[test]
@@ -47,10 +43,7 @@ fn while_loop_counts() {
 
 #[test]
 fn while_with_break() {
-    assert_eq!(
-        eval_var("set x 0; while {1} {incr x; if {$x == 3} {break}}", "x"),
-        "3"
-    );
+    assert_eq!(eval_var("set x 0; while {1} {incr x; if {$x == 3} {break}}", "x"), "3");
 }
 
 #[test]
@@ -66,19 +59,13 @@ fn while_with_continue() {
 
 #[test]
 fn foreach_over_list() {
-    assert_eq!(
-        eval_var("set sum 0; foreach i [list 1 2 3] {incr sum $i}", "sum"),
-        "6"
-    );
+    assert_eq!(eval_var("set sum 0; foreach i [list 1 2 3] {incr sum $i}", "sum"), "6");
 }
 
 #[test]
 fn foreach_destructuring() {
     assert_eq!(
-        eval_var(
-            r#"foreach {k v} [list a 1 b 2] {append result "$k=$v "}"#,
-            "result"
-        ),
+        eval_var(r#"foreach {k v} [list a 1 b 2] {append result "$k=$v "}"#, "result"),
         "a=1 b=2 "
     );
 }
@@ -86,10 +73,7 @@ fn foreach_destructuring() {
 #[test]
 fn for_loop() {
     assert_eq!(
-        eval_var(
-            "set sum 0; for {set i 0} {$i < 5} {incr i} {incr sum $i}",
-            "sum"
-        ),
+        eval_var("set sum 0; for {set i 0} {$i < 5} {incr i} {incr sum $i}", "sum"),
         "10"
     );
 }
@@ -107,18 +91,12 @@ fn for_with_break() {
 
 #[test]
 fn switch_matches() {
-    assert_eq!(
-        eval_var("switch hello {hello {set r hi} world {set r bye}}", "r"),
-        "hi"
-    );
+    assert_eq!(eval_var("switch hello {hello {set r hi} world {set r bye}}", "r"), "hi");
 }
 
 #[test]
 fn switch_default() {
-    assert_eq!(
-        eval_var("switch unknown {a {set r 1} default {set r 0}}", "r"),
-        "0"
-    );
+    assert_eq!(eval_var("switch unknown {a {set r 1} default {set r 0}}", "r"), "0");
 }
 
 #[test]
@@ -136,19 +114,13 @@ fn match_wildcard() {
 
 #[test]
 fn try_on_error() {
-    assert_eq!(
-        eval_var("try {error boom} on error {msg} {set r $msg}", "r"),
-        "boom"
-    );
+    assert_eq!(eval_var("try {error boom} on error {msg} {set r $msg}", "r"), "boom");
 }
 
 #[test]
 fn try_finally() {
     assert_eq!(
-        eval_var(
-            r#"set log ""; try {set log a} finally {append log b}"#,
-            "log"
-        ),
+        eval_var(r#"set log ""; try {set log a} finally {append log b}"#, "log"),
         "ab"
     );
 }
@@ -172,11 +144,7 @@ fn catch_returns_zero_on_success() {
 #[test]
 fn catch_returns_one_on_error() {
     let mut interp = Interpreter::new();
-    let code = interp
-        .eval("catch {error oops} msg")
-        .unwrap()
-        .as_str()
-        .into_owned();
+    let code = interp.eval("catch {error oops} msg").unwrap().as_str().into_owned();
     assert_eq!(code, "1");
     let msg = interp.eval("set msg").unwrap().as_str().into_owned();
     assert_eq!(msg, "oops");

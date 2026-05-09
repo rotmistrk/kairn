@@ -111,10 +111,7 @@ impl TypeDecl {
             Self::List(Some(elem)) => format!("list:{}", elem.name()),
             Self::Dict => "dict".into(),
             Self::Record(fields) => {
-                let fs: Vec<String> = fields
-                    .iter()
-                    .map(|(k, t)| format!("{k}:{}", t.name()))
-                    .collect();
+                let fs: Vec<String> = fields.iter().map(|(k, t)| format!("{k}:{}", t.name())).collect();
                 format!("record {{{}}}", fs.join(" "))
             }
         }
@@ -240,10 +237,7 @@ mod tests {
         let td = TypeDecl::parse("record {name:string age:int}").unwrap();
         assert_eq!(
             td,
-            TypeDecl::Record(vec![
-                ("name".into(), TypeDecl::String),
-                ("age".into(), TypeDecl::Int),
-            ])
+            TypeDecl::Record(vec![("name".into(), TypeDecl::String), ("age".into(), TypeDecl::Int),])
         );
     }
 
@@ -279,10 +273,7 @@ mod tests {
 
     #[test]
     fn check_record() {
-        let td = TypeDecl::Record(vec![
-            ("name".into(), TypeDecl::String),
-            ("age".into(), TypeDecl::Int),
-        ]);
+        let td = TypeDecl::Record(vec![("name".into(), TypeDecl::String), ("age".into(), TypeDecl::Int)]);
         let good = TclValue::Dict(vec![
             ("name".into(), TclValue::Str("alice".into())),
             ("age".into(), TclValue::Int(30)),
@@ -294,18 +285,12 @@ mod tests {
 
     #[test]
     fn infer_known_types() {
-        assert_eq!(
-            infer_return_type("llength", None),
-            InferredType::Known(TypeDecl::Int)
-        );
+        assert_eq!(infer_return_type("llength", None), InferredType::Known(TypeDecl::Int));
         assert_eq!(
             infer_return_type("string", Some("length")),
             InferredType::Known(TypeDecl::Int)
         );
-        assert_eq!(
-            infer_return_type("unknown_cmd", None),
-            InferredType::Unknown
-        );
+        assert_eq!(infer_return_type("unknown_cmd", None), InferredType::Unknown);
     }
 
     #[test]
@@ -313,9 +298,6 @@ mod tests {
         assert_eq!(TypeDecl::String.name(), "string");
         assert_eq!(TypeDecl::Int.name(), "int");
         assert_eq!(TypeDecl::Nullable(Box::new(TypeDecl::Int)).name(), "int?");
-        assert_eq!(
-            TypeDecl::Enum(vec!["a".into(), "b".into()]).name(),
-            "enum {a b}"
-        );
+        assert_eq!(TypeDecl::Enum(vec!["a".into(), "b".into()]).name(), "enum {a b}");
     }
 }

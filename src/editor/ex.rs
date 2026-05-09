@@ -9,10 +9,26 @@ pub enum ExCommand {
     Quit,
     SaveQuit,
     GotoLine(usize),
-    Delete { start: usize, end: usize },
-    Yank { start: usize, end: usize },
-    Substitute { start: usize, end: usize, pattern: String, replacement: String, global: bool },
-    Shell { start: usize, end: usize, command: String },
+    Delete {
+        start: usize,
+        end: usize,
+    },
+    Yank {
+        start: usize,
+        end: usize,
+    },
+    Substitute {
+        start: usize,
+        end: usize,
+        pattern: String,
+        replacement: String,
+        global: bool,
+    },
+    Shell {
+        start: usize,
+        end: usize,
+        command: String,
+    },
     Set(String),
 }
 
@@ -202,10 +218,10 @@ mod tests {
     }
 }
 
-    #[test]
-    fn test_parse_relative_range() {
-        let result = parse_ex_full(".,+2d", 1, 5);
-        assert_eq!(result, Some(ExCommand::Delete { start: 1, end: 3 }));
-        let result = parse_ex_full(".,+2y", 1, 5);
-        assert_eq!(result, Some(ExCommand::Yank { start: 1, end: 3 }));
-    }
+#[test]
+fn test_parse_relative_range() {
+    let result = parse_ex_full(".,+2d", 1, 5);
+    assert_eq!(result, Some(ExCommand::Delete { start: 1, end: 3 }));
+    let result = parse_ex_full(".,+2y", 1, 5);
+    assert_eq!(result, Some(ExCommand::Yank { start: 1, end: 3 }));
+}

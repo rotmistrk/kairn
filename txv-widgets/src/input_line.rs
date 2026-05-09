@@ -73,18 +73,17 @@ impl View for InputLine {
         if cx < b.w {
             let ch = self.text.chars().nth(self.cursor).unwrap_or(' ');
             let cursor_style = Style {
-                attrs: Attrs { reverse: true, ..Attrs::default() },
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
                 ..Style::default()
             };
             surface.put(b.x + cx, b.y, ch, cursor_style);
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

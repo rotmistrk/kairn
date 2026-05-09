@@ -28,13 +28,12 @@ impl StatusBar {
         }
     }
 
-    pub fn add_item(
-        &mut self,
-        key: KeyEvent,
-        command: CommandId,
-        label: impl Into<String>,
-    ) {
-        self.items.push(StatusItem { key, command, label: label.into() });
+    pub fn add_item(&mut self, key: KeyEvent, command: CommandId, label: impl Into<String>) {
+        self.items.push(StatusItem {
+            key,
+            command,
+            label: label.into(),
+        });
         self.state.dirty = true;
     }
 
@@ -59,7 +58,10 @@ impl View for StatusBar {
             return;
         }
         let style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         surface.hline(b.x, b.y, b.w, ' ', style);
@@ -83,11 +85,7 @@ impl View for StatusBar {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

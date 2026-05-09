@@ -33,11 +33,7 @@ impl View for TerminalView {
         surface.print(b.x, b.y, &msg, style);
     }
 
-    fn handle(
-        &mut self,
-        _event: &Event,
-        _queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
         HandleResult::Ignored
     }
 }

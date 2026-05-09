@@ -3,9 +3,7 @@ use rusticle::interpreter::Interpreter;
 #[test]
 fn proc_basic() {
     let mut interp = Interpreter::new();
-    interp
-        .eval("proc double {x} {return [expr {$x * 2}]}")
-        .unwrap();
+    interp.eval("proc double {x} {return [expr {$x * 2}]}").unwrap();
     let result = interp.eval("double 5").unwrap();
     assert_eq!(result.as_int().unwrap(), 10);
 }
@@ -72,9 +70,7 @@ fn proc_accesses_outer_scope() {
 #[test]
 fn proc_outer_set() {
     let mut interp = Interpreter::new();
-    interp
-        .eval("proc setit {} { outer set result 42 }")
-        .unwrap();
+    interp.eval("proc setit {} { outer set result 42 }").unwrap();
     interp.eval("setit").unwrap();
     let result = interp.eval("return $result").unwrap();
     assert_eq!(result.as_int().unwrap(), 42);
@@ -106,9 +102,7 @@ fn proc_wrong_arity() {
 #[test]
 fn lambda_in_lmap() {
     let mut interp = Interpreter::new();
-    let result = interp
-        .eval("lmap [list 1 2 3] {x { expr {$x * 10} }}")
-        .unwrap();
+    let result = interp.eval("lmap [list 1 2 3] {x { expr {$x * 10} }}").unwrap();
     assert_eq!(result.as_str(), "10 20 30");
 }
 

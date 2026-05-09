@@ -13,7 +13,11 @@ enum Mode {
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
-    modifiers: KeyMod { ctrl: false, alt: true, shift: false },
+    modifiers: KeyMod {
+        ctrl: false,
+        alt: true,
+        shift: false,
+    },
 };
 
 /// Application status bar with command mode support.
@@ -34,34 +38,53 @@ impl KairnStatusBar {
     pub fn new() -> Self {
         let mut bar = StatusBar::new();
         bar.add_item(
-            KeyEvent { code: KeyCode::F(1), modifiers: KeyMod::default() },
+            KeyEvent {
+                code: KeyCode::F(1),
+                modifiers: KeyMod::default(),
+            },
             CM_SHOW_HELP,
             "F1:Help",
         );
         bar.add_item(
-            KeyEvent { code: KeyCode::F(2), modifiers: KeyMod::default() },
+            KeyEvent {
+                code: KeyCode::F(2),
+                modifiers: KeyMod::default(),
+            },
             CM_FOCUS_LEFT,
             "F2:Tree",
         );
         bar.add_item(
-            KeyEvent { code: KeyCode::F(3), modifiers: KeyMod::default() },
+            KeyEvent {
+                code: KeyCode::F(3),
+                modifiers: KeyMod::default(),
+            },
             CM_FOCUS_CENTER,
             "F3:Main",
         );
         bar.add_item(
-            KeyEvent { code: KeyCode::F(4), modifiers: KeyMod::default() },
+            KeyEvent {
+                code: KeyCode::F(4),
+                modifiers: KeyMod::default(),
+            },
             CM_FOCUS_RIGHT,
             "F4:Term",
         );
         bar.add_item(
-            KeyEvent { code: KeyCode::F(5), modifiers: KeyMod::default() },
+            KeyEvent {
+                code: KeyCode::F(5),
+                modifiers: KeyMod::default(),
+            },
             CM_ZOOM_TOGGLE,
             "F5:Zoom",
         );
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Char('q'),
-                modifiers: KeyMod { ctrl: true, alt: false, shift: false },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: false,
+                },
             },
             CM_QUIT,
             "^Q:Quit",
@@ -79,7 +102,11 @@ impl KairnStatusBar {
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Left,
-                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: true,
+                },
             },
             CM_TAB_PREV,
             "",
@@ -87,7 +114,11 @@ impl KairnStatusBar {
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Right,
-                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: true,
+                },
             },
             CM_TAB_NEXT,
             "",
@@ -95,7 +126,11 @@ impl KairnStatusBar {
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Up,
-                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: true,
+                },
             },
             CM_FOCUS_PREV,
             "",
@@ -103,7 +138,11 @@ impl KairnStatusBar {
         bar.add_item(
             KeyEvent {
                 code: KeyCode::Down,
-                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: true,
+                },
             },
             CM_FOCUS_NEXT,
             "",
@@ -145,16 +184,16 @@ impl KairnStatusBar {
             if completions.len() == 1 {
                 self.input.set_text(&completions[0].text);
             } else if !completions.is_empty() {
-                self.input.completions = completions.iter()
-                    .map(|c| c.display.clone())
-                    .collect();
+                self.input.completions = completions.iter().map(|c| c.display.clone()).collect();
             }
         }
     }
 }
 
 impl View for KairnStatusBar {
-    fn bounds(&self) -> Rect { self.inner.bounds() }
+    fn bounds(&self) -> Rect {
+        self.inner.bounds()
+    }
     fn set_bounds(&mut self, r: Rect) {
         self.inner.set_bounds(r);
         // Input gets bounds minus the ":" prefix
@@ -169,7 +208,9 @@ impl View for KairnStatusBar {
             ..ViewOptions::default()
         }
     }
-    fn title(&self) -> &str { "" }
+    fn title(&self) -> &str {
+        ""
+    }
     fn needs_redraw(&self) -> bool {
         match self.mode {
             Mode::Normal => self.inner.needs_redraw(),
@@ -190,14 +231,15 @@ impl View for KairnStatusBar {
                 // Also draw "M-x" label (inner doesn't have it as a StatusItem)
                 let b = self.inner.bounds();
                 let style = Style {
-                    attrs: Attrs { reverse: true, ..Attrs::default() },
+                    attrs: Attrs {
+                        reverse: true,
+                        ..Attrs::default()
+                    },
                     ..Style::default()
                 };
                 // Find space after last item for M-x label
                 let mx_text = " M-x ";
-                let items_len: u16 = self.inner.items.iter()
-                    .map(|i| i.label.len() as u16 + 2)
-                    .sum();
+                let items_len: u16 = self.inner.items.iter().map(|i| i.label.len() as u16 + 2).sum();
                 if items_len + mx_text.len() as u16 <= b.w {
                     surface.print(b.x + items_len, b.y, mx_text, style);
                 }
@@ -205,7 +247,10 @@ impl View for KairnStatusBar {
             Mode::Prompt => {
                 let b = self.inner.bounds();
                 let style = Style {
-                    attrs: Attrs { reverse: true, ..Attrs::default() },
+                    attrs: Attrs {
+                        reverse: true,
+                        ..Attrs::default()
+                    },
                     ..Style::default()
                 };
                 surface.hline(b.x, b.y, b.w, ' ', style);
@@ -215,11 +260,7 @@ impl View for KairnStatusBar {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         match self.mode {
             Mode::Normal => {
                 // Intercept Alt-x directly to enter prompt mode
@@ -257,10 +298,7 @@ impl View for KairnStatusBar {
                                 if let Some(text) = boxed.downcast_ref::<String>() {
                                     let cmd_text = text.clone();
                                     self.exit_prompt();
-                                    queue.put_command(
-                                        CM_EXECUTE_COMMAND,
-                                        Some(Box::new(cmd_text)),
-                                    );
+                                    queue.put_command(CM_EXECUTE_COMMAND, Some(Box::new(cmd_text)));
                                     return HandleResult::Consumed;
                                 }
                             }

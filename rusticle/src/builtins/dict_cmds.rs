@@ -12,9 +12,7 @@ pub fn register(interp: &mut Interpreter) {
 /// `dict subcommand args...`
 fn cmd_dict(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict subcommand ...\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict subcommand ...\""));
     }
     let subcmd = args[0].as_str().to_string();
     let rest = &args[1..];
@@ -27,9 +25,7 @@ fn cmd_dict(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
         "values" => dict_values(rest),
         "size" => dict_size(rest),
         "for" => dict_for(interp, rest),
-        _ => Err(TclError::new(format!(
-            "unknown dict subcommand \"{subcmd}\""
-        ))),
+        _ => Err(TclError::new(format!("unknown dict subcommand \"{subcmd}\""))),
     }
 }
 
@@ -49,9 +45,7 @@ fn dict_create(args: &[TclValue]) -> Result<TclValue, TclError> {
 /// `dict get dict key ?key ...?`
 fn dict_get(args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 2 {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict get dict key\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict get dict key\""));
     }
     let mut current = args[0].clone();
     for key_arg in &args[1..] {
@@ -74,9 +68,7 @@ fn dict_get(args: &[TclValue]) -> Result<TclValue, TclError> {
                     }
                     i += 2;
                 }
-                found.ok_or_else(|| {
-                    TclError::new(format!("key \"{key}\" not known in dictionary"))
-                })?
+                found.ok_or_else(|| TclError::new(format!("key \"{key}\" not known in dictionary")))?
             }
         };
     }
@@ -86,9 +78,7 @@ fn dict_get(args: &[TclValue]) -> Result<TclValue, TclError> {
 /// `dict set dictvar key value`
 fn dict_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict set dictVar key value\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict set dictVar key value\""));
     }
     let var_name = args[0].as_str().to_string();
     let key = args[1].as_str().to_string();
@@ -127,9 +117,7 @@ fn dict_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
 /// `dict exists dict key`
 fn dict_exists(args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 2 {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict exists dict key\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict exists dict key\""));
     }
     let key = args[1].as_str().to_string();
     let exists = match &args[0] {
@@ -146,10 +134,7 @@ fn dict_keys(args: &[TclValue]) -> Result<TclValue, TclError> {
     }
     match &args[0] {
         TclValue::Dict(pairs) => Ok(TclValue::List(
-            pairs
-                .iter()
-                .map(|(k, _)| TclValue::Str(k.clone()))
-                .collect(),
+            pairs.iter().map(|(k, _)| TclValue::Str(k.clone())).collect(),
         )),
         _ => Err(TclError::new("expected dict")),
     }
@@ -158,14 +143,10 @@ fn dict_keys(args: &[TclValue]) -> Result<TclValue, TclError> {
 /// `dict values dict`
 fn dict_values(args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict values dict\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict values dict\""));
     }
     match &args[0] {
-        TclValue::Dict(pairs) => Ok(TclValue::List(
-            pairs.iter().map(|(_, v)| v.clone()).collect(),
-        )),
+        TclValue::Dict(pairs) => Ok(TclValue::List(pairs.iter().map(|(_, v)| v.clone()).collect())),
         _ => Err(TclError::new("expected dict")),
     }
 }
@@ -184,9 +165,7 @@ fn dict_size(args: &[TclValue]) -> Result<TclValue, TclError> {
 /// `dict for {k v} dict body`
 fn dict_for(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"dict for {k v} dict body\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"dict for {k v} dict body\""));
     }
     let var_spec = args[0].as_str().to_string();
     let vars: Vec<&str> = var_spec.split_whitespace().collect();
@@ -227,9 +206,7 @@ mod tests {
     #[test]
     fn dict_create_and_get() {
         let mut interp = Interpreter::new();
-        interp
-            .eval("set d [dict create name alice age 30]")
-            .unwrap();
+        interp.eval("set d [dict create name alice age 30]").unwrap();
         assert_eq!(interp.eval("dict get $d name").unwrap().as_str(), "alice");
         assert_eq!(interp.eval("dict get $d age").unwrap().as_str(), "30");
     }
@@ -264,9 +241,7 @@ mod tests {
         let mut interp = Interpreter::new();
         interp.eval("set d [dict create a 1 b 2]").unwrap();
         interp.eval("set result {}").unwrap();
-        interp
-            .eval("dict for {k v} $d {append result \"$k=$v \"}")
-            .unwrap();
+        interp.eval("dict for {k v} $d {append result \"$k=$v \"}").unwrap();
         let result = interp.eval("set result").unwrap();
         assert!(result.as_str().contains("a=1"));
         assert!(result.as_str().contains("b=2"));

@@ -66,11 +66,7 @@ impl TclError {
 impl fmt::Display for TclError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(loc) = &self.location {
-            write!(
-                f,
-                "{}:{}:{}: {}",
-                loc.source, loc.line, loc.col, self.message
-            )
+            write!(f, "{}:{}:{}: {}", loc.source, loc.line, loc.col, self.message)
         } else {
             write!(f, "{}", self.message)
         }

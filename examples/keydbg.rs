@@ -11,9 +11,7 @@ fn main() {
                 event::Event::Key(k) => {
                     print!("  {:?}\r\n", k);
                     std::io::stdout().flush().unwrap();
-                    if k.code == event::KeyCode::Char('c')
-                        && k.modifiers.contains(event::KeyModifiers::CONTROL)
-                    {
+                    if k.code == event::KeyCode::Char('c') && k.modifiers.contains(event::KeyModifiers::CONTROL) {
                         break;
                     }
                 }

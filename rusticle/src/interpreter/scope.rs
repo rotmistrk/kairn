@@ -69,12 +69,7 @@ pub fn unset_var(scopes: &mut [Scope], name: &str) -> bool {
 }
 
 /// Set a variable in a parent scope (for `outer`).
-pub fn set_var_in_parent(
-    scopes: &mut [Scope],
-    name: &str,
-    value: TclValue,
-    levels: usize,
-) -> Result<(), TclError> {
+pub fn set_var_in_parent(scopes: &mut [Scope], name: &str, value: TclValue, levels: usize) -> Result<(), TclError> {
     let len = scopes.len();
     if levels >= len {
         return Err(TclError::new("outer: no parent scope"));

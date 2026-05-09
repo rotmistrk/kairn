@@ -24,16 +24,16 @@ fn colon_w_saves_file() {
 
 #[test]
 fn colon_q_closes_buffer() {
-    use kairn::editor::ex::parse_ex;
     use kairn::editor::command::Command;
+    use kairn::editor::ex::parse_ex;
     assert_eq!(parse_ex("q"), Command::CloseBuffer);
     assert_eq!(parse_ex("w"), Command::Save);
 }
 
 #[test]
 fn colon_wq_saves_and_closes() {
-    use kairn::editor::ex::parse_ex;
     use kairn::editor::command::Command;
+    use kairn::editor::ex::parse_ex;
     assert_eq!(parse_ex("wq"), Command::Save);
 }
 
@@ -65,7 +65,14 @@ fn ctrl_r_redoes() {
     open_file_and_focus(&mut h);
     h.inject_key(KeyCode::Char('x'), KeyMod::default());
     h.inject_key(KeyCode::Char('u'), KeyMod::default());
-    h.inject_key(KeyCode::Char('r'), KeyMod { ctrl: true, alt: false, shift: false });
+    h.inject_key(
+        KeyCode::Char('r'),
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: false,
+        },
+    );
     h.run_cycles(1);
     assert!(h.contains("ello"));
     assert!(!h.contains("hello"));

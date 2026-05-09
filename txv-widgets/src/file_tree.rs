@@ -90,7 +90,10 @@ impl FileTreeData {
     }
 
     fn collect_visible(&mut self, parent: Option<usize>, depth: usize) {
-        let ids: Vec<usize> = self.nodes.iter().enumerate()
+        let ids: Vec<usize> = self
+            .nodes
+            .iter()
+            .enumerate()
             .filter(|(_, n)| n.parent == parent && n.depth == depth)
             .map(|(i, _)| i)
             .collect();

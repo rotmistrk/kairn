@@ -166,7 +166,8 @@ fn ex_q_fails_on_dirty_buffer() {
     assert_ne!(action, EditorAction::CloseRequested);
     assert!(
         ed.status.contains("write") || ed.status.contains("modified") || ed.status.contains("unsaved"),
-        "expected dirty warning, got: {:?}", ed.status
+        "expected dirty warning, got: {:?}",
+        ed.status
     );
 }
 
@@ -242,7 +243,10 @@ use kairn::editor::keymap_vim::VimKeymap;
 use txv_core::event::{KeyCode, KeyEvent, KeyMod};
 
 fn key(ch: char) -> KeyEvent {
-    KeyEvent { code: KeyCode::Char(ch), modifiers: KeyMod::default() }
+    KeyEvent {
+        code: KeyCode::Char(ch),
+        modifiers: KeyMod::default(),
+    }
 }
 
 #[test]
@@ -475,7 +479,9 @@ fn big_s_substitutes_line() {
     ed.execute(Command::SubstituteLine);
     assert_eq!(ed.mode, EditorMode::Insert);
     // Line content cleared, newline preserved
-    assert!(ed.buffer.content().starts_with('\n') || ed.buffer.content() == "world" || ed.buffer.content() == "\nworld");
+    assert!(
+        ed.buffer.content().starts_with('\n') || ed.buffer.content() == "world" || ed.buffer.content() == "\nworld"
+    );
 }
 
 // === Toggle case ===

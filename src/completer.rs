@@ -5,9 +5,7 @@ use std::path::{Path, PathBuf};
 use txv_core::complete::{Completer, Completion};
 
 /// Known commands for the M-x prompt and :command mode.
-const COMMANDS: &[&str] = &[
-    "close", "e", "edit", "help", "quit", "save", "shell",
-];
+const COMMANDS: &[&str] = &["close", "e", "edit", "help", "quit", "save", "shell"];
 
 /// Completer for kairn application commands.
 pub struct CommandCompleter;
@@ -99,7 +97,15 @@ fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
         } else {
             name_str.to_string()
         };
-        results.push(Completion { text, display, kind: if entry.path().is_dir() { "dir" } else { "file" } });
+        results.push(Completion {
+            text,
+            display,
+            kind: if entry.path().is_dir() {
+                "dir"
+            } else {
+                "file"
+            },
+        });
     }
     results.sort_by(|a, b| a.display.cmp(&b.display));
     results

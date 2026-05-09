@@ -134,10 +134,7 @@ impl<'a> Iterator for WordIter<'a> {
 
 /// Convert a byte offset in `s` to a column (display) position.
 pub fn byte_to_col(s: &str, byte_offset: usize) -> usize {
-    s[..byte_offset.min(s.len())]
-        .chars()
-        .map(char_width)
-        .sum()
+    s[..byte_offset.min(s.len())].chars().map(char_width).sum()
 }
 
 /// Convert a column (display) position to the byte offset in `s`.

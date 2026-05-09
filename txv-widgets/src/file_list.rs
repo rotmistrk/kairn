@@ -23,20 +23,14 @@ impl FileListData {
     pub fn new(root: impl Into<PathBuf>) -> Self {
         let root = root.into();
         let mut entries = Vec::new();
-        let walker = WalkBuilder::new(&root)
-            .sort_by_file_name(|a, b| a.cmp(b))
-            .build();
+        let walker = WalkBuilder::new(&root).sort_by_file_name(|a, b| a.cmp(b)).build();
 
         for entry in walker.flatten() {
             let path = entry.path().to_path_buf();
             if path == root || path.is_dir() {
                 continue;
             }
-            let display = path
-                .strip_prefix(&root)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .into_owned();
+            let display = path.strip_prefix(&root).unwrap_or(&path).to_string_lossy().into_owned();
             entries.push(FileEntry { path, display });
         }
 

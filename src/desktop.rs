@@ -87,10 +87,10 @@ impl SlottedDesktop {
                 ..ViewOptions::default()
             }),
             slots: [
-                Slot::new(24),  // Left
-                Slot::new(0),   // Center (fills remaining)
-                Slot::new(40),  // Right
-                Slot::new(10),  // Bottom
+                Slot::new(24), // Left
+                Slot::new(0),  // Center (fills remaining)
+                Slot::new(40), // Right
+                Slot::new(10), // Bottom
             ],
             focused: SlotId::Left,
             zoomed: None,
@@ -98,12 +98,7 @@ impl SlottedDesktop {
     }
 
     /// Insert a view into a specific slot.
-    pub fn insert_tab(
-        &mut self,
-        slot: SlotId,
-        title: impl Into<String>,
-        mut view: Box<dyn View>,
-    ) {
+    pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, mut view: Box<dyn View>) {
         // Set bounds on the new view based on current layout
         let rects = self.layout(self.group.view.bounds);
         view.set_bounds(rects[slot as usize]);
@@ -204,9 +199,14 @@ impl SlottedDesktop {
         } else {
             0
         };
-        let bottom_divider = if bottom_h > 0 { 1u16 } else { 0 };
+        let bottom_divider = if bottom_h > 0 {
+            1u16
+        } else {
+            0
+        };
 
-        let top_h = bounds.h
+        let top_h = bounds
+            .h
             .saturating_sub(chrome_h)
             .saturating_sub(bottom_h)
             .saturating_sub(bottom_divider);
@@ -220,16 +220,25 @@ impl SlottedDesktop {
         } else {
             0
         };
-        let left_div = if left_w > 0 { 1u16 } else { 0 };
+        let left_div = if left_w > 0 {
+            1u16
+        } else {
+            0
+        };
 
         let right_w = if right.visible && !right.tabs.is_empty() {
             right.size.min(bounds.w / 3)
         } else {
             0
         };
-        let right_div = if right_w > 0 { 1u16 } else { 0 };
+        let right_div = if right_w > 0 {
+            1u16
+        } else {
+            0
+        };
 
-        let center_w = bounds.w
+        let center_w = bounds
+            .w
             .saturating_sub(left_w)
             .saturating_sub(left_div)
             .saturating_sub(right_w)
@@ -237,12 +246,7 @@ impl SlottedDesktop {
 
         // If zoomed, the focused slot gets all space
         if let Some(z) = self.zoomed {
-            rects[z as usize] = Rect::new(
-                bounds.x,
-                content_y,
-                bounds.w,
-                bounds.h.saturating_sub(chrome_h),
-            );
+            rects[z as usize] = Rect::new(bounds.x, content_y, bounds.w, bounds.h.saturating_sub(chrome_h));
             return rects;
         }
 
@@ -261,12 +265,7 @@ impl SlottedDesktop {
 
         // Bottom
         let bottom_y = content_y + top_h + bottom_divider;
-        rects[SlotId::Bottom as usize] = Rect::new(
-            bounds.x,
-            bottom_y,
-            bounds.w,
-            bottom_h,
-        );
+        rects[SlotId::Bottom as usize] = Rect::new(bounds.x, bottom_y, bounds.w, bottom_h);
 
         rects
     }
@@ -285,13 +284,19 @@ impl SlottedDesktop {
         let focused_tab_style = Style {
             fg: Color::Ansi(14),
             bg: Color::Ansi(4),
-            attrs: Attrs { bold: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                ..Attrs::default()
+            },
         };
         // Unfocused slot + active (top) tab: white on dark gray
         let unfocused_active_style = Style {
             fg: Color::Ansi(15),
             bg: Color::Ansi(8),
-            attrs: Attrs { bold: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                ..Attrs::default()
+            },
         };
         // Any slot + inactive tab: dim gray
         let inactive_tab_style = Style {
@@ -339,24 +344,12 @@ impl SlottedDesktop {
         if left_r.w > 0 && center_r.w > 0 {
             let div_x = left_r.x + left_r.w;
             surface.put(div_x, y, '┬', chrome_style);
-            surface.vline(
-                div_x,
-                y + 1,
-                left_r.h,
-                '│',
-                chrome_style,
-            );
+            surface.vline(div_x, y + 1, left_r.h, '│', chrome_style);
         }
         if right_r.w > 0 && center_r.w > 0 {
             let div_x = right_r.x.saturating_sub(1);
             surface.put(div_x, y, '┬', chrome_style);
-            surface.vline(
-                div_x,
-                y + 1,
-                right_r.h,
-                '│',
-                chrome_style,
-            );
+            surface.vline(div_x, y + 1, right_r.h, '│', chrome_style);
         }
 
         // Bottom divider
@@ -376,20 +369,38 @@ impl SlottedDesktop {
         }
     }
 
-    fn handle_command(
-        &mut self,
-        id: CommandId,
-        _queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle_command(&mut self, id: CommandId, _queue: &mut EventQueue) -> HandleResult {
         match id {
-            CM_FOCUS_LEFT => { self.focus_slot(SlotId::Left); HandleResult::Consumed }
-            CM_FOCUS_CENTER => { self.focus_slot(SlotId::Center); HandleResult::Consumed }
-            CM_FOCUS_RIGHT => { self.focus_slot(SlotId::Right); HandleResult::Consumed }
-            CM_FOCUS_BOTTOM => { self.focus_slot(SlotId::Bottom); HandleResult::Consumed }
-            CM_FOCUS_PREV => { self.cycle_focus(-1); HandleResult::Consumed }
-            CM_FOCUS_NEXT => { self.cycle_focus(1); HandleResult::Consumed }
+            CM_FOCUS_LEFT => {
+                self.focus_slot(SlotId::Left);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_CENTER => {
+                self.focus_slot(SlotId::Center);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_RIGHT => {
+                self.focus_slot(SlotId::Right);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_BOTTOM => {
+                self.focus_slot(SlotId::Bottom);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_PREV => {
+                self.cycle_focus(-1);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_NEXT => {
+                self.cycle_focus(1);
+                HandleResult::Consumed
+            }
             CM_ZOOM_TOGGLE => {
-                self.zoomed = if self.zoomed.is_some() { None } else { Some(self.focused) };
+                self.zoomed = if self.zoomed.is_some() {
+                    None
+                } else {
+                    Some(self.focused)
+                };
                 self.group.view.dirty = true;
                 HandleResult::Consumed
             }
@@ -438,9 +449,9 @@ impl View for SlottedDesktop {
         if self.group.view.dirty {
             return true;
         }
-        self.slots.iter().any(|s| {
-            s.active_view().is_some_and(|v| v.needs_redraw())
-        })
+        self.slots
+            .iter()
+            .any(|s| s.active_view().is_some_and(|v| v.needs_redraw()))
     }
 
     fn select(&mut self) {
@@ -477,11 +488,7 @@ impl View for SlottedDesktop {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         // Handle commands directed at desktop
         if let Event::Command { id, .. } = event {
             let r = self.handle_command(*id, queue);

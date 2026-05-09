@@ -61,11 +61,7 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
 
 /// Modal nested event loop. Key/Mouse → modal only. Tick/Resize/Command → full tree.
 /// Returns the closing command (CM_CLOSE, CM_OK, or CM_CANCEL).
-pub fn exec_view(
-    root: &mut dyn View,
-    modal: &mut dyn View,
-    backend: &mut dyn Backend,
-) -> CommandId {
+pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Backend) -> CommandId {
     let mut queue = EventQueue::new();
 
     loop {
@@ -285,11 +281,7 @@ mod tests {
             surface.put(0, 0, 'Q', Style::default());
         }
 
-        fn handle(
-            &mut self,
-            event: &Event,
-            queue: &mut EventQueue,
-        ) -> HandleResult {
+        fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
             if let Event::Key(KeyEvent {
                 code: KeyCode::Char('q'),
                 ..

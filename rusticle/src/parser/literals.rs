@@ -4,21 +4,13 @@ use crate::error::TclError;
 
 /// Parse a `%{...}` dict literal starting after `%{`.
 /// Returns the raw content between the braces.
-pub fn parse_dict_literal(
-    chars: &[char],
-    pos: &mut usize,
-    line: &mut usize,
-) -> Result<String, TclError> {
+pub fn parse_dict_literal(chars: &[char], pos: &mut usize, line: &mut usize) -> Result<String, TclError> {
     parse_balanced(chars, pos, line, '{', '}')
 }
 
 /// Parse a `%[...]` list literal starting after `%[`.
 /// Returns the raw content between the brackets.
-pub fn parse_list_literal(
-    chars: &[char],
-    pos: &mut usize,
-    line: &mut usize,
-) -> Result<String, TclError> {
+pub fn parse_list_literal(chars: &[char], pos: &mut usize, line: &mut usize) -> Result<String, TclError> {
     parse_balanced(chars, pos, line, '[', ']')
 }
 
@@ -69,9 +61,7 @@ fn parse_balanced(
         *pos += 1;
     }
     if depth != 0 {
-        return Err(TclError::new(format!(
-            "unmatched '{open}' in structured literal"
-        )));
+        return Err(TclError::new(format!("unmatched '{open}' in structured literal")));
     }
     Ok(content)
 }

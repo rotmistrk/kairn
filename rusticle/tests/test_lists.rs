@@ -84,18 +84,14 @@ fn lset_modifies() {
 #[test]
 fn lmap_double() {
     let mut interp = Interpreter::new();
-    let result = interp
-        .eval("lmap [list 1 2 3] {x { expr {$x * 2} }}")
-        .unwrap();
+    let result = interp.eval("lmap [list 1 2 3] {x { expr {$x * 2} }}").unwrap();
     assert_eq!(result.as_str().as_ref(), "2 4 6");
 }
 
 #[test]
 fn lfilter_evens() {
     let mut interp = Interpreter::new();
-    let result = interp
-        .eval("lfilter [range 1 10] {x { expr {$x % 2 == 0} }}")
-        .unwrap();
+    let result = interp.eval("lfilter [range 1 10] {x { expr {$x % 2 == 0} }}").unwrap();
     assert_eq!(result.as_str().as_ref(), "2 4 6 8");
 }
 

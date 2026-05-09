@@ -61,9 +61,7 @@ fn cmd_if(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclEr
 /// `while {cond} {body}`
 fn cmd_while(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() != 2 {
-        return Err(TclError::new(
-            "wrong # args: should be \"while test command\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"while test command\""));
     }
     let cond_str = args[0].as_str().to_string();
     let body = args[1].as_str().to_string();
@@ -84,9 +82,7 @@ fn cmd_while(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tc
 /// `foreach var list body`
 fn cmd_foreach(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() != 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"foreach varName list body\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"foreach varName list body\""));
     }
     let var_pattern = args[0].as_str().to_string();
     let list = args[1].as_list()?;
@@ -99,10 +95,7 @@ fn cmd_foreach(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
     let mut i = 0;
     while i < list.len() {
         for (j, var) in vars.iter().enumerate() {
-            let val = list
-                .get(i + j)
-                .cloned()
-                .unwrap_or(TclValue::Str(String::new()));
+            let val = list.get(i + j).cloned().unwrap_or(TclValue::Str(String::new()));
             interp.set_var(var, val);
         }
         i += step;
@@ -133,9 +126,7 @@ fn parse_foreach_vars(pattern: &str) -> Vec<String> {
 /// `for {init} {cond} {step} {body}`
 fn cmd_for(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() != 4 {
-        return Err(TclError::new(
-            "wrong # args: should be \"for start test next command\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"for start test next command\""));
     }
     let init = args[0].as_str().to_string();
     let cond = args[1].as_str().to_string();
@@ -170,19 +161,14 @@ fn cmd_continue(_interp: &mut Interpreter, _args: &[TclValue]) -> Result<TclValu
 
 /// `return ?value?`
 fn cmd_return(_interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
-    let val = args
-        .first()
-        .cloned()
-        .unwrap_or(TclValue::Str(String::new()));
+    let val = args.first().cloned().unwrap_or(TclValue::Str(String::new()));
     Err(TclError::with_code("return", ErrorCode::Return(val)))
 }
 
 /// `proc name args body`
 fn cmd_proc(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() != 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"proc name args body\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"proc name args body\""));
     }
     let name = args[0].as_str().to_string();
     let params = parse_proc_params(&args[1].as_str())?;
@@ -218,10 +204,7 @@ fn parse_proc_params(s: &str) -> Result<Vec<ProcParam>, TclError> {
             params.push(ProcParam { name, default });
         } else {
             let name = strip_type_annotation(&elem);
-            params.push(ProcParam {
-                name,
-                default: None,
-            });
+            params.push(ProcParam { name, default: None });
         }
     }
     Ok(params)
@@ -289,9 +272,7 @@ fn cmd_switch(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, T
 /// `match value { pattern ?var? body ... }`
 fn cmd_match(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() != 2 {
-        return Err(TclError::new(
-            "wrong # args: should be \"match value {cases}\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"match value {cases}\""));
     }
     let value = args[0].clone();
     let body = args[1].as_str().to_string();
@@ -339,10 +320,7 @@ fn parse_match_cases(body: &str) -> Result<Vec<MatchCase>, TclError> {
             if i >= words.len() {
                 return Err(TclError::new("missing body in match"));
             }
-            let body_str = words[i]
-                .trim_start_matches('{')
-                .trim_end_matches('}')
-                .to_string();
+            let body_str = words[i].trim_start_matches('{').trim_end_matches('}').to_string();
             cases.push(MatchCase {
                 pattern,
                 binding,
@@ -355,11 +333,7 @@ fn parse_match_cases(body: &str) -> Result<Vec<MatchCase>, TclError> {
 }
 
 /// Check if a value matches a pattern and bind variables.
-fn match_pattern(
-    interp: &mut Interpreter,
-    value: &TclValue,
-    case: &MatchCase,
-) -> Result<bool, TclError> {
+fn match_pattern(interp: &mut Interpreter, value: &TclValue, case: &MatchCase) -> Result<bool, TclError> {
     let pat = &case.pattern;
     // Wildcard
     if pat == "_" {
@@ -399,10 +373,7 @@ fn parse_switch_cases(body: &str) -> Result<Vec<(String, String)>, TclError> {
     let mut i = 0;
     while i + 1 < words.len() {
         let pattern = words[i].trim_matches('"').to_string();
-        let script = words[i + 1]
-            .trim_start_matches('{')
-            .trim_end_matches('}')
-            .to_string();
+        let script = words[i + 1].trim_start_matches('{').trim_end_matches('}').to_string();
         cases.push((pattern, script));
         i += 2;
     }
@@ -460,9 +431,7 @@ fn cmd_try(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclE
 /// `catch script ?resultVar?`
 fn cmd_catch(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"catch script ?resultVar?\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"catch script ?resultVar?\""));
     }
     let script = args[0].as_str().to_string();
     let result = interp.eval(&script);
@@ -507,9 +476,7 @@ mod tests {
     fn if_false_else() {
         let mut interp = Interpreter::new();
         interp.eval("set result no").unwrap();
-        interp
-            .eval("if {0} {set result yes} else {set result no}")
-            .unwrap();
+        interp.eval("if {0} {set result yes} else {set result no}").unwrap();
         assert_eq!(interp.eval("set result").unwrap().as_str(), "no");
     }
 
@@ -533,18 +500,14 @@ mod tests {
     fn for_loop() {
         let mut interp = Interpreter::new();
         interp.eval("set sum 0").unwrap();
-        interp
-            .eval("for {set i 0} {$i < 5} {incr i} {incr sum $i}")
-            .unwrap();
+        interp.eval("for {set i 0} {$i < 5} {incr i} {incr sum $i}").unwrap();
         assert_eq!(interp.eval("set sum").unwrap().as_str(), "10");
     }
 
     #[test]
     fn proc_basic() {
         let mut interp = Interpreter::new();
-        interp
-            .eval("proc double {x} {return [expr {$x * 2}]}")
-            .unwrap();
+        interp.eval("proc double {x} {return [expr {$x * 2}]}").unwrap();
         let result = interp.eval("double 5").unwrap();
         assert_eq!(result.as_str(), "10");
     }
@@ -563,9 +526,7 @@ mod tests {
     fn break_in_while() {
         let mut interp = Interpreter::new();
         interp.eval("set x 0").unwrap();
-        interp
-            .eval("while {1} {incr x; if {$x == 3} {break}}")
-            .unwrap();
+        interp.eval("while {1} {incr x; if {$x == 3} {break}}").unwrap();
         assert_eq!(interp.eval("set x").unwrap().as_str(), "3");
     }
 
@@ -611,10 +572,7 @@ try {
 }"#,
             )
             .unwrap();
-        assert_eq!(
-            interp.eval("set log").unwrap().as_str(),
-            "caught:boom,cleaned"
-        );
+        assert_eq!(interp.eval("set log").unwrap().as_str(), "caught:boom,cleaned");
     }
 
     #[test]

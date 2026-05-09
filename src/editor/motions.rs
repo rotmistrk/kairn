@@ -98,14 +98,25 @@ pub fn first_non_blank(buf: &PieceTable, line: usize) -> usize {
 pub fn find_char(buf: &PieceTable, line: usize, col: usize, target: char) -> Option<usize> {
     let text = buf.line(line).unwrap_or_default();
     let chars: Vec<char> = text.chars().collect();
-    chars.iter().enumerate().skip(col + 1).find(|(_, c)| **c == target).map(|(i, _)| i)
+    chars
+        .iter()
+        .enumerate()
+        .skip(col + 1)
+        .find(|(_, c)| **c == target)
+        .map(|(i, _)| i)
 }
 
 /// Find char backward on line. Returns column or None.
 pub fn find_char_back(buf: &PieceTable, line: usize, col: usize, target: char) -> Option<usize> {
     let text = buf.line(line).unwrap_or_default();
     let chars: Vec<char> = text.chars().collect();
-    chars.iter().enumerate().take(col).rev().find(|(_, c)| **c == target).map(|(i, _)| i)
+    chars
+        .iter()
+        .enumerate()
+        .take(col)
+        .rev()
+        .find(|(_, c)| **c == target)
+        .map(|(i, _)| i)
 }
 
 /// Find matching bracket. Returns (line, col) or None.

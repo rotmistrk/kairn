@@ -87,9 +87,7 @@ impl core::fmt::Debug for Event {
             Self::Key(k) => f.debug_tuple("Key").field(k).finish(),
             Self::Mouse(m) => f.debug_tuple("Mouse").field(m).finish(),
             Self::Resize(w, h) => f.debug_tuple("Resize").field(w).field(h).finish(),
-            Self::Command { id, .. } => {
-                f.debug_struct("Command").field("id", id).finish()
-            }
+            Self::Command { id, .. } => f.debug_struct("Command").field("id", id).finish(),
             Self::Tick => write!(f, "Tick"),
         }
     }

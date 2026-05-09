@@ -16,9 +16,7 @@ pub fn register(interp: &mut Interpreter) {
 /// `set var ?value?` or `set var = value` or `set a, b, c = list`
 fn cmd_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"set varName ?newValue?\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"set varName ?newValue?\""));
     }
 
     // Find `=` to detect modern assignment form
@@ -49,11 +47,7 @@ fn cmd_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclE
 }
 
 /// Handle `set var = value` and `set a, b, c = list`
-fn handle_equals_form(
-    interp: &mut Interpreter,
-    args: &[TclValue],
-    eq_idx: usize,
-) -> Result<TclValue, TclError> {
+fn handle_equals_form(interp: &mut Interpreter, args: &[TclValue], eq_idx: usize) -> Result<TclValue, TclError> {
     if eq_idx == 0 || eq_idx + 1 >= args.len() {
         return Err(TclError::new(
             "wrong # args: should be \"set var = value\" or \"set a, b = list\"",
@@ -97,11 +91,7 @@ fn handle_equals_form(
 }
 
 /// Destructure a dict: `set {name, age} value` (legacy form).
-fn destructure_dict(
-    interp: &mut Interpreter,
-    pattern: &str,
-    args: &[TclValue],
-) -> Result<TclValue, TclError> {
+fn destructure_dict(interp: &mut Interpreter, pattern: &str, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 2 {
         return Err(TclError::new("wrong # args for destructuring"));
     }
@@ -144,15 +134,11 @@ fn cmd_unset(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tc
 /// `outer set var value` — set variable in parent scope.
 fn cmd_outer(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"outer set varName value\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"outer set varName value\""));
     }
     let subcmd = args[0].as_str();
     if subcmd != "set" {
-        return Err(TclError::new(format!(
-            "outer: unknown subcommand \"{subcmd}\""
-        )));
+        return Err(TclError::new(format!("outer: unknown subcommand \"{subcmd}\"")));
     }
     let name = args[1].as_str().to_string();
     let value = args[2].clone();
@@ -163,9 +149,7 @@ fn cmd_outer(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tc
 /// `append var string` — append to a variable.
 fn cmd_append(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"append varName ?value ...?\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"append varName ?value ...?\""));
     }
     let name = args[0].as_str().to_string();
     let mut current = interp
@@ -183,12 +167,14 @@ fn cmd_append(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, T
 /// `incr var ?amount?` — increment an integer variable.
 fn cmd_incr(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"incr varName ?increment?\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"incr varName ?increment?\""));
     }
     let name = args[0].as_str().to_string();
-    let amount = if args.len() > 1 { args[1].as_int()? } else { 1 };
+    let amount = if args.len() > 1 {
+        args[1].as_int()?
+    } else {
+        1
+    };
     let current = interp.get_var(&name).map(|v| v.as_int()).unwrap_or(Ok(0))?;
     let new_val = TclValue::Int(current + amount);
     interp.set_var(&name, new_val.clone());

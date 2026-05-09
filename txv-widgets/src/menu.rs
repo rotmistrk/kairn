@@ -10,7 +10,11 @@ pub struct MenuItem {
 
 impl MenuItem {
     pub fn new(label: impl Into<String>, command: CommandId) -> Self {
-        Self { label: label.into(), command, enabled: true }
+        Self {
+            label: label.into(),
+            command,
+            enabled: true,
+        }
     }
 }
 
@@ -44,7 +48,10 @@ impl View for Menu {
         }
         let normal = Style::default();
         let selected = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let disabled = Style {
@@ -84,11 +91,7 @@ impl View for Menu {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed; // modal captures all
         };

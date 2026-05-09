@@ -3,23 +3,23 @@
 //! Concrete View implementations — ready-to-use interactive TUI components.
 //! Depends only on txv-core (plus `ignore` for filesystem widgets).
 
-pub mod scroll_view;
-pub mod scrollbar;
-pub mod tree_view;
-pub mod list_view;
-pub mod input_line;
-pub mod tab_bar;
-pub mod status_bar;
-pub mod text_area;
-pub mod table;
-pub mod menu;
 pub mod dialog;
+pub mod file_list;
+pub mod file_tree;
 pub mod fuzzy_select;
+pub mod input_line;
+pub mod list_view;
+pub mod menu;
 pub mod overlay;
 pub mod progress_bar;
+pub mod scroll_view;
+pub mod scrollbar;
 pub mod split_pane;
-pub mod file_tree;
-pub mod file_list;
+pub mod status_bar;
+pub mod tab_bar;
+pub mod table;
+pub mod text_area;
+pub mod tree_view;
 
 pub use dialog::Dialog;
 pub use file_list::FileListData;

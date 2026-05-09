@@ -19,7 +19,9 @@ pub struct FileBroker {
 
 impl FileBroker {
     pub fn new() -> Self {
-        Self { open_files: HashMap::new() }
+        Self {
+            open_files: HashMap::new(),
+        }
     }
 
     /// Register a file as open. Returns AlreadyOpen if it was already tracked.

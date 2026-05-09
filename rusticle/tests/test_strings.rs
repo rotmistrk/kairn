@@ -45,9 +45,7 @@ fn string_match_no_match() {
 #[test]
 fn string_map_replace() {
     let mut interp = Interpreter::new();
-    let r = interp
-        .eval(r#"string map {hello goodbye} "hello world""#)
-        .unwrap();
+    let r = interp.eval(r#"string map {hello goodbye} "hello world""#).unwrap();
     assert_eq!(r.as_str(), "goodbye world");
 }
 

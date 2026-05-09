@@ -13,15 +13,11 @@ pub fn register(interp: &mut Interpreter) {
 /// `puts ?-nonewline? string` — output a string.
 fn cmd_puts(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"puts ?-nonewline? string\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"puts ?-nonewline? string\""));
     }
     let (no_newline, text) = if args[0].as_str() == "-nonewline" {
         if args.len() < 2 {
-            return Err(TclError::new(
-                "wrong # args: should be \"puts ?-nonewline? string\"",
-            ));
+            return Err(TclError::new("wrong # args: should be \"puts ?-nonewline? string\""));
         }
         (true, args[1].as_str().to_string())
     } else {

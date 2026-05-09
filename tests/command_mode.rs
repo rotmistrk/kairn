@@ -8,7 +8,14 @@ fn alt_x_opens_prompt() {
     let dir = temp_project(&[("a.rs", "")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.run_cycles(1);
     let last_row = h.row(23);
     assert!(last_row.contains(":"), "expected prompt, got: {}", last_row);
@@ -18,7 +25,14 @@ fn alt_x_opens_prompt() {
 fn esc_cancels_prompt() {
     let dir = temp_project(&[("a.rs", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.run_cycles(1);
     h.inject_key(KeyCode::Esc, KeyMod::default());
     h.run_cycles(1);
@@ -30,7 +44,14 @@ fn esc_cancels_prompt() {
 fn quit_command_emits_quit() {
     let dir = temp_project(&[("a.rs", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("quit\n");
     h.run_cycles(2);
 }
@@ -39,7 +60,14 @@ fn quit_command_emits_quit() {
 fn tab_completes_command() {
     let dir = temp_project(&[("a.rs", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("he");
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);
@@ -53,7 +81,14 @@ fn open_command_opens_file() {
     let dir = temp_project(&[("README.md", "# Hello World\nThis is content.")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("edit README.md\n");
     h.run_cycles(2);
     let screen = h.screen_text();
@@ -67,12 +102,23 @@ fn tab_completes_file_path() {
     let dir = temp_project(&[("README.md", "content")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("edit READ");
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);
     let last_row = h.row(23);
-    assert!(last_row.contains("README.md"), "expected completed path, got: {}", last_row);
+    assert!(
+        last_row.contains("README.md"),
+        "expected completed path, got: {}",
+        last_row
+    );
 }
 
 // --- BUG 2: open non-existent file creates empty buffer ---
@@ -82,7 +128,14 @@ fn open_nonexistent_file_creates_buffer() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     // Open a file that doesn't exist
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("edit newfile.txt\n");
     h.run_cycles(2);
     // Should have a tab titled "newfile.txt"
@@ -101,7 +154,14 @@ fn tab_completes_inside_directory() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     // M-x, type "open src/", Tab
-    h.inject_key(KeyCode::Char('x'), KeyMod { ctrl: false, alt: true, shift: false });
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
     h.inject_str("edit src/");
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);

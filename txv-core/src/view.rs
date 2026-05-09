@@ -36,11 +36,7 @@ impl EventQueue {
         self.events.push(event);
     }
 
-    pub fn put_command(
-        &mut self,
-        id: CommandId,
-        data: Option<Box<dyn Any + Send>>,
-    ) {
+    pub fn put_command(&mut self, id: CommandId, data: Option<Box<dyn Any + Send>>) {
         self.events.push(Event::Command { id, data });
     }
 
@@ -62,11 +58,7 @@ impl Default for EventQueue {
 /// A rectangular UI element.
 pub trait View: Send {
     fn draw(&self, surface: &mut Surface);
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult;
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult;
     fn select(&mut self) {}
     fn unselect(&mut self) {}
     fn bounds(&self) -> Rect;

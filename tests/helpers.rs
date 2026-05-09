@@ -28,7 +28,11 @@ impl TestHarness {
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(80, 24);
         let state = AppState::new(root_dir.to_path_buf());
-        Self { program, backend, state }
+        Self {
+            program,
+            backend,
+            state,
+        }
     }
 
     /// Create with custom dimensions.
@@ -39,7 +43,11 @@ impl TestHarness {
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(width, height);
         let state = AppState::new(root_dir.to_path_buf());
-        Self { program, backend, state }
+        Self {
+            program,
+            backend,
+            state,
+        }
     }
 
     pub fn inject_key(&mut self, code: KeyCode, mods: KeyMod) {
@@ -53,9 +61,13 @@ impl TestHarness {
     /// Run N cycles of the event loop (same dispatch as real app).
     pub fn run_cycles(&mut self, n: usize) {
         let state = &mut self.state;
-        self.program.run_cycles(&mut self.backend, &mut |ctx| {
-            handle_command(ctx, state);
-        }, n);
+        self.program.run_cycles(
+            &mut self.backend,
+            &mut |ctx| {
+                handle_command(ctx, state);
+            },
+            n,
+        );
     }
 
     pub fn screen_text(&self) -> String {

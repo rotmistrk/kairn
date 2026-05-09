@@ -1,0 +1,4 @@
+edition = "2021"
+max_width = 120
+single_line_if_else_max_width = 0
+single_line_let_else_max_width = 0

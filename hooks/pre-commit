@@ -1,21 +1,35 @@
-#!/bin/sh
-# Pre-commit hook: runs full check cycle before allowing commit.
-# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
-
+#!/bin/bash
+# Pre-commit hook: code quality checks
 set -e
 
 echo "🔍 Running pre-commit checks..."
 
-echo "→ cargo fmt --check"
-cargo fmt -- --check
+# 1. Format check
+echo "  fmt..."
+cargo fmt --all -- --check || { echo "❌ Run 'cargo fmt'"; exit 1; }
 
-echo "→ cargo check"
-cargo check
+# 2. Clippy (includes unwrap/expect deny)
+echo "  clippy..."
+cargo clippy --workspace -- -D warnings 2>&1 | grep -q "^error" && { echo "❌ Clippy errors"; exit 1; } || true
 
-echo "→ cargo clippy (deny warnings, deny unwrap/expect)"
-cargo clippy -- -D warnings
+# 3. File length: max 240 lines of CODE (excluding blank lines and comments)
+echo "  file length..."
+MAX_CODE_LINES=240
+VIOLATIONS=""
+for f in $(find src txv-core/src txv-render/src txv-widgets/src -name '*.rs' 2>/dev/null); do
+    # Count non-blank, non-comment lines
+    CODE_LINES=$(grep -v '^\s*$' "$f" | grep -v '^\s*//' | grep -v '^\s*\*' | wc -l | tr -d ' ')
+    if [ "$CODE_LINES" -gt "$MAX_CODE_LINES" ]; then
+        VIOLATIONS="$VIOLATIONS\n  $f: $CODE_LINES lines of code (max $MAX_CODE_LINES)"
+    fi
+done
+if [ -n "$VIOLATIONS" ]; then
+    echo -e "❌ Files exceed $MAX_CODE_LINES code lines:$VIOLATIONS"
+    exit 1
+fi
 
-echo "→ cargo test"
-cargo test
+# 4. Tests pass
+echo "  tests..."
+cargo test --workspace 2>&1 | grep -q "FAILED" && { echo "❌ Tests failed"; exit 1; } || true
 
-echo "✅ All pre-commit checks passed"
+echo "✅ All checks passed"

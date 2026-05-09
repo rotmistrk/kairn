@@ -54,7 +54,10 @@ impl View for ProgressBar {
             return;
         }
         let filled_style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let empty_style = Style::default();
@@ -63,7 +66,11 @@ impl View for ProgressBar {
             ProgressMode::Determinate => {
                 let filled = (self.progress * b.w as f32) as u16;
                 for col in 0..b.w {
-                    let style = if col < filled { filled_style } else { empty_style };
+                    let style = if col < filled {
+                        filled_style
+                    } else {
+                        empty_style
+                    };
                     surface.put(b.x + col, b.y, '░', style);
                 }
             }
@@ -72,18 +79,18 @@ impl View for ProgressBar {
                 let width = 3.min(b.w);
                 for col in 0..b.w {
                     let in_bar = col >= pos && col < pos + width;
-                    let style = if in_bar { filled_style } else { empty_style };
+                    let style = if in_bar {
+                        filled_style
+                    } else {
+                        empty_style
+                    };
                     surface.put(b.x + col, b.y, '░', style);
                 }
             }
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        _queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
             if self.mode == ProgressMode::Indeterminate {
                 self.advance_tick();

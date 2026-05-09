@@ -73,13 +73,21 @@ impl GroupState {
         }
         let old = self.focused;
         let count = self.children.len();
-        let mut prev = if old == 0 { count - 1 } else { old - 1 };
+        let mut prev = if old == 0 {
+            count - 1
+        } else {
+            old - 1
+        };
         let start = prev;
         loop {
             if self.children[prev].options().focusable {
                 break;
             }
-            prev = if prev == 0 { count - 1 } else { prev - 1 };
+            prev = if prev == 0 {
+                count - 1
+            } else {
+                prev - 1
+            };
             if prev == start {
                 return;
             }
@@ -93,11 +101,7 @@ impl GroupState {
     }
 
     /// Three-phase event dispatch.
-    pub fn dispatch(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    pub fn dispatch(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         // Phase 1: preprocess
         for child in &mut self.children {
             if child.options().preprocess {
@@ -119,9 +123,7 @@ impl GroupState {
 
         // Phase 3: postprocess
         for child in &mut self.children {
-            if child.options().postprocess
-                && child.handle(event, queue) == HandleResult::Consumed
-            {
+            if child.options().postprocess && child.handle(event, queue) == HandleResult::Consumed {
                 return HandleResult::Consumed;
             }
         }
@@ -131,8 +133,7 @@ impl GroupState {
 
     /// Returns true if any child needs redraw.
     pub fn any_dirty(&self) -> bool {
-        self.view.dirty
-            || self.children.iter().any(|c| c.needs_redraw())
+        self.view.dirty || self.children.iter().any(|c| c.needs_redraw())
     }
 
     fn modal_child(&self) -> Option<usize> {
@@ -279,11 +280,7 @@ mod tests {
 
         fn draw(&self, _surface: &mut Surface) {}
 
-        fn handle(
-            &mut self,
-            _event: &Event,
-            _queue: &mut EventQueue,
-        ) -> HandleResult {
+        fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
             HandleResult::Ignored
         }
     }
@@ -320,11 +317,7 @@ mod tests {
         impl View for PreView {
             crate::delegate_view_state!(state);
             fn draw(&self, _s: &mut Surface) {}
-            fn handle(
-                &mut self,
-                _event: &Event,
-                _queue: &mut EventQueue,
-            ) -> HandleResult {
+            fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
                 HandleResult::Consumed
             }
         }

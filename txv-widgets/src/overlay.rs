@@ -12,13 +12,7 @@ pub struct Overlay {
 }
 
 impl Overlay {
-    pub fn new(
-        child: Box<dyn View>,
-        anchor_x: u16,
-        anchor_y: u16,
-        width: u16,
-        height: u16,
-    ) -> Self {
+    pub fn new(child: Box<dyn View>, anchor_x: u16, anchor_y: u16, width: u16, height: u16) -> Self {
         Self {
             state: ViewState::new(ViewOptions {
                 modal: true,
@@ -51,11 +45,7 @@ impl View for Overlay {
         self.child.draw(surface);
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         self.child.handle(event, queue)
     }
 }

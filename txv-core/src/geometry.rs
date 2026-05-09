@@ -24,23 +24,14 @@ impl Rect {
     }
 
     pub fn contains(&self, p: Point) -> bool {
-        p.x >= self.x
-            && p.y >= self.y
-            && p.x < self.x.saturating_add(self.w)
-            && p.y < self.y.saturating_add(self.h)
+        p.x >= self.x && p.y >= self.y && p.x < self.x.saturating_add(self.w) && p.y < self.y.saturating_add(self.h)
     }
 
     pub fn intersect(&self, other: Rect) -> Rect {
         let x1 = self.x.max(other.x);
         let y1 = self.y.max(other.y);
-        let x2 = self
-            .x
-            .saturating_add(self.w)
-            .min(other.x.saturating_add(other.w));
-        let y2 = self
-            .y
-            .saturating_add(self.h)
-            .min(other.y.saturating_add(other.h));
+        let x2 = self.x.saturating_add(self.w).min(other.x.saturating_add(other.w));
+        let y2 = self.y.saturating_add(self.h).min(other.y.saturating_add(other.h));
         if x2 <= x1 || y2 <= y1 {
             Rect::default()
         } else {

@@ -129,7 +129,11 @@ impl View for TextArea {
 
             // Line content
             let is_match = self.search_matches.contains(&line_idx);
-            let style = if is_match { highlight } else { normal };
+            let style = if is_match {
+                highlight
+            } else {
+                normal
+            };
             let text_x = b.x + gutter_w;
             let avail = b.w.saturating_sub(gutter_w) as usize;
             let line = &self.lines[line_idx];
@@ -138,11 +142,7 @@ impl View for TextArea {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        _queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

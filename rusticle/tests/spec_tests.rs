@@ -37,12 +37,8 @@ fn accessor_len() {
 #[test]
 fn pipe_operator() {
     let mut interp = Interpreter::new();
-    interp
-        .eval(r#"set x [list "  hello  " "  world  "]"#)
-        .unwrap();
-    let result = interp
-        .eval(r#"$x(0) | string trim | string toupper"#)
-        .unwrap();
+    interp.eval(r#"set x [list "  hello  " "  world  "]"#).unwrap();
+    let result = interp.eval(r#"$x(0) | string trim | string toupper"#).unwrap();
     assert_eq!(result.as_str(), "HELLO");
 }
 
@@ -58,9 +54,7 @@ fn destructuring_list() {
 fn optional_chain_missing_key() {
     let mut interp = Interpreter::new();
     interp.eval(r#"set d %{ name: "kairn" }"#).unwrap();
-    let result = interp
-        .eval(r#"return [$d("missing")? ?? "default"]"#)
-        .unwrap();
+    let result = interp.eval(r#"return [$d("missing")? ?? "default"]"#).unwrap();
     assert_eq!(result.as_str(), "default");
 }
 
@@ -152,9 +146,7 @@ fn lexical_scoping() {
 #[test]
 fn context_type_validation() {
     let mut interp = Interpreter::new();
-    interp
-        .eval("context cfg { declare mode : enum {a b c} }")
-        .unwrap();
+    interp.eval("context cfg { declare mode : enum {a b c} }").unwrap();
     interp.eval("set cfg::mode a").unwrap();
     let err = interp.eval("set cfg::mode z").unwrap_err();
     assert!(err.message.contains("not a valid"));
@@ -179,12 +171,5 @@ fn validate_type_inference() {
     // NOTE: The current validator doesn't do deep type inference on expr args.
     // This test checks that the validator at least doesn't crash.
     // Full type inference for expr operands is a future enhancement.
-    assert!(
-        result
-            .errors
-            .iter()
-            .any(|d| d.message.contains("non-numeric"))
-            || result.warnings.is_empty()
-            || true
-    );
+    assert!(result.errors.iter().any(|d| d.message.contains("non-numeric")) || result.warnings.is_empty() || true);
 }

@@ -18,11 +18,7 @@ pub struct SplitPane {
 }
 
 impl SplitPane {
-    pub fn new(
-        direction: SplitDirection,
-        first: Box<dyn View>,
-        second: Box<dyn View>,
-    ) -> Self {
+    pub fn new(direction: SplitDirection, first: Box<dyn View>, second: Box<dyn View>) -> Self {
         Self {
             state: ViewState::default(),
             direction,
@@ -55,22 +51,14 @@ impl SplitPane {
             SplitDirection::Horizontal => {
                 let split = (b.w as f32 * self.ratio) as u16;
                 self.first.set_bounds(Rect::new(b.x, b.y, split, b.h));
-                self.second.set_bounds(Rect::new(
-                    b.x + split + 1,
-                    b.y,
-                    b.w.saturating_sub(split + 1),
-                    b.h,
-                ));
+                self.second
+                    .set_bounds(Rect::new(b.x + split + 1, b.y, b.w.saturating_sub(split + 1), b.h));
             }
             SplitDirection::Vertical => {
                 let split = (b.h as f32 * self.ratio) as u16;
                 self.first.set_bounds(Rect::new(b.x, b.y, b.w, split));
-                self.second.set_bounds(Rect::new(
-                    b.x,
-                    b.y + split + 1,
-                    b.w,
-                    b.h.saturating_sub(split + 1),
-                ));
+                self.second
+                    .set_bounds(Rect::new(b.x, b.y + split + 1, b.w, b.h.saturating_sub(split + 1)));
             }
         }
         self.state.dirty = true;
@@ -117,11 +105,7 @@ impl View for SplitPane {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let target = if self.focused_pane == 0 {
             &mut self.first
         } else {

@@ -40,9 +40,7 @@ pub fn register(interp: &mut Interpreter) {
 /// `context name { body }` — create a named scope.
 fn cmd_context(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 2 {
-        return Err(TclError::new(
-            "wrong # args: should be \"context name body\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"context name body\""));
     }
     let name = args[0].as_str().to_string();
     let body = args[1].as_str().to_string();
@@ -87,9 +85,7 @@ fn cmd_context(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
 /// `declare var : type` — declare a typed variable in the current context.
 fn cmd_declare(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.len() < 3 {
-        return Err(TclError::new(
-            "wrong # args: should be \"declare varName : type\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"declare varName : type\""));
     }
     let var_name = args[0].as_str().to_string();
     // args[1] should be ":"
@@ -158,11 +154,7 @@ fn validate_enum(spec: &str, value: &TclValue) -> Result<(), TclError> {
 
 /// Check type on context variable assignment.
 /// Called when setting `ctx::var` to validate against declarations.
-pub fn check_context_assignment(
-    interp: &Interpreter,
-    qualified_name: &str,
-    value: &TclValue,
-) -> Result<(), TclError> {
+pub fn check_context_assignment(interp: &Interpreter, qualified_name: &str, value: &TclValue) -> Result<(), TclError> {
     if let Some((ctx_name, var_name)) = qualified_name.split_once("::") {
         if let Some(ctx) = interp.contexts.get(ctx_name) {
             if let Some(type_spec) = ctx.declarations.get(var_name) {
@@ -212,9 +204,7 @@ mod tests {
     #[test]
     fn declare_and_validate() {
         let mut interp = Interpreter::new();
-        interp
-            .eval("context cfg { declare mode : enum {a b c} }")
-            .unwrap();
+        interp.eval("context cfg { declare mode : enum {a b c} }").unwrap();
         // Valid assignment
         interp.eval("set cfg::mode a").unwrap();
         // Invalid assignment should fail

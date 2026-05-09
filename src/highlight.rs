@@ -39,32 +39,36 @@ impl Highlighter {
     pub fn highlight_line(&self, line: &str, ext: &str) -> Vec<HlSpan> {
         let syntax = match self.syntax_set.find_syntax_by_extension(ext) {
             Some(s) => s,
-            None => return vec![HlSpan { text: line.to_string(), style: Style::default() }],
+            None => {
+                return vec![HlSpan {
+                    text: line.to_string(),
+                    style: Style::default(),
+                }]
+            }
         };
 
         use syntect::easy::HighlightLines;
         let mut h = HighlightLines::new(syntax, &self.theme);
         match h.highlight_line(line, &self.syntax_set) {
-            Ok(ranges) => {
-                ranges
-                    .iter()
-                    .map(|(style, text)| {
-                        let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
-                        HlSpan {
-                            text: text.to_string(),
-                            style: Style { fg, ..Style::default() },
-                        }
-                    })
-                    .collect()
-            }
-            Err(_) => vec![HlSpan { text: line.to_string(), style: Style::default() }],
+            Ok(ranges) => ranges
+                .iter()
+                .map(|(style, text)| {
+                    let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
+                    HlSpan {
+                        text: text.to_string(),
+                        style: Style { fg, ..Style::default() },
+                    }
+                })
+                .collect(),
+            Err(_) => vec![HlSpan {
+                text: line.to_string(),
+                style: Style::default(),
+            }],
         }
     }
 }
 
 /// Extract file extension from a path.
 pub fn extension_from_path(path: &Path) -> &str {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
+    path.extension().and_then(|e| e.to_str()).unwrap_or("")
 }

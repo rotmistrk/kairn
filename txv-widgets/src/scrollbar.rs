@@ -41,7 +41,10 @@ impl View for Scrollbar {
         };
         let thumb_style = Style {
             fg: Color::Reset,
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let (thumb_pos, thumb_size) = self.scroll.thumb(b.h);
@@ -55,11 +58,7 @@ impl View for Scrollbar {
         }
     }
 
-    fn handle(
-        &mut self,
-        _event: &Event,
-        _queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
         HandleResult::Ignored
     }
 }

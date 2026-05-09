@@ -94,11 +94,7 @@ impl ValidationContext {
         }
         let mut proc_arities = HashMap::new();
         for (name, proc_def) in &interp.procs {
-            let min = proc_def
-                .params
-                .iter()
-                .filter(|p| p.default.is_none())
-                .count();
+            let min = proc_def.params.iter().filter(|p| p.default.is_none()).count();
             let max = proc_def.params.len();
             proc_arities.insert(name.clone(), (min, max));
         }
@@ -132,10 +128,7 @@ impl ValidationContext {
     }
 
     fn is_var_in_current_scope(&self, name: &str) -> bool {
-        self.known_vars
-            .last()
-            .map(|s| s.contains(name))
-            .unwrap_or(false)
+        self.known_vars.last().map(|s| s.contains(name)).unwrap_or(false)
     }
 }
 
@@ -158,11 +151,7 @@ impl Interpreter {
 }
 
 /// Validate a list of commands.
-fn validate_commands(
-    commands: &[Command],
-    ctx: &mut ValidationContext,
-    result: &mut ValidationResult,
-) {
+fn validate_commands(commands: &[Command], ctx: &mut ValidationContext, result: &mut ValidationResult) {
     let mut after_return = false;
     for cmd in commands {
         if cmd.words.is_empty() {
@@ -180,12 +169,7 @@ fn validate_commands(
 }
 
 /// Validate a single command.
-fn validate_one_command(
-    name: &str,
-    cmd: &Command,
-    ctx: &mut ValidationContext,
-    result: &mut ValidationResult,
-) {
+fn validate_one_command(name: &str, cmd: &Command, ctx: &mut ValidationContext, result: &mut ValidationResult) {
     match name {
         "set" => validate_set(cmd, ctx, result),
         "proc" => validate_proc(cmd, ctx, result),
@@ -208,10 +192,7 @@ fn validate_set(cmd: &Command, ctx: &mut ValidationContext, result: &mut Validat
         let var_name = cmd.words[1].text().to_string();
         // Check for shadowing
         if ctx.is_var_known(&var_name) && !ctx.is_var_in_current_scope(&var_name) {
-            result.add_warning(
-                format!("variable \"{var_name}\" shadows outer variable"),
-                cmd.line,
-            );
+            result.add_warning(format!("variable \"{var_name}\" shadows outer variable"), cmd.line);
         }
         ctx.define_var(&var_name);
     }
@@ -234,8 +215,7 @@ fn validate_proc(cmd: &Command, ctx: &mut ValidationContext, result: &mut Valida
         } else {
             params.split_whitespace().count()
         };
-        ctx.proc_arities
-            .insert(proc_name, (param_count, param_count));
+        ctx.proc_arities.insert(proc_name, (param_count, param_count));
 
         // Validate body
         ctx.push_scope();
@@ -273,22 +253,14 @@ fn validate_switch(cmd: &Command, ctx: &mut ValidationContext, result: &mut Vali
         let body = cmd.words[2].text();
         let has_default = body.contains("default") || body.contains('_');
         if !has_default {
-            result.add_warning(
-                "switch may not be exhaustive (no default case)".into(),
-                cmd.line,
-            );
+            result.add_warning("switch may not be exhaustive (no default case)".into(), cmd.line);
         }
     }
     check_var_references(cmd, ctx, result);
 }
 
 /// Check if a command name is known.
-fn check_command_exists(
-    name: &str,
-    cmd: &Command,
-    ctx: &ValidationContext,
-    result: &mut ValidationResult,
-) {
+fn check_command_exists(name: &str, cmd: &Command, ctx: &ValidationContext, result: &mut ValidationResult) {
     if ctx.known_commands.contains(name) {
         return;
     }
@@ -298,12 +270,7 @@ fn check_command_exists(
 }
 
 /// Check proc arity.
-fn check_proc_arity(
-    name: &str,
-    cmd: &Command,
-    ctx: &ValidationContext,
-    result: &mut ValidationResult,
-) {
+fn check_proc_arity(name: &str, cmd: &Command, ctx: &ValidationContext, result: &mut ValidationResult) {
     if let Some((min, max)) = ctx.proc_arities.get(name) {
         let arg_count = cmd.words.len() - 1;
         if arg_count < *min || arg_count > *max {
@@ -325,21 +292,14 @@ fn check_var_references(cmd: &Command, ctx: &ValidationContext, result: &mut Val
 }
 
 /// Scan text for $var references and check if they're defined.
-fn check_vars_in_text(
-    text: &str,
-    line: usize,
-    ctx: &ValidationContext,
-    result: &mut ValidationResult,
-) {
+fn check_vars_in_text(text: &str, line: usize, ctx: &ValidationContext, result: &mut ValidationResult) {
     let chars: Vec<char> = text.chars().collect();
     let mut i = 0;
     while i < chars.len() {
         if chars[i] == '$' {
             i += 1;
             let mut name = String::new();
-            while i < chars.len()
-                && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == ':')
-            {
+            while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_' || chars[i] == ':') {
                 name.push(chars[i]);
                 i += 1;
             }
@@ -356,10 +316,7 @@ fn check_vars_in_text(
 fn check_dead_code(ctx: &ValidationContext, result: &mut ValidationResult) {
     for proc_name in &ctx.defined_procs {
         if !ctx.called_procs.contains(proc_name) {
-            result.add_warning(
-                format!("proc \"{proc_name}\" is defined but never called"),
-                0,
-            );
+            result.add_warning(format!("proc \"{proc_name}\" is defined but never called"), 0);
         }
     }
 }
@@ -391,10 +348,12 @@ fn edit_distance(a: &str, b: &str) -> usize {
     }
     for i in 1..=m {
         for j in 1..=n {
-            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
-            dp[i][j] = (dp[i - 1][j] + 1)
-                .min(dp[i][j - 1] + 1)
-                .min(dp[i - 1][j - 1] + cost);
+            let cost = if a[i - 1] == b[j - 1] {
+                0
+            } else {
+                1
+            };
+            dp[i][j] = (dp[i - 1][j] + 1).min(dp[i][j - 1] + 1).min(dp[i - 1][j - 1] + cost);
         }
     }
     dp[m][n]
@@ -432,20 +391,14 @@ mod tests {
     fn unreachable_code_warning() {
         let interp = Interpreter::new();
         let result = interp.validate("return 1\nputs hello");
-        assert!(result
-            .warnings
-            .iter()
-            .any(|d| d.message.contains("unreachable")));
+        assert!(result.warnings.iter().any(|d| d.message.contains("unreachable")));
     }
 
     #[test]
     fn undefined_variable_warning() {
         let interp = Interpreter::new();
         let result = interp.validate("puts $undefined_var");
-        assert!(result
-            .warnings
-            .iter()
-            .any(|d| d.message.contains("undefined_var")));
+        assert!(result.warnings.iter().any(|d| d.message.contains("undefined_var")));
     }
 
     #[test]
@@ -453,30 +406,21 @@ mod tests {
         let interp = Interpreter::new();
         let result = interp.validate("set x 1\nproc foo {} { set x 2 }");
         // x is set in outer scope, then set again in proc
-        assert!(result
-            .warnings
-            .iter()
-            .any(|d| d.message.contains("shadows")));
+        assert!(result.warnings.iter().any(|d| d.message.contains("shadows")));
     }
 
     #[test]
     fn dead_code_warning() {
         let interp = Interpreter::new();
         let result = interp.validate("proc unused {} { return 1 }");
-        assert!(result
-            .warnings
-            .iter()
-            .any(|d| d.message.contains("never called")));
+        assert!(result.warnings.iter().any(|d| d.message.contains("never called")));
     }
 
     #[test]
     fn non_exhaustive_switch_warning() {
         let interp = Interpreter::new();
         let result = interp.validate("switch $x {a {puts a} b {puts b}}");
-        assert!(result
-            .warnings
-            .iter()
-            .any(|d| d.message.contains("exhaustive")));
+        assert!(result.warnings.iter().any(|d| d.message.contains("exhaustive")));
     }
 
     #[test]

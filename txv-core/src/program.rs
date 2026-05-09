@@ -61,10 +61,7 @@ impl Program {
     ///
     /// The status bar MUST have `preprocess: true` in its ViewOptions.
     /// The desktop is the focused child that receives normal events.
-    pub fn new(
-        status_bar: Box<dyn View>,
-        desktop: Box<dyn View>,
-    ) -> Self {
+    pub fn new(status_bar: Box<dyn View>, desktop: Box<dyn View>) -> Self {
         let mut group = GroupState::new(ViewOptions {
             focusable: true,
             ..ViewOptions::default()
@@ -166,12 +163,7 @@ impl Program {
     ///
     /// Each cycle: processes all pending events from backend, dispatches
     /// commands, draws. Suitable for testing with MockBackend.
-    pub fn run_cycles(
-        &mut self,
-        backend: &mut dyn Backend,
-        handler: &mut dyn FnMut(&mut CommandContext),
-        n: usize,
-    ) {
+    pub fn run_cycles(&mut self, backend: &mut dyn Backend, handler: &mut dyn FnMut(&mut CommandContext), n: usize) {
         let (w, h) = backend.size();
         let mut surface = Surface::new(w, h);
         let mut queue = EventQueue::new();

@@ -18,7 +18,10 @@ impl Default for VimKeymap {
 
 impl VimKeymap {
     pub fn new() -> Self {
-        Self { pending: None, pending_count: None }
+        Self {
+            pending: None,
+            pending_count: None,
+        }
     }
 
     pub fn count(&mut self) -> usize {
@@ -101,21 +104,54 @@ impl VimKeymap {
             KeyCode::Char('.') => Command::DotRepeat,
 
             // Indent (>> / <<)
-            KeyCode::Char('>') => { self.pending = Some('>'); Command::Noop }
-            KeyCode::Char('<') => { self.pending = Some('<'); Command::Noop }
+            KeyCode::Char('>') => {
+                self.pending = Some('>');
+                Command::Noop
+            }
+            KeyCode::Char('<') => {
+                self.pending = Some('<');
+                Command::Noop
+            }
 
             // Operators
-            KeyCode::Char('d') => { self.pending = Some('d'); Command::Noop }
-            KeyCode::Char('c') => { self.pending = Some('c'); Command::Noop }
-            KeyCode::Char('y') => { self.pending = Some('y'); Command::Noop }
+            KeyCode::Char('d') => {
+                self.pending = Some('d');
+                Command::Noop
+            }
+            KeyCode::Char('c') => {
+                self.pending = Some('c');
+                Command::Noop
+            }
+            KeyCode::Char('y') => {
+                self.pending = Some('y');
+                Command::Noop
+            }
 
             // Pending char commands
-            KeyCode::Char('r') => { self.pending = Some('r'); Command::Noop }
-            KeyCode::Char('f') => { self.pending = Some('f'); Command::Noop }
-            KeyCode::Char('F') => { self.pending = Some('F'); Command::Noop }
-            KeyCode::Char('t') => { self.pending = Some('t'); Command::Noop }
-            KeyCode::Char('T') => { self.pending = Some('T'); Command::Noop }
-            KeyCode::Char('g') => { self.pending = Some('g'); Command::Noop }
+            KeyCode::Char('r') => {
+                self.pending = Some('r');
+                Command::Noop
+            }
+            KeyCode::Char('f') => {
+                self.pending = Some('f');
+                Command::Noop
+            }
+            KeyCode::Char('F') => {
+                self.pending = Some('F');
+                Command::Noop
+            }
+            KeyCode::Char('t') => {
+                self.pending = Some('t');
+                Command::Noop
+            }
+            KeyCode::Char('T') => {
+                self.pending = Some('T');
+                Command::Noop
+            }
+            KeyCode::Char('g') => {
+                self.pending = Some('g');
+                Command::Noop
+            }
 
             // Visual
             KeyCode::Char('v') => Command::EnterVisual,
@@ -140,7 +176,10 @@ impl VimKeymap {
     fn two_key(&mut self, prefix: char, key: &KeyEvent) -> Command {
         let ch = match &key.code {
             KeyCode::Char(c) => *c,
-            _ => { self.pending_count = None; return Command::Noop; }
+            _ => {
+                self.pending_count = None;
+                return Command::Noop;
+            }
         };
         match (prefix, ch) {
             ('d', 'd') => Command::DeleteLine,
@@ -169,16 +208,13 @@ impl VimKeymap {
             ('t', _) => Command::TillChar(ch),
             ('T', _) => Command::TillCharBack(ch),
             // Operator + motion: return the operator, let editor handle motion
-            ('d', 'e') | ('d', '^') => {
-                Command::OperatorDelete
+            ('d', 'e') | ('d', '^') => Command::OperatorDelete,
+            ('c', 'e') | ('c', 'b') | ('c', '0') | ('c', '^') => Command::OperatorChange,
+            ('y', 'e') | ('y', 'b') | ('y', '0') | ('y', '^') => Command::OperatorYank,
+            _ => {
+                self.pending_count = None;
+                Command::Noop
             }
-            ('c', 'e') | ('c', 'b') | ('c', '0') | ('c', '^') => {
-                Command::OperatorChange
-            }
-            ('y', 'e') | ('y', 'b') | ('y', '0') | ('y', '^') => {
-                Command::OperatorYank
-            }
-            _ => { self.pending_count = None; Command::Noop }
         }
     }
 

@@ -72,22 +72,14 @@ pub mod prelude {
     pub use crate::commands::*;
     pub use crate::complete::{Completer, Completion};
     pub use crate::dialog::DialogState;
-    pub use crate::event::{
-        CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction,
-        MouseButton, MouseEvent,
-    };
+    pub use crate::event::{CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
     pub use crate::geometry::{Point, Rect};
     pub use crate::group::GroupState;
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::surface::{SubSurface, Surface};
-    pub use crate::view::{
-        EventQueue, HandleResult, View, ViewOptions, ViewState,
-    };
+    pub use crate::view::{EventQueue, HandleResult, View, ViewOptions, ViewState};
     pub use crate::window::{FrameStyle, WindowState};
 
     // Re-export macros (they are already at crate root via #[macro_export])
-    pub use crate::{
-        delegate_dialog_state, delegate_group_state,
-        delegate_view_state, delegate_window_state,
-    };
+    pub use crate::{delegate_dialog_state, delegate_group_state, delegate_view_state, delegate_window_state};
 }

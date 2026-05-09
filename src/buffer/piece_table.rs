@@ -50,7 +50,11 @@ impl PieceTable {
         let pieces = if content.is_empty() {
             Vec::new()
         } else {
-            vec![Piece { source: Source::Original, start: 0, len: content.len() }]
+            vec![Piece {
+                source: Source::Original,
+                start: 0,
+                len: content.len(),
+            }]
         };
         Self {
             original: content.to_string(),
@@ -97,7 +101,9 @@ impl PieceTable {
     pub fn line(&self, line_num: usize) -> Option<String> {
         let content = self.content();
         let start = self.line_index.line_start(line_num)?;
-        let end = self.line_index.line_start(line_num + 1)
+        let end = self
+            .line_index
+            .line_start(line_num + 1)
             .map(|e| e.saturating_sub(1)) // strip \n
             .unwrap_or(content.len());
         Some(content[start..end].to_string())
@@ -114,7 +120,11 @@ impl PieceTable {
         self.save_undo();
         let add_start = self.add_buf.len();
         self.add_buf.push_str(text);
-        let new_piece = Piece { source: Source::Add, start: add_start, len: text.len() };
+        let new_piece = Piece {
+            source: Source::Add,
+            start: add_start,
+            len: text.len(),
+        };
         self.insert_piece_at(offset, new_piece);
         self.rebuild_line_index();
         self.modified = true;
@@ -136,13 +146,7 @@ impl PieceTable {
         }
     }
 
-    pub fn delete_at(
-        &mut self,
-        line1: usize,
-        col1: usize,
-        line2: usize,
-        col2: usize,
-    ) {
+    pub fn delete_at(&mut self, line1: usize, col1: usize, line2: usize, col2: usize) {
         let start = self.line_col_to_offset(line1, col1);
         let end = self.line_col_to_offset(line2, col2);
         if let (Some(s), Some(e)) = (start, end) {
@@ -239,8 +243,16 @@ impl PieceTable {
                     self.pieces.insert(i + 1, new_piece);
                 } else {
                     // Split piece
-                    let left = Piece { source: p.source, start: p.start, len: local };
-                    let right = Piece { source: p.source, start: p.start + local, len: p.len - local };
+                    let left = Piece {
+                        source: p.source,
+                        start: p.start,
+                        len: local,
+                    };
+                    let right = Piece {
+                        source: p.source,
+                        start: p.start + local,
+                        len: p.len - local,
+                    };
                     self.pieces.splice(i..=i, [left, new_piece, right]);
                 }
                 return;
@@ -267,7 +279,11 @@ impl PieceTable {
                 if p_start < start {
                     // Keep left portion
                     let keep = start - p_start;
-                    new_pieces.push(Piece { source: p.source, start: p.start, len: keep });
+                    new_pieces.push(Piece {
+                        source: p.source,
+                        start: p.start,
+                        len: keep,
+                    });
                 }
                 if p_end > end {
                     // Keep right portion

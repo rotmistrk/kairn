@@ -19,8 +19,7 @@ pub struct EditorView {
 
 impl EditorView {
     pub fn open(path: &Path) -> anyhow::Result<Self> {
-        let editor = Editor::open(path)
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
         let file_ext = highlight::extension_from_path(path).to_string();
         Ok(Self {
             state: ViewState::default(),
@@ -53,7 +52,11 @@ impl EditorView {
             return 0;
         }
         let lines = self.editor.buffer.line_count();
-        let digits = if lines == 0 { 1 } else { (lines as f64).log10() as u16 + 1 };
+        let digits = if lines == 0 {
+            1
+        } else {
+            (lines as f64).log10() as u16 + 1
+        };
         digits + 1
     }
 }
@@ -62,9 +65,7 @@ impl View for EditorView {
     delegate_view_state!(state, override { title, needs_redraw });
 
     fn title(&self) -> &str {
-        self.path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("untitled")
+        self.path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled")
     }
 
     fn needs_redraw(&self) -> bool {
@@ -77,14 +78,23 @@ impl View for EditorView {
             return;
         }
         let gutter_w = self.gutter_width();
-        let gutter_style = Style { fg: Color::Ansi(8), ..Style::default() };
+        let gutter_style = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
         let normal = Style::default();
         let cursor_style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let visual_style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             fg: Color::Ansi(3),
             ..Style::default()
         };
@@ -106,11 +116,7 @@ impl View for EditorView {
 
             // Line number
             if gutter_w > 0 {
-                let num = format!(
-                    "{:>width$} ",
-                    line_idx + 1,
-                    width = (gutter_w - 1) as usize,
-                );
+                let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize,);
                 surface.print(b.x, y, &num, gutter_style);
             }
 
@@ -153,7 +159,10 @@ impl View for EditorView {
 
                     // Render character (list mode substitutes invisibles)
                     let (display_ch, display_style) = if self.editor.options.list {
-                        let list_style = Style { fg: Color::Ansi(8), ..style };
+                        let list_style = Style {
+                            fg: Color::Ansi(8),
+                            ..style
+                        };
                         match ch {
                             ' ' => ('\u{00B7}', list_style),  // ·
                             '\t' => ('\u{2192}', list_style), // →
@@ -170,14 +179,15 @@ impl View for EditorView {
 
             // List mode: show EOL marker
             if self.editor.options.list && (col_offset as usize) < avail {
-                let list_style = Style { fg: Color::Ansi(8), ..Style::default() };
+                let list_style = Style {
+                    fg: Color::Ansi(8),
+                    ..Style::default()
+                };
                 surface.put(text_x + col_offset, y, '$', list_style);
             }
 
             // If line is empty or shorter, still show cursor
-            if line_idx == self.editor.cursor_line
-                && self.state.focused
-                && self.editor.cursor_col as u16 >= col_offset
+            if line_idx == self.editor.cursor_line && self.state.focused && self.editor.cursor_col as u16 >= col_offset
             {
                 let cx = text_x + self.editor.cursor_col as u16;
                 if cx < b.x + b.w {
@@ -192,21 +202,24 @@ impl View for EditorView {
         {
             let prompt_y = b.y + b.h.saturating_sub(1);
             let prompt_style = Style {
-                attrs: Attrs { reverse: true, ..Attrs::default() },
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
                 ..Style::default()
             };
             surface.hline(b.x, prompt_y, b.w, ' ', prompt_style);
-            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search { "/" } else { ":" };
+            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+                "/"
+            } else {
+                ":"
+            };
             surface.print(b.x, prompt_y, prefix, prompt_style);
             surface.print(b.x + 1, prompt_y, &self.editor.command_buf, prompt_style);
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
@@ -232,11 +245,7 @@ impl View for EditorView {
 }
 
 impl EditorView {
-    fn handle_command_input(
-        &mut self,
-        key: &txv_core::event::KeyEvent,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle_command_input(&mut self, key: &txv_core::event::KeyEvent, queue: &mut EventQueue) -> HandleResult {
         use txv_core::event::KeyCode;
 
         match &key.code {
@@ -248,15 +257,11 @@ impl EditorView {
                 let buf = self.editor.command_buf.clone();
                 if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                    let action = self.editor.execute(
-                        crate::editor::command::Command::SearchForward(buf),
-                    );
+                    let action = self.editor.execute(crate::editor::command::Command::SearchForward(buf));
                     self.handle_action(action, queue);
                 } else {
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                    let action = self.editor.execute(
-                        crate::editor::command::Command::ExCommand(buf),
-                    );
+                    let action = self.editor.execute(crate::editor::command::Command::ExCommand(buf));
                     self.handle_action(action, queue);
                 }
                 self.editor.command_buf.clear();

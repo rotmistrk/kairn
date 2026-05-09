@@ -75,10 +75,7 @@ impl Parser {
             let cmd_line = line;
             let words = super::words::parse_command_words(&chars, &mut pos, &mut line)?;
             if !words.is_empty() {
-                commands.push(Command {
-                    words,
-                    line: cmd_line,
-                });
+                commands.push(Command { words, line: cmd_line });
             }
         }
 

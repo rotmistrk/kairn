@@ -36,10 +36,7 @@ pub fn eval_script(interp: &mut Interpreter, script: &str) -> Result<TclValue, T
 
 /// Evaluate a script, catching top-level `return` and extracting the value.
 /// Used by command substitution `[...]` and the public `eval()` API.
-pub fn eval_script_catching_return(
-    interp: &mut Interpreter,
-    script: &str,
-) -> Result<TclValue, TclError> {
+pub fn eval_script_catching_return(interp: &mut Interpreter, script: &str) -> Result<TclValue, TclError> {
     match eval_script(interp, script) {
         Ok(v) => Ok(v),
         Err(e) if matches!(e.code, ErrorCode::Return(_)) => {
@@ -78,10 +75,7 @@ fn resolve_word(interp: &mut Interpreter, word: &Word) -> Result<TclValue, TclEr
 
 /// Check if the entire input is a single substitution ($var or [cmd]).
 /// If so, return the value directly to preserve type information.
-fn try_direct_subst(
-    chars: &[char],
-    interp: &mut Interpreter,
-) -> Result<Option<TclValue>, TclError> {
+fn try_direct_subst(chars: &[char], interp: &mut Interpreter) -> Result<Option<TclValue>, TclError> {
     if chars.is_empty() {
         return Ok(None);
     }
@@ -130,11 +124,7 @@ pub fn substitute(interp: &mut Interpreter, input: &str) -> Result<TclValue, Tcl
 }
 
 /// Substitute a variable reference starting at `$`.
-fn subst_variable(
-    interp: &mut Interpreter,
-    chars: &[char],
-    start: usize,
-) -> Result<(TclValue, usize), TclError> {
+fn subst_variable(interp: &mut Interpreter, chars: &[char], start: usize) -> Result<(TclValue, usize), TclError> {
     let mut i = start + 1; // skip $
     if i >= chars.len() {
         return Ok((TclValue::Str("$".into()), i));
@@ -233,9 +223,7 @@ fn apply_property(
             _ => TclValue::Int(val.as_str().len() as i64),
         },
         "keys" => match val {
-            TclValue::Dict(d) => {
-                TclValue::List(d.iter().map(|(k, _)| TclValue::Str(k.clone())).collect())
-            }
+            TclValue::Dict(d) => TclValue::List(d.iter().map(|(k, _)| TclValue::Str(k.clone())).collect()),
             _ => return Err(TclError::new(".keys requires a dict")),
         },
         "values" => match val {
@@ -360,9 +348,7 @@ fn dict_get(val: &TclValue, key: &str, _interp: &Interpreter) -> Result<TclValue
                     return Ok(v.clone());
                 }
             }
-            Err(TclError::new(format!(
-                "key \"{key}\" not known in dictionary"
-            )))
+            Err(TclError::new(format!("key \"{key}\" not known in dictionary")))
         }
         _ => Err(TclError::new(format!(
             "can't use \"{key}\" as dict key on {}",
@@ -372,11 +358,7 @@ fn dict_get(val: &TclValue, key: &str, _interp: &Interpreter) -> Result<TclValue
 }
 
 /// Substitute a command `[...]`.
-fn subst_command(
-    interp: &mut Interpreter,
-    chars: &[char],
-    start: usize,
-) -> Result<(TclValue, usize), TclError> {
+fn subst_command(interp: &mut Interpreter, chars: &[char], start: usize) -> Result<(TclValue, usize), TclError> {
     let mut i = start + 1; // skip [
     let mut depth = 1;
     let mut script = String::new();
@@ -474,11 +456,9 @@ fn split_literal_entries(content: &str) -> Vec<String> {
 
 /// Split a `key: value` pair.
 fn split_kv(entry: &str) -> Result<(String, &str), TclError> {
-    let colon_pos = entry.find(':').ok_or_else(|| {
-        TclError::new(format!(
-            "expected 'key: value' in dict literal, got: {entry}"
-        ))
-    })?;
+    let colon_pos = entry
+        .find(':')
+        .ok_or_else(|| TclError::new(format!("expected 'key: value' in dict literal, got: {entry}")))?;
     let key = entry[..colon_pos].trim();
     let key = if key.starts_with('"') && key.ends_with('"') {
         key[1..key.len() - 1].to_string()
@@ -547,17 +527,9 @@ pub fn dispatch(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue,
 }
 
 /// Call a procedure.
-fn call_proc(
-    interp: &mut Interpreter,
-    proc_def: &Proc,
-    args: &[TclValue],
-) -> Result<TclValue, TclError> {
+fn call_proc(interp: &mut Interpreter, proc_def: &Proc, args: &[TclValue]) -> Result<TclValue, TclError> {
     // Check arity
-    let min_args = proc_def
-        .params
-        .iter()
-        .filter(|p| p.default.is_none())
-        .count();
+    let min_args = proc_def.params.iter().filter(|p| p.default.is_none()).count();
     let max_args = proc_def.params.len();
     if args.len() < min_args || args.len() > max_args {
         return Err(TclError::new(format!(

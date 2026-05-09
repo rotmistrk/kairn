@@ -7,7 +7,9 @@ use crate::scroll_view::ScrollView;
 /// Trait for providing list data to ListView.
 pub trait ListData: Send {
     fn len(&self) -> usize;
-    fn is_empty(&self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn label(&self, index: usize) -> &str;
     fn style(&self, index: usize) -> Style;
 }
@@ -46,7 +48,10 @@ impl<D: ListData> View for ListView<D> {
             return;
         }
         let selected = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         for row in 0..b.h as usize {
@@ -65,11 +70,7 @@ impl<D: ListData> View for ListView<D> {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         match event {
             Event::Key(key) => match key.code {
                 KeyCode::Up => {

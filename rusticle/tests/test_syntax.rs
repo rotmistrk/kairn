@@ -50,9 +50,7 @@ fn accessor_dot_len() {
 #[test]
 fn pipe_operator() {
     let mut interp = Interpreter::new();
-    let result = interp
-        .eval(r#""  hello  " | string trim | string toupper"#)
-        .unwrap();
+    let result = interp.eval(r#""  hello  " | string trim | string toupper"#).unwrap();
     assert_eq!(result.as_str(), "HELLO");
 }
 
@@ -69,9 +67,7 @@ fn optional_chain_missing() {
 fn heredoc_with_subst() {
     let mut interp = Interpreter::new();
     interp.eval("set name world").unwrap();
-    let result = interp
-        .eval("set msg <<END\nhello $name\nEND\nreturn $msg")
-        .unwrap();
+    let result = interp.eval("set msg <<END\nhello $name\nEND\nreturn $msg").unwrap();
     assert_eq!(result.as_str().trim(), "hello world");
 }
 
@@ -79,9 +75,7 @@ fn heredoc_with_subst() {
 fn heredoc_raw_no_subst() {
     let mut interp = Interpreter::new();
     interp.eval("set name world").unwrap();
-    let result = interp
-        .eval("set msg <<'END'\nhello $name\nEND\nreturn $msg")
-        .unwrap();
+    let result = interp.eval("set msg <<'END'\nhello $name\nEND\nreturn $msg").unwrap();
     assert_eq!(result.as_str().trim(), "hello $name");
 }
 

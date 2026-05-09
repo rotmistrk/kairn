@@ -58,15 +58,18 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else { return };
-    let Some(path) = boxed.downcast_ref::<PathBuf>() else { return };
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(path) = boxed.downcast_ref::<PathBuf>() else {
+        return;
+    };
     let path_str = path.to_string_lossy().to_string();
 
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
-            let editor = EditorView::open(path)
-                .unwrap_or_else(|_| EditorView::new_file(path));
+            let editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
             let title = editor.title().to_string();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.insert_tab(SlotId::Center, title, Box::new(editor));
@@ -76,8 +79,12 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else { return };
-    let Some(text) = boxed.downcast_ref::<String>() else { return };
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(text) = boxed.downcast_ref::<String>() else {
+        return;
+    };
     log::debug!("execute_command: {:?}", text);
 
     let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
@@ -102,8 +109,7 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             match state.broker.open(&path_str, SlotId::Center, 0) {
                 OpenResult::AlreadyOpen { .. } => {}
                 OpenResult::Opened => {
-                    let editor = EditorView::open(&path)
-                        .unwrap_or_else(|_| EditorView::new_file(&path));
+                    let editor = EditorView::open(&path).unwrap_or_else(|_| EditorView::new_file(&path));
                     let title = editor.title().to_string();
                     if let Some(d) = downcast_desktop(ctx.desktop) {
                         d.insert_tab(SlotId::Center, title, Box::new(editor));

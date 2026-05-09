@@ -44,12 +44,18 @@ impl View for Dialog {
         }
         let normal = Style::default();
         let border_style = Style {
-            attrs: Attrs { bold: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let btn_normal = Style::default();
         let btn_focused = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
 
@@ -68,7 +74,12 @@ impl View for Dialog {
         surface.put(b.x, b.y, '╔', border_style);
         surface.put(b.x + b.w.saturating_sub(1), b.y, '╗', border_style);
         surface.put(b.x, b.y + b.h.saturating_sub(1), '╚', border_style);
-        surface.put(b.x + b.w.saturating_sub(1), b.y + b.h.saturating_sub(1), '╝', border_style);
+        surface.put(
+            b.x + b.w.saturating_sub(1),
+            b.y + b.h.saturating_sub(1),
+            '╝',
+            border_style,
+        );
 
         // Title
         if !self.title_text.is_empty() {
@@ -91,23 +102,21 @@ impl View for Dialog {
 
         // Buttons at bottom
         let btn_y = b.y + b.h.saturating_sub(2);
-        let total_btn_width: u16 = self.buttons.iter()
-            .map(|b| b.len() as u16 + 4)
-            .sum();
+        let total_btn_width: u16 = self.buttons.iter().map(|b| b.len() as u16 + 4).sum();
         let mut bx = b.x + (b.w.saturating_sub(total_btn_width)) / 2;
         for (i, btn) in self.buttons.iter().enumerate() {
-            let style = if i == self.focused_button { btn_focused } else { btn_normal };
+            let style = if i == self.focused_button {
+                btn_focused
+            } else {
+                btn_normal
+            };
             let label = format!("[ {} ]", btn);
             surface.print(bx, btn_y, &label, style);
             bx += label.len() as u16 + 1;
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Consumed;
         };
@@ -127,7 +136,11 @@ impl View for Dialog {
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
-                let cmd = if self.focused_button == 0 { CM_OK } else { CM_CANCEL };
+                let cmd = if self.focused_button == 0 {
+                    CM_OK
+                } else {
+                    CM_CANCEL
+                };
                 queue.put_command(cmd, Some(Box::new(self.focused_button)));
                 HandleResult::Consumed
             }

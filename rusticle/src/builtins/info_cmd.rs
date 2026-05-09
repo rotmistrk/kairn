@@ -12,9 +12,7 @@ pub fn register(interp: &mut Interpreter) {
 /// `info subcommand ?pattern?`
 fn cmd_info(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclError> {
     if args.is_empty() {
-        return Err(TclError::new(
-            "wrong # args: should be \"info subcommand ...\"",
-        ));
+        return Err(TclError::new("wrong # args: should be \"info subcommand ...\""));
     }
     let subcmd = args[0].as_str().to_string();
     let pattern = args.get(1).map(|a| a.as_str().to_string());
@@ -22,9 +20,7 @@ fn cmd_info(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
         "commands" => info_commands(interp, pattern.as_deref()),
         "vars" => info_vars(interp, pattern.as_deref()),
         "procs" => info_procs(interp, pattern.as_deref()),
-        _ => Err(TclError::new(format!(
-            "unknown info subcommand \"{subcmd}\""
-        ))),
+        _ => Err(TclError::new(format!("unknown info subcommand \"{subcmd}\""))),
     }
 }
 
@@ -36,9 +32,7 @@ fn info_commands(interp: &Interpreter, pattern: Option<&str>) -> Result<TclValue
     if let Some(pat) = pattern {
         names.retain(|n| simple_glob(pat, n));
     }
-    Ok(TclValue::List(
-        names.into_iter().map(TclValue::Str).collect(),
-    ))
+    Ok(TclValue::List(names.into_iter().map(TclValue::Str).collect()))
 }
 
 /// List variables in current scope.
@@ -52,9 +46,7 @@ fn info_vars(interp: &Interpreter, pattern: Option<&str>) -> Result<TclValue, Tc
     if let Some(pat) = pattern {
         names.retain(|n| simple_glob(pat, n));
     }
-    Ok(TclValue::List(
-        names.into_iter().map(TclValue::Str).collect(),
-    ))
+    Ok(TclValue::List(names.into_iter().map(TclValue::Str).collect()))
 }
 
 /// List defined procedures.
@@ -64,9 +56,7 @@ fn info_procs(interp: &Interpreter, pattern: Option<&str>) -> Result<TclValue, T
     if let Some(pat) = pattern {
         names.retain(|n| simple_glob(pat, n));
     }
-    Ok(TclValue::List(
-        names.into_iter().map(TclValue::Str).collect(),
-    ))
+    Ok(TclValue::List(names.into_iter().map(TclValue::Str).collect()))
 }
 
 /// Simple glob matching for info commands.

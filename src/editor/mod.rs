@@ -66,7 +66,10 @@ pub struct EditorOptions {
 
 impl Default for EditorOptions {
     fn default() -> Self {
-        Self { list: false, number: true }
+        Self {
+            list: false,
+            number: true,
+        }
     }
 }
 
@@ -114,102 +117,345 @@ impl Editor {
             Command::Noop => EditorAction::None,
 
             // Movement
-            Command::MoveLeft => { self.move_left(); EditorAction::CursorMoved }
-            Command::MoveRight => { self.move_right(); EditorAction::CursorMoved }
-            Command::MoveUp => { self.move_up(); EditorAction::CursorMoved }
-            Command::MoveDown => { self.move_down(); EditorAction::CursorMoved }
-            Command::MoveWordForward => { self.move_word_forward(); EditorAction::CursorMoved }
-            Command::MoveWordBackward => { self.move_word_backward(); EditorAction::CursorMoved }
-            Command::MoveWordEnd => { self.move_word_end(); EditorAction::CursorMoved }
-            Command::MoveLineStart => { self.cursor_col = 0; EditorAction::CursorMoved }
-            Command::MoveLineEnd => { self.move_line_end(); EditorAction::CursorMoved }
-            Command::MoveFirstNonBlank => { self.move_first_non_blank(); EditorAction::CursorMoved }
-            Command::MoveFileStart => { self.cursor_line = 0; self.cursor_col = 0; EditorAction::CursorMoved }
-            Command::MoveFileEnd => { self.cursor_line = self.buffer.line_count().saturating_sub(1); self.cursor_col = 0; EditorAction::CursorMoved }
-            Command::GotoLine(n) => { self.goto_line(n); EditorAction::CursorMoved }
-            Command::HalfPageDown => { self.half_page_down(); EditorAction::CursorMoved }
-            Command::HalfPageUp => { self.half_page_up(); EditorAction::CursorMoved }
-            Command::PageDown => { self.page_down(); EditorAction::CursorMoved }
-            Command::PageUp => { self.page_up(); EditorAction::CursorMoved }
-            Command::MatchBracket => { self.match_bracket(); EditorAction::CursorMoved }
+            Command::MoveLeft => {
+                self.move_left();
+                EditorAction::CursorMoved
+            }
+            Command::MoveRight => {
+                self.move_right();
+                EditorAction::CursorMoved
+            }
+            Command::MoveUp => {
+                self.move_up();
+                EditorAction::CursorMoved
+            }
+            Command::MoveDown => {
+                self.move_down();
+                EditorAction::CursorMoved
+            }
+            Command::MoveWordForward => {
+                self.move_word_forward();
+                EditorAction::CursorMoved
+            }
+            Command::MoveWordBackward => {
+                self.move_word_backward();
+                EditorAction::CursorMoved
+            }
+            Command::MoveWordEnd => {
+                self.move_word_end();
+                EditorAction::CursorMoved
+            }
+            Command::MoveLineStart => {
+                self.cursor_col = 0;
+                EditorAction::CursorMoved
+            }
+            Command::MoveLineEnd => {
+                self.move_line_end();
+                EditorAction::CursorMoved
+            }
+            Command::MoveFirstNonBlank => {
+                self.move_first_non_blank();
+                EditorAction::CursorMoved
+            }
+            Command::MoveFileStart => {
+                self.cursor_line = 0;
+                self.cursor_col = 0;
+                EditorAction::CursorMoved
+            }
+            Command::MoveFileEnd => {
+                self.cursor_line = self.buffer.line_count().saturating_sub(1);
+                self.cursor_col = 0;
+                EditorAction::CursorMoved
+            }
+            Command::GotoLine(n) => {
+                self.goto_line(n);
+                EditorAction::CursorMoved
+            }
+            Command::HalfPageDown => {
+                self.half_page_down();
+                EditorAction::CursorMoved
+            }
+            Command::HalfPageUp => {
+                self.half_page_up();
+                EditorAction::CursorMoved
+            }
+            Command::PageDown => {
+                self.page_down();
+                EditorAction::CursorMoved
+            }
+            Command::PageUp => {
+                self.page_up();
+                EditorAction::CursorMoved
+            }
+            Command::MatchBracket => {
+                self.match_bracket();
+                EditorAction::CursorMoved
+            }
 
             // Find char
-            Command::FindChar(ch) => { self.find_char('f', ch); EditorAction::CursorMoved }
-            Command::FindCharBack(ch) => { self.find_char('F', ch); EditorAction::CursorMoved }
-            Command::TillChar(ch) => { self.find_char('t', ch); EditorAction::CursorMoved }
-            Command::TillCharBack(ch) => { self.find_char('T', ch); EditorAction::CursorMoved }
-            Command::RepeatFind => { self.repeat_find(false); EditorAction::CursorMoved }
-            Command::RepeatFindReverse => { self.repeat_find(true); EditorAction::CursorMoved }
+            Command::FindChar(ch) => {
+                self.find_char('f', ch);
+                EditorAction::CursorMoved
+            }
+            Command::FindCharBack(ch) => {
+                self.find_char('F', ch);
+                EditorAction::CursorMoved
+            }
+            Command::TillChar(ch) => {
+                self.find_char('t', ch);
+                EditorAction::CursorMoved
+            }
+            Command::TillCharBack(ch) => {
+                self.find_char('T', ch);
+                EditorAction::CursorMoved
+            }
+            Command::RepeatFind => {
+                self.repeat_find(false);
+                EditorAction::CursorMoved
+            }
+            Command::RepeatFindReverse => {
+                self.repeat_find(true);
+                EditorAction::CursorMoved
+            }
 
             // Insert mode entry
-            Command::EnterInsertMode => { self.mode = EditorMode::Insert; EditorAction::ModeChanged }
-            Command::EnterInsertAfter => { self.enter_insert_after(); EditorAction::ModeChanged }
-            Command::EnterInsertLineEnd => { self.mode = EditorMode::Insert; self.cursor_col = self.buffer.line_len(self.cursor_line); EditorAction::ModeChanged }
-            Command::EnterInsertLineStart => { self.mode = EditorMode::Insert; self.cursor_col = motions::first_non_blank(&self.buffer, self.cursor_line); EditorAction::ModeChanged }
-            Command::EnterInsertBelow | Command::NewlineBelow => { self.open_line_below(); EditorAction::ContentChanged }
-            Command::EnterInsertAbove | Command::NewlineAbove => { self.open_line_above(); EditorAction::ContentChanged }
-            Command::ExitInsertMode => { self.exit_insert(); EditorAction::ModeChanged }
+            Command::EnterInsertMode => {
+                self.mode = EditorMode::Insert;
+                EditorAction::ModeChanged
+            }
+            Command::EnterInsertAfter => {
+                self.enter_insert_after();
+                EditorAction::ModeChanged
+            }
+            Command::EnterInsertLineEnd => {
+                self.mode = EditorMode::Insert;
+                self.cursor_col = self.buffer.line_len(self.cursor_line);
+                EditorAction::ModeChanged
+            }
+            Command::EnterInsertLineStart => {
+                self.mode = EditorMode::Insert;
+                self.cursor_col = motions::first_non_blank(&self.buffer, self.cursor_line);
+                EditorAction::ModeChanged
+            }
+            Command::EnterInsertBelow | Command::NewlineBelow => {
+                self.open_line_below();
+                EditorAction::ContentChanged
+            }
+            Command::EnterInsertAbove | Command::NewlineAbove => {
+                self.open_line_above();
+                EditorAction::ContentChanged
+            }
+            Command::ExitInsertMode => {
+                self.exit_insert();
+                EditorAction::ModeChanged
+            }
 
             // Editing
-            Command::InsertChar(ch) => { self.insert_char(ch); EditorAction::ContentChanged }
-            Command::InsertNewline => { self.insert_newline(); EditorAction::ContentChanged }
-            Command::DeleteCharForward => { self.delete_char_forward(); EditorAction::ContentChanged }
-            Command::DeleteCharBackward => { self.delete_char_backward(); EditorAction::ContentChanged }
-            Command::DeleteLine => { self.delete_line(); EditorAction::ContentChanged }
-            Command::DeleteWord => { self.delete_word(); EditorAction::ContentChanged }
-            Command::DeleteWordBackward => { self.delete_word_backward(); EditorAction::ContentChanged }
-            Command::DeleteToEnd => { self.delete_to_end(); EditorAction::ContentChanged }
-            Command::DeleteToStart => { self.delete_to_start(); EditorAction::ContentChanged }
-            Command::ChangeWord => { self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
-            Command::ChangeLine => { self.change_line(); EditorAction::ContentChanged }
-            Command::ChangeToEnd => { self.delete_to_end(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
-            Command::Substitute => { self.delete_char_forward(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
-            Command::SubstituteLine => { self.change_line(); EditorAction::ContentChanged }
-            Command::JoinLines => { self.join_lines(); EditorAction::ContentChanged }
-            Command::ToggleCase => { self.toggle_case(); EditorAction::ContentChanged }
-            Command::ReplaceChar(ch) => { self.replace_char(ch); EditorAction::ContentChanged }
-            Command::Indent => { self.indent_line(); EditorAction::ContentChanged }
-            Command::Unindent => { self.unindent_line(); EditorAction::ContentChanged }
+            Command::InsertChar(ch) => {
+                self.insert_char(ch);
+                EditorAction::ContentChanged
+            }
+            Command::InsertNewline => {
+                self.insert_newline();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteCharForward => {
+                self.delete_char_forward();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteCharBackward => {
+                self.delete_char_backward();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteLine => {
+                self.delete_line();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteWord => {
+                self.delete_word();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteWordBackward => {
+                self.delete_word_backward();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteToEnd => {
+                self.delete_to_end();
+                EditorAction::ContentChanged
+            }
+            Command::DeleteToStart => {
+                self.delete_to_start();
+                EditorAction::ContentChanged
+            }
+            Command::ChangeWord => {
+                self.delete_word();
+                self.mode = EditorMode::Insert;
+                EditorAction::ContentChanged
+            }
+            Command::ChangeLine => {
+                self.change_line();
+                EditorAction::ContentChanged
+            }
+            Command::ChangeToEnd => {
+                self.delete_to_end();
+                self.mode = EditorMode::Insert;
+                EditorAction::ContentChanged
+            }
+            Command::Substitute => {
+                self.delete_char_forward();
+                self.mode = EditorMode::Insert;
+                EditorAction::ContentChanged
+            }
+            Command::SubstituteLine => {
+                self.change_line();
+                EditorAction::ContentChanged
+            }
+            Command::JoinLines => {
+                self.join_lines();
+                EditorAction::ContentChanged
+            }
+            Command::ToggleCase => {
+                self.toggle_case();
+                EditorAction::ContentChanged
+            }
+            Command::ReplaceChar(ch) => {
+                self.replace_char(ch);
+                EditorAction::ContentChanged
+            }
+            Command::Indent => {
+                self.indent_line();
+                EditorAction::ContentChanged
+            }
+            Command::Unindent => {
+                self.unindent_line();
+                EditorAction::ContentChanged
+            }
 
             // Operators (simplified — act on current word/line)
-            Command::OperatorDelete => { self.delete_word(); EditorAction::ContentChanged }
-            Command::OperatorChange => { self.delete_word(); self.mode = EditorMode::Insert; EditorAction::ContentChanged }
-            Command::OperatorYank => { self.register = self.buffer.line(self.cursor_line).unwrap_or_default(); EditorAction::None }
+            Command::OperatorDelete => {
+                self.delete_word();
+                EditorAction::ContentChanged
+            }
+            Command::OperatorChange => {
+                self.delete_word();
+                self.mode = EditorMode::Insert;
+                EditorAction::ContentChanged
+            }
+            Command::OperatorYank => {
+                self.register = self.buffer.line(self.cursor_line).unwrap_or_default();
+                EditorAction::None
+            }
 
             // Undo/redo
-            Command::Undo => { self.buffer.undo(); self.clamp_cursor(); EditorAction::ContentChanged }
-            Command::Redo => { self.buffer.redo(); self.clamp_cursor(); EditorAction::ContentChanged }
+            Command::Undo => {
+                self.buffer.undo();
+                self.clamp_cursor();
+                EditorAction::ContentChanged
+            }
+            Command::Redo => {
+                self.buffer.redo();
+                self.clamp_cursor();
+                EditorAction::ContentChanged
+            }
 
             // Clipboard
-            Command::YankLine => { self.register = self.buffer.line(self.cursor_line).unwrap_or_default(); EditorAction::None }
-            Command::YankWord => { self.yank_word(); EditorAction::None }
-            Command::YankToEnd => { self.yank_to_end(); EditorAction::None }
-            Command::Paste => { self.paste_after(); EditorAction::ContentChanged }
-            Command::PasteBefore => { self.paste_before(); EditorAction::ContentChanged }
+            Command::YankLine => {
+                self.register = self.buffer.line(self.cursor_line).unwrap_or_default();
+                EditorAction::None
+            }
+            Command::YankWord => {
+                self.yank_word();
+                EditorAction::None
+            }
+            Command::YankToEnd => {
+                self.yank_to_end();
+                EditorAction::None
+            }
+            Command::Paste => {
+                self.paste_after();
+                EditorAction::ContentChanged
+            }
+            Command::PasteBefore => {
+                self.paste_before();
+                EditorAction::ContentChanged
+            }
 
             // Visual mode
-            Command::EnterVisual => { self.enter_visual(); EditorAction::ModeChanged }
-            Command::EnterVisualLine => { self.enter_visual_line(); EditorAction::ModeChanged }
-            Command::ExitVisual => { self.exit_visual(); EditorAction::ModeChanged }
-            Command::VisualDelete => { self.visual_delete(); EditorAction::ContentChanged }
-            Command::VisualYank => { self.visual_yank(); EditorAction::None }
-            Command::VisualChange => { self.visual_change(); EditorAction::ContentChanged }
-            Command::VisualIndent => { self.visual_indent(); EditorAction::ContentChanged }
-            Command::VisualUnindent => { self.visual_unindent(); EditorAction::ContentChanged }
-            Command::VisualExCommand => { self.visual_ex_command(); EditorAction::ModeChanged }
+            Command::EnterVisual => {
+                self.enter_visual();
+                EditorAction::ModeChanged
+            }
+            Command::EnterVisualLine => {
+                self.enter_visual_line();
+                EditorAction::ModeChanged
+            }
+            Command::ExitVisual => {
+                self.exit_visual();
+                EditorAction::ModeChanged
+            }
+            Command::VisualDelete => {
+                self.visual_delete();
+                EditorAction::ContentChanged
+            }
+            Command::VisualYank => {
+                self.visual_yank();
+                EditorAction::None
+            }
+            Command::VisualChange => {
+                self.visual_change();
+                EditorAction::ContentChanged
+            }
+            Command::VisualIndent => {
+                self.visual_indent();
+                EditorAction::ContentChanged
+            }
+            Command::VisualUnindent => {
+                self.visual_unindent();
+                EditorAction::ContentChanged
+            }
+            Command::VisualExCommand => {
+                self.visual_ex_command();
+                EditorAction::ModeChanged
+            }
 
             // Search
-            Command::EnterSearchMode => { self.mode = EditorMode::Search; self.command_buf.clear(); EditorAction::ModeChanged }
-            Command::SearchForward(ref pat) => { self.search_forward(pat); EditorAction::CursorMoved }
-            Command::SearchBackward(ref pat) => { self.search_backward(pat); EditorAction::CursorMoved }
-            Command::SearchNext => { self.search_next(); EditorAction::CursorMoved }
-            Command::SearchPrev => { self.search_prev(); EditorAction::CursorMoved }
-            Command::SearchWordForward => { self.search_word(true); EditorAction::CursorMoved }
-            Command::SearchWordBackward => { self.search_word(false); EditorAction::CursorMoved }
+            Command::EnterSearchMode => {
+                self.mode = EditorMode::Search;
+                self.command_buf.clear();
+                EditorAction::ModeChanged
+            }
+            Command::SearchForward(ref pat) => {
+                self.search_forward(pat);
+                EditorAction::CursorMoved
+            }
+            Command::SearchBackward(ref pat) => {
+                self.search_backward(pat);
+                EditorAction::CursorMoved
+            }
+            Command::SearchNext => {
+                self.search_next();
+                EditorAction::CursorMoved
+            }
+            Command::SearchPrev => {
+                self.search_prev();
+                EditorAction::CursorMoved
+            }
+            Command::SearchWordForward => {
+                self.search_word(true);
+                EditorAction::CursorMoved
+            }
+            Command::SearchWordBackward => {
+                self.search_word(false);
+                EditorAction::CursorMoved
+            }
 
             // Command mode
-            Command::EnterCommandMode => { self.mode = EditorMode::Command; self.command_buf.clear(); EditorAction::ModeChanged }
-            Command::ExCommand(ref input) => { self.execute_ex(input.clone()) }
+            Command::EnterCommandMode => {
+                self.mode = EditorMode::Command;
+                self.command_buf.clear();
+                EditorAction::ModeChanged
+            }
+            Command::ExCommand(ref input) => self.execute_ex(input.clone()),
 
             // File
             Command::Save => EditorAction::SaveRequested,
@@ -228,11 +474,26 @@ impl Editor {
             Command::Repeat(n, cmd) => {
                 match *cmd {
                     // Line-oriented commands: apply to N lines from cursor
-                    Command::YankLine => { self.yank_lines(n); EditorAction::None }
-                    Command::DeleteLine => { self.delete_lines(n); EditorAction::ContentChanged }
-                    Command::ChangeLine => { self.change_lines(n); EditorAction::ContentChanged }
-                    Command::Indent => { self.indent_lines(n); EditorAction::ContentChanged }
-                    Command::Unindent => { self.unindent_lines(n); EditorAction::ContentChanged }
+                    Command::YankLine => {
+                        self.yank_lines(n);
+                        EditorAction::None
+                    }
+                    Command::DeleteLine => {
+                        self.delete_lines(n);
+                        EditorAction::ContentChanged
+                    }
+                    Command::ChangeLine => {
+                        self.change_lines(n);
+                        EditorAction::ContentChanged
+                    }
+                    Command::Indent => {
+                        self.indent_lines(n);
+                        EditorAction::ContentChanged
+                    }
+                    Command::Unindent => {
+                        self.unindent_lines(n);
+                        EditorAction::ContentChanged
+                    }
                     Command::JoinLines => {
                         for _ in 0..n {
                             self.join_lines();
@@ -288,7 +549,11 @@ impl Editor {
 
     fn move_right(&mut self) {
         let line_len = self.buffer.line_len(self.cursor_line);
-        let max = if self.mode == EditorMode::Insert { line_len } else { line_len.saturating_sub(1) };
+        let max = if self.mode == EditorMode::Insert {
+            line_len
+        } else {
+            line_len.saturating_sub(1)
+        };
         if self.cursor_col < max {
             self.cursor_col += 1;
         }
@@ -397,7 +662,13 @@ impl Editor {
     fn repeat_find(&mut self, reverse: bool) {
         if let Some((cmd, ch)) = self.last_find {
             let actual_cmd = if reverse {
-                match cmd { 'f' => 'F', 'F' => 'f', 't' => 'T', 'T' => 't', _ => cmd }
+                match cmd {
+                    'f' => 'F',
+                    'F' => 'f',
+                    't' => 'T',
+                    'T' => 't',
+                    _ => cmd,
+                }
             } else {
                 cmd
             };
@@ -509,9 +780,15 @@ impl Editor {
     }
 
     fn delete_word(&mut self) {
-        let start_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (new_line, new_col) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
-        let end_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(start_offset);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(new_line, new_col)
+            .unwrap_or(start_offset);
         if end_offset > start_offset {
             let content = self.buffer.content();
             self.register = content[start_offset..end_offset].to_string();
@@ -523,7 +800,10 @@ impl Editor {
     }
 
     fn delete_word_backward(&mut self) {
-        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (new_line, new_col) = motions::word_backward(&self.buffer, self.cursor_line, self.cursor_col);
         let start_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(end_offset);
         if end_offset > start_offset {
@@ -536,7 +816,10 @@ impl Editor {
     }
 
     fn delete_to_start(&mut self) {
-        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let start_offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         if end_offset > start_offset {
             let content = self.buffer.content();
@@ -547,9 +830,15 @@ impl Editor {
     }
 
     fn delete_to_end(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
             self.register = content[start..end].to_string();
@@ -561,7 +850,10 @@ impl Editor {
     fn change_line(&mut self) {
         let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
         if end > start {
             self.buffer.delete(start, end);
         }
@@ -583,7 +875,10 @@ impl Editor {
         let ws_count = after_join.chars().take_while(|c| c.is_whitespace()).count();
         if ws_count > 0 {
             let ws_start = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(0);
-            let ws_end = self.buffer.line_col_to_offset(self.cursor_line, line_len + ws_count).unwrap_or(ws_start);
+            let ws_end = self
+                .buffer
+                .line_col_to_offset(self.cursor_line, line_len + ws_count)
+                .unwrap_or(ws_start);
             self.buffer.delete(ws_start, ws_end);
         }
         // Insert a space
@@ -636,7 +931,10 @@ impl Editor {
         };
         if remove > 0 {
             let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
-            let end = self.buffer.line_col_to_offset(self.cursor_line, remove).unwrap_or(start);
+            let end = self
+                .buffer
+                .line_col_to_offset(self.cursor_line, remove)
+                .unwrap_or(start);
             self.buffer.delete(start, end);
             self.cursor_col = self.cursor_col.saturating_sub(remove);
         }
@@ -668,7 +966,10 @@ impl Editor {
     }
 
     fn yank_word(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (nl, nc) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
         let end = self.buffer.line_col_to_offset(nl, nc).unwrap_or(start);
         if end > start {
@@ -678,9 +979,15 @@ impl Editor {
     }
 
     fn yank_to_end(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
             self.register = content[start..end].to_string();
@@ -693,7 +1000,9 @@ impl Editor {
             "nolist" | "noli" => self.options.list = false,
             "number" | "nu" => self.options.number = true,
             "nonumber" | "nonu" => self.options.number = false,
-            _ => { self.status = format!("Unknown option: {opt}"); }
+            _ => {
+                self.status = format!("Unknown option: {opt}");
+            }
         }
     }
 
@@ -880,9 +1189,13 @@ impl Editor {
         };
         for line in (start_line..=end_line).rev() {
             let text = self.buffer.line(line).unwrap_or_default();
-            let remove = if text.starts_with("    ") { 4 }
-                else if text.starts_with('\t') { 1 }
-                else { text.chars().take_while(|c| c.is_whitespace()).count().min(4) };
+            let remove = if text.starts_with("    ") {
+                4
+            } else if text.starts_with('\t') {
+                1
+            } else {
+                text.chars().take_while(|c| c.is_whitespace()).count().min(4)
+            };
             if remove > 0 {
                 let start = self.buffer.line_col_to_offset(line, 0).unwrap_or(0);
                 let end = self.buffer.line_col_to_offset(line, remove).unwrap_or(start);
@@ -918,7 +1231,10 @@ impl Editor {
             return;
         }
         let content = self.buffer.content();
-        let start_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         // Search from after cursor
         let search_from = start_offset + 1;
         if let Some(pos) = content[search_from..].find(&self.search_pattern) {
@@ -939,7 +1255,10 @@ impl Editor {
             return;
         }
         let content = self.buffer.content();
-        let start_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         // Search backward from before cursor
         if let Some(pos) = content[..start_offset].rfind(&self.search_pattern) {
             let (l, c) = self.buffer.offset_to_line_col(pos);
@@ -1002,13 +1321,12 @@ impl Editor {
         if let Some(cmd) = trimmed.strip_prefix('!') {
             let cmd = cmd.trim();
             if !cmd.is_empty() {
-                let output = match std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(cmd)
-                    .output()
-                {
+                let output = match std::process::Command::new("sh").arg("-c").arg(cmd).output() {
                     Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
-                    Err(e) => { self.status = format!("Shell error: {e}"); return EditorAction::None; }
+                    Err(e) => {
+                        self.status = format!("Shell error: {e}");
+                        return EditorAction::None;
+                    }
                 };
                 return EditorAction::ShellOutput(output);
             }
@@ -1027,10 +1345,25 @@ impl Editor {
                 ex::ExCommand::Save => return EditorAction::SaveRequested,
                 ex::ExCommand::Quit => return EditorAction::CloseRequested,
                 ex::ExCommand::SaveQuit => return EditorAction::SaveRequested,
-                ex::ExCommand::GotoLine(n) => { self.goto_line(n); return EditorAction::CursorMoved; }
-                ex::ExCommand::Delete { start, end } => { self.ex_delete(start, end); return EditorAction::ContentChanged; }
-                ex::ExCommand::Yank { start, end } => { self.ex_yank(start, end); return EditorAction::None; }
-                ex::ExCommand::Substitute { start, end, pattern, replacement, global } => {
+                ex::ExCommand::GotoLine(n) => {
+                    self.goto_line(n);
+                    return EditorAction::CursorMoved;
+                }
+                ex::ExCommand::Delete { start, end } => {
+                    self.ex_delete(start, end);
+                    return EditorAction::ContentChanged;
+                }
+                ex::ExCommand::Yank { start, end } => {
+                    self.ex_yank(start, end);
+                    return EditorAction::None;
+                }
+                ex::ExCommand::Substitute {
+                    start,
+                    end,
+                    pattern,
+                    replacement,
+                    global,
+                } => {
                     self.ex_substitute(start, end, &pattern, &replacement, global);
                     return EditorAction::ContentChanged;
                 }
@@ -1099,7 +1432,10 @@ impl Editor {
             if new_line != line {
                 count += 1;
                 let line_start = self.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
-                let line_end = self.buffer.line_col_to_offset(line_idx, line.chars().count()).unwrap_or(line_start);
+                let line_end = self
+                    .buffer
+                    .line_col_to_offset(line_idx, line.chars().count())
+                    .unwrap_or(line_start);
                 self.buffer.delete(line_start, line_end);
                 self.buffer.insert(line_start, &new_line);
             }
@@ -1132,10 +1468,16 @@ impl Editor {
                 drop(child.stdin.take());
                 match child.wait_with_output() {
                     Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
-                    Err(e) => { self.status = format!("Shell error: {e}"); return; }
+                    Err(e) => {
+                        self.status = format!("Shell error: {e}");
+                        return;
+                    }
                 }
             }
-            Err(e) => { self.status = format!("Shell error: {e}"); return; }
+            Err(e) => {
+                self.status = format!("Shell error: {e}");
+                return;
+            }
         };
 
         // Delete original range and insert output
@@ -1166,7 +1508,11 @@ impl Editor {
 impl Editor {
     pub fn clamp_col(&mut self) {
         let line_len = self.buffer.line_len(self.cursor_line);
-        let max = if self.mode == EditorMode::Insert { line_len } else { line_len.saturating_sub(1) };
+        let max = if self.mode == EditorMode::Insert {
+            line_len
+        } else {
+            line_len.saturating_sub(1)
+        };
         if self.cursor_col > max {
             self.cursor_col = max;
         }

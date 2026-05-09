@@ -76,13 +76,11 @@ impl TermBuf {
 
     /// Resize the terminal buffer.
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        let mut new_cells =
-            vec![vec![TCell::default(); cols as usize]; rows as usize];
+        let mut new_cells = vec![vec![TCell::default(); cols as usize]; rows as usize];
         let copy_rows = self.rows.min(rows) as usize;
         let copy_cols = self.cols.min(cols) as usize;
         for (y, new_row) in new_cells.iter_mut().enumerate().take(copy_rows) {
-            new_row[..copy_cols]
-                .clone_from_slice(&self.cells[y][..copy_cols]);
+            new_row[..copy_cols].clone_from_slice(&self.cells[y][..copy_cols]);
         }
         self.cells = new_cells;
         self.cols = cols;
@@ -264,15 +262,8 @@ impl Performer<'_> {
                         if i < params.len() {
                             self.style.fg = Color::Palette(params[i] as u8);
                         }
-                    } else if i < params.len()
-                        && params[i] == 2
-                        && i + 3 < params.len()
-                    {
-                        self.style.fg = Color::Rgb(
-                            params[i + 1] as u8,
-                            params[i + 2] as u8,
-                            params[i + 3] as u8,
-                        );
+                    } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
+                        self.style.fg = Color::Rgb(params[i + 1] as u8, params[i + 2] as u8, params[i + 3] as u8);
                         i += 3;
                     }
                 }
@@ -287,15 +278,8 @@ impl Performer<'_> {
                         if i < params.len() {
                             self.style.bg = Color::Palette(params[i] as u8);
                         }
-                    } else if i < params.len()
-                        && params[i] == 2
-                        && i + 3 < params.len()
-                    {
-                        self.style.bg = Color::Rgb(
-                            params[i + 1] as u8,
-                            params[i + 2] as u8,
-                            params[i + 3] as u8,
-                        );
+                    } else if i < params.len() && params[i] == 2 && i + 3 < params.len() {
+                        self.style.bg = Color::Rgb(params[i + 1] as u8, params[i + 2] as u8, params[i + 3] as u8);
                         i += 3;
                     }
                 }
@@ -333,14 +317,7 @@ impl vte::Perform for Performer<'_> {
         }
     }
 
-    fn hook(
-        &mut self,
-        _params: &vte::Params,
-        _intermediates: &[u8],
-        _ignore: bool,
-        _action: char,
-    ) {
-    }
+    fn hook(&mut self, _params: &vte::Params, _intermediates: &[u8], _ignore: bool, _action: char) {}
 
     fn put(&mut self, _byte: u8) {}
 
@@ -348,49 +325,65 @@ impl vte::Perform for Performer<'_> {
 
     fn osc_dispatch(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
 
-    fn csi_dispatch(
-        &mut self,
-        params: &vte::Params,
-        intermediates: &[u8],
-        _ignore: bool,
-        action: char,
-    ) {
+    fn csi_dispatch(&mut self, params: &vte::Params, intermediates: &[u8], _ignore: bool, action: char) {
         let ps: Vec<u16> = params.iter().map(|p| p[0]).collect();
         let p1 = ps.first().copied().unwrap_or(0);
 
         match (action, intermediates) {
             ('A', []) => {
                 // Cursor Up
-                let n = if p1 == 0 { 1 } else { p1 };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 *self.cursor_y = self.cursor_y.saturating_sub(n);
             }
             ('B', []) => {
                 // Cursor Down
-                let n = if p1 == 0 { 1 } else { p1 };
-                *self.cursor_y =
-                    (*self.cursor_y + n).min(self.rows.saturating_sub(1));
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
+                *self.cursor_y = (*self.cursor_y + n).min(self.rows.saturating_sub(1));
             }
             ('C', []) => {
                 // Cursor Forward
-                let n = if p1 == 0 { 1 } else { p1 };
-                *self.cursor_x =
-                    (*self.cursor_x + n).min(self.cols.saturating_sub(1));
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
+                *self.cursor_x = (*self.cursor_x + n).min(self.cols.saturating_sub(1));
             }
             ('D', []) => {
                 // Cursor Back
-                let n = if p1 == 0 { 1 } else { p1 };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 *self.cursor_x = self.cursor_x.saturating_sub(n);
             }
             ('H' | 'f', []) => {
                 // Cursor Position
-                let row = if p1 == 0 { 1 } else { p1 };
+                let row = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 let col = ps.get(1).copied().unwrap_or(1).max(1);
                 *self.cursor_y = (row - 1).min(self.rows.saturating_sub(1));
                 *self.cursor_x = (col - 1).min(self.cols.saturating_sub(1));
             }
             ('G', []) => {
                 // Cursor Character Absolute
-                let col = if p1 == 0 { 1 } else { p1 };
+                let col = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 *self.cursor_x = (col - 1).min(self.cols.saturating_sub(1));
             }
             ('J', []) => {
@@ -401,44 +394,54 @@ impl vte::Perform for Performer<'_> {
             }
             ('L', []) => {
                 // Insert Lines
-                let n = if p1 == 0 { 1 } else { p1 as usize };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1 as usize
+                };
                 let y = *self.cursor_y as usize;
                 let bot = *self.scroll_bottom as usize;
                 for _ in 0..n {
                     if y <= bot && bot < self.cells.len() {
                         self.cells.remove(bot);
-                        self.cells.insert(
-                            y,
-                            vec![TCell::default(); self.cols as usize],
-                        );
+                        self.cells.insert(y, vec![TCell::default(); self.cols as usize]);
                     }
                 }
             }
             ('M', []) => {
                 // Delete Lines
-                let n = if p1 == 0 { 1 } else { p1 as usize };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1 as usize
+                };
                 let y = *self.cursor_y as usize;
                 let bot = *self.scroll_bottom as usize;
                 for _ in 0..n {
                     if y <= bot && bot < self.cells.len() {
                         self.cells.remove(y);
-                        self.cells.insert(
-                            bot,
-                            vec![TCell::default(); self.cols as usize],
-                        );
+                        self.cells.insert(bot, vec![TCell::default(); self.cols as usize]);
                     }
                 }
             }
             ('S', []) => {
                 // Scroll Up
-                let n = if p1 == 0 { 1 } else { p1 };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 for _ in 0..n {
                     self.scroll_up();
                 }
             }
             ('T', []) => {
                 // Scroll Down
-                let n = if p1 == 0 { 1 } else { p1 };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
                 for _ in 0..n {
                     self.scroll_down();
                 }
@@ -453,12 +456,12 @@ impl vte::Perform for Performer<'_> {
             }
             ('r', []) => {
                 // Set Scrolling Region
-                let top = if p1 == 0 { 1 } else { p1 };
-                let bot = ps
-                    .get(1)
-                    .copied()
-                    .unwrap_or(self.rows)
-                    .min(self.rows);
+                let top = if p1 == 0 {
+                    1
+                } else {
+                    p1
+                };
+                let bot = ps.get(1).copied().unwrap_or(self.rows).min(self.rows);
                 *self.scroll_top = top.saturating_sub(1);
                 *self.scroll_bottom = bot.saturating_sub(1);
                 *self.cursor_x = 0;
@@ -487,7 +490,11 @@ impl vte::Perform for Performer<'_> {
             }
             ('P', []) => {
                 // Delete Characters
-                let n = if p1 == 0 { 1 } else { p1 as usize };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1 as usize
+                };
                 let y = *self.cursor_y as usize;
                 let x = *self.cursor_x as usize;
                 if y < self.rows as usize {
@@ -499,7 +506,11 @@ impl vte::Perform for Performer<'_> {
             }
             ('@', []) => {
                 // Insert Characters
-                let n = if p1 == 0 { 1 } else { p1 as usize };
+                let n = if p1 == 0 {
+                    1
+                } else {
+                    p1 as usize
+                };
                 let y = *self.cursor_y as usize;
                 let x = *self.cursor_x as usize;
                 if y < self.rows as usize {

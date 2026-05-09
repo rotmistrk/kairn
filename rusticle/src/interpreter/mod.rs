@@ -136,8 +136,7 @@ impl Interpreter {
     where
         F: Fn(&mut Interpreter, &[TclValue]) -> Result<TclValue, TclError> + Send + 'static,
     {
-        self.commands
-            .insert(name.to_string(), Rc::new(FnCommand(f)));
+        self.commands.insert(name.to_string(), Rc::new(FnCommand(f)));
     }
 
     /// Push a new scope onto the scope chain.
@@ -173,12 +172,7 @@ impl Interpreter {
     }
 
     /// Set a variable in the parent scope (for `outer`).
-    pub fn set_var_in_parent(
-        &mut self,
-        name: &str,
-        value: TclValue,
-        levels: usize,
-    ) -> Result<(), TclError> {
+    pub fn set_var_in_parent(&mut self, name: &str, value: TclValue, levels: usize) -> Result<(), TclError> {
         scope::set_var_in_parent(&mut self.scopes, name, value, levels)
     }
 }

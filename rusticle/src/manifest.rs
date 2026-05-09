@@ -93,10 +93,7 @@ fn parse_manifest(body: &str) -> Result<Manifest, TclError> {
 }
 
 /// Parse a single command block from manifest lines.
-fn parse_manifest_command(
-    lines: &[&str],
-    start: usize,
-) -> Result<(ManifestCommand, usize), TclError> {
+fn parse_manifest_command(lines: &[&str], start: usize) -> Result<(ManifestCommand, usize), TclError> {
     let header = lines[start].trim();
     let name = header
         .strip_prefix("command")
@@ -151,11 +148,7 @@ fn parse_subcommand(line: &str) -> Result<ManifestSubcommand, TclError> {
 }
 
 /// Look up a command signature across all loaded manifests.
-pub fn find_signature<'a>(
-    interp: &'a Interpreter,
-    cmd: &str,
-    subcmd: Option<&str>,
-) -> Option<&'a ManifestSubcommand> {
+pub fn find_signature<'a>(interp: &'a Interpreter, cmd: &str, subcmd: Option<&str>) -> Option<&'a ManifestSubcommand> {
     for manifest in &interp.manifests {
         if let Some(mc) = manifest.find_command(cmd) {
             if let Some(sc) = subcmd {

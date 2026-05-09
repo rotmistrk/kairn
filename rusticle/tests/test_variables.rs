@@ -18,10 +18,7 @@ fn set_and_get_modern() {
 fn set_string_value() {
     let mut interp = Interpreter::new();
     interp.eval(r#"set name "hello world""#).unwrap();
-    assert_eq!(
-        interp.eval("set name").unwrap().as_str().as_ref(),
-        "hello world"
-    );
+    assert_eq!(interp.eval("set name").unwrap().as_str().as_ref(), "hello world");
 }
 
 #[test]
@@ -37,9 +34,7 @@ fn destructure_list() {
 fn destructure_dict() {
     let mut interp = Interpreter::new();
     // Dict destructuring via list form: extract values by position
-    interp
-        .eval("set d [dict create name alice age 30]")
-        .unwrap();
+    interp.eval("set d [dict create name alice age 30]").unwrap();
     let name = interp.eval("dict get $d name").unwrap();
     assert_eq!(name.as_str().as_ref(), "alice");
     let age = interp.eval("dict get $d age").unwrap();
@@ -63,10 +58,7 @@ fn append_to_existing() {
     let mut interp = Interpreter::new();
     interp.eval("set x hello").unwrap();
     interp.eval(r#"append x " world""#).unwrap();
-    assert_eq!(
-        interp.eval("set x").unwrap().as_str().as_ref(),
-        "hello world"
-    );
+    assert_eq!(interp.eval("set x").unwrap().as_str().as_ref(), "hello world");
 }
 
 #[test]
@@ -105,10 +97,7 @@ fn variable_substitution_in_string() {
     let mut interp = Interpreter::new();
     interp.eval("set name world").unwrap();
     interp.eval(r#"set greeting "hello $name""#).unwrap();
-    assert_eq!(
-        interp.eval("set greeting").unwrap().as_str().as_ref(),
-        "hello world"
-    );
+    assert_eq!(interp.eval("set greeting").unwrap().as_str().as_ref(), "hello world");
 }
 
 #[test]

@@ -30,19 +30,11 @@ pub fn downgrade(color: Color, mode: ColorMode) -> Color {
     match (color, mode) {
         (Color::Reset, _) => Color::Reset,
         (Color::Ansi(n), _) => Color::Ansi(n),
-        (Color::Palette(n), ColorMode::TrueColor | ColorMode::Palette256) => {
-            Color::Palette(n)
-        }
-        (Color::Palette(n), ColorMode::Ansi16) => {
-            Color::Ansi(palette_to_ansi(n))
-        }
+        (Color::Palette(n), ColorMode::TrueColor | ColorMode::Palette256) => Color::Palette(n),
+        (Color::Palette(n), ColorMode::Ansi16) => Color::Ansi(palette_to_ansi(n)),
         (Color::Rgb(r, g, b), ColorMode::TrueColor) => Color::Rgb(r, g, b),
-        (Color::Rgb(r, g, b), ColorMode::Palette256) => {
-            Color::Palette(rgb_to_palette(r, g, b))
-        }
-        (Color::Rgb(r, g, b), ColorMode::Ansi16) => {
-            Color::Ansi(rgb_to_ansi(r, g, b))
-        }
+        (Color::Rgb(r, g, b), ColorMode::Palette256) => Color::Palette(rgb_to_palette(r, g, b)),
+        (Color::Rgb(r, g, b), ColorMode::Ansi16) => Color::Ansi(rgb_to_ansi(r, g, b)),
     }
 }
 
@@ -75,17 +67,17 @@ fn palette_to_ansi(n: u8) -> u8 {
 /// Map 6x6x6 cube coordinates to ANSI 16.
 fn cube_to_ansi(r: u8, g: u8, b: u8) -> u8 {
     let bright = r >= 3 || g >= 3 || b >= 3;
-    let base = ((b >= 3) as u8) << 2
-        | ((g >= 3) as u8) << 1
-        | (r >= 3) as u8;
+    let base = ((b >= 3) as u8) << 2 | ((g >= 3) as u8) << 1 | (r >= 3) as u8;
     // If all are low but nonzero, use dark variant
     if !bright && (r > 0 || g > 0 || b > 0) {
-        let base2 = ((b >= 2) as u8) << 2
-            | ((g >= 2) as u8) << 1
-            | (r >= 2) as u8;
+        let base2 = ((b >= 2) as u8) << 2 | ((g >= 2) as u8) << 1 | (r >= 2) as u8;
         return base2;
     }
-    if bright { base + 8 } else { base }
+    if bright {
+        base + 8
+    } else {
+        base
+    }
 }
 
 /// Convert RGB to nearest 256-palette index.
@@ -141,10 +133,7 @@ mod tests {
 
     #[test]
     fn ansi_unchanged() {
-        assert_eq!(
-            downgrade(Color::Ansi(5), ColorMode::Ansi16),
-            Color::Ansi(5)
-        );
+        assert_eq!(downgrade(Color::Ansi(5), ColorMode::Ansi16), Color::Ansi(5));
     }
 
     #[test]
@@ -186,9 +175,6 @@ mod tests {
 
     #[test]
     fn palette_low_unchanged_in_ansi16() {
-        assert_eq!(
-            downgrade(Color::Palette(3), ColorMode::Ansi16),
-            Color::Ansi(3)
-        );
+        assert_eq!(downgrade(Color::Palette(3), ColorMode::Ansi16), Color::Ansi(3));
     }
 }

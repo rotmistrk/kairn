@@ -132,10 +132,7 @@ fn read_op(chars: &[char], start: usize) -> (String, usize) {
 
 /// Check if a character starts an operator.
 fn is_op_start(c: char) -> bool {
-    matches!(
-        c,
-        '+' | '-' | '*' | '/' | '%' | '=' | '!' | '<' | '>' | '&' | '|'
-    )
+    matches!(c, '+' | '-' | '*' | '/' | '%' | '=' | '!' | '<' | '>' | '&' | '|')
 }
 
 /// Read a number (integer or float).
@@ -215,9 +212,7 @@ fn parse_comparison(tokens: &[Token], pos: &mut usize) -> Result<TclValue, TclEr
     let mut left = parse_additive(tokens, pos)?;
     while *pos < tokens.len() {
         let op = match &tokens[*pos] {
-            Token::Op(op) if matches!(op.as_str(), "==" | "!=" | "<" | ">" | "<=" | ">=") => {
-                op.clone()
-            }
+            Token::Op(op) if matches!(op.as_str(), "==" | "!=" | "<" | ">" | "<=" | ">=") => op.clone(),
             _ => break,
         };
         *pos += 1;

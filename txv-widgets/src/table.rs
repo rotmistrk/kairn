@@ -52,12 +52,19 @@ impl View for Table {
             return;
         }
         let header_style = Style {
-            attrs: Attrs { bold: true, reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
         let normal = Style::default();
         let selected = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
 
@@ -83,7 +90,11 @@ impl View for Table {
                 surface.hline(b.x, y, b.w, ' ', normal);
                 continue;
             }
-            let style = if idx == self.cursor { selected } else { normal };
+            let style = if idx == self.cursor {
+                selected
+            } else {
+                normal
+            };
             surface.hline(b.x, y, b.w, ' ', style);
             let mut cx = b.x;
             for (ci, col) in self.columns.iter().enumerate() {
@@ -99,11 +110,7 @@ impl View for Table {
         }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
