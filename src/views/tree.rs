@@ -4,6 +4,7 @@
 //! Delegates all drawing and navigation to the inner TreeView.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use txv::layout::Rect;
@@ -17,26 +18,18 @@ use crate::types::{CommandOutbox, OpenFilePayload};
 /// File tree panel wrapping the generic TreeView widget.
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
-    pub outbox: CommandOutbox,
+    outbox: Arc<Mutex<CommandOutbox>>,
 }
 
 impl FileTreeView {
     /// Create a file tree rooted at `path`.
-    ///
-    /// Returns `None` if the directory cannot be scanned.
-    pub fn open(path: &Path) -> Option<Self> {
+    /// The shared outbox allows the App to drain commands.
+    pub fn open(path: &Path, outbox: Arc<Mutex<CommandOutbox>>) -> Option<Self> {
         let data = FileTreeData::new(path, 20).ok()?;
         Some(Self {
             inner: TreeView::new(data),
-            outbox: CommandOutbox::default(),
+            outbox,
         })
-    }
-
-    /// Refresh the tree from disk.
-    pub fn refresh(&mut self, path: &Path) {
-        if let Ok(data) = FileTreeData::new(path, 20) {
-            self.inner.set_data(data);
-        }
     }
 
     fn selected_path(&self) -> Option<&PathBuf> {
@@ -47,6 +40,15 @@ impl FileTreeView {
         self.selected_path()
             .map(|p| self.inner.data().is_dir(p))
             .unwrap_or(false)
+    }
+
+    fn emit_open_file(&self, path: &Path) {
+        if let Ok(mut outbox) = self.outbox.lock() {
+            outbox.emit_with(
+                CM_OPEN_FILE,
+                OpenFilePayload { path: path.to_string_lossy().to_string() },
+            );
+        }
     }
 }
 
@@ -60,7 +62,7 @@ impl View for FileTreeView {
         if let Event::Key(KeyEvent { code: KeyCode::Enter, .. }) = event {
             if !self.is_selected_dir() {
                 if let Some(path) = self.selected_path().cloned() {
-                    self.outbox.emit_with(CM_OPEN_FILE, OpenFilePayload { path: path.to_string_lossy().to_string() });
+                    self.emit_open_file(&path);
                     return HandleResult::Consumed;
                 }
             }
@@ -70,7 +72,7 @@ impl View for FileTreeView {
         if let Event::Key(KeyEvent { code: KeyCode::Right, .. }) = event {
             if !self.is_selected_dir() {
                 if let Some(path) = self.selected_path().cloned() {
-                    self.outbox.emit_with(CM_OPEN_FILE, OpenFilePayload { path: path.to_string_lossy().to_string() });
+                    self.emit_open_file(&path);
                     return HandleResult::Consumed;
                 }
             }

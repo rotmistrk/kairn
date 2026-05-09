@@ -1,81 +1,71 @@
 //! SlottedDesktop — tiled layout with 4 named slots, each with tabs.
 //!
-//! ```text
-//! ┌──────┬────────────────────┬──────────┐
-//! │ left │ center             │ right    │
-//! │[tabs]│ [tabs]             │ [tabs]   │
-//! ├──────┴────────────────────┴──────────┤
-//! │ bottom [tabs]                        │
-//! └──────────────────────────────────────┘
-//! ```
-//!
-//! The desktop knows NOTHING about what views are inside each slot.
-//! It holds `Box<dyn View>` and dispatches events to the focused slot.
+//! Draws box-drawing chrome: top line with tab names, vertical dividers,
+//! bottom divider. Views get clean inner surfaces after chrome.
 
+use txv::cell::{Color, Style};
 use txv::layout::Rect;
 use txv::surface::Surface;
 use txv_widgets::view::{DrawContext, Event, HandleResult, View};
-use txv_widgets::{TabBar, TabEntry};
 
 use crate::commands::*;
 use crate::types::SlotId;
 
 /// A single slot containing tabbed views.
-struct Slot {
-    tabs: Vec<Box<dyn View>>,
+pub(crate) struct Slot {
+    pub(crate) tabs: Vec<(String, Box<dyn View>)>,
     active: usize,
     visible: bool,
     /// Size in columns (left/right) or rows (bottom).
     size: u16,
-    tab_bar: TabBar,
 }
 
 impl Slot {
     fn new(size: u16) -> Self {
-        Self {
-            tabs: Vec::new(),
-            active: 0,
-            visible: true,
-            size,
-            tab_bar: TabBar::new(),
-        }
+        Self { tabs: Vec::new(), active: 0, visible: true, size }
     }
 
     fn active_view(&self) -> Option<&dyn View> {
-        self.tabs.get(self.active).map(|v| v.as_ref())
+        self.tabs.get(self.active).map(|(_, v)| v.as_ref())
     }
 
     fn active_view_mut(&mut self) -> Option<&mut Box<dyn View>> {
-        self.tabs.get_mut(self.active)
+        self.tabs.get_mut(self.active).map(|(_, v)| v)
+    }
+
+    fn active_title(&self) -> &str {
+        self.tabs.get(self.active).map(|(t, _)| t.as_str()).unwrap_or("")
     }
 
     fn add_tab(&mut self, title: &str, view: Box<dyn View>) {
-        self.tab_bar.add(TabEntry {
-            title: title.to_string(),
-            modified: false,
-        });
-        self.tabs.push(view);
+        self.tabs.push((title.to_string(), view));
         self.active = self.tabs.len() - 1;
-        self.tab_bar.set_active(self.active);
+    }
+
+    fn find_tab_by_title(&self, title: &str) -> Option<usize> {
+        self.tabs.iter().position(|(t, _)| t == title)
+    }
+
+    fn set_active(&mut self, idx: usize) {
+        if idx < self.tabs.len() {
+            self.active = idx;
+        }
     }
 
     fn close_active(&mut self) -> Option<Box<dyn View>> {
         if self.tabs.is_empty() {
             return None;
         }
-        let removed = self.tabs.remove(self.active);
-        self.tab_bar.remove(self.active);
+        let (_, view) = self.tabs.remove(self.active);
         if self.active >= self.tabs.len() && !self.tabs.is_empty() {
             self.active = self.tabs.len() - 1;
         }
-        self.tab_bar.set_active(self.active);
-        Some(removed)
+        Some(view)
     }
 
     fn next_tab(&mut self) {
         if self.tabs.len() > 1 {
             self.active = (self.active + 1) % self.tabs.len();
-            self.tab_bar.set_active(self.active);
         }
     }
 
@@ -86,29 +76,48 @@ impl Slot {
             } else {
                 self.active - 1
             };
-            self.tab_bar.set_active(self.active);
         }
     }
 
     fn is_empty(&self) -> bool {
         self.tabs.is_empty()
     }
+}
 
-    fn has_tabs(&self) -> bool {
-        self.tabs.len() > 1
+/// Chrome styles.
+struct Chrome;
+
+impl Chrome {
+    fn border_style() -> Style {
+        Style { fg: Color::Ansi(7), bg: Color::Reset, ..Style::default() }
+    }
+
+    fn active_tab_style() -> Style {
+        Style {
+            fg: Color::Ansi(14), // bright cyan
+            bg: Color::Ansi(4),  // dark blue
+            attrs: txv::cell::Attrs { bold: true, ..txv::cell::Attrs::default() },
+        }
+    }
+
+    fn inactive_tab_style() -> Style {
+        Style {
+            fg: Color::Ansi(15), // white
+            bg: Color::Ansi(8),  // dark gray
+            ..Style::default()
+        }
     }
 }
 
 /// The slotted desktop layout.
 pub struct SlottedDesktop {
-    slots: [Slot; 4],
+    pub(crate) slots: [Slot; 4],
     focused: SlotId,
     zoomed: Option<SlotId>,
     bounds: Rect,
 }
 
 impl SlottedDesktop {
-    /// Create a new desktop with default slot sizes.
     pub fn new() -> Self {
         Self {
             slots: [
@@ -128,6 +137,16 @@ impl SlottedDesktop {
         self.slot_mut(slot).add_tab(title, view);
     }
 
+    /// Find a tab by title in a slot and switch to it. Returns true if found.
+    pub fn switch_to_tab(&mut self, slot: SlotId, title: &str) -> bool {
+        if let Some(idx) = self.slot(slot).find_tab_by_title(title) {
+            self.slot_mut(slot).set_active(idx);
+            true
+        } else {
+            false
+        }
+    }
+
     fn slot(&self, id: SlotId) -> &Slot {
         &self.slots[id as usize]
     }
@@ -140,18 +159,19 @@ impl SlottedDesktop {
         &mut self.slots[self.focused as usize]
     }
 
-    /// Compute layout rects for the 4 slots.
-    /// Returns (left, center, right, bottom) rects.
-    fn compute_rects(&self) -> [Rect; 4] {
+    /// Compute content rects for the 4 slots (after chrome).
+    /// Row 0 = top chrome line. Content starts at row 1.
+    /// If bottom visible: bottom divider + bottom content at end.
+    fn compute_content_rects(&self) -> [Rect; 4] {
         let b = self.bounds;
-        if b.w == 0 || b.h == 0 {
+        if b.w < 3 || b.h < 2 {
             return [Rect { x: 0, y: 0, w: 0, h: 0 }; 4];
         }
 
-        // If zoomed, the zoomed slot gets everything.
         if let Some(z) = self.zoomed {
             let mut rects = [Rect { x: 0, y: 0, w: 0, h: 0 }; 4];
-            rects[z as usize] = b;
+            // Zoomed slot gets everything below top chrome line
+            rects[z as usize] = Rect { x: b.x, y: b.y + 1, w: b.w, h: b.h.saturating_sub(1) };
             return rects;
         }
 
@@ -161,30 +181,223 @@ impl SlottedDesktop {
         } else {
             0
         };
-        let top_h = b.h.saturating_sub(bottom_h);
+        // If bottom visible, we need 1 row for bottom divider
+        let bottom_divider = if bottom_h > 0 { 1 } else { 0 };
+        // Top content height: total - top_chrome(1) - bottom_divider - bottom_content
+        let top_content_h = b.h.saturating_sub(1 + bottom_divider + bottom_h);
 
-        // Horizontal split of the top area
+        // Horizontal: divide among visible top slots with dividers between them
         let left_slot = &self.slots[SlotId::Left as usize];
         let right_slot = &self.slots[SlotId::Right as usize];
 
-        let left_w = if left_slot.visible && !left_slot.is_empty() {
-            left_slot.size.min(b.w.saturating_sub(10))
+        let left_visible = left_slot.visible && !left_slot.is_empty();
+        let right_visible = right_slot.visible && !right_slot.is_empty();
+
+        // Count dividers between top slots
+        let mut divider_count: u16 = 0;
+        if left_visible { divider_count += 1; }
+        if right_visible { divider_count += 1; }
+
+        let usable_w = b.w.saturating_sub(divider_count);
+
+        let left_w = if left_visible {
+            left_slot.size.min(usable_w.saturating_sub(10))
         } else {
             0
         };
-        let right_w = if right_slot.visible && !right_slot.is_empty() {
-            right_slot.size.min(b.w.saturating_sub(left_w + 10))
+        let right_w = if right_visible {
+            right_slot.size.min(usable_w.saturating_sub(left_w + 10))
         } else {
             0
         };
-        let center_w = b.w.saturating_sub(left_w + right_w);
+        let center_w = usable_w.saturating_sub(left_w + right_w);
+
+        // Compute x positions accounting for dividers
+        let left_x = b.x;
+        let center_x = b.x + left_w + if left_visible { 1 } else { 0 };
+        let right_x = center_x + center_w + if right_visible { 1 } else { 0 };
+
+        let content_y = b.y + 1; // below top chrome line
+
+        let bottom_y = b.y + 1 + top_content_h + bottom_divider;
 
         [
-            Rect { x: b.x, y: b.y, w: left_w, h: top_h },
-            Rect { x: b.x + left_w, y: b.y, w: center_w, h: top_h },
-            Rect { x: b.x + left_w + center_w, y: b.y, w: right_w, h: top_h },
-            Rect { x: b.x, y: b.y + top_h, w: b.w, h: bottom_h },
+            Rect { x: left_x, y: content_y, w: left_w, h: top_content_h },
+            Rect { x: center_x, y: content_y, w: center_w, h: top_content_h },
+            Rect { x: right_x, y: content_y, w: right_w, h: top_content_h },
+            Rect { x: b.x, y: bottom_y, w: b.w, h: bottom_h },
         ]
+    }
+
+    /// Compute vertical divider x-positions (relative to bounds).
+    fn divider_x_positions(&self) -> Vec<u16> {
+        if self.zoomed.is_some() {
+            return Vec::new();
+        }
+        let left_slot = &self.slots[SlotId::Left as usize];
+        let right_slot = &self.slots[SlotId::Right as usize];
+        let left_visible = left_slot.visible && !left_slot.is_empty();
+        let right_visible = right_slot.visible && !right_slot.is_empty();
+
+        let mut positions = Vec::new();
+        let mut x: u16 = 0;
+
+        if left_visible {
+            let lw = left_slot.size.min(self.bounds.w.saturating_sub(12));
+            x += lw;
+            positions.push(x);
+            x += 1; // divider column
+        }
+
+        if right_visible {
+            let divider_count = positions.len() as u16 + 1; // +1 for right divider
+            let usable = self.bounds.w.saturating_sub(divider_count + positions.len() as u16);
+            let rw = right_slot.size.min(usable.saturating_sub(10));
+            let center_w = usable.saturating_sub(
+                if left_visible { left_slot.size.min(self.bounds.w.saturating_sub(12)) } else { 0 } + rw,
+            );
+            x += center_w;
+            positions.push(x);
+        }
+
+        positions
+    }
+
+    fn draw_top_chrome(&self, surface: &mut Surface<'_>) {
+        let w = surface.width();
+        let style = Chrome::border_style();
+
+        // Fill row 0 with ─
+        surface.hline(0, 0, w, '─', style);
+
+        // Compute divider positions for ┬
+        let rects = self.compute_content_rects();
+        let left_visible = rects[SlotId::Left as usize].w > 0;
+        let right_visible = rects[SlotId::Right as usize].w > 0;
+
+        // Draw tab names for each visible top slot
+        let slot_order = [SlotId::Left, SlotId::Center, SlotId::Right];
+        for &sid in &slot_order {
+            let slot = &self.slots[sid as usize];
+            if slot.is_empty() || (!slot.visible && sid != SlotId::Center) {
+                continue;
+            }
+            let rect = rects[sid as usize];
+            if rect.w == 0 {
+                continue;
+            }
+            // Tab bar starts at the slot's x position (relative to bounds)
+            let start_x = rect.x.saturating_sub(self.bounds.x);
+            self.draw_slot_tabs(surface, slot, start_x, rect.w, sid == self.focused);
+        }
+
+        // Draw ┬ at divider positions
+        if left_visible {
+            let lx = rects[SlotId::Left as usize].w;
+            if lx < w {
+                surface.put(lx, 0, '┬', style);
+            }
+        }
+        if right_visible {
+            let rx = rects[SlotId::Right as usize].x.saturating_sub(self.bounds.x).saturating_sub(1);
+            if rx < w && rx > 0 {
+                surface.put(rx, 0, '┬', style);
+            }
+        }
+    }
+
+    fn draw_slot_tabs(
+        &self,
+        surface: &mut Surface<'_>,
+        slot: &Slot,
+        start_x: u16,
+        max_w: u16,
+        is_focused: bool,
+    ) {
+        let mut col = start_x;
+        let end = start_x + max_w;
+
+        for (i, (title, _)) in slot.tabs.iter().enumerate() {
+            let label = format!("({})", title);
+            let lw = label.len() as u16;
+            if col + lw > end {
+                break;
+            }
+            let style = if i == slot.active {
+                if is_focused {
+                    Chrome::active_tab_style()
+                } else {
+                    Chrome::inactive_tab_style()
+                }
+            } else {
+                Chrome::inactive_tab_style()
+            };
+            surface.print(col, 0, &label, style);
+            col += lw;
+        }
+    }
+
+    fn draw_vertical_dividers(&self, surface: &mut Surface<'_>) {
+        let style = Chrome::border_style();
+        let rects = self.compute_content_rects();
+        let h = surface.height();
+
+        let left_visible = rects[SlotId::Left as usize].w > 0;
+        let right_visible = rects[SlotId::Right as usize].w > 0;
+
+        // Left-center divider
+        if left_visible {
+            let x = rects[SlotId::Left as usize].w;
+            if x < surface.width() {
+                let vlen = h.saturating_sub(1); // from row 1 to bottom
+                surface.vline(x, 1, vlen, '│', style);
+            }
+        }
+
+        // Center-right divider
+        if right_visible {
+            let x = rects[SlotId::Right as usize].x.saturating_sub(self.bounds.x).saturating_sub(1);
+            if x > 0 && x < surface.width() {
+                let vlen = h.saturating_sub(1);
+                surface.vline(x, 1, vlen, '│', style);
+            }
+        }
+    }
+
+    fn draw_bottom_divider(&self, surface: &mut Surface<'_>) {
+        let bottom_slot = &self.slots[SlotId::Bottom as usize];
+        if !bottom_slot.visible || bottom_slot.is_empty() {
+            return;
+        }
+
+        let rects = self.compute_content_rects();
+        let bottom_rect = rects[SlotId::Bottom as usize];
+        if bottom_rect.h == 0 {
+            return;
+        }
+
+        let style = Chrome::border_style();
+        let div_y = bottom_rect.y.saturating_sub(self.bounds.y).saturating_sub(1);
+        let w = surface.width();
+
+        surface.hline(0, div_y, w, '─', style);
+
+        // Draw ┴ at vertical divider positions
+        let left_visible = rects[SlotId::Left as usize].w > 0;
+        let right_visible = rects[SlotId::Right as usize].w > 0;
+
+        if left_visible {
+            let x = rects[SlotId::Left as usize].w;
+            if x < w {
+                surface.put(x, div_y, '┴', style);
+            }
+        }
+        if right_visible {
+            let x = rects[SlotId::Right as usize].x.saturating_sub(self.bounds.x).saturating_sub(1);
+            if x > 0 && x < w {
+                surface.put(x, div_y, '┴', style);
+            }
+        }
     }
 
     fn focus_slot(&mut self, id: SlotId) -> HandleResult {
@@ -239,11 +452,7 @@ impl SlottedDesktop {
                 HandleResult::Consumed
             }
             CM_ZOOM_TOGGLE => {
-                self.zoomed = if self.zoomed.is_some() {
-                    None
-                } else {
-                    Some(self.focused)
-                };
+                self.zoomed = if self.zoomed.is_some() { None } else { Some(self.focused) };
                 HandleResult::Consumed
             }
             CM_TOGGLE_LEFT => {
@@ -264,59 +473,33 @@ impl SlottedDesktop {
             _ => HandleResult::Ignored,
         }
     }
-
-    fn draw_slot(
-        slot: &Slot,
-        surface: &mut Surface<'_>,
-        ctx: &DrawContext,
-        is_focused: bool,
-    ) {
-        let h = surface.height();
-        if h == 0 || surface.width() == 0 {
-            return;
-        }
-
-        // Draw tab bar if multiple tabs
-        let content_y = if slot.has_tabs() { 1 } else { 0 };
-        if slot.has_tabs() && h > 1 {
-            let mut tab_sub = surface.sub(0, 0, surface.width(), 1);
-            slot.tab_bar.draw(&mut tab_sub, ctx);
-        }
-
-        // Draw active view
-        if let Some(view) = slot.active_view() {
-            let content_h = h.saturating_sub(content_y);
-            if content_h > 0 {
-                let mut view_sub = surface.sub(0, content_y, surface.width(), content_h);
-                view.draw(&mut view_sub, ctx);
-            }
-        }
-
-        // Draw focus border indicator (top-left corner)
-        if is_focused {
-            let style = txv::cell::Style {
-                fg: txv::cell::Color::Ansi(14), // cyan
-                ..txv::cell::Style::default()
-            };
-            surface.put(0, 0, '▌', style);
-        }
-    }
 }
 
 impl View for SlottedDesktop {
     fn draw(&self, surface: &mut Surface<'_>, ctx: &DrawContext) {
-        let rects = self.compute_rects();
+        // 1. Draw chrome
+        self.draw_top_chrome(surface);
+        self.draw_vertical_dividers(surface);
+        self.draw_bottom_divider(surface);
+
+        // 2. Draw each slot's active view into its content rect
+        let rects = self.compute_content_rects();
         let b = self.bounds;
 
         for (i, rect) in rects.iter().enumerate() {
             if rect.w == 0 || rect.h == 0 {
                 continue;
             }
-            let rel_x = rect.x.saturating_sub(b.x);
-            let rel_y = rect.y.saturating_sub(b.y);
-            let mut sub = surface.sub(rel_x, rel_y, rect.w, rect.h);
-            let slot_id = [SlotId::Left, SlotId::Center, SlotId::Right, SlotId::Bottom][i];
-            Self::draw_slot(&self.slots[i], &mut sub, ctx, self.focused == slot_id);
+            let slot = &self.slots[i];
+            if slot.is_empty() {
+                continue;
+            }
+            if let Some(view) = slot.active_view() {
+                let rel_x = rect.x.saturating_sub(b.x);
+                let rel_y = rect.y.saturating_sub(b.y);
+                let mut sub = surface.sub(rel_x, rel_y, rect.w, rect.h);
+                view.draw(&mut sub, ctx);
+            }
         }
     }
 

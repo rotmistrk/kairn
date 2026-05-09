@@ -65,44 +65,39 @@ impl StatusBarView {
         self.context_text = text;
     }
 
-    /// Create default keybindings for kairn.
+    /// Create default keybindings for kairn per spec.
     pub fn default_bindings() -> Vec<Binding> {
         use crate::commands::*;
         vec![
             Binding {
-                key: KeySpec { code: KeyCode::Char('q'), modifiers: KeyModifiers::CONTROL },
-                command: CM_QUIT,
-                label: "^Q Quit".into(),
+                key: KeySpec { code: KeyCode::F(1), modifiers: KeyModifiers::NONE },
+                command: CM_SHOW_HELP,
+                label: "F1:Help".into(),
             },
             Binding {
                 key: KeySpec { code: KeyCode::F(2), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_NEXT_SLOT,
-                label: "F2 Next".into(),
+                command: CM_FOCUS_LEFT,
+                label: "F2:Tree".into(),
             },
             Binding {
                 key: KeySpec { code: KeyCode::F(3), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_LEFT,
-                label: "F3 Tree".into(),
+                command: CM_FOCUS_CENTER,
+                label: "F3:Main".into(),
             },
             Binding {
                 key: KeySpec { code: KeyCode::F(4), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_CENTER,
-                label: "F4 Main".into(),
+                command: CM_FOCUS_RIGHT,
+                label: "F4:Tools".into(),
             },
             Binding {
                 key: KeySpec { code: KeyCode::F(5), modifiers: KeyModifiers::NONE },
-                command: CM_FOCUS_RIGHT,
-                label: "F5 Term".into(),
+                command: CM_ZOOM_TOGGLE,
+                label: "F5:Zoom".into(),
             },
             Binding {
-                key: KeySpec { code: KeyCode::Char('b'), modifiers: KeyModifiers::CONTROL },
-                command: CM_TOGGLE_LEFT,
-                label: "^B Tree".into(),
-            },
-            Binding {
-                key: KeySpec { code: KeyCode::F(1), modifiers: KeyModifiers::NONE },
-                command: CM_SHOW_HELP,
-                label: "F1 Help".into(),
+                key: KeySpec { code: KeyCode::Char('q'), modifiers: KeyModifiers::CONTROL },
+                command: CM_QUIT,
+                label: "^Q:Quit".into(),
             },
         ]
     }

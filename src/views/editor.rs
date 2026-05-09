@@ -43,6 +43,16 @@ impl EditorView {
         })
     }
 
+    /// Create an editor view from an existing Editor instance.
+    pub fn from_editor(editor: Editor, title: &str) -> Self {
+        Self {
+            editor,
+            title: title.to_string(),
+            bounds: Rect { x: 0, y: 0, w: 0, h: 0 },
+            outbox: CommandOutbox::default(),
+        }
+    }
+
     /// The tab title for this editor.
     pub fn title(&self) -> &str {
         &self.title
