@@ -1,6 +1,6 @@
 mod helpers;
 
-use helpers::{run_and_capture, setup, temp_project};
+use helpers::{cursor_at, run_and_capture, setup, temp_project};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn open_file_and_focus(
@@ -20,7 +20,7 @@ fn h_moves_left() {
     be.inject_key(KeyCode::Char('l'), KeyMod::default());
     be.inject_key(KeyCode::Char('h'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 0)));
+    assert_eq!(cursor_at(&be), Some((0, 0)));
 }
 
 #[test]
@@ -30,7 +30,7 @@ fn l_moves_right() {
     open_file_and_focus(&mut be);
     be.inject_key(KeyCode::Char('l'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 1)));
+    assert_eq!(cursor_at(&be), Some((0, 1)));
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn j_moves_down() {
     open_file_and_focus(&mut be);
     be.inject_key(KeyCode::Char('j'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((1, 0)));
+    assert_eq!(cursor_at(&be), Some((1, 0)));
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn k_moves_up() {
     be.inject_key(KeyCode::Char('j'), KeyMod::default());
     be.inject_key(KeyCode::Char('k'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 0)));
+    assert_eq!(cursor_at(&be), Some((0, 0)));
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn w_moves_word_forward() {
     open_file_and_focus(&mut be);
     be.inject_key(KeyCode::Char('w'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 6)));
+    assert_eq!(cursor_at(&be), Some((0, 6)));
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn b_moves_word_backward() {
     be.inject_key(KeyCode::Char('w'), KeyMod::default());
     be.inject_key(KeyCode::Char('b'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 0)));
+    assert_eq!(cursor_at(&be), Some((0, 0)));
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn zero_moves_to_line_start() {
     be.inject_key(KeyCode::Char('w'), KeyMod::default());
     be.inject_key(KeyCode::Char('0'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 0)));
+    assert_eq!(cursor_at(&be), Some((0, 0)));
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn dollar_moves_to_line_end() {
     open_file_and_focus(&mut be);
     be.inject_key(KeyCode::Char('$'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 4)));
+    assert_eq!(cursor_at(&be), Some((0, 4)));
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn gg_moves_to_file_start() {
     be.inject_key(KeyCode::Char('g'), KeyMod::default());
     be.inject_key(KeyCode::Char('g'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 0)));
+    assert_eq!(cursor_at(&be), Some((0, 0)));
 }
 
 #[test]
@@ -115,5 +115,5 @@ fn g_moves_to_file_end() {
     open_file_and_focus(&mut be);
     be.inject_key(KeyCode::Char('G'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((2, 0)));
+    assert_eq!(cursor_at(&be), Some((2, 0)));
 }

@@ -1,6 +1,6 @@
 mod helpers;
 
-use helpers::{run_and_capture, setup, temp_project};
+use helpers::{cursor_at, run_and_capture, setup, temp_project};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn open_file_and_focus(be: &mut txv_core::run::MockBackend) {
@@ -40,7 +40,7 @@ fn esc_returns_to_normal() {
     // In normal mode, 'l' moves right instead of inserting
     be.inject_key(KeyCode::Char('l'), KeyMod::default());
     run_and_capture(&mut app, &mut be, 1);
-    assert_eq!(app.editor_cursor(), Some((0, 1)));
+    assert_eq!(cursor_at(&be), Some((0, 1)));
 }
 
 #[test]

@@ -9,6 +9,10 @@ use super::command::Command;
 pub enum EditorMode {
     Normal,
     Insert,
+    Visual,
+    VisualLine,
+    Command,
+    Search,
 }
 
 /// Translates key events into editor commands.

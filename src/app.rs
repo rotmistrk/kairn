@@ -2,7 +2,6 @@
 //! StatusBar (preprocess) + Desktop (focused) are children.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
@@ -16,14 +15,10 @@ use crate::views::help::HelpView;
 use crate::views::terminal::TerminalView;
 use crate::views::tree::FileTreeView;
 
-/// Shared cursor state for testing.
-pub type CursorState = Arc<Mutex<Option<(usize, usize)>>>;
-
 /// Root application — a Group with StatusBar + Desktop.
 pub struct App {
     group: GroupState,
     broker: FileBroker,
-    pub cursor_state: CursorState,
 }
 
 impl App {
@@ -48,12 +43,7 @@ impl App {
         Self {
             group,
             broker: FileBroker::new(),
-            cursor_state: Arc::new(Mutex::new(None)),
         }
-    }
-
-    pub fn editor_cursor(&self) -> Option<(usize, usize)> {
-        *self.cursor_state.lock().unwrap()
     }
 
     fn handle_command(
@@ -88,7 +78,6 @@ impl App {
         let path_str = path.to_string_lossy().to_string();
 
         // Check broker first (no borrow on group)
-        let desktop_child = &self.group.children[1];
         let tab_count = 0; // approximate — broker just needs a slot
         let open_result = self.broker.open(&path_str, SlotId::Center, tab_count);
 
@@ -99,9 +88,7 @@ impl App {
                 }
             }
             OpenResult::Opened => {
-                let cursor_state = self.cursor_state.clone();
-                if let Ok(mut editor) = EditorView::open(path) {
-                    editor.cursor_state = cursor_state;
+                if let Ok(editor) = EditorView::open(path) {
                     let title = editor.title().to_string();
                     if let Some(desktop) = self.desktop_mut() {
                         desktop.insert_tab(SlotId::Center, title, Box::new(editor));

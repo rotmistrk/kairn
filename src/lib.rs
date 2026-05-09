@@ -10,5 +10,6 @@ pub mod completer;
 pub mod desktop;
 pub mod editor;
 pub mod help;
+pub mod highlight;
 pub mod status;
 pub mod views;

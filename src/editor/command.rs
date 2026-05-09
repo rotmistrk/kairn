@@ -9,12 +9,26 @@ pub enum Command {
     MoveDown,
     MoveWordForward,
     MoveWordBackward,
+    MoveWordEnd,
     MoveLineStart,
     MoveLineEnd,
+    MoveFirstNonBlank,
     MoveFileStart,
     MoveFileEnd,
+    GotoLine(usize),
     HalfPageUp,
     HalfPageDown,
+    PageUp,
+    PageDown,
+    MatchBracket,
+
+    // Find char on line
+    FindChar(char),
+    FindCharBack(char),
+    TillChar(char),
+    TillCharBack(char),
+    RepeatFind,
+    RepeatFindReverse,
 
     // Editing
     InsertChar(char),
@@ -23,8 +37,24 @@ pub enum Command {
     DeleteCharBackward,
     DeleteLine,
     DeleteWord,
+    DeleteToEnd,
+    ChangeWord,
+    ChangeLine,
+    ChangeToEnd,
+    Substitute,
+    SubstituteLine,
     NewlineBelow,
     NewlineAbove,
+    JoinLines,
+    ToggleCase,
+    ReplaceChar(char),
+    Indent,
+    Unindent,
+
+    // Operators (pending motion)
+    OperatorDelete,
+    OperatorChange,
+    OperatorYank,
 
     // Undo/redo
     Undo,
@@ -33,21 +63,45 @@ pub enum Command {
     // Clipboard
     YankLine,
     Paste,
+    PasteBefore,
 
     // Mode
     EnterInsertMode,
     EnterInsertAfter,
     EnterInsertLineEnd,
+    EnterInsertLineStart,
     EnterInsertBelow,
     EnterInsertAbove,
     ExitInsertMode,
+    EnterVisual,
+    EnterVisualLine,
+    ExitVisual,
 
-    // Ex
+    // Visual mode operations
+    VisualDelete,
+    VisualYank,
+    VisualIndent,
+    VisualUnindent,
+
+    // Search
+    SearchForward(String),
+    SearchBackward(String),
+    SearchNext,
+    SearchPrev,
+    SearchWordForward,
+    SearchWordBackward,
+    EnterSearchMode,
+
+    // Ex / command mode
+    EnterCommandMode,
     ExCommand(String),
 
     // File
     Save,
     CloseBuffer,
+
+    // Repeat
+    DotRepeat,
 
     // No-op
     Noop,

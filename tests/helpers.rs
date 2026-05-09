@@ -42,3 +42,73 @@ pub fn run_and_capture(
     run_cycles(app, backend, cycles);
     backend.screen_text()
 }
+
+/// Find the cursor position on screen by scanning for the reversed cell
+/// in the editor area (center slot). Returns (line, col) in editor coordinates
+/// where line is relative to the first content row and col is relative to
+/// after the gutter.
+///
+/// The editor renders: gutter (line numbers) + content. The cursor cell has
+/// `attrs.reverse = true`. We find it, then subtract the gutter width and
+/// the slot x-offset to get the editor (line, col).
+#[allow(dead_code)]
+pub fn cursor_at(be: &MockBackend) -> Option<(usize, usize)> {
+    let surface = be.surface()?;
+    let w = surface.width();
+    let h = surface.height();
+
+    // Find the reversed cell — skip row 0 (chrome) and last row (status)
+    // Also skip the left panel area (tree is ~24 cols + 1 divider)
+    for y in 1..h.saturating_sub(1) {
+        for x in 0..w {
+            let cell = surface.cell(x, y);
+            if cell.style.attrs.reverse {
+                // Check this is in the editor area (has gutter with Ansi(8) on this row)
+                let editor_x_start = find_editor_x_start(surface, y);
+                if editor_x_start == 0 && x < 25 {
+                    // This is likely the tree cursor, skip
+                    continue;
+                }
+                let gutter_w = find_gutter_width(surface, y, editor_x_start);
+                let content_x = editor_x_start + gutter_w;
+
+                if x < content_x {
+                    // Cursor is in the gutter area — shouldn't happen, skip
+                    continue;
+                }
+
+                let col = (x - content_x) as usize;
+                let line = (y - 1) as usize; // row 1 = line 0
+                return Some((line, col));
+            }
+        }
+    }
+    None
+}
+
+/// Find where the editor slot starts on a given row (first cell with Ansi(8) fg = gutter).
+fn find_editor_x_start(surface: &txv_core::surface::Surface, y: u16) -> u16 {
+    use txv_core::cell::Color;
+    for x in 0..surface.width() {
+        let cell = surface.cell(x, y);
+        if cell.style.fg == Color::Ansi(8) && cell.ch.is_ascii_digit() {
+            return x;
+        }
+    }
+    0
+}
+
+/// Find gutter width: count cells from editor_x_start that have Ansi(8) fg.
+fn find_gutter_width(surface: &txv_core::surface::Surface, y: u16, start_x: u16) -> u16 {
+    use txv_core::cell::Color;
+    let mut w = 0;
+    for x in start_x..surface.width() {
+        let cell = surface.cell(x, y);
+        if cell.style.fg == Color::Ansi(8) {
+            w += 1;
+        } else {
+            break;
+        }
+    }
+    w
+}
