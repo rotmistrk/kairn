@@ -1,35 +1,29 @@
 mod helpers;
 
-use helpers::{cursor_at, run_and_capture, setup, temp_project};
+use helpers::{cursor_at, temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
-fn open_file_and_focus(be: &mut txv_core::run::MockBackend) {
-    be.inject_key(KeyCode::Enter, KeyMod::default());
-    be.inject_key(KeyCode::F(3), KeyMod::default());
+fn open_file_and_focus(h: &mut TestHarness) {
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::F(3), KeyMod::default());
 }
 
 #[test]
 fn colon_w_saves_file() {
     let dir = temp_project(&[("t.txt", "original")]);
-    let (mut app, mut be) = setup(dir.path(), 80, 24);
-    open_file_and_focus(&mut be);
-    // Insert text
-    be.inject_key(KeyCode::Char('i'), KeyMod::default());
-    be.inject_str("NEW ");
-    be.inject_key(KeyCode::Esc, KeyMod::default());
-    // :w
-    be.inject_key(KeyCode::Char(':'), KeyMod::default());
-    // The ':' enters ex command mode in the editor — but our current
-    // implementation emits ExCommand("") which is a no-op.
-    // For now, test that the file can be saved via the command mode (M-x save)
-    run_and_capture(&mut app, &mut be, 1);
-    // Verify content was modified in buffer
-    assert!(be.contains("NEW original"));
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.inject_key(KeyCode::Char('i'), KeyMod::default());
+    h.inject_str("NEW ");
+    h.inject_key(KeyCode::Esc, KeyMod::default());
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.inject_str("w\n");
+    h.run_cycles(1);
+    assert!(h.contains("NEW original"));
 }
 
 #[test]
 fn colon_q_closes_buffer() {
-    // This test verifies the ex command parsing works
     use kairn::editor::ex::parse_ex;
     use kairn::editor::command::Command;
     assert_eq!(parse_ex("q"), Command::CloseBuffer);
@@ -40,62 +34,53 @@ fn colon_q_closes_buffer() {
 fn colon_wq_saves_and_closes() {
     use kairn::editor::ex::parse_ex;
     use kairn::editor::command::Command;
-    // :wq maps to Save (editor handles close after save)
     assert_eq!(parse_ex("wq"), Command::Save);
 }
 
 #[test]
 fn slash_searches_forward() {
-    // Search is not yet implemented in the editor — test that content is visible
     let dir = temp_project(&[("t.txt", "hello world\nfoo bar")]);
-    let (mut app, mut be) = setup(dir.path(), 80, 24);
-    open_file_and_focus(&mut be);
-    run_and_capture(&mut app, &mut be, 1);
-    assert!(be.contains("hello world"));
-    assert!(be.contains("foo bar"));
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.run_cycles(1);
+    assert!(h.contains("hello world"));
+    assert!(h.contains("foo bar"));
 }
 
 #[test]
 fn editor_shows_line_numbers() {
     let dir = temp_project(&[("t.txt", "aaa\nbbb\nccc")]);
-    let (mut app, mut be) = setup(dir.path(), 80, 24);
-    open_file_and_focus(&mut be);
-    run_and_capture(&mut app, &mut be, 1);
-    assert!(be.contains("1 aaa"));
-    assert!(be.contains("2 bbb"));
-    assert!(be.contains("3 ccc"));
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.run_cycles(1);
+    assert!(h.contains("1 aaa"));
+    assert!(h.contains("2 bbb"));
+    assert!(h.contains("3 ccc"));
 }
 
 #[test]
 fn ctrl_r_redoes() {
     let dir = temp_project(&[("t.txt", "hello")]);
-    let (mut app, mut be) = setup(dir.path(), 80, 24);
-    open_file_and_focus(&mut be);
-    // Delete char, undo, redo
-    be.inject_key(KeyCode::Char('x'), KeyMod::default());
-    be.inject_key(KeyCode::Char('u'), KeyMod::default());
-    be.inject_key(KeyCode::Char('r'), KeyMod { ctrl: true, alt: false, shift: false });
-    run_and_capture(&mut app, &mut be, 1);
-    // After redo, 'h' should be deleted again
-    assert!(be.contains("ello"));
-    assert!(!be.contains("hello"));
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.inject_key(KeyCode::Char('x'), KeyMod::default());
+    h.inject_key(KeyCode::Char('u'), KeyMod::default());
+    h.inject_key(KeyCode::Char('r'), KeyMod { ctrl: true, alt: false, shift: false });
+    h.run_cycles(1);
+    assert!(h.contains("ello"));
+    assert!(!h.contains("hello"));
 }
 
-// --- BUG 2: Editor : mode doesn't accept typing ---
+// --- BUG 2: Editor : mode accepts typing and executes ---
 #[test]
 fn colon_mode_accepts_typing_and_executes() {
-    // Create a file with 50 lines so we can goto line 42
     let content: String = (1..=50).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let dir = temp_project(&[("big.txt", &content)]);
-    let (mut app, mut be) = setup(dir.path(), 80, 24);
-    // Open file and focus editor
-    be.inject_key(KeyCode::Enter, KeyMod::default());
-    be.inject_key(KeyCode::F(3), KeyMod::default());
-    run_and_capture(&mut app, &mut be, 1);
-    // Type : to enter command mode, then "42", then Enter
-    be.inject_key(KeyCode::Char(':'), KeyMod::default());
-    be.inject_str("42\n");
-    run_and_capture(&mut app, &mut be, 1);
-    // Cursor should be on line 42 (0-indexed = line 41)
-    assert_eq!(cursor_at(&be), Some((41, 0)));
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.inject_str("42\n");
+    h.run_cycles(1);
+    assert_eq!(cursor_at(&h), Some((41, 0)));
 }

@@ -2,13 +2,13 @@
 
 #![allow(dead_code)]
 
-pub mod app;
 pub mod broker;
 pub mod buffer;
 pub mod commands;
 pub mod completer;
 pub mod desktop;
 pub mod editor;
+pub mod handler;
 pub mod help;
 pub mod highlight;
 pub mod status;

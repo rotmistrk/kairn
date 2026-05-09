@@ -160,6 +160,76 @@ impl Program {
         backend.leave();
     }
 
+    /// Run exactly N iterations of the event loop. Same dispatch, same
+    /// command handling, same draw as `run()`. Stops after N cycles
+    /// instead of looping forever. Does not call enter/leave on backend.
+    ///
+    /// Each cycle: processes all pending events from backend, dispatches
+    /// commands, draws. Suitable for testing with MockBackend.
+    pub fn run_cycles(
+        &mut self,
+        backend: &mut dyn Backend,
+        handler: &mut dyn FnMut(&mut CommandContext),
+        n: usize,
+    ) {
+        let (w, h) = backend.size();
+        let mut surface = Surface::new(w, h);
+        let mut queue = EventQueue::new();
+
+        self.layout(w, h);
+
+        for _ in 0..n {
+            // Process all pending events
+            while let Some(event) = backend.poll_event(Duration::ZERO) {
+                if let Event::Resize(nw, nh) = &event {
+                    surface = Surface::new(*nw, *nh);
+                    self.layout(*nw, *nh);
+                }
+                self.group.dispatch(&event, &mut queue);
+
+                // Process commands from queue
+                let events = queue.drain();
+                for ev in events {
+                    if let Event::Command { id, .. } = &ev {
+                        if *id == CM_QUIT {
+                            // Draw final frame and return
+                            surface.fill(' ', Style::default());
+                            for child in &self.group.children {
+                                child.draw(&mut surface);
+                            }
+                            backend.flush(&surface);
+                            return;
+                        }
+                    }
+                    if self.group.dispatch(&ev, &mut queue) == HandleResult::Consumed {
+                        continue;
+                    }
+                    if let Event::Command { id, ref data } = ev {
+                        let desktop = &mut *self.group.children[1];
+                        let mut ctx = CommandContext {
+                            command: id,
+                            data,
+                            queue: &mut queue,
+                            desktop,
+                        };
+                        handler(&mut ctx);
+                    }
+                }
+            }
+
+            // Draw
+            surface.fill(' ', Style::default());
+            for child in &self.group.children {
+                child.draw(&mut surface);
+            }
+            self.group.view.dirty = false;
+            for child in &mut self.group.children {
+                child.mark_redrawn();
+            }
+            backend.flush(&surface);
+        }
+    }
+
     /// Compute layout: desktop gets all but last row, status gets last row.
     fn layout(&mut self, w: u16, h: u16) {
         let full = Rect::new(0, 0, w, h);
