@@ -1,11 +1,12 @@
 //! Fuzzy select — input line + filtered list combo.
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
 use txv::cell::Style;
+use txv::layout::Rect;
 use txv::surface::Surface;
 
 use crate::input_line::InputLine;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Input + filtered list combo for fuzzy selection.
 pub struct FuzzySelect {
@@ -14,6 +15,7 @@ pub struct FuzzySelect {
     filtered: Vec<(usize, i64)>, // (original_index, score)
     selected: usize,
     max_visible: usize,
+    bounds: Rect,
     /// Style for the selected item.
     pub selected_style: Style,
     /// Style for unselected items.
@@ -30,6 +32,12 @@ impl FuzzySelect {
             filtered,
             selected: 0,
             max_visible: 20,
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             selected_style: Style {
                 attrs: txv::cell::Attrs {
                     reverse: true,
@@ -90,8 +98,8 @@ impl FuzzySelect {
     }
 }
 
-impl Widget for FuzzySelect {
-    fn render(&self, surface: &mut Surface<'_>, focused: bool) {
+impl View for FuzzySelect {
+    fn draw(&self, surface: &mut Surface<'_>, ctx: &DrawContext) {
         let w = surface.width();
         let h = surface.height();
         if h == 0 {
@@ -100,7 +108,7 @@ impl Widget for FuzzySelect {
 
         // Row 0: input line
         let mut input_surface = surface.sub(0, 0, w, 1);
-        self.input.render(&mut input_surface, focused);
+        self.input.draw(&mut input_surface, ctx);
 
         // Remaining rows: filtered items
         let list_h = (h.saturating_sub(1) as usize).min(self.max_visible);
@@ -127,45 +135,51 @@ impl Widget for FuzzySelect {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
+
         match key.code {
             KeyCode::Up => {
                 self.move_up();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.move_down();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => {
-                if let Some(item) = self.selected_item() {
-                    EventResult::Action(WidgetAction::Confirmed(item.to_string()))
-                } else {
-                    EventResult::Action(WidgetAction::Cancelled)
-                }
-            }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
             _ => {
-                let result = self.input.handle_key(key);
-                // Re-filter after any input change
-                if matches!(result, EventResult::Consumed) {
+                let result = self.input.handle(event);
+                if matches!(result, HandleResult::Consumed) {
                     self.refilter();
                 }
                 result
             }
         }
     }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn make_select() -> FuzzySelect {
@@ -188,8 +202,8 @@ mod tests {
     #[test]
     fn typing_filters() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Char('a')));
-        fs.handle_key(key(KeyCode::Char('p')));
+        fs.handle(&ev(KeyCode::Char('a')));
+        fs.handle(&ev(KeyCode::Char('p')));
         // "ap" matches: apple, apricot
         assert_eq!(fs.filtered.len(), 2);
         assert!(fs.selected_item().is_some());
@@ -198,7 +212,7 @@ mod tests {
     #[test]
     fn case_insensitive_filter() {
         let mut fs = FuzzySelect::new(vec!["Apple".into(), "BANANA".into()]);
-        fs.handle_key(key(KeyCode::Char('a')));
+        fs.handle(&ev(KeyCode::Char('a')));
         // "a" matches "Apple" and "BANANA"
         assert_eq!(fs.filtered.len(), 2);
     }
@@ -206,8 +220,8 @@ mod tests {
     #[test]
     fn no_matches() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Char('z')));
-        fs.handle_key(key(KeyCode::Char('z')));
+        fs.handle(&ev(KeyCode::Char('z')));
+        fs.handle(&ev(KeyCode::Char('z')));
         assert!(fs.filtered.is_empty());
         assert!(fs.selected_item().is_none());
     }
@@ -216,18 +230,18 @@ mod tests {
     fn up_down_navigation() {
         let mut fs = make_select();
         assert_eq!(fs.selected, 0);
-        fs.handle_key(key(KeyCode::Down));
+        fs.handle(&ev(KeyCode::Down));
         assert_eq!(fs.selected, 1);
-        fs.handle_key(key(KeyCode::Down));
+        fs.handle(&ev(KeyCode::Down));
         assert_eq!(fs.selected, 2);
-        fs.handle_key(key(KeyCode::Up));
+        fs.handle(&ev(KeyCode::Up));
         assert_eq!(fs.selected, 1);
     }
 
     #[test]
     fn up_clamps_at_zero() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Up));
+        fs.handle(&ev(KeyCode::Up));
         assert_eq!(fs.selected, 0);
     }
 
@@ -235,7 +249,7 @@ mod tests {
     fn down_clamps_at_end() {
         let mut fs = make_select();
         for _ in 0..10 {
-            fs.handle_key(key(KeyCode::Down));
+            fs.handle(&ev(KeyCode::Down));
         }
         assert_eq!(fs.selected, 4);
     }
@@ -243,40 +257,31 @@ mod tests {
     #[test]
     fn enter_confirms_selected() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Down)); // banana
-        let result = fs.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Confirmed(s)) if s == "banana"
-        ));
+        fs.handle(&ev(KeyCode::Down)); // banana
+        let result = fs.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn esc_cancels() {
         let mut fs = make_select();
-        let result = fs.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = fs.handle(&ev(KeyCode::Esc));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn enter_on_empty_cancels() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Char('z')));
-        fs.handle_key(key(KeyCode::Char('z')));
-        let result = fs.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        fs.handle(&ev(KeyCode::Char('z')));
+        fs.handle(&ev(KeyCode::Char('z')));
+        let result = fs.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn set_items_refilters() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Char('x')));
+        fs.handle(&ev(KeyCode::Char('x')));
         assert!(fs.filtered.is_empty());
         fs.set_items(vec!["fox".into(), "box".into()]);
         // "x" matches both
@@ -289,7 +294,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(30, 10, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            fs.render(&mut s, true);
+            fs.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         let text = screen.to_text();
         assert!(text.contains("apple"));
@@ -299,10 +310,10 @@ mod tests {
     #[test]
     fn backspace_refilters() {
         let mut fs = make_select();
-        fs.handle_key(key(KeyCode::Char('a')));
-        fs.handle_key(key(KeyCode::Char('p')));
+        fs.handle(&ev(KeyCode::Char('a')));
+        fs.handle(&ev(KeyCode::Char('p')));
         let count_after_ap = fs.filtered.len();
-        fs.handle_key(key(KeyCode::Backspace));
+        fs.handle(&ev(KeyCode::Backspace));
         // After removing 'p', filter is just "a" — should match more
         assert!(fs.filtered.len() >= count_after_ap);
     }

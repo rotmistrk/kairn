@@ -1,11 +1,11 @@
 //! Horizontal tab strip widget.
 
-use crossterm::event::KeyEvent;
 use txv::cell::Style;
+use txv::layout::Rect;
 use txv::surface::Surface;
 use txv::text::display_width;
 
-use crate::widget::{EventResult, Widget};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// A single tab entry.
 pub struct TabEntry {
@@ -19,6 +19,7 @@ pub struct TabEntry {
 pub struct TabBar {
     tabs: Vec<TabEntry>,
     active: usize,
+    bounds: Rect,
     /// Style for the active tab.
     pub active_style: Style,
     /// Style for inactive tabs.
@@ -31,6 +32,12 @@ impl TabBar {
         Self {
             tabs: Vec::new(),
             active: 0,
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             active_style: Style {
                 attrs: txv::cell::Attrs {
                     bold: true,
@@ -109,8 +116,8 @@ impl Default for TabBar {
     }
 }
 
-impl Widget for TabBar {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl View for TabBar {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let w = surface.width();
         surface.hline(0, 0, w, ' ', self.inactive_style);
 
@@ -131,26 +138,43 @@ impl Widget for TabBar {
         }
     }
 
-    fn handle_key(&mut self, _key: KeyEvent) -> EventResult {
-        EventResult::Ignored
+    fn handle(&mut self, _event: &Event) -> HandleResult {
+        HandleResult::Ignored
     }
 
     fn focusable(&self) -> bool {
         false
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
+
+    use crate::view::{DrawContext, Event, HandleResult};
 
     fn render_bar(bar: &TabBar, width: u16) -> String {
         let mut screen = Screen::with_color_mode(width, 1, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            bar.render(&mut s, false);
+            bar.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         screen.to_text().trim_end_matches('\n').to_string()
     }
@@ -270,9 +294,11 @@ mod tests {
 
     #[test]
     fn handle_key_ignored() {
-        use crossterm::event::{KeyCode, KeyModifiers};
         let mut bar = TabBar::new();
         let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
-        assert!(matches!(bar.handle_key(key), EventResult::Ignored));
+        assert!(matches!(
+            bar.handle(&Event::Key(key)),
+            HandleResult::Ignored
+        ));
     }
 }

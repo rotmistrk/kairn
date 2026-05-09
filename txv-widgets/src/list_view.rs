@@ -1,11 +1,12 @@
 //! Scrollable list with single selection.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyModifiers};
 use txv::cell::Style;
+use txv::layout::Rect;
 use txv::surface::Surface;
 
 use crate::scroll_view::ScrollView;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Data source for a list view.
 pub trait ListData {
@@ -26,6 +27,7 @@ pub struct ListView<D: ListData> {
     data: D,
     selected: usize,
     scroll: ScrollView,
+    bounds: Rect,
 }
 
 impl<D: ListData> ListView<D> {
@@ -37,6 +39,12 @@ impl<D: ListData> ListView<D> {
             data,
             selected: 0,
             scroll,
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
         }
     }
 
@@ -79,8 +87,8 @@ impl<D: ListData> ListView<D> {
     }
 }
 
-impl<D: ListData> Widget for ListView<D> {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl<D: ListData + Send> View for ListView<D> {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let h = surface.height();
         let w = surface.width();
         let range = self.scroll.visible_range(h);
@@ -94,11 +102,15 @@ impl<D: ListData> Widget for ListView<D> {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
         if self.data.is_empty() {
             return match key.code {
-                KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-                _ => EventResult::Ignored,
+                KeyCode::Esc => HandleResult::Consumed,
+                _ => HandleResult::Ignored,
             };
         }
         let _ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
@@ -106,46 +118,52 @@ impl<D: ListData> Widget for ListView<D> {
             KeyCode::Up => {
                 self.move_up(1);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.move_down(1);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageUp => {
                 self.move_up(10);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageDown => {
                 self.move_down(10);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.selected = 0;
                 self.scroll.ensure_visible(0, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.selected = self.data.len().saturating_sub(1);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => {
-                EventResult::Action(WidgetAction::Selected(self.selected.to_string()))
-            }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-            _ => EventResult::Ignored,
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::{ColorMode, Style};
     use txv::screen::Screen;
 
@@ -174,8 +192,8 @@ mod tests {
         }
     }
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn make_list(n: usize) -> ListView<TestData> {
@@ -192,74 +210,65 @@ mod tests {
     #[test]
     fn move_down_and_up() {
         let mut lv = make_list(5);
-        lv.handle_key(key(KeyCode::Down));
+        lv.handle(&ev(KeyCode::Down));
         assert_eq!(lv.selected(), 1);
-        lv.handle_key(key(KeyCode::Down));
+        lv.handle(&ev(KeyCode::Down));
         assert_eq!(lv.selected(), 2);
-        lv.handle_key(key(KeyCode::Up));
+        lv.handle(&ev(KeyCode::Up));
         assert_eq!(lv.selected(), 1);
     }
 
     #[test]
     fn clamp_at_bounds() {
         let mut lv = make_list(3);
-        lv.handle_key(key(KeyCode::Up));
+        lv.handle(&ev(KeyCode::Up));
         assert_eq!(lv.selected(), 0);
-        lv.handle_key(key(KeyCode::End));
+        lv.handle(&ev(KeyCode::End));
         assert_eq!(lv.selected(), 2);
-        lv.handle_key(key(KeyCode::Down));
+        lv.handle(&ev(KeyCode::Down));
         assert_eq!(lv.selected(), 2);
     }
 
     #[test]
     fn home_end() {
         let mut lv = make_list(10);
-        lv.handle_key(key(KeyCode::End));
+        lv.handle(&ev(KeyCode::End));
         assert_eq!(lv.selected(), 9);
-        lv.handle_key(key(KeyCode::Home));
+        lv.handle(&ev(KeyCode::Home));
         assert_eq!(lv.selected(), 0);
     }
 
     #[test]
     fn page_up_down() {
         let mut lv = make_list(30);
-        lv.handle_key(key(KeyCode::PageDown));
+        lv.handle(&ev(KeyCode::PageDown));
         assert_eq!(lv.selected(), 10);
-        lv.handle_key(key(KeyCode::PageUp));
+        lv.handle(&ev(KeyCode::PageUp));
         assert_eq!(lv.selected(), 0);
     }
 
     #[test]
     fn enter_selects() {
         let mut lv = make_list(5);
-        lv.handle_key(key(KeyCode::Down));
-        let result = lv.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Selected(s)) if s == "1"
-        ));
+        lv.handle(&ev(KeyCode::Down));
+        let result = lv.handle(&ev(KeyCode::Enter));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn esc_cancels() {
         let mut lv = make_list(5);
-        let result = lv.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = lv.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn empty_list_handling() {
         let mut lv = make_list(0);
-        let result = lv.handle_key(key(KeyCode::Down));
-        assert!(matches!(result, EventResult::Ignored));
-        let result = lv.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = lv.handle(&ev(KeyCode::Down));
+        assert!(matches!(result, HandleResult::Ignored));
+        let result = lv.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
@@ -286,7 +295,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(20, 5, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            lv.render(&mut s, true);
+            lv.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         let text = screen.to_text();
         assert!(text.contains("item0"));
@@ -300,7 +315,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(20, 5, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            lv.render(&mut s, true);
+            lv.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         // First item (selected) should have reverse attr
         assert!(screen.cell(0, 0).style.attrs.reverse);

@@ -1,6 +1,6 @@
 //! Modal dialog with title, message, and buttons.
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
 use txv::border::{draw_border, BorderMode, BorderStyle};
 use txv::cell::Style;
 use txv::layout::Rect;
@@ -8,7 +8,7 @@ use txv::surface::Surface;
 use txv::text::wrap;
 
 use crate::input_line::InputLine;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// The kind of dialog.
 pub enum DialogKind {
@@ -27,10 +27,12 @@ pub enum DialogKind {
 pub struct Dialog {
     title: String,
     message: String,
+    #[allow(dead_code)]
     kind: DialogKind,
     input: Option<InputLine>,
     selected_button: usize,
     button_labels: Vec<String>,
+    bounds: Rect,
     /// Border style for the dialog.
     pub border_style: BorderStyle,
     /// Style for the message text.
@@ -81,6 +83,12 @@ impl Dialog {
             input: None,
             selected_button: 0,
             button_labels,
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             border_style: BorderStyle {
                 mode: BorderMode::Pretty,
                 active: Style::default(),
@@ -129,14 +137,20 @@ impl Dialog {
     }
 }
 
-impl Widget for Dialog {
-    fn render(&self, surface: &mut Surface<'_>, focused: bool) {
+impl View for Dialog {
+    fn draw(&self, surface: &mut Surface<'_>, ctx: &DrawContext) {
         let w = surface.width();
         let h = surface.height();
         surface.fill(' ', self.text_style);
 
         let rect = Rect { x: 0, y: 0, w, h };
-        let inner = draw_border(surface, rect, &self.title, &self.border_style, focused);
+        let inner = draw_border(
+            surface,
+            rect,
+            &self.title,
+            &self.border_style,
+            ctx.app_focused,
+        );
         if inner.w < 2 || inner.h < 2 {
             return;
         }
@@ -159,7 +173,7 @@ impl Widget for Dialog {
         if let Some(ref input) = self.input {
             if button_row < inner.h.saturating_sub(1) {
                 let mut input_sub = sub.sub(1, button_row, inner.w.saturating_sub(2), 1);
-                input.render(&mut input_sub, focused);
+                input.draw(&mut input_sub, ctx);
                 button_row += 1;
             }
         }
@@ -170,13 +184,18 @@ impl Widget for Dialog {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
+
         // If we have an input and it's a prompt, delegate most keys to input
         if let Some(ref mut input) = self.input {
             match key.code {
                 KeyCode::Tab => {
                     self.selected_button = (self.selected_button + 1) % self.button_labels.len();
-                    return EventResult::Consumed;
+                    return HandleResult::Consumed;
                 }
                 KeyCode::BackTab => {
                     self.selected_button = if self.selected_button == 0 {
@@ -184,20 +203,20 @@ impl Widget for Dialog {
                     } else {
                         self.selected_button - 1
                     };
-                    return EventResult::Consumed;
+                    return HandleResult::Consumed;
                 }
                 KeyCode::Enter => {
                     if self.selected_button == 0 {
-                        let text = input.text().to_string();
-                        return EventResult::Action(WidgetAction::Confirmed(text));
+                        let _text = input.text().to_string();
+                        return HandleResult::Consumed;
                     }
-                    return EventResult::Action(WidgetAction::Cancelled);
+                    return HandleResult::Consumed;
                 }
                 KeyCode::Esc => {
-                    return EventResult::Action(WidgetAction::Cancelled);
+                    return HandleResult::Consumed;
                 }
                 _ => {
-                    return input.handle_key(key);
+                    return input.handle(event);
                 }
             }
         }
@@ -205,7 +224,7 @@ impl Widget for Dialog {
         match key.code {
             KeyCode::Tab | KeyCode::Right => {
                 self.selected_button = (self.selected_button + 1) % self.button_labels.len();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::BackTab | KeyCode::Left => {
                 self.selected_button = if self.selected_button == 0 {
@@ -213,40 +232,45 @@ impl Widget for Dialog {
                 } else {
                     self.selected_button - 1
                 };
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => {
-                let label = self.selected_button_label().to_string();
-                match self.kind {
-                    DialogKind::Info => EventResult::Action(WidgetAction::Close),
-                    DialogKind::Confirm => EventResult::Action(WidgetAction::Confirmed(label)),
-                    DialogKind::Prompt { .. } => {
-                        EventResult::Action(WidgetAction::Confirmed(label))
-                    }
-                }
-            }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-            _ => EventResult::Ignored,
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn render_dialog(dialog: &Dialog, w: u16, h: u16) -> String {
         let mut screen = Screen::with_color_mode(w, h, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            dialog.render(&mut s, true);
+            dialog.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         screen.to_text()
     }
@@ -279,8 +303,8 @@ mod tests {
     #[test]
     fn info_enter_closes() {
         let mut dlg = Dialog::info("Test", "msg");
-        let result = dlg.handle_key(key(KeyCode::Enter));
-        assert!(matches!(result, EventResult::Action(WidgetAction::Close)));
+        let result = dlg.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
@@ -288,64 +312,49 @@ mod tests {
         let mut dlg = Dialog::confirm("Q", "?");
         assert_eq!(dlg.selected_button, 0);
         assert_eq!(dlg.selected_button_label(), "Yes");
-        dlg.handle_key(key(KeyCode::Tab));
+        dlg.handle(&ev(KeyCode::Tab));
         assert_eq!(dlg.selected_button, 1);
         assert_eq!(dlg.selected_button_label(), "No");
-        dlg.handle_key(key(KeyCode::Tab));
+        dlg.handle(&ev(KeyCode::Tab));
         assert_eq!(dlg.selected_button, 0); // wraps
     }
 
     #[test]
     fn confirm_enter_confirms_selected() {
         let mut dlg = Dialog::confirm("Q", "?");
-        dlg.handle_key(key(KeyCode::Tab)); // select "No"
-        let result = dlg.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Confirmed(s)) if s == "No"
-        ));
+        dlg.handle(&ev(KeyCode::Tab)); // select "No"
+        let result = dlg.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn esc_cancels() {
         let mut dlg = Dialog::info("T", "m");
-        let result = dlg.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = dlg.handle(&ev(KeyCode::Esc));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn prompt_enter_confirms_input() {
         let mut dlg = Dialog::prompt("Name", "Enter:", "hello");
-        let result = dlg.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Confirmed(s)) if s == "hello"
-        ));
+        let result = dlg.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn prompt_typing_updates_input() {
         let mut dlg = Dialog::prompt("Name", "Enter:", "");
-        dlg.handle_key(key(KeyCode::Char('a')));
-        dlg.handle_key(key(KeyCode::Char('b')));
-        let result = dlg.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Confirmed(s)) if s == "ab"
-        ));
+        dlg.handle(&ev(KeyCode::Char('a')));
+        dlg.handle(&ev(KeyCode::Char('b')));
+        let result = dlg.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
     fn prompt_cancel_on_second_button() {
         let mut dlg = Dialog::prompt("Name", "Enter:", "x");
-        dlg.handle_key(key(KeyCode::Tab)); // select Cancel
-        let result = dlg.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        dlg.handle(&ev(KeyCode::Tab)); // select Cancel
+        let result = dlg.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 }

@@ -3,9 +3,11 @@
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event as CtEvent};
 use crossterm::terminal;
 use txv::screen::Screen;
+
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// A non-blocking data source that can be polled.
 pub trait Pollable: Send {
@@ -29,7 +31,7 @@ pub struct RunContext<'a> {
     /// The screen to render to.
     pub screen: &'a mut Screen,
     /// Input events collected this tick.
-    pub events: Vec<Event>,
+    pub events: Vec<CtEvent>,
     /// Data from polled sources: (poller_index, data).
     pub poll_data: Vec<(usize, Vec<u8>)>,
 }
@@ -99,8 +101,8 @@ impl EventLoop {
         self.pollers.push(poller);
     }
 
-    /// Run the event loop. Enters raw mode and alternate screen.
-    /// Restores terminal on exit (including on error).
+    /// Run the event loop with a callback handler.
+    /// Enters raw mode and alternate screen. Restores terminal on exit.
     pub fn run<F>(&mut self, mut handler: F) -> io::Result<()>
     where
         F: FnMut(&mut RunContext) -> LoopControl,
@@ -111,11 +113,91 @@ impl EventLoop {
 
         let result = self.run_inner(&mut handler, &mut stdout);
 
-        // Always restore terminal
         let _ = crossterm::execute!(stdout, terminal::LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
 
         result
+    }
+
+    /// Run the event loop with a root View.
+    /// Dispatches events to the view, draws it each frame.
+    /// The loop exits when the view consumes a CM_QUIT command.
+    pub fn run_view(&mut self, root: &mut dyn View) -> io::Result<()> {
+        let mut stdout = io::stdout();
+        terminal::enable_raw_mode()?;
+        crossterm::execute!(stdout, terminal::EnterAlternateScreen)?;
+
+        let result = self.run_view_inner(root, &mut stdout);
+
+        let _ = crossterm::execute!(stdout, terminal::LeaveAlternateScreen);
+        let _ = terminal::disable_raw_mode();
+
+        result
+    }
+
+    fn run_view_inner(&mut self, root: &mut dyn View, out: &mut impl Write) -> io::Result<()> {
+        let mut tick: u64 = 0;
+        let mut running = true;
+        while running {
+            // 1. Poll crossterm events
+            let ct_events = self.collect_events()?;
+
+            // 2. Fire expired timers
+            self.fire_timers();
+
+            // 3. Poll data sources
+            let poll_data = self.collect_poll_data();
+
+            // 4. Convert and dispatch events to root view
+            for ct_ev in &ct_events {
+                let view_event = match ct_ev {
+                    CtEvent::Key(k) => Event::Key(*k),
+                    CtEvent::Resize(w, h) => Event::Resize(*w, *h),
+                    _ => continue,
+                };
+                if let Event::Key(_) = &view_event {
+                    root.handle(&view_event);
+                } else if let Event::Resize(w, h) = &view_event {
+                    self.screen.resize(*w, *h);
+                    let rect = txv::layout::Rect {
+                        x: 0,
+                        y: 0,
+                        w: *w,
+                        h: *h,
+                    };
+                    root.set_bounds(rect);
+                    root.handle(&view_event);
+                }
+            }
+
+            // Dispatch data events
+            for (source_id, payload) in poll_data {
+                let ev = Event::Data { source_id, payload };
+                root.handle(&ev);
+            }
+
+            // Dispatch tick
+            root.handle(&Event::Tick);
+            tick += 1;
+
+            // Check for quit command
+            let quit_ev = Event::Command(crate::view::commands::CM_QUIT);
+            if root.handle(&quit_ev) == HandleResult::Consumed {
+                running = false;
+            }
+
+            // 5. Draw
+            let ctx = DrawContext {
+                app_focused: true,
+                tick,
+            };
+            let mut surface = self.screen.full_surface();
+            root.draw(&mut surface, &ctx);
+
+            // 6. Flush
+            self.screen.flush(out)?;
+        }
+        Ok(())
     }
 
     fn run_inner<F>(&mut self, handler: &mut F, out: &mut impl Write) -> io::Result<()>
@@ -151,7 +233,7 @@ impl EventLoop {
         Ok(())
     }
 
-    fn collect_events(&self) -> io::Result<Vec<Event>> {
+    fn collect_events(&self) -> io::Result<Vec<CtEvent>> {
         let mut events = Vec::new();
         let timeout = Duration::from_millis(self.tick_ms);
         if event::poll(timeout)? {
@@ -249,7 +331,6 @@ mod tests {
         let mut el = EventLoop::new(screen);
         let fired = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let fired_clone = fired.clone();
-        // Timer with 0ms delay — fires immediately
         el.timers.push(TimerEntry {
             id: 1,
             interval: Duration::ZERO,

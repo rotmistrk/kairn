@@ -2,12 +2,13 @@
 
 use std::collections::HashSet;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
 use txv::cell::Style;
+use txv::layout::Rect;
 use txv::surface::Surface;
 
 use crate::scroll_view::ScrollView;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Data source for a tree view.
 pub trait TreeData {
@@ -47,6 +48,7 @@ pub struct TreeView<D: TreeData> {
     flat_nodes: Vec<FlatNode<D::NodeId>>,
     cursor: usize,
     scroll: ScrollView,
+    bounds: Rect,
 }
 
 impl<D: TreeData> TreeView<D> {
@@ -58,6 +60,12 @@ impl<D: TreeData> TreeView<D> {
             flat_nodes: Vec::new(),
             cursor: 0,
             scroll: ScrollView::new(),
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
         };
         tv.rebuild_flat();
         tv
@@ -146,9 +154,9 @@ impl<D: TreeData> TreeView<D> {
             .find(|&i| self.flat_nodes[i].depth == target_depth)
     }
 
-    fn handle_right(&mut self) -> EventResult {
+    fn handle_right(&mut self) -> HandleResult {
         let Some(node) = self.cursor_node() else {
-            return EventResult::Ignored;
+            return HandleResult::Ignored;
         };
         let id = node.id.clone();
         if self.data.has_children(&id) {
@@ -160,31 +168,34 @@ impl<D: TreeData> TreeView<D> {
             } else {
                 self.expand(&id);
             }
-            EventResult::Consumed
+            HandleResult::Consumed
         } else {
-            EventResult::Ignored
+            HandleResult::Ignored
         }
     }
 
-    fn handle_left(&mut self) -> EventResult {
+    fn handle_left(&mut self) -> HandleResult {
         let Some(node) = self.cursor_node() else {
-            return EventResult::Ignored;
+            return HandleResult::Ignored;
         };
         let id = node.id.clone();
         if self.expanded.contains(&id) {
             self.collapse(&id);
-            EventResult::Consumed
+            HandleResult::Consumed
         } else if let Some(parent_idx) = self.find_parent_index() {
             self.cursor = parent_idx;
-            EventResult::Consumed
+            HandleResult::Consumed
         } else {
-            EventResult::Ignored
+            HandleResult::Ignored
         }
     }
 }
 
-impl<D: TreeData> Widget for TreeView<D> {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl<D: TreeData + Send> View for TreeView<D>
+where
+    D::NodeId: Send,
+{
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let h = surface.height();
         let w = surface.width();
         let range = self.scroll.visible_range(h);
@@ -207,55 +218,60 @@ impl<D: TreeData> Widget for TreeView<D> {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
         if self.flat_nodes.is_empty() {
             return match key.code {
-                KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-                _ => EventResult::Ignored,
+                KeyCode::Esc => HandleResult::Consumed,
+                _ => HandleResult::Ignored,
             };
         }
         match key.code {
             KeyCode::Up => {
                 self.cursor = self.cursor.saturating_sub(1);
                 self.scroll.ensure_visible(self.cursor, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 let max = self.flat_nodes.len().saturating_sub(1);
                 self.cursor = (self.cursor + 1).min(max);
                 self.scroll.ensure_visible(self.cursor, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Right => self.handle_right(),
             KeyCode::Left => self.handle_left(),
             KeyCode::Home => {
                 self.cursor = 0;
                 self.scroll.ensure_visible(0, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.cursor = self.flat_nodes.len().saturating_sub(1);
                 self.scroll.ensure_visible(self.cursor, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => {
-                if let Some(node) = self.cursor_node() {
-                    let s = format!("{:?}", node.id);
-                    EventResult::Action(WidgetAction::Selected(s))
-                } else {
-                    EventResult::Ignored
-                }
-            }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-            _ => EventResult::Ignored,
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::Style;
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -328,8 +344,8 @@ mod tests {
         }
     }
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     #[test]
@@ -369,14 +385,14 @@ mod tests {
         tv.expand(&TestId("root".into()));
         // root, child1, child2
         assert_eq!(tv.cursor, 0);
-        tv.handle_key(key(KeyCode::Down));
+        tv.handle(&ev(KeyCode::Down));
         assert_eq!(tv.cursor, 1);
         assert_eq!(tv.selected_node(), Some(&TestId("child1".into())));
-        tv.handle_key(key(KeyCode::Down));
+        tv.handle(&ev(KeyCode::Down));
         assert_eq!(tv.cursor, 2);
-        tv.handle_key(key(KeyCode::Down)); // clamped
+        tv.handle(&ev(KeyCode::Down)); // clamped
         assert_eq!(tv.cursor, 2);
-        tv.handle_key(key(KeyCode::Up));
+        tv.handle(&ev(KeyCode::Up));
         assert_eq!(tv.cursor, 1);
     }
 
@@ -384,7 +400,7 @@ mod tests {
     fn right_expands() {
         let mut tv = TreeView::new(make_tree());
         // cursor on root, right should expand
-        tv.handle_key(key(KeyCode::Right));
+        tv.handle(&ev(KeyCode::Right));
         assert_eq!(tv.flat_nodes.len(), 3);
     }
 
@@ -392,7 +408,7 @@ mod tests {
     fn right_on_expanded_moves_to_child() {
         let mut tv = TreeView::new(make_tree());
         tv.expand(&TestId("root".into()));
-        tv.handle_key(key(KeyCode::Right));
+        tv.handle(&ev(KeyCode::Right));
         assert_eq!(tv.cursor, 1); // moved to child1
     }
 
@@ -401,7 +417,7 @@ mod tests {
         let mut tv = TreeView::new(make_tree());
         tv.expand(&TestId("root".into()));
         // cursor on root (expanded), left should collapse
-        tv.handle_key(key(KeyCode::Left));
+        tv.handle(&ev(KeyCode::Left));
         assert_eq!(tv.flat_nodes.len(), 1);
     }
 
@@ -410,28 +426,22 @@ mod tests {
         let mut tv = TreeView::new(make_tree());
         tv.expand(&TestId("root".into()));
         tv.cursor = 1; // child1
-        tv.handle_key(key(KeyCode::Left));
+        tv.handle(&ev(KeyCode::Left));
         assert_eq!(tv.cursor, 0); // back to root
     }
 
     #[test]
-    fn enter_selects() {
+    fn enter_consumed() {
         let mut tv = TreeView::new(make_tree());
-        let result = tv.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Selected(s)) if s.contains("root")
-        ));
+        let result = tv.handle(&ev(KeyCode::Enter));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
-    fn esc_cancels() {
+    fn esc_consumed() {
         let mut tv = TreeView::new(make_tree());
-        let result = tv.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = tv.handle(&ev(KeyCode::Esc));
+        assert_eq!(result, HandleResult::Consumed);
     }
 
     #[test]
@@ -466,9 +476,9 @@ mod tests {
     fn home_end() {
         let mut tv = TreeView::new(make_tree());
         tv.expand(&TestId("root".into()));
-        tv.handle_key(key(KeyCode::End));
+        tv.handle(&ev(KeyCode::End));
         assert_eq!(tv.cursor, 2);
-        tv.handle_key(key(KeyCode::Home));
+        tv.handle(&ev(KeyCode::Home));
         assert_eq!(tv.cursor, 0);
     }
 }

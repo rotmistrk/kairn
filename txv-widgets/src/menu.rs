@@ -1,13 +1,13 @@
 //! Popup menu with keyboard navigation.
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
 use txv::border::{draw_border, BorderMode, BorderStyle};
 use txv::cell::{Attrs, Color, Style};
 use txv::layout::Rect;
 use txv::surface::Surface;
 
 use crate::scroll_view::ScrollView;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// A single menu item or separator.
 pub struct MenuItem {
@@ -48,6 +48,7 @@ pub struct Menu {
     items: Vec<MenuItem>,
     selected: usize,
     scroll: ScrollView,
+    bounds: Rect,
 }
 
 impl Menu {
@@ -57,6 +58,12 @@ impl Menu {
             items,
             selected: 0,
             scroll: ScrollView::new(),
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
         };
         menu.scroll.set_content_size(menu.items.len(), 0);
         menu.move_to_next_selectable(0, 1);
@@ -202,8 +209,8 @@ impl Menu {
     }
 }
 
-impl Widget for Menu {
-    fn render(&self, surface: &mut Surface<'_>, focused: bool) {
+impl View for Menu {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let border_style = BorderStyle {
             mode: BorderMode::Pretty,
             active: Style {
@@ -222,7 +229,7 @@ impl Widget for Menu {
             w: surface.width(),
             h: surface.height(),
         };
-        let inner = draw_border(surface, rect, "", &border_style, focused);
+        let inner = draw_border(surface, rect, "", &border_style, true);
 
         let vh = inner.h;
         let range = self.scroll.visible_range(vh);
@@ -232,60 +239,72 @@ impl Widget for Menu {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
+
         if self.items.is_empty() {
             return match key.code {
-                KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-                _ => EventResult::Ignored,
+                KeyCode::Esc => HandleResult::Consumed,
+                _ => HandleResult::Ignored,
             };
         }
         match key.code {
             KeyCode::Up => {
                 self.move_up();
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.move_down();
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.jump_to_first();
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.jump_to_last();
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Enter => {
-                if let Some(item) = self.selected_item() {
-                    let label = item.label.clone();
-                    EventResult::Action(WidgetAction::Selected(label))
+                if self.selected_item().is_some() {
+                    HandleResult::Consumed
                 } else {
-                    EventResult::Ignored
+                    HandleResult::Ignored
                 }
             }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
+            KeyCode::Esc => HandleResult::Consumed,
             KeyCode::Char(ch) if ch.is_ascii_alphabetic() => {
                 self.jump_to_letter(ch);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            _ => EventResult::Ignored,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::KeyModifiers;
+    use crossterm::event::{KeyEvent, KeyModifiers};
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn sample_items() -> Vec<MenuItem> {
@@ -312,8 +331,7 @@ mod tests {
     #[test]
     fn navigation_skips_separators() {
         let mut menu = Menu::new(sample_items());
-        menu.handle_key(key(KeyCode::Down));
-        // Should skip separator at index 1, land on "Save" at index 2
+        menu.handle(&ev(KeyCode::Down));
         assert_eq!(menu.selected_index(), 2);
         assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Save"));
     }
@@ -322,8 +340,7 @@ mod tests {
     fn navigation_skips_disabled() {
         let mut menu = Menu::new(sample_items());
         menu.selected = 2; // Save
-        menu.handle_key(key(KeyCode::Down));
-        // Should skip disabled at index 3, land on "Quit" at index 4
+        menu.handle(&ev(KeyCode::Down));
         assert_eq!(menu.selected_index(), 4);
         assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
     }
@@ -331,8 +348,7 @@ mod tests {
     #[test]
     fn up_wraps_around() {
         let mut menu = Menu::new(sample_items());
-        // At "Open" (0), going up should wrap to "Quit" (4)
-        menu.handle_key(key(KeyCode::Up));
+        menu.handle(&ev(KeyCode::Up));
         assert_eq!(menu.selected_index(), 4);
     }
 
@@ -340,51 +356,44 @@ mod tests {
     fn down_wraps_around() {
         let mut menu = Menu::new(sample_items());
         menu.selected = 4; // Quit
-        menu.handle_key(key(KeyCode::Down));
+        menu.handle(&ev(KeyCode::Down));
         assert_eq!(menu.selected_index(), 0);
     }
 
     #[test]
     fn first_letter_jump() {
         let mut menu = Menu::new(sample_items());
-        menu.handle_key(key(KeyCode::Char('q')));
+        menu.handle(&ev(KeyCode::Char('q')));
         assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
     }
 
     #[test]
     fn first_letter_skips_disabled() {
         let mut menu = Menu::new(sample_items());
-        menu.handle_key(key(KeyCode::Char('d')));
-        // "Disabled" is not selectable, should stay on "Open"
+        menu.handle(&ev(KeyCode::Char('d')));
         assert_eq!(menu.selected_index(), 0);
     }
 
     #[test]
-    fn enter_produces_selected() {
+    fn enter_produces_consumed() {
         let mut menu = Menu::new(sample_items());
-        let result = menu.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Selected(s)) if s == "Open"
-        ));
+        let result = menu.handle(&ev(KeyCode::Enter));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
-    fn esc_cancels() {
+    fn esc_produces_consumed() {
         let mut menu = Menu::new(sample_items());
-        let result = menu.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = menu.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn home_end() {
         let mut menu = Menu::new(sample_items());
-        menu.handle_key(key(KeyCode::End));
+        menu.handle(&ev(KeyCode::End));
         assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Quit"));
-        menu.handle_key(key(KeyCode::Home));
+        menu.handle(&ev(KeyCode::Home));
         assert_eq!(menu.selected_item().map(|i| &i.label[..]), Some("Open"));
     }
 
@@ -392,13 +401,10 @@ mod tests {
     fn empty_menu() {
         let mut menu = Menu::new(vec![]);
         assert!(menu.selected_item().is_none());
-        let result = menu.handle_key(key(KeyCode::Down));
-        assert!(matches!(result, EventResult::Ignored));
-        let result = menu.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = menu.handle(&ev(KeyCode::Down));
+        assert!(matches!(result, HandleResult::Ignored));
+        let result = menu.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
@@ -419,6 +425,12 @@ mod tests {
         let menu = Menu::new(sample_items());
         let mut screen = txv::screen::Screen::with_color_mode(30, 10, txv::cell::ColorMode::Rgb);
         let mut s = screen.full_surface();
-        menu.render(&mut s, true);
+        menu.draw(
+            &mut s,
+            &DrawContext {
+                app_focused: true,
+                tick: 0,
+            },
+        );
     }
 }

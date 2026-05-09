@@ -1,16 +1,19 @@
 //! Multi-line read-only text viewer with scroll, search, and line numbers.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyModifiers};
 use txv::cell::Style;
 use txv::surface::Surface;
 use txv::text::display_width;
 
+use txv::layout::Rect;
+
 use crate::scroll_view::ScrollView;
 use crate::scrollbar::Scrollbar;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Multi-line read-only text viewer.
 pub struct TextArea {
+    bounds: Rect,
     lines: Vec<String>,
     scroll: ScrollView,
     show_line_numbers: bool,
@@ -33,6 +36,12 @@ impl TextArea {
     /// Create a new empty text area.
     pub fn new() -> Self {
         Self {
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             lines: Vec::new(),
             scroll: ScrollView::new(),
             show_line_numbers: true,
@@ -249,8 +258,8 @@ impl Default for TextArea {
     }
 }
 
-impl Widget for TextArea {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl View for TextArea {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let h = surface.height();
         let w = surface.width();
         let gutter_w = self.gutter_width();
@@ -277,59 +286,71 @@ impl Widget for TextArea {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
             KeyCode::Up => {
                 self.scroll.scroll_up(1);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.scroll.scroll_down(1, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageUp => {
                 self.scroll.page_up(20);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageDown => {
                 self.scroll.page_down(20);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home if ctrl => {
                 self.scroll.scroll_to_top();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End if ctrl => {
                 self.scroll.scroll_to_bottom(20);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.scroll.scroll_to_top();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.scroll.scroll_to_bottom(20);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('n') if !ctrl => {
                 self.search_next();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('N') => {
                 self.search_prev();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Esc => {
                 if self.search_query.is_some() {
                     self.clear_search();
-                    EventResult::Consumed
+                    HandleResult::Consumed
                 } else {
-                    EventResult::Action(WidgetAction::Cancelled)
+                    HandleResult::Consumed
                 }
             }
-            _ => EventResult::Ignored,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
@@ -350,19 +371,25 @@ fn digit_count(n: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn render_area(area: &TextArea, w: u16, h: u16) -> String {
         let mut screen = Screen::with_color_mode(w, h, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            area.render(&mut s, true);
+            area.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         screen.to_text()
     }
@@ -419,9 +446,9 @@ mod tests {
         let mut ta = TextArea::new();
         ta.set_text(sample_text());
         assert_eq!(ta.scroll_row(), 0);
-        ta.handle_key(key(KeyCode::Down));
+        ta.handle(&ev(KeyCode::Down));
         assert_eq!(ta.scroll_row(), 1);
-        ta.handle_key(key(KeyCode::Up));
+        ta.handle(&ev(KeyCode::Up));
         assert_eq!(ta.scroll_row(), 0);
     }
 
@@ -429,7 +456,7 @@ mod tests {
     fn scroll_clamps() {
         let mut ta = TextArea::new();
         ta.set_text(sample_text());
-        ta.handle_key(key(KeyCode::Up));
+        ta.handle(&ev(KeyCode::Up));
         assert_eq!(ta.scroll_row(), 0); // can't go negative
     }
 
@@ -438,9 +465,9 @@ mod tests {
         let mut ta = TextArea::new();
         let lines: Vec<String> = (0..50).map(|i| format!("line {i}")).collect();
         ta.set_lines(lines);
-        ta.handle_key(key(KeyCode::End));
+        ta.handle(&ev(KeyCode::End));
         assert!(ta.scroll_row() > 0);
-        ta.handle_key(key(KeyCode::Home));
+        ta.handle(&ev(KeyCode::Home));
         assert_eq!(ta.scroll_row(), 0);
     }
 
@@ -479,7 +506,7 @@ mod tests {
         let mut ta = TextArea::new();
         ta.set_text(sample_text());
         ta.search("line");
-        ta.handle_key(key(KeyCode::Char('n')));
+        ta.handle(&ev(KeyCode::Char('n')));
         assert_eq!(ta.search_index, 1);
     }
 
@@ -488,7 +515,10 @@ mod tests {
         let mut ta = TextArea::new();
         ta.set_text(sample_text());
         ta.search("line");
-        ta.handle_key(KeyEvent::new(KeyCode::Char('N'), KeyModifiers::SHIFT));
+        ta.handle(&Event::Key(KeyEvent::new(
+            KeyCode::Char('N'),
+            KeyModifiers::SHIFT,
+        )));
         assert_eq!(ta.search_index, 4); // wrapped to last
     }
 
@@ -497,15 +527,12 @@ mod tests {
         let mut ta = TextArea::new();
         ta.set_text(sample_text());
         ta.search("line");
-        let result = ta.handle_key(key(KeyCode::Esc));
-        assert!(matches!(result, EventResult::Consumed));
+        let result = ta.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
         assert_eq!(ta.match_count(), 0);
-        // Second Esc produces Cancelled
-        let result = ta.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        // Second Esc also consumed (no more WidgetAction::Cancelled)
+        let result = ta.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
@@ -545,7 +572,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(30, 3, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            ta.render(&mut s, true);
+            ta.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         // Last column should have scrollbar chars
         let ch = screen.cell(29, 0).ch;

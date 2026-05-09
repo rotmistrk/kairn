@@ -1,12 +1,14 @@
 //! Table widget — column headers + rows with alignment and selection.
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyCode;
 use txv::cell::Style;
 use txv::surface::Surface;
 use txv::text::display_width;
 
+use txv::layout::Rect;
+
 use crate::scroll_view::ScrollView;
-use crate::widget::{EventResult, Widget, WidgetAction};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Column alignment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +38,7 @@ pub struct Table {
     rows: Vec<Vec<String>>,
     selected: usize,
     scroll: ScrollView,
+    bounds: Rect,
     /// Style for the header row.
     pub header_style: Style,
     /// Style for normal rows.
@@ -52,6 +55,12 @@ impl Table {
             rows: Vec::new(),
             selected: 0,
             scroll: ScrollView::new(),
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             header_style: Style {
                 attrs: txv::cell::Attrs {
                     bold: true,
@@ -166,8 +175,8 @@ impl Table {
     }
 }
 
-impl Widget for Table {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl View for Table {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let w = surface.width();
         let h = surface.height();
         if h == 0 {
@@ -207,64 +216,74 @@ impl Widget for Table {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
         if self.rows.is_empty() {
             return match key.code {
-                KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-                _ => EventResult::Ignored,
+                KeyCode::Esc => HandleResult::Consumed,
+                _ => HandleResult::Ignored,
             };
         }
         match key.code {
             KeyCode::Up => {
                 self.selected = self.selected.saturating_sub(1);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 let max = self.rows.len().saturating_sub(1);
                 self.selected = (self.selected + 1).min(max);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageUp => {
                 self.selected = self.selected.saturating_sub(10);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::PageDown => {
                 let max = self.rows.len().saturating_sub(1);
                 self.selected = (self.selected + 10).min(max);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.selected = 0;
                 self.scroll.ensure_visible(0, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.selected = self.rows.len().saturating_sub(1);
                 self.scroll.ensure_visible(self.selected, 0);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => {
-                EventResult::Action(WidgetAction::Selected(self.selected.to_string()))
-            }
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
-            _ => EventResult::Ignored,
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
     fn sample_columns() -> Vec<Column> {
@@ -299,7 +318,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(w, h, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            table.render(&mut s, true);
+            table.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         screen.to_text()
     }
@@ -348,7 +373,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(10, 2, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            t.render(&mut s, true);
+            t.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         // "42" right-aligned in 10 cols: should be at col 8
         assert_eq!(screen.cell(8, 1).ch, '4');
@@ -366,7 +397,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(10, 2, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            t.render(&mut s, true);
+            t.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         // "ab" centered in 10: (10-2)/2 = 4
         assert_eq!(screen.cell(4, 1).ch, 'a');
@@ -378,13 +415,13 @@ mod tests {
         let mut t = Table::new(sample_columns());
         t.set_rows(sample_rows());
         assert_eq!(t.selected(), 0);
-        t.handle_key(key(KeyCode::Down));
+        t.handle(&ev(KeyCode::Down));
         assert_eq!(t.selected(), 1);
-        t.handle_key(key(KeyCode::Down));
+        t.handle(&ev(KeyCode::Down));
         assert_eq!(t.selected(), 2);
-        t.handle_key(key(KeyCode::Down)); // clamped
+        t.handle(&ev(KeyCode::Down)); // clamped
         assert_eq!(t.selected(), 2);
-        t.handle_key(key(KeyCode::Up));
+        t.handle(&ev(KeyCode::Up));
         assert_eq!(t.selected(), 1);
     }
 
@@ -392,9 +429,9 @@ mod tests {
     fn home_end() {
         let mut t = Table::new(sample_columns());
         t.set_rows(sample_rows());
-        t.handle_key(key(KeyCode::End));
+        t.handle(&ev(KeyCode::End));
         assert_eq!(t.selected(), 2);
-        t.handle_key(key(KeyCode::Home));
+        t.handle(&ev(KeyCode::Home));
         assert_eq!(t.selected(), 0);
     }
 
@@ -402,40 +439,31 @@ mod tests {
     fn enter_selects() {
         let mut t = Table::new(sample_columns());
         t.set_rows(sample_rows());
-        t.handle_key(key(KeyCode::Down));
-        let result = t.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Selected(s)) if s == "1"
-        ));
+        t.handle(&ev(KeyCode::Down));
+        let result = t.handle(&ev(KeyCode::Enter));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn esc_cancels() {
         let mut t = Table::new(sample_columns());
         t.set_rows(sample_rows());
-        let result = t.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = t.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn empty_table_esc() {
         let mut t = Table::new(sample_columns());
-        let result = t.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = t.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn empty_table_down_ignored() {
         let mut t = Table::new(sample_columns());
-        let result = t.handle_key(key(KeyCode::Down));
-        assert!(matches!(result, EventResult::Ignored));
+        let result = t.handle(&ev(KeyCode::Down));
+        assert!(matches!(result, HandleResult::Ignored));
     }
 
     #[test]
@@ -481,7 +509,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(30, 5, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            t.render(&mut s, true);
+            t.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         // Row 0 header (bold), row 1 = first data row (selected, reverse)
         assert!(screen.cell(0, 1).style.attrs.reverse);

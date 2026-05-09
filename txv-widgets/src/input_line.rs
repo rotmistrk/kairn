@@ -1,14 +1,16 @@
 //! Single-line text input with cursor and history.
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyModifiers};
 use txv::cell::Style;
 use txv::surface::Surface;
 use txv::text::display_width;
 
-use crate::widget::{EventResult, Widget, WidgetAction};
+use txv::layout::Rect;
+
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// Completion function signature: `(text, cursor_pos) -> candidates`.
-pub type CompletionFn = Box<dyn Fn(&str, usize) -> Vec<String>>;
+pub type CompletionFn = Box<dyn Fn(&str, usize) -> Vec<String> + Send>;
 
 /// Single-line text input with cursor, history, and emacs-style shortcuts.
 pub struct InputLine {
@@ -17,6 +19,7 @@ pub struct InputLine {
     prompt: String,
     history: Vec<String>,
     history_pos: Option<usize>,
+    bounds: Rect,
     /// Optional completion function called on Tab.
     pub completion_fn: Option<CompletionFn>,
     /// Style for the prompt text.
@@ -36,6 +39,12 @@ impl InputLine {
             prompt: prompt.to_string(),
             history: Vec::new(),
             history_pos: None,
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
             completion_fn: None,
             prompt_style: Style::default(),
             text_style: Style::default(),
@@ -216,8 +225,8 @@ impl InputLine {
     }
 }
 
-impl Widget for InputLine {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl View for InputLine {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let w = surface.width() as usize;
         surface.hline(0, 0, surface.width(), ' ', self.text_style);
 
@@ -266,32 +275,36 @@ impl Widget for InputLine {
         }
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> EventResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        let key = match event {
+            Event::Key(k) => *k,
+            _ => return HandleResult::Ignored,
+        };
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
         match key.code {
             KeyCode::Char('a') if ctrl => {
                 self.cursor = 0;
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('e') if ctrl => {
                 self.cursor = self.char_count();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('k') if ctrl => {
                 self.kill_to_end();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('u') if ctrl => {
                 self.kill_to_start();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char('w') if ctrl => {
                 self.kill_word_backward();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Left => {
                 self.cursor = self.cursor.saturating_sub(1);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Right => {
                 self.cursor = self
@@ -301,44 +314,52 @@ impl Widget for InputLine {
                 if self.cursor < self.char_count() {
                     self.cursor += 1;
                 }
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.cursor = 0;
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::End => {
                 self.cursor = self.char_count();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Backspace => {
                 self.delete_backward();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Delete => {
                 self.delete_forward();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Up => {
                 self.history_prev();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.history_next();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            KeyCode::Enter => EventResult::Action(WidgetAction::Confirmed(self.text.clone())),
-            KeyCode::Esc => EventResult::Action(WidgetAction::Cancelled),
+            KeyCode::Enter => HandleResult::Consumed,
+            KeyCode::Esc => HandleResult::Consumed,
             KeyCode::Tab => {
                 self.try_complete();
-                EventResult::Consumed
+                HandleResult::Consumed
             }
             KeyCode::Char(ch) if !ctrl => {
                 self.insert_char(ch);
-                EventResult::Consumed
+                HandleResult::Consumed
             }
-            _ => EventResult::Ignored,
+            _ => HandleResult::Ignored,
         }
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
@@ -378,23 +399,29 @@ pub fn complete_from_history(history: Vec<String>) -> CompletionFn {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::ColorMode;
     use txv::screen::Screen;
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn ev(code: KeyCode) -> Event {
+        Event::Key(KeyEvent::new(code, KeyModifiers::NONE))
     }
 
-    fn ctrl(ch: char) -> KeyEvent {
-        KeyEvent::new(KeyCode::Char(ch), KeyModifiers::CONTROL)
+    fn ctrl(ch: char) -> Event {
+        Event::Key(KeyEvent::new(KeyCode::Char(ch), KeyModifiers::CONTROL))
     }
 
     fn render_text(input: &InputLine, width: u16) -> String {
         let mut screen = Screen::with_color_mode(width, 1, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            input.render(&mut s, true);
+            input.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         screen.to_text().trim_end_matches('\n').to_string()
     }
@@ -408,8 +435,8 @@ mod tests {
     #[test]
     fn insert_chars() {
         let mut input = InputLine::new("");
-        input.handle_key(key(KeyCode::Char('a')));
-        input.handle_key(key(KeyCode::Char('b')));
+        input.handle(&ev(KeyCode::Char('a')));
+        input.handle(&ev(KeyCode::Char('b')));
         assert_eq!(input.text(), "ab");
     }
 
@@ -417,7 +444,7 @@ mod tests {
     fn backspace_deletes() {
         let mut input = InputLine::new("");
         input.set_text("abc");
-        input.handle_key(key(KeyCode::Backspace));
+        input.handle(&ev(KeyCode::Backspace));
         assert_eq!(input.text(), "ab");
     }
 
@@ -426,7 +453,7 @@ mod tests {
         let mut input = InputLine::new("");
         input.set_text("abc");
         input.cursor = 0;
-        input.handle_key(key(KeyCode::Delete));
+        input.handle(&ev(KeyCode::Delete));
         assert_eq!(input.text(), "bc");
     }
 
@@ -435,13 +462,13 @@ mod tests {
         let mut input = InputLine::new("");
         input.set_text("abc");
         assert_eq!(input.cursor, 3);
-        input.handle_key(key(KeyCode::Left));
+        input.handle(&ev(KeyCode::Left));
         assert_eq!(input.cursor, 2);
-        input.handle_key(key(KeyCode::Home));
+        input.handle(&ev(KeyCode::Home));
         assert_eq!(input.cursor, 0);
-        input.handle_key(key(KeyCode::End));
+        input.handle(&ev(KeyCode::End));
         assert_eq!(input.cursor, 3);
-        input.handle_key(key(KeyCode::Right));
+        input.handle(&ev(KeyCode::Right));
         assert_eq!(input.cursor, 3); // clamped
     }
 
@@ -449,9 +476,9 @@ mod tests {
     fn ctrl_a_e() {
         let mut input = InputLine::new("");
         input.set_text("hello");
-        input.handle_key(ctrl('a'));
+        input.handle(&ctrl('a'));
         assert_eq!(input.cursor, 0);
-        input.handle_key(ctrl('e'));
+        input.handle(&ctrl('e'));
         assert_eq!(input.cursor, 5);
     }
 
@@ -460,7 +487,7 @@ mod tests {
         let mut input = InputLine::new("");
         input.set_text("hello");
         input.cursor = 2;
-        input.handle_key(ctrl('k'));
+        input.handle(&ctrl('k'));
         assert_eq!(input.text(), "he");
     }
 
@@ -469,7 +496,7 @@ mod tests {
         let mut input = InputLine::new("");
         input.set_text("hello");
         input.cursor = 2;
-        input.handle_key(ctrl('u'));
+        input.handle(&ctrl('u'));
         assert_eq!(input.text(), "llo");
         assert_eq!(input.cursor, 0);
     }
@@ -478,7 +505,7 @@ mod tests {
     fn ctrl_w_kill_word() {
         let mut input = InputLine::new("");
         input.set_text("hello world");
-        input.handle_key(ctrl('w'));
+        input.handle(&ctrl('w'));
         assert_eq!(input.text(), "hello ");
     }
 
@@ -487,15 +514,15 @@ mod tests {
         let mut input = InputLine::new("");
         input.push_history("first".into());
         input.push_history("second".into());
-        input.handle_key(key(KeyCode::Up));
+        input.handle(&ev(KeyCode::Up));
         assert_eq!(input.text(), "second");
-        input.handle_key(key(KeyCode::Up));
+        input.handle(&ev(KeyCode::Up));
         assert_eq!(input.text(), "first");
-        input.handle_key(key(KeyCode::Up)); // at start, no change
+        input.handle(&ev(KeyCode::Up)); // at start, no change
         assert_eq!(input.text(), "first");
-        input.handle_key(key(KeyCode::Down));
+        input.handle(&ev(KeyCode::Down));
         assert_eq!(input.text(), "second");
-        input.handle_key(key(KeyCode::Down)); // past end, clears
+        input.handle(&ev(KeyCode::Down)); // past end, clears
         assert_eq!(input.text(), "");
     }
 
@@ -503,21 +530,15 @@ mod tests {
     fn enter_confirms() {
         let mut input = InputLine::new("");
         input.set_text("done");
-        let result = input.handle_key(key(KeyCode::Enter));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Confirmed(s)) if s == "done"
-        ));
+        let result = input.handle(&ev(KeyCode::Enter));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
     fn esc_cancels() {
         let mut input = InputLine::new("");
-        let result = input.handle_key(key(KeyCode::Esc));
-        assert!(matches!(
-            result,
-            EventResult::Action(WidgetAction::Cancelled)
-        ));
+        let result = input.handle(&ev(KeyCode::Esc));
+        assert!(matches!(result, HandleResult::Consumed));
     }
 
     #[test]
@@ -543,7 +564,7 @@ mod tests {
         let mut input = InputLine::new("");
         input.set_text("ac");
         input.cursor = 1;
-        input.handle_key(key(KeyCode::Char('b')));
+        input.handle(&ev(KeyCode::Char('b')));
         assert_eq!(input.text(), "abc");
         assert_eq!(input.cursor, 2);
     }
@@ -551,7 +572,7 @@ mod tests {
     #[test]
     fn empty_history_noop() {
         let mut input = InputLine::new("");
-        input.handle_key(key(KeyCode::Up));
+        input.handle(&ev(KeyCode::Up));
         assert_eq!(input.text(), "");
     }
 
@@ -559,8 +580,8 @@ mod tests {
     fn tab_with_no_completion_fn() {
         let mut input = InputLine::new("");
         input.set_text("he");
-        let result = input.handle_key(key(KeyCode::Tab));
-        assert!(matches!(result, EventResult::Consumed));
+        let result = input.handle(&ev(KeyCode::Tab));
+        assert!(matches!(result, HandleResult::Consumed));
         assert_eq!(input.text(), "he"); // unchanged
     }
 
@@ -569,7 +590,7 @@ mod tests {
         let mut input = InputLine::new("");
         input.completion_fn = Some(Box::new(|_text, _cur| vec!["hello world".into()]));
         input.set_text("he");
-        input.handle_key(key(KeyCode::Tab));
+        input.handle(&ev(KeyCode::Tab));
         assert_eq!(input.text(), "hello world");
     }
 

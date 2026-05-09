@@ -1,11 +1,11 @@
 //! Status bar — left/right aligned styled spans.
 
-use crossterm::event::KeyEvent;
 use txv::cell::Style;
+use txv::layout::Rect;
 use txv::surface::Surface;
 use txv::text::display_width;
 
-use crate::widget::{EventResult, Widget};
+use crate::view::{DrawContext, Event, HandleResult, View};
 
 /// A styled text span for the status bar.
 pub struct StatusSpan {
@@ -20,6 +20,7 @@ pub struct StatusBar {
     left: Vec<StatusSpan>,
     right: Vec<StatusSpan>,
     bg: Style,
+    bounds: Rect,
 }
 
 impl StatusBar {
@@ -29,6 +30,12 @@ impl StatusBar {
             left: Vec::new(),
             right: Vec::new(),
             bg: Style::default(),
+            bounds: Rect {
+                x: 0,
+                y: 0,
+                w: 0,
+                h: 0,
+            },
         }
     }
 
@@ -54,8 +61,8 @@ impl Default for StatusBar {
     }
 }
 
-impl Widget for StatusBar {
-    fn render(&self, surface: &mut Surface<'_>, _focused: bool) {
+impl View for StatusBar {
+    fn draw(&self, surface: &mut Surface<'_>, _ctx: &DrawContext) {
         let w = surface.width();
         // Fill background
         surface.hline(0, 0, w, ' ', self.bg);
@@ -83,18 +90,27 @@ impl Widget for StatusBar {
         }
     }
 
-    fn handle_key(&mut self, _key: KeyEvent) -> EventResult {
-        EventResult::Ignored
+    fn handle(&mut self, _event: &Event) -> HandleResult {
+        HandleResult::Ignored
     }
 
     fn focusable(&self) -> bool {
         false
+    }
+
+    fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    fn set_bounds(&mut self, rect: Rect) {
+        self.bounds = rect;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use txv::cell::{Color, ColorMode};
     use txv::screen::Screen;
 
@@ -102,7 +118,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(width, 1, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            bar.render(&mut s, false);
+            bar.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         let text = screen.to_text();
         text.trim_end_matches('\n').to_string()
@@ -186,7 +208,13 @@ mod tests {
         let mut screen = Screen::with_color_mode(10, 1, ColorMode::Rgb);
         {
             let mut s = screen.full_surface();
-            bar.render(&mut s, false);
+            bar.draw(
+                &mut s,
+                &DrawContext {
+                    app_focused: true,
+                    tick: 0,
+                },
+            );
         }
         assert_eq!(screen.cell(9, 0).style.fg, Color::Ansi(1));
     }
@@ -199,9 +227,11 @@ mod tests {
 
     #[test]
     fn handle_key_ignored() {
-        use crossterm::event::{KeyCode, KeyModifiers};
         let mut bar = StatusBar::new();
         let key = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
-        assert!(matches!(bar.handle_key(key), EventResult::Ignored));
+        assert!(matches!(
+            bar.handle(&Event::Key(key)),
+            HandleResult::Ignored
+        ));
     }
 }

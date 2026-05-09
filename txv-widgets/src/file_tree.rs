@@ -279,7 +279,7 @@ mod tests {
             let mut s = screen.full_surface();
             data.render_node(&toml, &mut s, 0, false, true);
         }
-        assert!(screen.cell(0, 0).style.attrs.reverse);
+        assert!(screen.cell(0, 0).style.attrs.underline);
     }
 
     #[test]
@@ -291,10 +291,10 @@ mod tests {
 
     #[test]
     fn file_icon_mapping() {
-        assert_eq!(file_icon(Path::new("main.rs")), "🦀");
-        assert_eq!(file_icon(Path::new("App.tsx")), "🔷");
-        assert_eq!(file_icon(Path::new("Main.java")), "☕");
-        assert_eq!(file_icon(Path::new("main.go")), "🐹");
-        assert_eq!(file_icon(Path::new("unknown.xyz")), "📄");
+        assert_eq!(file_icon(Path::new("main.rs")), 'R');
+        assert_eq!(file_icon(Path::new("App.tsx")), 'T');
+        assert_eq!(file_icon(Path::new("Main.java")), 'J');
+        assert_eq!(file_icon(Path::new("main.go")), 'G');
+        assert_eq!(file_icon(Path::new("unknown.xyz")), '-');
     }
 }
