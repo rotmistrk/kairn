@@ -145,24 +145,30 @@ pub enum EventCategory {
 /// Options flags (like TXV's ofPreProcess, ofPostProcess).
 #[derive(Clone, Copy, Default)]
 pub struct ViewOptions {
-    /// This view sees events BEFORE the focused view.
     pub preprocess: bool,
-    /// This view sees events AFTER the focused view.
     pub postprocess: bool,
-    /// This view can receive focus.
     pub focusable: bool,
-    /// This view is modal (captures all events when active).
     pub modal: bool,
 }
 
 /// Result of handling an event.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HandleResult {
-    /// Event consumed. Stop dispatching.
     Consumed,
-    /// Event not handled. Continue dispatching.
     Ignored,
-    /// View emits a command. Parent dispatches it as a new Event::Command.
-    PutEvent { id: CommandId, data: Option<Box<dyn std::any::Any + Send>> },
+}
+
+/// Event queue — views call queue.put() to emit events (TXV putEvent).
+pub struct EventQueue {
+    events: Vec<Event>,
+}
+
+impl EventQueue {
+    pub fn new() -> Self;
+    pub fn put(&mut self, event: Event);
+    pub fn put_command(&mut self, id: CommandId, data: Option<Box<dyn Any + Send>>);
+    pub fn drain(&mut self) -> Vec<Event>;
+    pub fn is_empty(&self) -> bool;
 }
 
 /// A rectangular UI element.
@@ -170,18 +176,118 @@ pub trait View: Send {
     /// Draw into the given surface.
     fn draw(&self, surface: &mut Surface);
 
-    /// Handle an event.
-    fn handle(&mut self, event: &Event) -> HandleResult;
+    /// Handle an event. Use queue.put_command() to emit commands.
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult;
 
-    /// View options (preprocess, postprocess, focusable, modal).
+    /// Called when this view gains focus.
+    fn select(&mut self) {}
+
+    /// Called when this view loses focus.
+    fn unselect(&mut self) {}
+
+    /// This view's bounds (position + size), set by parent.
+    fn bounds(&self) -> Rect;
+
+    /// Parent sets this view's bounds during layout.
+    fn set_bounds(&mut self, rect: Rect);
+
+    /// View options.
     fn options(&self) -> ViewOptions {
         ViewOptions { focusable: true, ..ViewOptions::default() }
     }
 
-    /// Display title (for tab bars, window titles).
+    /// Display title.
     fn title(&self) -> &str { "" }
+
+    /// Whether this view needs redrawing (dirty flag).
+    fn needs_redraw(&self) -> bool { true }
+
+    /// Called after draw — view clears its dirty flag.
+    fn mark_redrawn(&mut self) {}
 }
 ```
+
+### Dirty flag (needRedraw)
+
+Views track state changes:
+- Mutation sets `dirty = true`
+- `needs_redraw()` returns `dirty`
+- `mark_redrawn()` clears it
+- Run loop only redraws if `root.needs_redraw()`
+- Group returns true if any child needs redraw
+
+### select / unselect
+
+Group calls `child.unselect()` on old focus, `child.select()` on new:
+```rust
+impl Group {
+    pub fn focus_next(&mut self) {
+        let old = self.focused;
+        // ... find next ...
+        if old != self.focused {
+            self.children[old].unselect();
+            self.children[self.focused].select();
+        }
+    }
+}
+```
+
+Views use this to show/hide cursor, change border color, etc.
+
+### exec_view (modal execution)
+
+Modal dialogs block with a nested event loop. Called from run loop level.
+
+During modal execution:
+- **Key/Mouse** → modal view only
+- **Tick, Resize, Command** → full tree (background work continues)
+
+```rust
+pub fn exec_view(
+    root: &mut dyn View,
+    modal: &mut dyn View,
+    backend: &mut dyn Backend,
+) -> CommandId {
+    let mut queue = EventQueue::new();
+    loop {
+        // Draw root + modal overlay
+        let (w, h) = backend.size();
+        let mut surface = Surface::new(w, h);
+        root.draw(&mut surface);
+        modal.draw(&mut surface);
+        backend.flush(&surface);
+
+        match backend.poll_event(Duration::from_millis(50)) {
+            Some(ev @ (Event::Key(_) | Event::Mouse(_))) => {
+                modal.handle(&ev, &mut queue);
+            }
+            Some(Event::Tick) | None => {
+                root.handle(&Event::Tick, &mut queue);
+                modal.handle(&Event::Tick, &mut queue);
+            }
+            Some(ev @ Event::Resize(_, _)) => {
+                root.handle(&ev, &mut queue);
+                modal.handle(&ev, &mut queue);
+            }
+            Some(ev @ Event::Command { .. }) => {
+                root.handle(&ev, &mut queue);
+            }
+        }
+
+        for ev in queue.drain() {
+            if let Event::Command { id, .. } = &ev {
+                if matches!(*id, CM_CLOSE | CM_OK | CM_CANCEL) {
+                    return *id;
+                }
+            }
+            root.handle(&ev, &mut queue);
+        }
+    }
+}
+```
+
+A view wanting a dialog emits CM_EXEC_DIALOG. The run loop calls
+exec_view(). Result dispatched as a command afterward.
 
 ### Group
 
