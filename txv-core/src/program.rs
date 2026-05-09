@@ -129,6 +129,7 @@ impl Program {
             let mut quit = false;
             for ev in events {
                 if let Event::Command { id, ref data } = ev {
+                    log::debug!("Program: command {}", id);
                     if id == CM_QUIT {
                         quit = true;
                         break;

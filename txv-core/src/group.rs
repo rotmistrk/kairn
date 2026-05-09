@@ -100,10 +100,12 @@ impl GroupState {
     ) -> HandleResult {
         // Phase 1: preprocess
         for child in &mut self.children {
-            if child.options().preprocess
-                && child.handle(event, queue) == HandleResult::Consumed
-            {
-                return HandleResult::Consumed;
+            if child.options().preprocess {
+                log::trace!("Group dispatch: preprocess child");
+                if child.handle(event, queue) == HandleResult::Consumed {
+                    log::trace!("Group dispatch: preprocess consumed");
+                    return HandleResult::Consumed;
+                }
             }
         }
 

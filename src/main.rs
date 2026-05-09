@@ -1,5 +1,6 @@
 //! kairn — TUI IDE entry point.
-use txv_core::view::View;
+use txv_core::view::{View, EventQueue};
+use txv_core::event::Event;
 
 use std::path::PathBuf;
 
@@ -23,11 +24,26 @@ struct Cli {
     /// Directory to open
     #[arg(default_value = ".")]
     path: PathBuf,
+
+    /// Log file (default: .kairn.log)
+    #[arg(short = 'l', long = "log", default_value = ".kairn.log")]
+    log_file: PathBuf,
+
+    /// Log level (error, warn, info, debug, trace)
+    #[arg(short = 'L', long = "log-level", default_value = "info")]
+    log_level: String,
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let root_dir = std::fs::canonicalize(&cli.path)?;
+
+    // Init logging to file
+    let log_file = std::fs::File::create(&cli.log_file)?;
+    env_logger::Builder::new()
+        .filter_level(cli.log_level.parse().unwrap_or(log::LevelFilter::Info))
+        .target(env_logger::Target::Pipe(Box::new(log_file)))
+        .init();
 
     // Build desktop
     let mut desktop = SlottedDesktop::new();
@@ -64,7 +80,6 @@ fn main() -> anyhow::Result<()> {
                     OpenResult::Opened => {
                         if let Ok(editor) = EditorView::open(path) {
                             let title = editor.title().to_string();
-                            // Downcast desktop to insert tab
                             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                                 desktop.insert_tab(
                                     SlotId::Center,
@@ -82,7 +97,20 @@ fn main() -> anyhow::Result<()> {
                     desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
                 }
             }
-            _ => {}
+            CM_FOCUS_LEFT | CM_FOCUS_CENTER | CM_FOCUS_RIGHT | CM_FOCUS_BOTTOM
+            | CM_ZOOM_TOGGLE | CM_TAB_NEXT | CM_TAB_PREV => {
+                // These are desktop commands — re-dispatch to desktop
+                let ev = Event::Command { id: ctx.command, data: None };
+                let mut q = EventQueue::new();
+                ctx.desktop.handle(&ev, &mut q);
+            }
+            CM_SHOW_HELP => {
+                log::info!("Help requested");
+                // TODO: open help view in center slot
+            }
+            _ => {
+                log::debug!("Unhandled command: {}", ctx.command);
+            }
         }
     });
 

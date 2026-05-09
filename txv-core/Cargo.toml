@@ -5,3 +5,4 @@ edition = "2021"
 description = "Pure Rust TUI framework core — View trait, Group dispatch, Surface, EventQueue"
 
 [dependencies]
+log = "0.4"

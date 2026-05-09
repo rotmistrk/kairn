@@ -7,3 +7,4 @@ description = "Concrete View implementations — ready-to-use interactive TUI co
 [dependencies]
 txv-core = { path = "../txv-core" }
 ignore = "0.4"
+log = "0.4"
