@@ -65,11 +65,11 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
-            if let Ok(editor) = EditorView::open(path) {
-                let title = editor.title().to_string();
-                if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                    desktop.insert_tab(SlotId::Center, title, Box::new(editor));
-                }
+            let editor = EditorView::open(path)
+                .unwrap_or_else(|_| EditorView::new_file(path));
+            let title = editor.title().to_string();
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                desktop.insert_tab(SlotId::Center, title, Box::new(editor));
             }
         }
     }
@@ -92,7 +92,7 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         "quit" => ctx.queue.put_command(CM_QUIT, None),
-        "open" if !arg.is_empty() => {
+        "edit" | "e" if !arg.is_empty() => {
             let path = state.root_dir.join(arg);
             // NOTE: App command handlers call each other directly (not via queue).
             // This is correct — the queue is for cross-view communication.
@@ -102,11 +102,11 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             match state.broker.open(&path_str, SlotId::Center, 0) {
                 OpenResult::AlreadyOpen { .. } => {}
                 OpenResult::Opened => {
-                    if let Ok(editor) = EditorView::open(&path) {
-                        let title = editor.title().to_string();
-                        if let Some(d) = downcast_desktop(ctx.desktop) {
-                            d.insert_tab(SlotId::Center, title, Box::new(editor));
-                        }
+                    let editor = EditorView::open(&path)
+                        .unwrap_or_else(|_| EditorView::new_file(&path));
+                    let title = editor.title().to_string();
+                    if let Some(d) = downcast_desktop(ctx.desktop) {
+                        d.insert_tab(SlotId::Center, title, Box::new(editor));
                     }
                 }
             }

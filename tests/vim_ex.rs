@@ -84,3 +84,23 @@ fn colon_mode_accepts_typing_and_executes() {
     h.run_cycles(1);
     assert_eq!(cursor_at(&h), Some((41, 0)));
 }
+
+// --- BUG 1: Editor : mode prompt must be visible ---
+#[test]
+fn colon_mode_shows_prompt() {
+    let dir = temp_project(&[("t.txt", "hello\nworld")]);
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.run_cycles(1);
+    // Press : to enter command mode
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.run_cycles(1);
+    // The screen should show a ":" prompt somewhere in the editor area
+    let screen = h.screen_text();
+    // Check rows in the editor area (not the status bar at row 23)
+    let has_prompt = (1..23u16).any(|y| {
+        let row = h.row(y);
+        row.contains(':')
+    });
+    assert!(has_prompt, "expected : prompt visible in editor area, got:\n{}", screen);
+}

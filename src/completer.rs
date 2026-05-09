@@ -6,7 +6,7 @@ use txv_core::complete::{Completer, Completion};
 
 /// Known commands for the M-x prompt and :command mode.
 const COMMANDS: &[&str] = &[
-    "close", "help", "open", "quit", "save", "shell",
+    "close", "e", "edit", "help", "quit", "save", "shell",
 ];
 
 /// Completer for kairn application commands.
@@ -27,7 +27,7 @@ impl Completer for CommandCompleter {
     }
 }
 
-/// Combined completer: command names + file paths for open/e commands.
+/// Combined completer: command names + file paths for edit/e commands.
 /// Resolves file paths relative to a root directory.
 pub struct AppCompleter {
     root: PathBuf,
@@ -42,8 +42,11 @@ impl AppCompleter {
 impl Completer for AppCompleter {
     fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
         let trimmed = input.trim();
-        // If input starts with a file-opening command, complete paths
-        if let Some(path_part) = trimmed.strip_prefix("open ") {
+        // If input starts with a file-editing command, complete paths
+        if let Some(path_part) = trimmed.strip_prefix("edit ") {
+            return complete_path(path_part, &self.root);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("e ") {
             return complete_path(path_part, &self.root);
         }
         // Otherwise complete command names
@@ -61,28 +64,25 @@ impl Completer for AppCompleter {
 
 /// Complete filesystem paths relative to root dir.
 fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
-    let search_dir = root.join(
-        if partial.is_empty() { "." }
-        else if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
-            Path::new(partial).parent().map(|p| p.to_str().unwrap_or(".")).unwrap_or(".")
-        } else { "." }
-    );
-
-    let prefix = if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
-        Path::new(partial).file_name().and_then(|n| n.to_str()).unwrap_or("")
+    let (search_dir, prefix, dir_prefix) = if partial.is_empty() {
+        (root.to_path_buf(), "", String::new())
+    } else if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
+        // "src/" → list contents of src/
+        (root.join(partial), "", partial.to_string())
+    } else if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
+        // "src/ma" → list src/ filtered by "ma"
+        let p = Path::new(partial);
+        let parent = p.parent().map(|d| d.to_str().unwrap_or(".")).unwrap_or(".");
+        let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let dir_prefix = format!("{}/", parent);
+        (root.join(parent), prefix, dir_prefix)
     } else {
-        partial
+        // "READ" → list root filtered by "READ"
+        (root.to_path_buf(), partial, String::new())
     };
 
     let Ok(entries) = std::fs::read_dir(&search_dir) else {
         return Vec::new();
-    };
-
-    let dir_prefix = if partial.contains('/') {
-        let p = Path::new(partial);
-        p.parent().map(|d| format!("{}/", d.display())).unwrap_or_default()
-    } else {
-        String::new()
     };
 
     let mut results = Vec::new();
@@ -92,9 +92,8 @@ fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
         if !name_str.starts_with(prefix) {
             continue;
         }
-        // Build the completion text as "open <relative_path>"
         let rel_path = format!("{dir_prefix}{name_str}");
-        let text = format!("open {rel_path}");
+        let text = format!("edit {rel_path}");
         let display = if entry.path().is_dir() {
             format!("{name_str}/")
         } else {

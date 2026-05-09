@@ -27,10 +27,12 @@ pub fn help_text() -> String {
 ─── Command Mode (M-x) ──────────────────────────────
   help            Show help
   quit            Quit
-  open <path>     Open file
+  edit <path>     Open file in editor (creates if new)
+  e <path>        Short for edit
   save            Save current file
   close           Close current tab
   shell           New shell tab
+  Tab             Complete command / file path
 
 ─── File Tree (left slot) ────────────────────────────
   j / Down        Move cursor down
@@ -40,22 +42,52 @@ pub fn help_text() -> String {
 
 ─── Editor (center slot) — Normal Mode ───────────────
   h/j/k/l         Move left/down/up/right
-  Arrow keys      Move left/down/up/right
-  w / b           Word forward / backward
-  0 / $           Line start / end
+  w / b / e       Word forward / backward / end
+  0 / $ / ^       Line start / end / first non-blank
   gg / G          File start / end
   Ctrl-D/U        Half page down / up
+  Ctrl-F/B        Full page down / up
+  %               Match bracket
+  f/F/t/T <ch>    Find char forward/back, till char
+  ; / ,           Repeat / reverse last find
+
   i / a           Insert before / after cursor
   I / A           Insert at line start / end
   o / O           Open line below / above
-  x               Delete char forward
-  dd              Delete line
-  dw              Delete word
+  x / X           Delete char forward / backward
+  dd / dw / d$    Delete line / word / to end
+  cc / cw / c$    Change line / word / to end
   yy              Yank line
-  p               Paste
+  p / P           Paste after / before
   u / Ctrl-R      Undo / redo
+  . (dot)         Repeat last edit
+  r <ch>          Replace char under cursor
+  J               Join lines
+  ~               Toggle case
+  >> / <<         Indent / unindent
+  s / S           Substitute char / line
+  v / V           Visual / visual-line mode
+
+─── Editor — Visual Mode ─────────────────────────────
+  h/j/k/l/w/b    Extend selection
+  d / x           Delete selection
+  y               Yank selection
+  > / <           Indent / unindent selection
+  Esc             Exit visual mode
+
+─── Editor — Search ──────────────────────────────────
+  /pattern        Search forward
+  n / N           Next / previous match
+  * / #           Search word under cursor fwd / back
+
+─── Editor — Ex Commands (:) ─────────────────────────
   :w              Save
   :q              Close
+  :wq / :x        Save and close
+  :<N>            Go to line N
+  :%s/pat/rep/g   Substitute (% = all lines)
+  :d              Delete line(s)
+  :y              Yank line(s)
 
 ─── Editor — Insert Mode ─────────────────────────────
   Esc             Return to normal mode

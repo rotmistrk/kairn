@@ -31,6 +31,19 @@ impl EditorView {
         })
     }
 
+    /// Create an editor for a new (non-existent) file with empty buffer.
+    pub fn new_file(path: &Path) -> Self {
+        let editor = Editor::from_text("");
+        let file_ext = highlight::extension_from_path(path).to_string();
+        Self {
+            state: ViewState::default(),
+            editor,
+            path: path.to_path_buf(),
+            highlighter: Highlighter::new(),
+            file_ext,
+        }
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -149,6 +162,21 @@ impl View for EditorView {
                     surface.put(cx, y, ' ', cursor_style);
                 }
             }
+        }
+
+        // Render command/search prompt at bottom of editor area
+        if self.editor.mode == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        {
+            let prompt_y = b.y + b.h.saturating_sub(1);
+            let prompt_style = Style {
+                attrs: Attrs { reverse: true, ..Attrs::default() },
+                ..Style::default()
+            };
+            surface.hline(b.x, prompt_y, b.w, ' ', prompt_style);
+            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search { "/" } else { ":" };
+            surface.print(b.x, prompt_y, prefix, prompt_style);
+            surface.print(b.x + 1, prompt_y, &self.editor.command_buf, prompt_style);
         }
     }
 
