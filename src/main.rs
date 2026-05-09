@@ -1,15 +1,5 @@
 //! kairn — TUI IDE entry point.
 
-#![allow(dead_code)]
-
-mod app;
-mod broker;
-mod commands;
-mod completer;
-mod desktop;
-mod status;
-mod views;
-
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -19,7 +9,7 @@ use txv_core::view::View;
 use txv_render::backend::CrosstermBackend;
 use txv_render::color::detect_color_mode;
 
-use app::App;
+use kairn::app::App;
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]

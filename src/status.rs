@@ -11,12 +11,23 @@ enum Mode {
     Prompt,
 }
 
+const ALT_X: KeyEvent = KeyEvent {
+    code: KeyCode::Char('x'),
+    modifiers: KeyMod { ctrl: false, alt: true, shift: false },
+};
+
 /// Application status bar with command mode support.
 pub struct KairnStatusBar {
     inner: StatusBar,
     input: InputLine,
     mode: Mode,
     completer: Option<Box<dyn Completer>>,
+}
+
+impl Default for KairnStatusBar {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KairnStatusBar {
@@ -49,23 +60,6 @@ impl KairnStatusBar {
         );
         bar.add_item(
             KeyEvent {
-                code: KeyCode::Char('x'),
-                modifiers: KeyMod { ctrl: false, alt: true, shift: false },
-            },
-            CM_COMMAND_MODE,
-            "M-x",
-        );
-        // macOS sends ≈ for Alt-x in some terminal configs
-        bar.add_item(
-            KeyEvent {
-                code: KeyCode::Char('≈'),
-                modifiers: KeyMod::default(),
-            },
-            CM_COMMAND_MODE,
-            "",
-        );
-        bar.add_item(
-            KeyEvent {
                 code: KeyCode::Char('q'),
                 modifiers: KeyMod { ctrl: true, alt: false, shift: false },
             },
@@ -91,6 +85,11 @@ impl KairnStatusBar {
     fn enter_prompt(&mut self) {
         self.mode = Mode::Prompt;
         self.input.clear();
+        // Position input after the ":" prefix
+        let b = self.inner.bounds();
+        if b.w > 1 {
+            self.input.set_bounds(Rect::new(b.x + 1, b.y, b.w - 1, 1));
+        }
     }
 
     fn exit_prompt(&mut self) {
@@ -104,7 +103,6 @@ impl KairnStatusBar {
             if completions.len() == 1 {
                 self.input.set_text(&completions[0].text);
             } else if !completions.is_empty() {
-                // Store display strings for potential popup (future)
                 self.input.completions = completions.iter()
                     .map(|c| c.display.clone())
                     .collect();
@@ -117,7 +115,10 @@ impl View for KairnStatusBar {
     fn bounds(&self) -> Rect { self.inner.bounds() }
     fn set_bounds(&mut self, r: Rect) {
         self.inner.set_bounds(r);
-        self.input.set_bounds(r);
+        // Input gets bounds minus the ":" prefix
+        if r.w > 1 {
+            self.input.set_bounds(Rect::new(r.x + 1, r.y, r.w - 1, 1));
+        }
     }
     fn options(&self) -> ViewOptions {
         ViewOptions {
@@ -130,7 +131,7 @@ impl View for KairnStatusBar {
     fn needs_redraw(&self) -> bool {
         match self.mode {
             Mode::Normal => self.inner.needs_redraw(),
-            Mode::Prompt => self.input.needs_redraw(),
+            Mode::Prompt => true, // always redraw in prompt mode
         }
     }
     fn mark_redrawn(&mut self) {
@@ -142,17 +143,31 @@ impl View for KairnStatusBar {
 
     fn draw(&self, surface: &mut Surface) {
         match self.mode {
-            Mode::Normal => self.inner.draw(surface),
+            Mode::Normal => {
+                self.inner.draw(surface);
+                // Also draw "M-x" label (inner doesn't have it as a StatusItem)
+                let b = self.inner.bounds();
+                let style = Style {
+                    attrs: Attrs { reverse: true, ..Attrs::default() },
+                    ..Style::default()
+                };
+                // Find space after last item for M-x label
+                let mx_text = " M-x ";
+                let items_len: u16 = self.inner.items.iter()
+                    .map(|i| i.label.len() as u16 + 2)
+                    .sum();
+                if items_len + mx_text.len() as u16 <= b.w {
+                    surface.print(b.x + items_len, b.y, mx_text, style);
+                }
+            }
             Mode::Prompt => {
                 let b = self.inner.bounds();
                 let style = Style {
                     attrs: Attrs { reverse: true, ..Attrs::default() },
                     ..Style::default()
                 };
-                // Draw prompt prefix
                 surface.hline(b.x, b.y, b.w, ' ', style);
                 surface.print(b.x, b.y, ":", style);
-                // Draw input after the ":"
                 self.input.draw(surface);
             }
         }
@@ -165,9 +180,9 @@ impl View for KairnStatusBar {
     ) -> HandleResult {
         match self.mode {
             Mode::Normal => {
-                // Check for CM_COMMAND_MODE command to enter prompt
-                if let Event::Command { id, .. } = event {
-                    if *id == CM_COMMAND_MODE {
+                // Intercept Alt-x directly to enter prompt mode
+                if let Event::Key(key) = event {
+                    if *key == ALT_X {
                         self.enter_prompt();
                         return HandleResult::Consumed;
                     }
@@ -191,7 +206,6 @@ impl View for KairnStatusBar {
                 for ev in events {
                     if let Event::Command { id, data } = &ev {
                         if *id == CM_OK {
-                            // Extract command text and emit CM_EXECUTE_COMMAND
                             if let Some(boxed) = data.as_ref() {
                                 if let Some(text) = boxed.downcast_ref::<String>() {
                                     let cmd_text = text.clone();

@@ -73,6 +73,12 @@ pub struct SlottedDesktop {
     zoomed: Option<SlotId>,
 }
 
+impl Default for SlottedDesktop {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SlottedDesktop {
     pub fn new() -> Self {
         Self {
@@ -86,7 +92,7 @@ impl SlottedDesktop {
                 Slot::new(40),  // Right
                 Slot::new(10),  // Bottom
             ],
-            focused: SlotId::Center,
+            focused: SlotId::Left,
             zoomed: None,
         }
     }
@@ -96,8 +102,11 @@ impl SlottedDesktop {
         &mut self,
         slot: SlotId,
         title: impl Into<String>,
-        view: Box<dyn View>,
+        mut view: Box<dyn View>,
     ) {
+        // Set bounds on the new view based on current layout
+        let rects = self.layout(self.group.view.bounds);
+        view.set_bounds(rects[slot as usize]);
         let s = &mut self.slots[slot as usize];
         s.tabs.push((title.into(), view));
         s.active = s.tabs.len() - 1;
@@ -132,6 +141,11 @@ impl SlottedDesktop {
     /// Get the tab count in a specific slot.
     pub fn tab_count(&self, slot: SlotId) -> usize {
         self.slots[slot as usize].tabs.len()
+    }
+
+    /// Get a mutable reference to the active view in a slot (for downcasting).
+    pub fn active_view_mut(&mut self, slot: SlotId) -> Option<&mut Box<dyn View>> {
+        self.slots[slot as usize].active_view_mut()
     }
 
     fn focus_slot(&mut self, id: SlotId) {

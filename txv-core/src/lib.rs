@@ -77,7 +77,7 @@ pub mod prelude {
     };
     pub use crate::geometry::{Point, Rect};
     pub use crate::group::GroupState;
-    pub use crate::run::{exec_view, run, Backend, MockBackend};
+    pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::surface::{SubSurface, Surface};
     pub use crate::view::{
         EventQueue, HandleResult, View, ViewOptions, ViewState,

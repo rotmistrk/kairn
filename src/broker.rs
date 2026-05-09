@@ -47,3 +47,9 @@ impl FileBroker {
         self.open_files.keys().map(|s| s.as_str()).collect()
     }
 }
+
+impl Default for FileBroker {
+    fn default() -> Self {
+        Self::new()
+    }
+}

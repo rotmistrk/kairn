@@ -12,3 +12,6 @@ txv-render = { path = "txv-render" }
 txv-widgets = { path = "txv-widgets" }
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.15"

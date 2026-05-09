@@ -1,6 +1,7 @@
 //! App — top-level view. Creates desktop + status bar, handles commands.
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
@@ -13,23 +14,26 @@ use crate::views::editor::EditorView;
 use crate::views::terminal::TerminalView;
 use crate::views::tree::FileTreeView;
 
+/// Shared cursor state for testing.
+pub type CursorState = Arc<Mutex<Option<(usize, usize)>>>;
+
 /// Root application view.
 pub struct App {
-    desktop: SlottedDesktop,
+    pub desktop: SlottedDesktop,
     status: KairnStatusBar,
     broker: FileBroker,
     bounds: Rect,
+    /// Shared cursor state — EditorView updates this on each handle.
+    pub cursor_state: CursorState,
 }
 
 impl App {
     pub fn new(root_dir: PathBuf) -> Self {
         let mut desktop = SlottedDesktop::new();
 
-        // Left slot: file tree
         let tree = FileTreeView::new(root_dir);
         desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
 
-        // Right slot: shell placeholder
         let term = TerminalView::new("Shell");
         desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
 
@@ -41,7 +45,13 @@ impl App {
             status,
             broker: FileBroker::new(),
             bounds: Rect::default(),
+            cursor_state: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Get cursor position of the active editor (for testing).
+    pub fn editor_cursor(&self) -> Option<(usize, usize)> {
+        *self.cursor_state.lock().unwrap()
     }
 
     fn relayout(&mut self) {
@@ -66,7 +76,8 @@ impl App {
                 self.desktop.focus_tab(slot, tab);
             }
             OpenResult::Opened => {
-                if let Ok(editor) = EditorView::open(path) {
+                if let Ok(mut editor) = EditorView::open(path) {
+                    editor.cursor_state = self.cursor_state.clone();
                     let title = editor.title().to_string();
                     self.desktop.insert_tab(
                         SlotId::Center,
@@ -82,7 +93,6 @@ impl App {
         let Some(boxed) = data.as_ref() else { return };
         let Some(path) = boxed.downcast_ref::<String>() else { return };
         self.broker.close(path);
-        // Close the editor tab showing this file
         let filename = std::path::Path::new(path.as_str())
             .file_name()
             .and_then(|n| n.to_str())
@@ -169,37 +179,33 @@ impl View for App {
         event: &Event,
         queue: &mut EventQueue,
     ) -> HandleResult {
-        // Resize
         if let Event::Resize(w, h) = event {
             self.set_bounds(Rect::new(0, 0, *w, *h));
             return HandleResult::Consumed;
         }
 
-        // Status bar preprocesses keys (F1-F5, Alt-x, Ctrl-Q) and prompt mode
         if self.status.handle(event, queue) == HandleResult::Consumed {
-            // Process any commands emitted by status bar
             let events = queue.drain();
             for ev in events {
                 if let Event::Command { id, ref data } = ev {
                     self.handle_command(id, data, queue);
                 }
+                queue.put(ev);
             }
             return HandleResult::Consumed;
         }
 
-        // Desktop handles the rest
         if self.desktop.handle(event, queue) == HandleResult::Consumed {
-            // Process any commands emitted by views inside desktop
             let events = queue.drain();
             for ev in events {
                 if let Event::Command { id, ref data } = ev {
                     self.handle_command(id, data, queue);
                 }
+                queue.put(ev);
             }
             return HandleResult::Consumed;
         }
 
-        // Process commands emitted by children
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, ref data } = ev {
