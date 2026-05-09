@@ -189,17 +189,18 @@ impl View for App {
             return HandleResult::Consumed;
         }
 
-        // Three-phase dispatch via GroupState
-        let result = self.group.dispatch(event, queue);
-
-        // Process commands emitted by children
-        let events = queue.drain();
-        for ev in events {
-            if let Event::Command { id, ref data } = ev {
-                self.handle_command(id, data, queue);
+        // Intercept app-level commands before group dispatch
+        if let Event::Command { id, ref data } = event {
+            match *id {
+                CM_OPEN_FILE | CM_FILE_DELETED | CM_EXECUTE_COMMAND
+                | CM_SHOW_HELP | CM_NEW_SHELL => {
+                    self.handle_command(*id, data, queue);
+                    return HandleResult::Consumed;
+                }
+                _ => {}
             }
         }
 
-        result
+        self.group.dispatch(event, queue)
     }
 }
