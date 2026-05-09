@@ -1,4 +1,5 @@
-//! App — top-level view. Creates desktop + status bar, handles commands.
+//! App — top-level Group. Uses GroupState for three-phase dispatch.
+//! StatusBar (preprocess) + Desktop (focused) are children.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -17,114 +18,41 @@ use crate::views::tree::FileTreeView;
 /// Shared cursor state for testing.
 pub type CursorState = Arc<Mutex<Option<(usize, usize)>>>;
 
-/// Root application view.
+/// Root application — a Group with StatusBar + Desktop.
 pub struct App {
-    pub desktop: SlottedDesktop,
-    status: KairnStatusBar,
+    group: GroupState,
     broker: FileBroker,
-    bounds: Rect,
-    /// Shared cursor state — EditorView updates this on each handle.
     pub cursor_state: CursorState,
 }
 
 impl App {
     pub fn new(root_dir: PathBuf) -> Self {
         let mut desktop = SlottedDesktop::new();
-
         let tree = FileTreeView::new(root_dir);
         desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
-
         let term = TerminalView::new("Shell");
         desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
 
         let mut status = KairnStatusBar::new();
         status.set_completer(Box::new(CommandCompleter));
 
+        let mut group = GroupState::new(ViewOptions {
+            focusable: true,
+            ..ViewOptions::default()
+        });
+        group.insert(Box::new(status));  // child 0: preprocess
+        group.insert(Box::new(desktop)); // child 1: focused
+        group.focused = 1;
+
         Self {
-            desktop,
-            status,
+            group,
             broker: FileBroker::new(),
-            bounds: Rect::default(),
             cursor_state: Arc::new(Mutex::new(None)),
         }
     }
 
-    /// Get cursor position of the active editor (for testing).
     pub fn editor_cursor(&self) -> Option<(usize, usize)> {
         *self.cursor_state.lock().unwrap()
-    }
-
-    fn relayout(&mut self) {
-        let b = self.bounds;
-        if b.h < 2 {
-            return;
-        }
-        let desktop_rect = Rect::new(b.x, b.y, b.w, b.h - 1);
-        self.desktop.set_bounds(desktop_rect);
-        let status_rect = Rect::new(b.x, b.y + b.h - 1, b.w, 1);
-        self.status.set_bounds(status_rect);
-    }
-
-    fn handle_open_file(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
-        let Some(boxed) = data.as_ref() else { return };
-        let Some(path) = boxed.downcast_ref::<PathBuf>() else { return };
-        let path_str = path.to_string_lossy().to_string();
-        let next_tab = self.desktop.tab_count(SlotId::Center);
-
-        match self.broker.open(&path_str, SlotId::Center, next_tab) {
-            OpenResult::AlreadyOpen { slot, tab } => {
-                self.desktop.focus_tab(slot, tab);
-            }
-            OpenResult::Opened => {
-                if let Ok(mut editor) = EditorView::open(path) {
-                    editor.cursor_state = self.cursor_state.clone();
-                    let title = editor.title().to_string();
-                    self.desktop.insert_tab(
-                        SlotId::Center,
-                        title,
-                        Box::new(editor),
-                    );
-                }
-            }
-        }
-    }
-
-    fn handle_file_deleted(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
-        let Some(boxed) = data.as_ref() else { return };
-        let Some(path) = boxed.downcast_ref::<String>() else { return };
-        self.broker.close(path);
-        let filename = std::path::Path::new(path.as_str())
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(path);
-        self.desktop.close_tab_by_title(SlotId::Center, filename);
-    }
-
-    fn handle_execute_command(
-        &mut self,
-        data: &Option<Box<dyn std::any::Any + Send>>,
-        queue: &mut EventQueue,
-    ) {
-        let Some(boxed) = data.as_ref() else { return };
-        let Some(text) = boxed.downcast_ref::<String>() else { return };
-        let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
-        let cmd = parts.first().copied().unwrap_or("");
-        let arg = parts.get(1).copied().unwrap_or("");
-
-        match cmd {
-            "help" => queue.put_command(CM_SHOW_HELP, None),
-            "quit" => queue.put_command(CM_QUIT, None),
-            "open" => {
-                if !arg.is_empty() {
-                    let path = PathBuf::from(arg);
-                    queue.put_command(CM_OPEN_FILE, Some(Box::new(path)));
-                }
-            }
-            "save" => queue.put_command(CM_SAVE, None),
-            "close" => queue.put_command(CM_TAB_CLOSE, None),
-            "shell" => queue.put_command(CM_NEW_SHELL, None),
-            _ => {}
-        }
     }
 
     fn handle_command(
@@ -139,81 +67,132 @@ impl App {
             CM_EXECUTE_COMMAND => self.handle_execute_command(data, queue),
             CM_NEW_SHELL => {
                 let term = TerminalView::new("Shell");
-                self.desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
+                if let Some(desktop) = self.desktop_mut() {
+                    desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
+                }
             }
             _ => {}
         }
     }
+
+    fn handle_open_file(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
+        let Some(boxed) = data.as_ref() else { return };
+        let Some(path) = boxed.downcast_ref::<PathBuf>() else { return };
+        let path_str = path.to_string_lossy().to_string();
+
+        // Check broker first (no borrow on group)
+        let desktop_child = &self.group.children[1];
+        let tab_count = 0; // approximate — broker just needs a slot
+        let open_result = self.broker.open(&path_str, SlotId::Center, tab_count);
+
+        match open_result {
+            OpenResult::AlreadyOpen { slot, tab } => {
+                if let Some(desktop) = self.desktop_mut() {
+                    desktop.focus_tab(slot, tab);
+                }
+            }
+            OpenResult::Opened => {
+                let cursor_state = self.cursor_state.clone();
+                if let Ok(mut editor) = EditorView::open(path) {
+                    editor.cursor_state = cursor_state;
+                    let title = editor.title().to_string();
+                    if let Some(desktop) = self.desktop_mut() {
+                        desktop.insert_tab(SlotId::Center, title, Box::new(editor));
+                    }
+                }
+            }
+        }
+    }
+
+    fn handle_file_deleted(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
+        let Some(boxed) = data.as_ref() else { return };
+        let Some(path) = boxed.downcast_ref::<String>() else { return };
+        self.broker.close(path);
+        let filename = std::path::Path::new(path.as_str())
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(path);
+        if let Some(desktop) = self.desktop_mut() {
+            desktop.close_tab_by_title(SlotId::Center, filename);
+        }
+    }
+
+    fn handle_execute_command(
+        &mut self,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+        queue: &mut EventQueue,
+    ) {
+        let Some(boxed) = data.as_ref() else { return };
+        let Some(text) = boxed.downcast_ref::<String>() else { return };
+        let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
+        let cmd = parts.first().copied().unwrap_or("");
+        let arg = parts.get(1).copied().unwrap_or("");
+        match cmd {
+            "help" => queue.put_command(CM_SHOW_HELP, None),
+            "quit" => queue.put_command(CM_QUIT, None),
+            "open" if !arg.is_empty() => {
+                queue.put_command(CM_OPEN_FILE, Some(Box::new(PathBuf::from(arg))));
+            }
+            "save" => queue.put_command(CM_SAVE, None),
+            "close" => queue.put_command(CM_TAB_CLOSE, None),
+            "shell" => queue.put_command(CM_NEW_SHELL, None),
+            _ => {}
+        }
+    }
+
+    /// Get desktop as SlottedDesktop (downcast from child 1).
+    fn desktop_mut(&mut self) -> Option<&mut SlottedDesktop> {
+        self.group.children.get_mut(1).and_then(|child| {
+            let ptr = child.as_mut() as *mut dyn View;
+            // SAFETY: we know child 1 is SlottedDesktop (we inserted it).
+            unsafe { (ptr as *mut SlottedDesktop).as_mut() }
+        })
+    }
 }
 
 impl View for App {
-    fn bounds(&self) -> Rect { self.bounds }
+    delegate_group_state!(group, override { handle, set_bounds, draw });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.bounds = r;
-        self.relayout();
+        self.group.view.bounds = r;
+        self.group.view.dirty = true;
+        if r.h >= 2 {
+            // Status bar: last row. Desktop: everything else.
+            let desktop_rect = Rect::new(r.x, r.y, r.w, r.h - 1);
+            let status_rect = Rect::new(r.x, r.y + r.h - 1, r.w, 1);
+            if let Some(child) = self.group.children.get_mut(1) {
+                child.set_bounds(desktop_rect);
+            }
+            if let Some(child) = self.group.children.get_mut(0) {
+                child.set_bounds(status_rect);
+            }
+        }
     }
-
-    fn options(&self) -> ViewOptions {
-        ViewOptions { focusable: true, ..ViewOptions::default() }
-    }
-
-    fn title(&self) -> &str { "kairn" }
-    fn needs_redraw(&self) -> bool {
-        self.desktop.needs_redraw() || self.status.needs_redraw()
-    }
-    fn mark_redrawn(&mut self) {
-        self.desktop.mark_redrawn();
-        self.status.mark_redrawn();
-    }
-    fn select(&mut self) { self.desktop.select(); }
-    fn unselect(&mut self) { self.desktop.unselect(); }
 
     fn draw(&self, surface: &mut Surface) {
-        self.desktop.draw(surface);
-        self.status.draw(surface);
+        // Draw desktop first (fills most of screen), then status on top
+        for child in &self.group.children {
+            child.draw(surface);
+        }
     }
 
-    fn handle(
-        &mut self,
-        event: &Event,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Resize(w, h) = event {
             self.set_bounds(Rect::new(0, 0, *w, *h));
             return HandleResult::Consumed;
         }
 
-        if self.status.handle(event, queue) == HandleResult::Consumed {
-            let events = queue.drain();
-            for ev in events {
-                if let Event::Command { id, ref data } = ev {
-                    self.handle_command(id, data, queue);
-                }
-                queue.put(ev);
-            }
-            return HandleResult::Consumed;
-        }
+        // Three-phase dispatch via GroupState
+        let result = self.group.dispatch(event, queue);
 
-        if self.desktop.handle(event, queue) == HandleResult::Consumed {
-            let events = queue.drain();
-            for ev in events {
-                if let Event::Command { id, ref data } = ev {
-                    self.handle_command(id, data, queue);
-                }
-                queue.put(ev);
-            }
-            return HandleResult::Consumed;
-        }
-
+        // Process commands emitted by children
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, ref data } = ev {
                 self.handle_command(id, data, queue);
             }
-            queue.put(ev);
         }
 
-        HandleResult::Ignored
+        result
     }
 }

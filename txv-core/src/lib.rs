@@ -60,6 +60,7 @@ pub mod dialog;
 pub mod event;
 pub mod geometry;
 pub mod group;
+pub mod program;
 pub mod run;
 pub mod surface;
 pub mod view;

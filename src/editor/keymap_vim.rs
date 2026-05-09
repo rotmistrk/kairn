@@ -41,6 +41,10 @@ impl VimKeymap {
             KeyCode::Char('l') => Command::MoveRight,
             KeyCode::Char('j') => Command::MoveDown,
             KeyCode::Char('k') => Command::MoveUp,
+            KeyCode::Left => Command::MoveLeft,
+            KeyCode::Right => Command::MoveRight,
+            KeyCode::Down => Command::MoveDown,
+            KeyCode::Up => Command::MoveUp,
             KeyCode::Char('w') => Command::MoveWordForward,
             KeyCode::Char('b') => Command::MoveWordBackward,
             KeyCode::Char('0') => Command::MoveLineStart,
@@ -86,6 +90,10 @@ impl VimKeymap {
             KeyCode::Enter => Command::InsertNewline,
             KeyCode::Backspace => Command::DeleteCharBackward,
             KeyCode::Delete => Command::DeleteCharForward,
+            KeyCode::Left => Command::MoveLeft,
+            KeyCode::Right => Command::MoveRight,
+            KeyCode::Down => Command::MoveDown,
+            KeyCode::Up => Command::MoveUp,
             _ => Command::Noop,
         }
     }
