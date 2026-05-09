@@ -224,6 +224,7 @@ impl EditorView {
             _ => {}
         }
 
+        self.ensure_cursor_visible();
         self.state.dirty = true;
         HandleResult::Consumed
     }

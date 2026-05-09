@@ -45,12 +45,8 @@ pub fn run_and_capture(
 
 /// Find the cursor position on screen by scanning for the reversed cell
 /// in the editor area (center slot). Returns (line, col) in editor coordinates
-/// where line is relative to the first content row and col is relative to
-/// after the gutter.
-///
-/// The editor renders: gutter (line numbers) + content. The cursor cell has
-/// `attrs.reverse = true`. We find it, then subtract the gutter width and
-/// the slot x-offset to get the editor (line, col).
+/// where line is the 0-indexed buffer line (read from gutter) and col is
+/// the column within the line content.
 #[allow(dead_code)]
 pub fn cursor_at(be: &MockBackend) -> Option<(usize, usize)> {
     let surface = be.surface()?;
@@ -78,12 +74,27 @@ pub fn cursor_at(be: &MockBackend) -> Option<(usize, usize)> {
                 }
 
                 let col = (x - content_x) as usize;
-                let line = (y - 1) as usize; // row 1 = line 0
+                // Read the line number from the gutter on this row
+                let line = read_line_number(surface, y, editor_x_start, gutter_w)
+                    .unwrap_or(0)
+                    .saturating_sub(1); // convert 1-indexed to 0-indexed
                 return Some((line, col));
             }
         }
     }
     None
+}
+
+/// Read the line number displayed in the gutter at the given row.
+fn read_line_number(surface: &txv_core::surface::Surface, y: u16, start_x: u16, gutter_w: u16) -> Option<usize> {
+    let mut num_str = String::new();
+    for x in start_x..start_x + gutter_w {
+        let ch = surface.cell(x, y).ch;
+        if ch.is_ascii_digit() {
+            num_str.push(ch);
+        }
+    }
+    num_str.parse().ok()
 }
 
 /// Find where the editor slot starts on a given row (first cell with Ansi(8) fg = gutter).

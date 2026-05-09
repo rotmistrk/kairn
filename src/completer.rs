@@ -1,11 +1,12 @@
 //! Completers — FilePathCompleter and CommandCompleter for kairn.
 
+use std::path::{Path, PathBuf};
+
 use txv_core::complete::{Completer, Completion};
 
 /// Known commands for the M-x prompt and :command mode.
 const COMMANDS: &[&str] = &[
     "close", "help", "open", "quit", "save", "shell",
-    "w", "q", "wq", "x", "e", "set",
 ];
 
 /// Completer for kairn application commands.
@@ -26,42 +27,62 @@ impl Completer for CommandCompleter {
     }
 }
 
-/// Completer for file paths (used in :open/:e commands).
-pub struct FilePathCompleter;
+/// Combined completer: command names + file paths for open/e commands.
+/// Resolves file paths relative to a root directory.
+pub struct AppCompleter {
+    root: PathBuf,
+}
 
-impl Completer for FilePathCompleter {
-    fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
-        let trimmed = input.trim();
-        // Extract the path portion (after command like "open " or "e ")
-        let path_part = if let Some(rest) = trimmed.strip_prefix("open ") {
-            rest
-        } else if let Some(rest) = trimmed.strip_prefix("e ") {
-            rest
-        } else {
-            return Vec::new();
-        };
-
-        complete_path(path_part)
+impl AppCompleter {
+    pub fn new(root: PathBuf) -> Self {
+        Self { root }
     }
 }
 
-/// Complete filesystem paths from a partial input.
-fn complete_path(partial: &str) -> Vec<Completion> {
-    use std::path::Path;
+impl Completer for AppCompleter {
+    fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
+        let trimmed = input.trim();
+        // If input starts with a file-opening command, complete paths
+        if let Some(path_part) = trimmed.strip_prefix("open ") {
+            return complete_path(path_part, &self.root);
+        }
+        // Otherwise complete command names
+        COMMANDS
+            .iter()
+            .filter(|cmd| cmd.starts_with(trimmed))
+            .map(|cmd| Completion {
+                text: cmd.to_string(),
+                display: cmd.to_string(),
+                kind: "command",
+            })
+            .collect()
+    }
+}
 
-    let (dir, prefix) = if partial.is_empty() {
-        (".", "")
-    } else if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
-        (partial, "")
+/// Complete filesystem paths relative to root dir.
+fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
+    let search_dir = root.join(
+        if partial.is_empty() { "." }
+        else if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
+            Path::new(partial).parent().map(|p| p.to_str().unwrap_or(".")).unwrap_or(".")
+        } else { "." }
+    );
+
+    let prefix = if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
+        Path::new(partial).file_name().and_then(|n| n.to_str()).unwrap_or("")
     } else {
-        let p = Path::new(partial);
-        let dir = p.parent().map(|d| d.to_str().unwrap_or(".")).unwrap_or(".");
-        let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        (if dir.is_empty() { "." } else { dir }, prefix)
+        partial
     };
 
-    let Ok(entries) = std::fs::read_dir(dir) else {
+    let Ok(entries) = std::fs::read_dir(&search_dir) else {
         return Vec::new();
+    };
+
+    let dir_prefix = if partial.contains('/') {
+        let p = Path::new(partial);
+        p.parent().map(|d| format!("{}/", d.display())).unwrap_or_default()
+    } else {
+        String::new()
     };
 
     let mut results = Vec::new();
@@ -71,37 +92,16 @@ fn complete_path(partial: &str) -> Vec<Completion> {
         if !name_str.starts_with(prefix) {
             continue;
         }
-        let full = if dir == "." {
-            name_str.to_string()
-        } else {
-            format!("{dir}/{name_str}")
-        };
+        // Build the completion text as "open <relative_path>"
+        let rel_path = format!("{dir_prefix}{name_str}");
+        let text = format!("open {rel_path}");
         let display = if entry.path().is_dir() {
             format!("{name_str}/")
         } else {
             name_str.to_string()
         };
-        results.push(Completion {
-            text: full,
-            display,
-            kind: if entry.path().is_dir() { "dir" } else { "file" },
-        });
+        results.push(Completion { text, display, kind: if entry.path().is_dir() { "dir" } else { "file" } });
     }
     results.sort_by(|a, b| a.display.cmp(&b.display));
     results
-}
-
-/// Combined completer that dispatches to command or file path completion.
-pub struct EditorCompleter;
-
-impl Completer for EditorCompleter {
-    fn complete(&self, input: &str, cursor: usize) -> Vec<Completion> {
-        let trimmed = input.trim();
-        // If input starts with a file-opening command, complete paths
-        if trimmed.starts_with("open ") || trimmed.starts_with("e ") {
-            return FilePathCompleter.complete(input, cursor);
-        }
-        // Otherwise complete command names
-        CommandCompleter.complete(input, cursor)
-    }
 }

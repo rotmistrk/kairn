@@ -68,3 +68,54 @@ fn tab_completes_command() {
     let last_row = be.row(23);
     assert!(last_row.contains("help"), "expected completion, got: {}", last_row);
 }
+
+// --- BUG 1: M-x "open README.md" does nothing ---
+#[test]
+fn open_command_opens_file() {
+    let dir = temp_project(&[("README.md", "# Hello World\nThis is content.")]);
+    let (mut app, mut be) = setup(dir.path(), 80, 24);
+    run_and_capture(&mut app, &mut be, 1);
+    // M-x open README.md
+    be.inject_key(
+        KeyCode::Char('x'),
+        KeyMod { ctrl: false, alt: true, shift: false },
+    );
+    be.inject_str("open README.md\n");
+    run_and_capture(&mut app, &mut be, 2);
+    // Center slot should have a tab titled "README.md"
+    // and screen should contain file content
+    let screen = be.screen_text();
+    assert!(
+        screen.contains("README.md"),
+        "expected tab title 'README.md' on screen, got:\n{}",
+        screen
+    );
+    assert!(
+        screen.contains("Hello World"),
+        "expected file content on screen, got:\n{}",
+        screen
+    );
+}
+
+// --- BUG 3: Tab completion not showing for file paths ---
+#[test]
+fn tab_completes_file_path() {
+    let dir = temp_project(&[("README.md", "content")]);
+    let (mut app, mut be) = setup(dir.path(), 80, 24);
+    run_and_capture(&mut app, &mut be, 1);
+    // M-x, type "open READ", Tab
+    be.inject_key(
+        KeyCode::Char('x'),
+        KeyMod { ctrl: false, alt: true, shift: false },
+    );
+    be.inject_str("open READ");
+    be.inject_key(KeyCode::Tab, KeyMod::default());
+    run_and_capture(&mut app, &mut be, 1);
+    // Prompt should now contain "open README.md" (completed)
+    let last_row = be.row(23);
+    assert!(
+        last_row.contains("README.md"),
+        "expected completed path in prompt, got: {}",
+        last_row
+    );
+}

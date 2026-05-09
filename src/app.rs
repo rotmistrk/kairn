@@ -7,7 +7,7 @@ use txv_core::prelude::*;
 
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
-use crate::completer::CommandCompleter;
+use crate::completer::AppCompleter;
 use crate::desktop::{SlotId, SlottedDesktop};
 use crate::status::KairnStatusBar;
 use crate::views::editor::EditorView;
@@ -19,18 +19,19 @@ use crate::views::tree::FileTreeView;
 pub struct App {
     group: GroupState,
     broker: FileBroker,
+    root_dir: PathBuf,
 }
 
 impl App {
     pub fn new(root_dir: PathBuf) -> Self {
         let mut desktop = SlottedDesktop::new();
-        let tree = FileTreeView::new(root_dir);
+        let tree = FileTreeView::new(root_dir.clone());
         desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
         let term = TerminalView::new("Shell");
         desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
 
         let mut status = KairnStatusBar::new();
-        status.set_completer(Box::new(CommandCompleter));
+        status.set_completer(Box::new(AppCompleter::new(root_dir.clone())));
 
         let mut group = GroupState::new(ViewOptions {
             focusable: true,
@@ -43,6 +44,7 @@ impl App {
         Self {
             group,
             broker: FileBroker::new(),
+            root_dir,
         }
     }
 
@@ -118,6 +120,7 @@ impl App {
     ) {
         let Some(boxed) = data.as_ref() else { return };
         let Some(text) = boxed.downcast_ref::<String>() else { return };
+        log::debug!("execute_command: {:?}", text);
         let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
         let cmd = parts.first().copied().unwrap_or("");
         let arg = parts.get(1).copied().unwrap_or("");
@@ -125,7 +128,14 @@ impl App {
             "help" => queue.put_command(CM_SHOW_HELP, None),
             "quit" => queue.put_command(CM_QUIT, None),
             "open" if !arg.is_empty() => {
-                queue.put_command(CM_OPEN_FILE, Some(Box::new(PathBuf::from(arg))));
+                let path = self.root_dir.join(arg);
+                log::debug!("open: resolved path = {:?}", path);
+                // NOTE: App command handlers call each other directly (not via queue).
+                // This is correct — the queue is for cross-view communication.
+                // When the App already knows what to do, it does it immediately.
+                // Same pattern as TXV's Program::handle.
+                let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(path));
+                self.handle_open_file(&data);
             }
             "save" => queue.put_command(CM_SAVE, None),
             "close" => queue.put_command(CM_TAB_CLOSE, None),

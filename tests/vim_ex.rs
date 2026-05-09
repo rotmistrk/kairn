@@ -1,6 +1,6 @@
 mod helpers;
 
-use helpers::{run_and_capture, setup, temp_project};
+use helpers::{cursor_at, run_and_capture, setup, temp_project};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn open_file_and_focus(be: &mut txv_core::run::MockBackend) {
@@ -79,4 +79,23 @@ fn ctrl_r_redoes() {
     // After redo, 'h' should be deleted again
     assert!(be.contains("ello"));
     assert!(!be.contains("hello"));
+}
+
+// --- BUG 2: Editor : mode doesn't accept typing ---
+#[test]
+fn colon_mode_accepts_typing_and_executes() {
+    // Create a file with 50 lines so we can goto line 42
+    let content: String = (1..=50).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
+    let dir = temp_project(&[("big.txt", &content)]);
+    let (mut app, mut be) = setup(dir.path(), 80, 24);
+    // Open file and focus editor
+    be.inject_key(KeyCode::Enter, KeyMod::default());
+    be.inject_key(KeyCode::F(3), KeyMod::default());
+    run_and_capture(&mut app, &mut be, 1);
+    // Type : to enter command mode, then "42", then Enter
+    be.inject_key(KeyCode::Char(':'), KeyMod::default());
+    be.inject_str("42\n");
+    run_and_capture(&mut app, &mut be, 1);
+    // Cursor should be on line 42 (0-indexed = line 41)
+    assert_eq!(cursor_at(&be), Some((41, 0)));
 }
