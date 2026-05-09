@@ -12,6 +12,7 @@ use crate::completer::CommandCompleter;
 use crate::desktop::{SlotId, SlottedDesktop};
 use crate::status::KairnStatusBar;
 use crate::views::editor::EditorView;
+use crate::views::help::HelpView;
 use crate::views::terminal::TerminalView;
 use crate::views::tree::FileTreeView;
 
@@ -65,6 +66,12 @@ impl App {
             CM_OPEN_FILE => self.handle_open_file(data),
             CM_FILE_DELETED => self.handle_file_deleted(data),
             CM_EXECUTE_COMMAND => self.handle_execute_command(data, queue),
+            CM_SHOW_HELP => {
+                if let Some(desktop) = self.desktop_mut() {
+                    let help = HelpView::new();
+                    desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                }
+            }
             CM_NEW_SHELL => {
                 let term = TerminalView::new("Shell");
                 if let Some(desktop) = self.desktop_mut() {

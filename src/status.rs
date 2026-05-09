@@ -66,6 +66,48 @@ impl KairnStatusBar {
             CM_QUIT,
             "^Q:Quit",
         );
+        // M-x via macOS Option-x (sends ≈)
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Char('≈'),
+                modifiers: KeyMod::default(),
+            },
+            CM_COMMAND_MODE,
+            "",
+        );
+        // Ctrl-Shift arrows
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+            },
+            CM_TAB_PREV,
+            "",
+        );
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+            },
+            CM_TAB_NEXT,
+            "",
+        );
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+            },
+            CM_FOCUS_PREV,
+            "",
+        );
+        bar.add_item(
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyMod { ctrl: true, alt: false, shift: true },
+            },
+            CM_FOCUS_NEXT,
+            "",
+        );
         Self {
             inner: bar,
             input: InputLine::new(),
@@ -183,6 +225,11 @@ impl View for KairnStatusBar {
                 // Intercept Alt-x directly to enter prompt mode
                 if let Event::Key(key) = event {
                     if *key == ALT_X {
+                        self.enter_prompt();
+                        return HandleResult::Consumed;
+                    }
+                    // macOS Option-x sends ≈
+                    if key.code == KeyCode::Char('≈') && !key.modifiers.ctrl && !key.modifiers.alt {
                         self.enter_prompt();
                         return HandleResult::Consumed;
                     }

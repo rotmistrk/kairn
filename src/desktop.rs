@@ -164,6 +164,28 @@ impl SlottedDesktop {
         self.group.view.dirty = true;
     }
 
+    /// Cycle focus among visible non-empty slots. dir: 1 = next, -1 = prev.
+    fn cycle_focus(&mut self, dir: i32) {
+        let visible: Vec<SlotId> = [SlotId::Left, SlotId::Center, SlotId::Right, SlotId::Bottom]
+            .iter()
+            .copied()
+            .filter(|&sid| {
+                let s = &self.slots[sid as usize];
+                s.visible && !s.tabs.is_empty()
+            })
+            .collect();
+        if visible.is_empty() {
+            return;
+        }
+        let cur = visible.iter().position(|&s| s == self.focused).unwrap_or(0);
+        let next = if dir > 0 {
+            (cur + 1) % visible.len()
+        } else {
+            (cur + visible.len() - 1) % visible.len()
+        };
+        self.focus_slot(visible[next]);
+    }
+
     /// Compute inner rects for each slot given total bounds.
     fn layout(&self, bounds: Rect) -> [Rect; SLOT_COUNT] {
         let mut rects = [Rect::default(); SLOT_COUNT];
@@ -259,14 +281,22 @@ impl SlottedDesktop {
             bg: Color::Ansi(0),
             attrs: Attrs::default(),
         };
-        let active_tab_style = Style {
-            fg: Color::Ansi(14), // bright cyan
-            bg: Color::Ansi(4),  // dark blue
+        // Focused slot + active tab: bright cyan on blue
+        let focused_tab_style = Style {
+            fg: Color::Ansi(14),
+            bg: Color::Ansi(4),
             attrs: Attrs { bold: true, ..Attrs::default() },
         };
+        // Unfocused slot + active (top) tab: white on dark gray
+        let unfocused_active_style = Style {
+            fg: Color::Ansi(15),
+            bg: Color::Ansi(8),
+            attrs: Attrs { bold: true, ..Attrs::default() },
+        };
+        // Any slot + inactive tab: dim gray
         let inactive_tab_style = Style {
-            fg: Color::Ansi(7),
-            bg: Color::Ansi(8), // dark gray
+            fg: Color::Ansi(8),
+            bg: Color::Ansi(0),
             attrs: Attrs::default(),
         };
 
@@ -284,8 +314,12 @@ impl SlottedDesktop {
             let mut tx = r.x;
             for (i, (title, _)) in slot.tabs.iter().enumerate() {
                 let label = format!("({})", title);
-                let style = if i == slot.active && sid == self.focused {
-                    active_tab_style
+                let style = if i == slot.active {
+                    if sid == self.focused {
+                        focused_tab_style
+                    } else {
+                        unfocused_active_style
+                    }
                 } else {
                     inactive_tab_style
                 };
@@ -352,6 +386,8 @@ impl SlottedDesktop {
             CM_FOCUS_CENTER => { self.focus_slot(SlotId::Center); HandleResult::Consumed }
             CM_FOCUS_RIGHT => { self.focus_slot(SlotId::Right); HandleResult::Consumed }
             CM_FOCUS_BOTTOM => { self.focus_slot(SlotId::Bottom); HandleResult::Consumed }
+            CM_FOCUS_PREV => { self.cycle_focus(-1); HandleResult::Consumed }
+            CM_FOCUS_NEXT => { self.cycle_focus(1); HandleResult::Consumed }
             CM_ZOOM_TOGGLE => {
                 self.zoomed = if self.zoomed.is_some() { None } else { Some(self.focused) };
                 self.group.view.dirty = true;

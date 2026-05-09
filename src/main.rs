@@ -104,7 +104,10 @@ fn main() -> anyhow::Result<()> {
             }
             CM_SHOW_HELP => {
                 log::info!("Help requested");
-                // TODO: open help view in center slot
+                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                    let help = kairn::views::help::HelpView::new();
+                    desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                }
             }
             _ => {
                 log::warn!("Unhandled command: {}", ctx.command);
