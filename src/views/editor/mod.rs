@@ -25,6 +25,7 @@ pub struct EditorView {
     last_edit_tick: u64,
     tick_counter: u64,
     close_prompt: bool,
+    display_title: String,
 }
 
 impl EditorView {
@@ -32,6 +33,11 @@ impl EditorView {
         let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
         let file_ext = highlight::extension_from_path(path).to_string();
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        let display_title = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("untitled")
+            .to_string();
         let mut view = Self {
             state: ViewState::default(),
             editor,
@@ -43,6 +49,7 @@ impl EditorView {
             last_edit_tick: 0,
             tick_counter: 0,
             close_prompt: false,
+            display_title,
         };
         view.apply_settings();
         Ok(view)
@@ -52,6 +59,11 @@ impl EditorView {
         let editor = Editor::from_text("");
         let file_ext = highlight::extension_from_path(path).to_string();
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        let display_title = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("untitled")
+            .to_string();
         let mut view = Self {
             state: ViewState::default(),
             editor,
@@ -63,6 +75,7 @@ impl EditorView {
             last_edit_tick: 0,
             tick_counter: 0,
             close_prompt: false,
+            display_title,
         };
         view.apply_settings();
         view
@@ -81,6 +94,7 @@ impl EditorView {
             last_edit_tick: 0,
             tick_counter: 0,
             close_prompt: false,
+            display_title: "[cmd output]".to_string(),
         }
     }
 
@@ -117,7 +131,7 @@ impl View for EditorView {
     delegate_view_state!(state, override { title, needs_redraw });
 
     fn title(&self) -> &str {
-        self.path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled")
+        &self.display_title
     }
 
     fn needs_redraw(&self) -> bool {
@@ -141,6 +155,7 @@ impl View for EditorView {
                     let content = self.editor.buffer.content();
                     if crate::editor::save::save_file(&self.path, &content).is_ok() {
                         self.editor.buffer.mark_saved();
+                        self.sync_title();
                     }
                 }
             }
@@ -232,6 +247,7 @@ impl View for EditorView {
         self.ensure_cursor_visible();
         self.state.dirty = true;
         self.emit_status_changes(old_mode, old_line, old_col, queue);
+        self.sync_title();
         HandleResult::Consumed
     }
 

@@ -136,6 +136,16 @@ impl EditorView {
         }
     }
 
+    /// Update display_title based on dirty state.
+    pub fn sync_title(&mut self) {
+        let name = self.path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
+        if self.editor.buffer.is_dirty() {
+            self.display_title = format!("*{name}");
+        } else {
+            self.display_title = name.to_string();
+        }
+    }
+
     pub(super) fn complete_command_buf(&mut self) {
         let buf = &self.editor.command_buf;
         let partial = buf.strip_prefix("e ").or_else(|| buf.strip_prefix("edit "));
