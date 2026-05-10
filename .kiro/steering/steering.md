@@ -133,6 +133,29 @@ tests/              Integration/scenario tests (one concern per file)
 
 ---
 
+
+---
+
+## Panic Safety — Three Layers of Defense
+
+### Layer 1: Prevention (compile-time)
+- NO `unwrap()`, `expect()`, `panic!()` in runtime code (clippy enforces)
+- All kairn/txv/rusticle code MUST be safe — propagate errors via Result
+
+### Layer 2: Component Isolation (runtime)
+- Every external call (PTY spawn, file I/O, syntect, git, shell commands)
+  MUST be wrapped in error handling that:
+  1. Logs the error
+  2. Attempts graceful recovery (fallback view, empty result, etc.)
+  3. Continues operation — never crashes the app
+
+### Layer 3: Global Catch-All (last resort)
+- `std::panic::set_hook` in main.rs
+- On panic: restore terminal (leave alternate screen, show cursor, disable raw mode)
+- Save workspace state if possible
+- Print panic info to stderr
+- Exit with non-zero code
+
 ## Reference Documents
 
 - `doc/f4-design/v-013-txv-architecture.md` — Definitive TXV design

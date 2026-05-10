@@ -29,6 +29,24 @@ struct Cli {
 }
 
 fn main() -> anyhow::Result<()> {
+    // Layer 3: Global panic handler — restore terminal before crashing
+    std::panic::set_hook(Box::new(|info| {
+        // Restore terminal state
+        let _ = crossterm::terminal::disable_raw_mode();
+        let _ = crossterm::execute!(
+            std::io::stderr(),
+            crossterm::terminal::LeaveAlternateScreen,
+            crossterm::cursor::Show
+        );
+        // Print panic info
+        eprintln!("\n\x1b[1;31mkairn panicked!\x1b[0m");
+        eprintln!("{info}");
+        if let Some(loc) = info.location() {
+            eprintln!("  at {}:{}:{}", loc.file(), loc.line(), loc.column());
+        }
+        eprintln!("\nPlease report this bug.");
+    }));
+
     let cli = Cli::parse();
     let root_dir = std::fs::canonicalize(&cli.path)?;
 
