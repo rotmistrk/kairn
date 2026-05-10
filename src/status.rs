@@ -1,8 +1,10 @@
 //! Status bar configuration — builds a composed StatusBar from items.
 
+use std::path::PathBuf;
+
 use txv_core::prelude::*;
 use txv_core::status::StatusBar;
-use txv_widgets::status_indicators::{ModeItem, PositionItem};
+use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
 use txv_widgets::status_items::{ClockItem, CommandItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
@@ -25,7 +27,7 @@ fn ctrl_shift(code: KeyCode) -> KeyEvent {
 }
 
 /// Build the application status bar with all items configured.
-pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16) -> StatusBar {
+pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root_dir: PathBuf) -> StatusBar {
     let mut bar = StatusBar::new();
     // Left key labels
     bar.add(KeyLabelItem::new(key(KeyCode::F(1)), CM_SHOW_HELP, "F1:Help"));
@@ -46,6 +48,7 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16) -> S
     bar.add(PositionItem::new(CM_CURSOR_MOVED));
     bar.add(ModeItem::new(CM_MODE_CHANGED));
     bar.add_visible_only(MessageItem::new(5));
+    bar.add_visible_only(BranchItem::new(root_dir));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar
 }

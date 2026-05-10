@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
     let desktop = build_desktop(&root_dir);
 
     // Build status bar
-    let status = build_status_bar(Box::new(AppCompleter::new(root_dir.clone())), 60);
+    let status = build_status_bar(Box::new(AppCompleter::new(root_dir.clone())), 60, root_dir.clone());
 
     // Build program
     let mut program = Program::new(Box::new(status), Box::new(desktop));

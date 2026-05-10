@@ -36,7 +36,7 @@ pub use scroll_view::ScrollView;
 pub use scrollbar::Scrollbar;
 pub use split_pane::{SplitDirection, SplitPane};
 pub use status_bar::{StatusBar, StatusItem};
-pub use status_indicators::{CursorPos, ModeItem, PositionItem};
+pub use status_indicators::{BranchItem, CursorPos, ModeItem, PositionItem};
 pub use status_items::{ClockItem, CommandItem, KeyLabelItem, MessageItem, CM_STATUS_MESSAGE};
 pub use tab_bar::{Tab, TabBar};
 pub use table::{Column, Table};

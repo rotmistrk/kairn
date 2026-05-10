@@ -23,7 +23,7 @@ impl TestHarness {
     /// Same setup as main.rs: StatusBar + Desktop + AppState.
     pub fn new(root_dir: &Path) -> Self {
         let desktop = build_desktop(root_dir);
-        let status = build_status_bar(Box::new(AppCompleter::new(root_dir.to_path_buf())), 60);
+        let status = build_status_bar(Box::new(AppCompleter::new(root_dir.to_path_buf())), 60, root_dir.to_path_buf());
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(80, 24);
         let state = AppState::new(root_dir.to_path_buf());
@@ -37,7 +37,7 @@ impl TestHarness {
     /// Create with custom dimensions.
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
         let desktop = build_desktop(root_dir);
-        let status = build_status_bar(Box::new(AppCompleter::new(root_dir.to_path_buf())), 60);
+        let status = build_status_bar(Box::new(AppCompleter::new(root_dir.to_path_buf())), 60, root_dir.to_path_buf());
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(width, height);
         let state = AppState::new(root_dir.to_path_buf());
