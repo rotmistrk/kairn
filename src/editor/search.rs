@@ -164,10 +164,19 @@ impl Editor {
     fn ex_substitute(&mut self, start: usize, end: usize, pattern: &str, replacement: &str, global: bool) {
         let total = self.buffer.line_count();
         let end = end.min(total.saturating_sub(1));
+        let Ok(re) = regex::Regex::new(pattern) else {
+            self.status = format!("Invalid regex: {pattern}");
+            return;
+        };
+        self.buffer.begin_group();
         let mut count = 0usize;
         for line_idx in (start..=end).rev() {
             let line = self.buffer.line(line_idx).unwrap_or_default();
-            let new_line = if global { line.replace(pattern, replacement) } else { line.replacen(pattern, replacement, 1) };
+            let new_line = if global {
+                re.replace_all(&line, replacement).to_string()
+            } else {
+                re.replace(&line, replacement).to_string()
+            };
             if new_line != line {
                 count += 1;
                 let line_start = self.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
@@ -176,6 +185,7 @@ impl Editor {
                 self.buffer.insert(line_start, &new_line);
             }
         }
+        self.buffer.end_group();
         self.status = format!("{count} substitution(s)");
     }
 
@@ -205,6 +215,7 @@ impl Editor {
             Err(e) => { self.status = format!("Shell error: {e}"); return; }
         };
 
+        self.buffer.begin_group();
         let start_off = self.buffer.line_col_to_offset(start, 0).unwrap_or(0);
         let end_off = if end + 1 < total {
             self.buffer.line_col_to_offset(end + 1, 0).unwrap_or(start_off)
@@ -219,6 +230,7 @@ impl Editor {
             };
             self.buffer.insert(start_off, &insert_text);
         }
+        self.buffer.end_group();
         self.cursor_line = start;
         self.cursor_col = 0;
     }

@@ -110,6 +110,9 @@ impl EditorView {
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                 } else { self.editor.command_buf.pop(); }
             }
+            KeyCode::Tab => {
+                self.complete_command_buf();
+            }
             KeyCode::Char(c) => { self.editor.command_buf.push(*c); }
             _ => {}
         }
@@ -131,6 +134,10 @@ impl EditorView {
             EditorAction::ShellOutput(output) => {
                 queue.put_command(crate::commands::CM_SHELL_OUTPUT, Some(Box::new(output)));
             }
+            EditorAction::OpenFile(filename) => {
+                let cmd = format!("e {filename}");
+                queue.put_command(crate::commands::CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
+            }
             _ => {}
         }
     }
@@ -143,6 +150,27 @@ impl EditorView {
             self.editor.viewport_scroll = self.editor.cursor_line;
         } else if self.editor.cursor_line >= self.editor.viewport_scroll + h {
             self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
+        }
+    }
+
+    fn complete_command_buf(&mut self) {
+        let buf = &self.editor.command_buf;
+        let partial = buf.strip_prefix("e ").or_else(|| buf.strip_prefix("edit "));
+        let Some(partial) = partial else { return; };
+        let root = self.path.parent().unwrap_or(std::path::Path::new("."));
+        let search_dir = root;
+        let Ok(entries) = std::fs::read_dir(search_dir) else { return; };
+        let mut matches: Vec<String> = Vec::new();
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy().to_string();
+            if name_str.starts_with(partial) {
+                matches.push(name_str);
+            }
+        }
+        if matches.len() == 1 {
+            let prefix = if buf.starts_with("edit ") { "edit " } else { "e " };
+            self.editor.command_buf = format!("{prefix}{}", matches[0]);
         }
     }
 }

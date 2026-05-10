@@ -1,107 +1,15 @@
-[2026-05-09T22:18:13Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T22:18:13Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T22:18:13Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T22:18:13Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.git: Ignore(IgnoreMatch(Hidden))
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.gitignore: Ignore(IgnoreMatch(Hidden))
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.idea: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".idea/", actual: "**/.idea", is_whitelist: false, is_only_dir: true })))
-[2026-05-09T22:18:13Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.idea/.gitignore
-[2026-05-09T22:18:13Z DEBUG globset] built glob set; 6 literals, 0 basenames, 0 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 0 regexes
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.log: Ignore(IgnoreMatch(Hidden))
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.state: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".kairn.state", actual: "**/.kairn.state", is_whitelist: false, is_only_dir: false })))
-[2026-05-09T22:18:13Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/target: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: "/target", actual: "target", is_whitelist: false, is_only_dir: false })))
-[2026-05-09T22:18:16Z DEBUG txv_core::program] Program: command 111
-[2026-05-09T22:18:23Z DEBUG txv_core::program] Program: command 120
-[2026-05-09T22:18:23Z DEBUG txv_core::program] Program: command 110
-[2026-05-09T22:18:26Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T22:18:30Z DEBUG txv_core::program] Program: command 111
-[2026-05-09T23:08:46Z DEBUG txv_core::program] Program: command 116
-[2026-05-09T23:08:48Z DEBUG txv_core::program] Program: command 115
-[2026-05-09T23:08:48Z DEBUG txv_core::program] Program: command 3
-[2026-05-09T23:08:49Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:08:49Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:08:51Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:08:51Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:08:51Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:08:51Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:08:54Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:08:54Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:08:54Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:08:54Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:08:55Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:08:55Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:08:55Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:08:55Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:08:56Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:09:01Z DEBUG txv_core::program] Program: command 115
-[2026-05-09T23:09:02Z DEBUG txv_core::program] Program: command 115
-[2026-05-09T23:09:03Z DEBUG txv_core::program] Program: command 3
-[2026-05-09T23:09:04Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:09:05Z DEBUG txv_core::program] Program: command 3
-[2026-05-09T23:09:05Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:09:06Z DEBUG txv_core::program] Program: command 3
-[2026-05-09T23:09:07Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:09:07Z DEBUG txv_core::program] Program: command 3
-[2026-05-09T23:09:09Z DEBUG txv_core::program] Program: command 4
-[2026-05-09T23:09:57Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:09:57Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:09:57Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:09:57Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:09:58Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:09:58Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:09:58Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:09:58Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:10:58Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:10:58Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:10:58Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:10:58Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:10:59Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:11:17Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:11:24Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:11:24Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:11:24Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:11:24Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:11:26Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:11:26Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:11:26Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:11:26Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:11:28Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:11:52Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:11:58Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:01Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:16Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:12:16Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:12:16Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:12:16Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:12:20Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:12:20Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:12:20Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:12:20Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:12:30Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:12:30Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:12:30Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:12:30Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:12:31Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:12:31Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:12:31Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:12:31Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:12:33Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:45Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:50Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:52Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:55Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:56Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:58Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:12:59Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:05Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-09T23:13:05Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-09T23:13:05Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-09T23:13:05Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-09T23:13:07Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:11Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:12Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:14Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:15Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:17Z DEBUG txv_core::program] Program: command 100
-[2026-05-09T23:13:23Z DEBUG txv_core::program] Program: command 111
-[2026-05-09T23:13:29Z DEBUG txv_core::program] Program: command 1
+[2026-05-09T23:48:17Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
+[2026-05-09T23:48:17Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
+[2026-05-09T23:48:17Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
+[2026-05-09T23:48:17Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.git: Ignore(IgnoreMatch(Hidden))
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.gitignore: Ignore(IgnoreMatch(Hidden))
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.idea: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".idea/", actual: "**/.idea", is_whitelist: false, is_only_dir: true })))
+[2026-05-09T23:48:17Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.idea/.gitignore
+[2026-05-09T23:48:17Z DEBUG globset] built glob set; 6 literals, 0 basenames, 0 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 0 regexes
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.log: Ignore(IgnoreMatch(Hidden))
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.state: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".kairn.state", actual: "**/.kairn.state", is_whitelist: false, is_only_dir: false })))
+[2026-05-09T23:48:17Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/target: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: "/target", actual: "target", is_whitelist: false, is_only_dir: false })))
+[2026-05-09T23:48:21Z DEBUG txv_core::program] Program: command 100
+[2026-05-09T23:48:25Z DEBUG txv_core::program] Program: command 100
+[2026-05-09T23:48:32Z DEBUG txv_core::program] Program: command 111
