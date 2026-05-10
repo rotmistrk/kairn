@@ -12,5 +12,6 @@ pub mod glyphs;
 pub mod handler;
 pub mod help;
 pub mod highlight;
+pub mod settings;
 pub mod status;
 pub mod views;

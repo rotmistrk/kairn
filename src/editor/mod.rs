@@ -32,6 +32,7 @@ pub enum EditorAction {
     ModeChanged,
     OpenFile(String),
     ShellOutput(String),
+    SetGlobal(String),
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.

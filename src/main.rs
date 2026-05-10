@@ -9,7 +9,7 @@ use txv_render::color::detect_color_mode;
 
 use kairn::completer::AppCompleter;
 use kairn::handler::{build_desktop, handle_command, AppState};
-use kairn::status::KairnStatusBar;
+use kairn::status::build_status_bar;
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
@@ -42,8 +42,7 @@ fn main() -> anyhow::Result<()> {
     let desktop = build_desktop(&root_dir);
 
     // Build status bar
-    let mut status = KairnStatusBar::new();
-    status.set_completer(Box::new(AppCompleter::new(root_dir.clone())));
+    let status = build_status_bar(Box::new(AppCompleter::new(root_dir.clone())), 60);
 
     // Build program
     let mut program = Program::new(Box::new(status), Box::new(desktop));

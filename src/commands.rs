@@ -32,3 +32,4 @@ pub const CM_SHOW_MESSAGES: CommandId = 121;
 pub const CM_COMMAND_MODE: CommandId = 130;
 pub const CM_EXECUTE_COMMAND: CommandId = 131;
 pub const CM_SHELL_OUTPUT: CommandId = 132;
+pub const CM_SET_GLOBAL: CommandId = 133;

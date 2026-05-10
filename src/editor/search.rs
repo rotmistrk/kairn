@@ -89,6 +89,13 @@ impl Editor {
             }
         }
 
+        if let Some(opt) = trimmed.strip_prefix("setg ") {
+            let opt = opt.trim();
+            if !opt.is_empty() {
+                return EditorAction::SetGlobal(opt.to_string());
+            }
+        }
+
         if let Some(cmd) = trimmed.strip_prefix('!') {
             let cmd = cmd.trim();
             if !cmd.is_empty() {

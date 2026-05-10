@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
-use crate::commands::{CM_SAVE, CM_TAB_CLOSE};
+use crate::commands::{CM_SAVE, CM_SET_GLOBAL, CM_TAB_CLOSE};
 use crate::editor::keymap::Keymap;
 use crate::editor::{Editor, EditorAction};
 use crate::highlight::{self, Highlighter};
+use crate::settings::EditorSettings;
 
 pub struct EditorView {
     state: ViewState,
@@ -18,27 +19,34 @@ pub struct EditorView {
     root_dir: PathBuf,
     highlighter: Highlighter,
     file_ext: String,
+    pub settings: EditorSettings,
 }
 
 impl EditorView {
-    pub fn open(path: &Path) -> anyhow::Result<Self> {
+    pub fn open(path: &Path, settings: &EditorSettings) -> anyhow::Result<Self> {
         let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
         let file_ext = highlight::extension_from_path(path).to_string();
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        Ok(Self {
+        let mut view = Self {
             state: ViewState::default(), editor, path: path.to_path_buf(),
             root_dir, highlighter: Highlighter::new(), file_ext,
-        })
+            settings: settings.clone(),
+        };
+        view.apply_settings();
+        Ok(view)
     }
 
-    pub fn new_file(path: &Path) -> Self {
+    pub fn new_file(path: &Path, settings: &EditorSettings) -> Self {
         let editor = Editor::from_text("");
         let file_ext = highlight::extension_from_path(path).to_string();
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        Self {
+        let mut view = Self {
             state: ViewState::default(), editor, path: path.to_path_buf(),
             root_dir, highlighter: Highlighter::new(), file_ext,
-        }
+            settings: settings.clone(),
+        };
+        view.apply_settings();
+        view
     }
 
     pub fn from_text(content: &str) -> Self {
@@ -50,12 +58,20 @@ impl EditorView {
             root_dir: PathBuf::from("."),
             highlighter: Highlighter::new(),
             file_ext: String::new(),
+            settings: EditorSettings::default(),
         }
     }
 
     pub fn set_root_dir(&mut self, root: PathBuf) { self.root_dir = root; }
 
     pub fn path(&self) -> &Path { &self.path }
+
+    fn apply_settings(&mut self) {
+        self.editor.options.wrap = self.settings.wrap;
+        self.editor.options.list = self.settings.list;
+        self.editor.options.tab_width = self.settings.tabstop as usize;
+        self.editor.options.number = self.settings.number;
+    }
 
     fn gutter_width(&self) -> u16 {
         if !self.editor.options.number { return 0; }
@@ -149,6 +165,9 @@ impl EditorView {
             EditorAction::OpenFile(filename) => {
                 let cmd = format!("e {filename}");
                 queue.put_command(crate::commands::CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
+            }
+            EditorAction::SetGlobal(opt) => {
+                queue.put_command(CM_SET_GLOBAL, Some(Box::new(opt)));
             }
             _ => {}
         }

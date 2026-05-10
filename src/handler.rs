@@ -13,6 +13,7 @@ use txv_core::program::CommandContext;
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
 use crate::desktop::{SlotId, SlottedDesktop};
+use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
@@ -23,6 +24,7 @@ use crate::views::tree::FileTreeView;
 pub struct AppState {
     pub broker: FileBroker,
     pub root_dir: PathBuf,
+    pub settings: AppSettings,
 }
 
 impl AppState {
@@ -30,6 +32,7 @@ impl AppState {
         Self {
             broker: FileBroker::new(),
             root_dir,
+            settings: AppSettings::default(),
         }
     }
 }
@@ -78,6 +81,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         CM_SHELL_OUTPUT => handle_shell_output(ctx),
+        CM_SET_GLOBAL => handle_set_global(ctx, state),
         _ => {
             log::debug!("Unhandled command: {}", ctx.command);
         }
@@ -104,7 +108,9 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.close_tab_by_title(SlotId::Center, "Welcome");
-                let mut editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
+                let defaults = &state.settings.editor_defaults;
+                let mut editor = EditorView::open(path, defaults)
+                    .unwrap_or_else(|_| EditorView::new_file(path, defaults));
                 editor.set_root_dir(state.root_dir.clone());
                 let title = path.strip_prefix(&state.root_dir)
                     .unwrap_or(path)
@@ -154,8 +160,9 @@ fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
-            let mut editor = EditorView::open(&path)
-                .unwrap_or_else(|_| EditorView::new_file(&path));
+            let defaults = &state.settings.editor_defaults;
+            let mut editor = EditorView::open(&path, defaults)
+                .unwrap_or_else(|_| EditorView::new_file(&path, defaults));
             editor.set_root_dir(state.root_dir.clone());
             let title = path.strip_prefix(&state.root_dir)
                 .unwrap_or(&path).to_string_lossy().to_string();
@@ -163,6 +170,21 @@ fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
                 d.insert_tab(SlotId::Center, title, Box::new(editor));
             }
         }
+    }
+}
+
+fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else { return; };
+    let Some(opt) = boxed.downcast_ref::<String>() else { return; };
+    let defaults = &mut state.settings.editor_defaults;
+    match opt.as_str() {
+        "wrap" => defaults.wrap = true,
+        "nowrap" => defaults.wrap = false,
+        "list" | "li" => defaults.list = true,
+        "nolist" | "noli" => defaults.list = false,
+        "number" | "nu" => defaults.number = true,
+        "nonumber" | "nonu" => defaults.number = false,
+        _ => {}
     }
 }
 
