@@ -48,6 +48,13 @@ fn main() -> anyhow::Result<()> {
     }));
 
     let cli = Cli::parse();
+
+    // Nesting guard: prevent running inside a suspended kairn session
+    if std::env::var("KAIRN_SUSPENDED").is_ok() {
+        eprintln!("kairn is already running (suspended). Use 'exit' to return.");
+        std::process::exit(1);
+    }
+
     let root_dir = std::fs::canonicalize(&cli.path)?;
 
     // Init logging to file

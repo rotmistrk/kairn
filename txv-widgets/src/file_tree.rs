@@ -45,6 +45,15 @@ impl FileTreeData {
         &self.root
     }
 
+    /// Rebuild the tree from disk (preserves expanded state).
+    pub fn refresh(&mut self) {
+        let root = self.root.clone();
+        self.nodes.clear();
+        self.visible.clear();
+        self.load_children(root, None, 0);
+        self.rebuild_visible();
+    }
+
     fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
         let walker = WalkBuilder::new(&dir)
             .max_depth(Some(1))

@@ -87,6 +87,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
         CM_SHELL_OUTPUT => handle_shell_output(ctx),
         CM_SET_GLOBAL => handle_set_global(ctx, state),
+        CM_SUSPEND => crate::suspend::suspend_to_shell(),
+        CM_PEEK => crate::suspend::peek_screen(),
         _ => {
             log::debug!("Unhandled command: {}", ctx.command);
         }

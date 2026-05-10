@@ -10,6 +10,7 @@ use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
     last_key_was_right: bool,
+    refresh_counter: u16,
 }
 
 impl FileTreeView {
@@ -18,6 +19,7 @@ impl FileTreeView {
         Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
+            refresh_counter: 0,
         }
     }
 }
@@ -53,6 +55,15 @@ impl View for FileTreeView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        // Auto-refresh tree every 60 ticks (~3 seconds at 50ms poll)
+        if let Event::Tick = event {
+            self.refresh_counter += 1;
+            if self.refresh_counter >= 60 {
+                self.refresh_counter = 0;
+                self.inner.data.refresh();
+            }
+            return HandleResult::Ignored;
+        }
         if let Event::Key(key) = event {
             self.last_key_was_right = key.code == KeyCode::Right;
         }

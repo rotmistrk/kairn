@@ -93,3 +93,69 @@ impl SlottedDesktop {
         }
     }
 }
+
+impl SlottedDesktop {
+    pub(super) fn handle_dropdown_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
+        use txv_core::event::KeyCode;
+        let Some(slot_id) = self.dropdown else {
+            return HandleResult::Ignored;
+        };
+        let tab_count = self.slots[slot_id as usize].tabs.len();
+        match &key.code {
+            KeyCode::Esc => {
+                self.dropdown = None;
+                self.group.view.dirty = true;
+            }
+            KeyCode::Enter => {
+                if let Some(v) = self.slots[slot_id as usize].active_view_mut() {
+                    v.unselect();
+                }
+                let s = &mut self.slots[slot_id as usize];
+                s.active = self.dropdown_cursor;
+                self.group.view.dirty = true;
+                self.dropdown = None;
+                self.sync_active_bounds(slot_id);
+                self.group.view.dirty = true;
+            }
+            KeyCode::Up | KeyCode::Down if key.modifiers.ctrl && key.modifiers.shift => {
+                if matches!(key.code, KeyCode::Up) {
+                    self.dropdown_cursor = if self.dropdown_cursor == 0 {
+                        tab_count - 1
+                    } else {
+                        self.dropdown_cursor - 1
+                    };
+                } else {
+                    self.dropdown_cursor = (self.dropdown_cursor + 1) % tab_count;
+                }
+                self.group.view.dirty = true;
+            }
+            KeyCode::Up => {
+                self.dropdown_cursor = if self.dropdown_cursor == 0 {
+                    tab_count - 1
+                } else {
+                    self.dropdown_cursor - 1
+                };
+                self.group.view.dirty = true;
+            }
+            KeyCode::Down => {
+                self.dropdown_cursor = (self.dropdown_cursor + 1) % tab_count;
+                self.group.view.dirty = true;
+            }
+            KeyCode::Char(c) if c.is_ascii_digit() => {
+                let idx = (*c as u8 - b'0') as usize;
+                if let Some(v) = self.slots[slot_id as usize].active_view_mut() {
+                    v.unselect();
+                }
+                let s = &mut self.slots[slot_id as usize];
+                if idx < s.tabs.len() {
+                    s.active = idx;
+                }
+                self.dropdown = None;
+                self.sync_active_bounds(slot_id);
+                self.group.view.dirty = true;
+            }
+            _ => {}
+        }
+        HandleResult::Consumed
+    }
+}

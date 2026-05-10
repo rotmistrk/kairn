@@ -16,4 +16,5 @@ pub mod help;
 pub mod highlight;
 pub mod settings;
 pub mod status;
+pub mod suspend;
 pub mod views;

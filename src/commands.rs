@@ -40,3 +40,9 @@ pub const CM_CURSOR_MOVED: CommandId = 142;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;
+
+// Panel resize
+pub const CM_PANEL_GROW: CommandId = 160;
+pub const CM_PANEL_SHRINK: CommandId = 161;
+pub const CM_SUSPEND: CommandId = 162;
+pub const CM_PEEK: CommandId = 163;
