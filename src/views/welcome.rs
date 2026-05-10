@@ -1,0 +1,45 @@
+//! WelcomeView — shown when center slot has no tabs.
+
+use txv_core::prelude::*;
+
+pub struct WelcomeView {
+    state: ViewState,
+}
+
+impl WelcomeView {
+    pub fn new() -> Self {
+        Self { state: ViewState::default() }
+    }
+}
+
+impl View for WelcomeView {
+    delegate_view_state!(state, override { title });
+
+    fn title(&self) -> &str { "Welcome" }
+
+    fn draw(&self, surface: &mut Surface) {
+        let b = self.state.bounds;
+        if b.w == 0 || b.h == 0 { return; }
+        let dim = Style { fg: Color::Ansi(8), ..Style::default() };
+        let bright = Style { fg: Color::Ansi(14), ..Style::default() };
+        let lines: &[(&str, Style)] = &[
+            ("╦╔═╔═╗╦╦═╗╔╗╔", bright),
+            ("╠╩╗╠═╣║╠╦╝║║║", bright),
+            ("╩ ╩╩ ╩╩╩╚═╝╚╝", bright),
+            ("", dim),
+            ("F1:Help  F2:Tree  F3:Main  F4:Term", dim),
+            ("Ctrl-Q:Quit  M-x:Command", dim),
+        ];
+        let start_y = b.y + b.h.saturating_sub(lines.len() as u16) / 2;
+        for (i, (text, style)) in lines.iter().enumerate() {
+            let y = start_y + i as u16;
+            if y >= b.y + b.h { break; }
+            let x = b.x + b.w.saturating_sub(text.len() as u16) / 2;
+            surface.print(x, y, text, *style);
+        }
+    }
+
+    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
+        HandleResult::Ignored
+    }
+}

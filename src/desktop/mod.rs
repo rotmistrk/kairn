@@ -10,6 +10,10 @@ use txv_core::prelude::*;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SlotId { Left, Center, Right, Bottom }
 
+/// Layout mode for the desktop.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum LayoutMode { Auto, Wide, Tall }
+
 const SLOT_COUNT: usize = 4;
 const TOP_SLOTS: [SlotId; 3] = [SlotId::Left, SlotId::Center, SlotId::Right];
 
@@ -51,6 +55,7 @@ pub struct SlottedDesktop {
     slots: [Slot; SLOT_COUNT],
     focused: SlotId,
     zoomed: Option<SlotId>,
+    layout_mode: LayoutMode,
 }
 
 impl Default for SlottedDesktop {
@@ -64,6 +69,7 @@ impl SlottedDesktop {
             slots: [Slot::new(24), Slot::new(0), Slot::new(40), Slot::new(10)],
             focused: SlotId::Left,
             zoomed: None,
+            layout_mode: LayoutMode::Auto,
         }
     }
 
@@ -96,11 +102,15 @@ impl SlottedDesktop {
 
     pub fn tab_count(&self, slot: SlotId) -> usize { self.slots[slot as usize].tabs.len() }
 
+    pub fn focused_slot(&self) -> SlotId { self.focused }
+
+    pub fn layout_rects(&self) -> [Rect; SLOT_COUNT] { self.layout(self.group.view.bounds) }
+
     pub fn active_view_mut(&mut self, slot: SlotId) -> Option<&mut Box<dyn View>> {
         self.slots[slot as usize].active_view_mut()
     }
 
-    fn focus_slot(&mut self, id: SlotId) {
+    pub fn focus_slot(&mut self, id: SlotId) {
         if id == self.focused { return; }
         if let Some(v) = self.slots[self.focused as usize].active_view_mut() { v.unselect(); }
         self.focused = id;
@@ -132,8 +142,16 @@ impl SlottedDesktop {
                 self.group.view.dirty = true;
                 HandleResult::Consumed
             }
-            CM_TAB_NEXT => { self.slots[self.focused as usize].tab_next(); self.group.view.dirty = true; HandleResult::Consumed }
-            CM_TAB_PREV => { self.slots[self.focused as usize].tab_prev(); self.group.view.dirty = true; HandleResult::Consumed }
+            CM_TAB_NEXT => {
+                self.slots[self.focused as usize].tab_next();
+                self.group.view.dirty = true;
+                HandleResult::Consumed
+            }
+            CM_TAB_PREV => {
+                self.slots[self.focused as usize].tab_prev();
+                self.group.view.dirty = true;
+                HandleResult::Consumed
+            }
             CM_TAB_CLOSE => {
                 let s = &mut self.slots[self.focused as usize];
                 if !s.tabs.is_empty() {
@@ -155,8 +173,12 @@ impl View for SlottedDesktop {
         self.group.view.bounds = r;
         self.group.view.dirty = true;
         let rects = self.layout(r);
+        let tall = self.is_tall(r.w);
         for (i, slot) in self.slots.iter_mut().enumerate() {
-            if let Some(v) = slot.active_view_mut() { v.set_bounds(rects[i]); }
+            let rect = if tall && i == SlotId::Right as usize {
+                rects[SlotId::Bottom as usize]
+            } else { rects[i] };
+            if let Some(v) = slot.active_view_mut() { v.set_bounds(rect); }
         }
     }
 
@@ -182,8 +204,11 @@ impl View for SlottedDesktop {
         if bounds.w == 0 || bounds.h == 0 { return; }
         self.draw_chrome(surface, bounds);
         let rects = self.layout(bounds);
+        let tall = self.is_tall(bounds.w);
         for (i, slot) in self.slots.iter().enumerate() {
-            let r = rects[i];
+            let r = if tall && i == SlotId::Right as usize {
+                rects[SlotId::Bottom as usize]
+            } else { rects[i] };
             if r.w == 0 || r.h == 0 { continue; }
             if let Some(view) = slot.active_view() { view.draw(surface); }
         }

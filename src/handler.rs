@@ -68,12 +68,18 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
     let path_str = path.to_string_lossy().to_string();
 
     match state.broker.open(&path_str, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => {}
-        OpenResult::Opened => {
-            let editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
-            let title = editor.title().to_string();
+        OpenResult::AlreadyOpen { .. } => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                desktop.focus_slot(SlotId::Center);
+            }
+        }
+        OpenResult::Opened => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                desktop.close_tab_by_title(SlotId::Center, "Welcome");
+                let editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
+                let title = editor.title().to_string();
                 desktop.insert_tab(SlotId::Center, title, Box::new(editor));
+                desktop.focus_slot(SlotId::Center);
             }
         }
     }
@@ -146,11 +152,15 @@ fn handle_shell_output(ctx: &mut CommandContext) {
     }
 }
 
+use crate::views::welcome::WelcomeView;
+
 /// Build the standard kairn desktop with tree and terminal.
 pub fn build_desktop(root_dir: &Path) -> SlottedDesktop {
     let mut desktop = SlottedDesktop::new();
     let tree = FileTreeView::new(root_dir.to_path_buf());
     desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
+    let welcome = WelcomeView::new();
+    desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
     let term = TerminalView::new("Shell");
     desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
     desktop

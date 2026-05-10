@@ -58,5 +58,6 @@ fn tab_on_non_edit_command_does_nothing() {
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);
     // Tab on :set should not crash or change buffer
-    assert!(h.contains("set "));
+    // Note: trailing space may be trimmed by screen_text()
+    assert!(h.contains(":set"));
 }

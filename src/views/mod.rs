@@ -4,3 +4,4 @@ pub mod editor;
 pub mod help;
 pub mod terminal;
 pub mod tree;
+pub mod welcome;

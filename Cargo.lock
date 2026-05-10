@@ -424,6 +424,7 @@ dependencies = [
  "crossterm",
  "env_logger",
  "log",
+ "regex",
  "syntect",
  "tempfile",
  "txv-core",
