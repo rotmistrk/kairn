@@ -1,6 +1,7 @@
 //! EditorView draw implementation.
 
 use txv_core::prelude::*;
+use txv_core::surface::display_char_width;
 
 use super::EditorView;
 
@@ -115,7 +116,7 @@ impl EditorView {
 
                     let vy = b.y + visual_row as u16;
                     surface.put(x, vy, display_ch, display_style);
-                    col_offset += 1;
+                    col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
                 }
@@ -148,7 +149,7 @@ impl EditorView {
                     let mut vcol: usize = 0;
                     for (ci, ch) in line_ref.chars().enumerate() {
                         if ci == self.editor.cursor_col { break; }
-                        if ch == '\t' { vcol += tab_width; } else { vcol += 1; }
+                        if ch == '\t' { vcol += tab_width; } else { vcol += display_char_width(ch) as usize; }
                     }
                     vcol
                 };
@@ -183,5 +184,25 @@ impl EditorView {
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
             surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use txv_core::prelude::*;
+    use crate::views::editor::EditorView;
+
+    #[test]
+    fn wide_char_positions_correct() {
+        // "A✅B" — ✅ is width 2, so B should be at visual column 4
+        // (A=col0, ✅=col1+col2, B should be at col3)
+        let mut view = EditorView::from_text("A✅B");
+        view.editor.options.number = false;
+        view.set_bounds(Rect::new(0, 0, 20, 1));
+        let mut surface = Surface::new(20, 1);
+        view.draw(&mut surface);
+        assert_eq!(surface.cell(0, 0).ch, 'A');
+        assert_eq!(surface.cell(1, 0).ch, '✅');
+        assert_eq!(surface.cell(3, 0).ch, 'B');
     }
 }
