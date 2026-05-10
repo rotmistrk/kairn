@@ -17,6 +17,7 @@ pub struct PtyTerminal {
     title: String,
     prev_cols: u16,
     prev_rows: u16,
+    exited: bool,
 }
 
 impl PtyTerminal {
@@ -32,6 +33,7 @@ impl PtyTerminal {
             title: "Shell".into(),
             prev_cols: cols,
             prev_rows: rows,
+            exited: false,
         })
     }
 
@@ -45,19 +47,31 @@ impl PtyTerminal {
             title: cmd.into(),
             prev_cols: cols,
             prev_rows: rows,
+            exited: false,
         })
     }
 
     fn poll_and_feed(&mut self) {
+        if self.exited {
+            return;
+        }
         let Some(session) = self.session.as_mut() else {
             return;
         };
         if let Some(data) = session.poll() {
             self.termbuf.process(&data);
             self.state.dirty = true;
+        } else if !session.is_alive() {
+            self.exited = true;
+            self.title = format!("{} [exited]", self.title);
+            self.session = None;
+            self.state.dirty = true;
+            return;
         }
-        for resp in self.termbuf.drain_responses() {
-            session.write(&resp);
+        if let Some(session) = self.session.as_mut() {
+            for resp in self.termbuf.drain_responses() {
+                session.write(&resp);
+            }
         }
     }
 }
@@ -115,6 +129,9 @@ impl View for PtyTerminal {
                 HandleResult::Ignored
             }
             Event::Key(key) => {
+                if self.exited {
+                    return HandleResult::Consumed; // swallow keys, terminal is dead
+                }
                 if let Some(bytes) = key_to_bytes(key) {
                     if let Some(session) = self.session.as_mut() {
                         session.write(&bytes);
@@ -125,6 +142,14 @@ impl View for PtyTerminal {
                 }
             }
             _ => HandleResult::Ignored,
+        }
+    }
+
+    fn can_close(&self) -> CloseResult {
+        if self.exited {
+            CloseResult::Ok
+        } else {
+            CloseResult::Denied("process still running".to_string())
         }
     }
 }

@@ -77,6 +77,7 @@ impl PtySession {
     }
 
     /// Poll for available output. Returns combined bytes or None.
+    /// After this returns None, call is_alive() to check if process exited.
     pub fn poll(&self) -> Option<Vec<u8>> {
         let mut data = Vec::new();
         while let Ok(chunk) = self.rx.try_recv() {
@@ -86,6 +87,17 @@ impl PtySession {
             None
         } else {
             Some(data)
+        }
+    }
+
+    /// Check if the PTY process is still running.
+    /// Only meaningful after poll() returns None (no pending data).
+    pub fn is_alive(&self) -> bool {
+        use std::sync::mpsc::TryRecvError;
+        // If poll() already drained everything, try_recv will tell us channel state
+        match self.rx.try_recv() {
+            Err(TryRecvError::Disconnected) => false,
+            _ => true, // Empty or Ok (shouldn't happen after poll drained)
         }
     }
 
