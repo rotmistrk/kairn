@@ -60,11 +60,12 @@ pub struct EditorOptions {
     pub list: bool,
     pub number: bool,
     pub wrap: bool,
+    pub tab_width: usize,
 }
 
 impl Default for EditorOptions {
     fn default() -> Self {
-        Self { list: false, number: true, wrap: true }
+        Self { list: false, number: true, wrap: true, tab_width: 4 }
     }
 }
 
