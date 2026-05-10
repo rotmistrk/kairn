@@ -25,7 +25,7 @@ impl TestHarness {
         let desktop = build_desktop(root_dir);
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
-            60,
+            0,
             root_dir.to_path_buf(),
         );
         let program = Program::new(Box::new(status), Box::new(desktop));
@@ -43,7 +43,7 @@ impl TestHarness {
         let desktop = build_desktop(root_dir);
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
-            60,
+            0,
             root_dir.to_path_buf(),
         );
         let program = Program::new(Box::new(status), Box::new(desktop));
