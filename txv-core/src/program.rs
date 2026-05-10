@@ -105,6 +105,8 @@ impl Program {
                 for child in &mut self.group.children {
                     child.mark_redrawn();
                 }
+                // DEBUG: log cells at row 11, cols 10-15 to catch stale $ 
+                for cx in 10..16 { log::trace!("cell({},{})=({:?}, fg={:?})", cx, 11, surface.cell(cx, 11).ch, surface.cell(cx, 11).style.fg); }
                 backend.flush(&surface);
             }
 

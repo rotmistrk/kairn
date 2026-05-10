@@ -260,3 +260,27 @@ mod tests {
         assert_eq!(s.cell(0, 0).ch, ' ');
     }
 }
+
+/// Display width of a character (1 for normal, 2 for wide/CJK).
+pub fn display_char_width(ch: char) -> u16 {
+    let cp = ch as u32;
+    if (0x1100..=0x115F).contains(&cp)
+        || (0x2E80..=0x303E).contains(&cp)
+        || (0x3041..=0x33BF).contains(&cp)
+        || (0x3400..=0x4DBF).contains(&cp)
+        || (0x4E00..=0x9FFF).contains(&cp)
+        || (0xAC00..=0xD7AF).contains(&cp)
+        || (0xF900..=0xFAFF).contains(&cp)
+        || (0xFE30..=0xFE6F).contains(&cp)
+        || (0xFF01..=0xFF60).contains(&cp)
+        || (0xFFE0..=0xFFE6).contains(&cp)
+        || (0x20000..=0x2FFFD).contains(&cp)
+        || (0x30000..=0x3FFFD).contains(&cp)
+        || (0x2600..=0x27BF).contains(&cp)  // Misc symbols (✅, etc.)
+        || (0x1F300..=0x1F9FF).contains(&cp) // Emoji
+    {
+        2
+    } else {
+        1
+    }
+}
