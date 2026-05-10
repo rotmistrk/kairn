@@ -31,11 +31,19 @@ impl View for WelcomeView {
             ("Ctrl-Q:Quit  M-x:Command", dim),
         ];
         let start_y = b.y + b.h.saturating_sub(lines.len() as u16) / 2;
-        for (i, (text, style)) in lines.iter().enumerate() {
-            let y = start_y + i as u16;
-            if y >= b.y + b.h { break; }
-            let x = b.x + b.w.saturating_sub(text.len() as u16) / 2;
-            surface.print(x, y, text, *style);
+        for row in 0..b.h {
+            let y = b.y + row;
+            let line_i = (y as i32) - (start_y as i32);
+            if line_i >= 0 && (line_i as usize) < lines.len() {
+                let (text, style) = lines[line_i as usize];
+                let pad_left = b.w.saturating_sub(text.len() as u16) / 2;
+                // Build centered line
+                let left_spaces: String = " ".repeat(pad_left as usize);
+                let centered = format!("{}{}", left_spaces, text);
+                surface.print_line(b.x, y, &centered, b.w, style);
+            } else {
+                surface.print_line(b.x, y, "", b.w, Style::default());
+            }
         }
     }
 

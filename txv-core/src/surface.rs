@@ -54,6 +54,47 @@ impl Surface {
         }
     }
 
+    /// Print text at (x, y) and fill remaining width with spaces in the same style.
+    /// TXV model: every line write covers the full width. No stale content.
+    pub fn print_line(&mut self, x: u16, y: u16, text: &str, width: u16, style: Style) {
+        let mut col = x;
+        let end = x.saturating_add(width).min(self.width);
+        for ch in text.chars() {
+            if col >= end { break; }
+            self.put(col, y, ch, style);
+            col = col.saturating_add(1);
+        }
+        while col < end {
+            self.put(col, y, ' ', style);
+            col += 1;
+        }
+    }
+
+    /// Print styled spans at (x, y) and fill remaining width with spaces.
+    /// TXV model: every line write covers the full width. No stale content.
+    pub fn print_spans_line(
+        &mut self,
+        x: u16,
+        y: u16,
+        spans: &[(&str, Style)],
+        width: u16,
+        fill_style: Style,
+    ) {
+        let mut col = x;
+        let end = x.saturating_add(width).min(self.width);
+        for &(text, style) in spans {
+            for ch in text.chars() {
+                if col >= end { break; }
+                self.put(col, y, ch, style);
+                col = col.saturating_add(1);
+            }
+        }
+        while col < end {
+            self.put(col, y, ' ', fill_style);
+            col += 1;
+        }
+    }
+
     pub fn fill(&mut self, ch: char, style: Style) {
         for cell in &mut self.cells {
             *cell = Cell { ch, style, width: 1 };
@@ -122,6 +163,45 @@ impl SubSurface<'_> {
             }
             self.put(col, y, ch, style);
             col = col.saturating_add(1);
+        }
+    }
+
+    /// Print text at (x, y) and fill remaining width with spaces.
+    pub fn print_line(&mut self, x: u16, y: u16, text: &str, width: u16, style: Style) {
+        let mut col = x;
+        let end = x.saturating_add(width).min(self.w);
+        for ch in text.chars() {
+            if col >= end { break; }
+            self.put(col, y, ch, style);
+            col = col.saturating_add(1);
+        }
+        while col < end {
+            self.put(col, y, ' ', style);
+            col += 1;
+        }
+    }
+
+    /// Print styled spans at (x, y) and fill remaining width with spaces.
+    pub fn print_spans_line(
+        &mut self,
+        x: u16,
+        y: u16,
+        spans: &[(&str, Style)],
+        width: u16,
+        fill_style: Style,
+    ) {
+        let mut col = x;
+        let end = x.saturating_add(width).min(self.w);
+        for &(text, style) in spans {
+            for ch in text.chars() {
+                if col >= end { break; }
+                self.put(col, y, ch, style);
+                col = col.saturating_add(1);
+            }
+        }
+        while col < end {
+            self.put(col, y, ' ', fill_style);
+            col += 1;
         }
     }
 

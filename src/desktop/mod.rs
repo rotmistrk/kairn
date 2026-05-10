@@ -60,6 +60,24 @@ pub struct SlottedDesktop {
     dropdown_cursor: usize,
 }
 
+impl SlottedDesktop {
+    /// After switching tabs, set bounds on the newly active view and select it.
+    fn sync_active_bounds(&mut self, slot_id: SlotId) {
+        let bounds = self.group.view.bounds;
+        if bounds.w == 0 || bounds.h == 0 { return; }
+        let rects = self.layout(bounds);
+        let tall = self.is_tall(bounds.w);
+        let i = slot_id as usize;
+        let r = if tall && slot_id == SlotId::Right { rects[SlotId::Bottom as usize] } else { rects[i] };
+        if let Some(v) = self.slots[i].active_view_mut() {
+            v.set_bounds(r);
+            if slot_id == self.focused {
+                v.select();
+            }
+        }
+    }
+}
+
 impl Default for SlottedDesktop {
     fn default() -> Self { Self::new() }
 }
@@ -90,7 +108,11 @@ impl SlottedDesktop {
     pub fn focus_tab(&mut self, slot: SlotId, tab: usize) {
         self.focus_slot(slot);
         let s = &mut self.slots[slot as usize];
-        if tab < s.tabs.len() { s.active = tab; self.group.view.dirty = true; }
+        if tab < s.tabs.len() {
+            s.active = tab;
+            self.sync_active_bounds(slot);
+            self.group.view.dirty = true;
+        }
     }
 
     pub fn close_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
@@ -147,12 +169,16 @@ impl SlottedDesktop {
                 HandleResult::Consumed
             }
             CM_TAB_NEXT => {
+                if let Some(v) = self.slots[self.focused as usize].active_view_mut() { v.unselect(); }
                 self.slots[self.focused as usize].tab_next();
+                self.sync_active_bounds(self.focused);
                 self.group.view.dirty = true;
                 HandleResult::Consumed
             }
             CM_TAB_PREV => {
+                if let Some(v) = self.slots[self.focused as usize].active_view_mut() { v.unselect(); }
                 self.slots[self.focused as usize].tab_prev();
+                self.sync_active_bounds(self.focused);
                 self.group.view.dirty = true;
                 HandleResult::Consumed
             }
@@ -186,9 +212,11 @@ impl SlottedDesktop {
         match &key.code {
             KeyCode::Esc => { self.dropdown = None; self.group.view.dirty = true; }
             KeyCode::Enter => {
+                if let Some(v) = self.slots[slot_id as usize].active_view_mut() { v.unselect(); }
                 let s = &mut self.slots[slot_id as usize];
                 s.active = self.dropdown_cursor;
                 self.dropdown = None;
+                self.sync_active_bounds(slot_id);
                 self.group.view.dirty = true;
             }
             KeyCode::Up => {
@@ -205,11 +233,13 @@ impl SlottedDesktop {
             }
             KeyCode::Char(c) if c.is_ascii_digit() => {
                 let idx = (*c as u8 - b'0') as usize;
+                if let Some(v) = self.slots[slot_id as usize].active_view_mut() { v.unselect(); }
                 let s = &mut self.slots[slot_id as usize];
                 if idx < s.tabs.len() {
                     s.active = idx;
                 }
                 self.dropdown = None;
+                self.sync_active_bounds(slot_id);
                 self.group.view.dirty = true;
             }
             _ => {}

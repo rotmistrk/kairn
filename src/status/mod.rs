@@ -95,8 +95,7 @@ impl View for KairnStatusBar {
             Mode::Prompt => {
                 let b = self.inner.bounds();
                 let style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, ..Style::default() };
-                surface.hline(b.x, b.y, b.w, ' ', style);
-                surface.print(b.x, b.y, ":", style);
+                surface.print_line(b.x, b.y, ":", b.w, style);
                 self.input.draw(surface);
             }
         }
