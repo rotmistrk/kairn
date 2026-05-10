@@ -71,7 +71,7 @@
 | Wide char rendering | ✅ | visual_positions in txv-core |
 | Tab completion (:e, M-x) | ✅ | File paths + commands |
 | AppSettings + EditorSettings | ✅ | 3-tier (global/defaults/instance) |
-| Config file loading | 🔄 | In progress (v-015) |
+| Config file loading | ✅ | ~/.config/kairn/init.tcl (v-015 Phase 1) |
 | Statusbar customization | ❌ | Planned (v-015 Phase 2) |
 | Git status in tree | ❌ | |
 | Real PTY shell tab | ❌ | Placeholder only |
@@ -83,11 +83,11 @@
 
 | Bug | Status | Notes |
 |-----|--------|-------|
-| Dropdown overlay not clearing on Esc | 🐛 | Cells persist until full redraw |
+| (none currently) | | |
 
 ### Test Coverage
 
-254 tests passing (as of 2026-05-10).
+604 tests passing (as of 2026-05-10). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
 
 ## Development SOP
 
