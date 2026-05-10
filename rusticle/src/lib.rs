@@ -13,5 +13,6 @@ pub mod manifest;
 pub mod parser;
 pub mod types;
 pub mod validate;
+mod validate_checks;
 pub mod value;
 mod value_convert;

@@ -8,6 +8,7 @@ mod core;
 mod literals;
 mod subst;
 mod words;
+mod words_ext;
 
 pub(crate) use self::core::Word;
 pub use self::core::{Command, ParsedScript, Parser};

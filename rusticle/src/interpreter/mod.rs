@@ -4,6 +4,7 @@ pub(crate) mod eval;
 pub(crate) mod eval_literals;
 mod scope;
 pub(crate) mod subst;
+pub(crate) mod subst_access;
 
 use std::collections::HashMap;
 use std::rc::Rc;
