@@ -64,6 +64,7 @@ impl SlottedDesktop {
                 if !s.tabs.is_empty() {
                     let title = s.tabs[s.active].0.clone();
                     s.tabs.remove(s.active);
+                    s.lru.remove(s.active);
                     if s.active >= s.tabs.len() && s.active > 0 {
                         s.active -= 1;
                     }
