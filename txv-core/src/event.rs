@@ -73,6 +73,7 @@ pub struct MouseEvent {
 pub enum Event {
     Key(KeyEvent),
     Mouse(MouseEvent),
+    Paste(String),
     Resize(u16, u16),
     Command {
         id: CommandId,
@@ -86,6 +87,7 @@ impl core::fmt::Debug for Event {
         match self {
             Self::Key(k) => f.debug_tuple("Key").field(k).finish(),
             Self::Mouse(m) => f.debug_tuple("Mouse").field(m).finish(),
+            Self::Paste(s) => f.debug_tuple("Paste").field(&s.len()).finish(),
             Self::Resize(w, h) => f.debug_tuple("Resize").field(w).field(h).finish(),
             Self::Command { id, .. } => f.debug_struct("Command").field("id", id).finish(),
             Self::Tick => write!(f, "Tick"),

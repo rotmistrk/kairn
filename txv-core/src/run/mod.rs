@@ -88,6 +88,9 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
             Some(ev @ Event::Command { .. }) => {
                 root.handle(&ev, &mut queue);
             }
+            Some(ev @ Event::Paste(_)) => {
+                modal.handle(&ev, &mut queue);
+            }
         }
 
         let events = queue.drain();

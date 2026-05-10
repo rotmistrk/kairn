@@ -128,6 +128,18 @@ impl View for PtyTerminal {
                 self.poll_and_feed();
                 HandleResult::Ignored
             }
+            Event::Paste(text) => {
+                if self.exited {
+                    return HandleResult::Consumed;
+                }
+                if let Some(session) = self.session.as_mut() {
+                    // Bracketed paste: app detects paste vs typed input
+                    session.write(b"\x1b[200~");
+                    session.write(text.as_bytes());
+                    session.write(b"\x1b[201~");
+                }
+                HandleResult::Consumed
+            }
             Event::Key(key) => {
                 if self.exited {
                     return HandleResult::Consumed; // swallow keys, terminal is dead

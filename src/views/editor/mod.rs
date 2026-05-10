@@ -148,6 +148,18 @@ impl View for EditorView {
         }
 
         let Event::Key(key) = event else {
+            // Handle paste (bracketed paste from terminal)
+            if let Event::Paste(text) = event {
+                let offset = self
+                    .editor
+                    .buffer
+                    .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                    .unwrap_or(0);
+                self.editor.buffer.insert(offset, text);
+                self.last_edit_tick = self.tick_counter;
+                self.state.dirty = true;
+                return HandleResult::Consumed;
+            }
             // Handle clipboard paste command
             if let Event::Command { id, data } = event {
                 if *id == CM_CLIPBOARD_PASTE {
