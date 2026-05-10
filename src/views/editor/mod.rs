@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
+use crate::commands::CM_CLIPBOARD_PASTE;
 use crate::commands::CM_TAB_CLOSE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
@@ -147,6 +148,24 @@ impl View for EditorView {
         }
 
         let Event::Key(key) = event else {
+            // Handle clipboard paste command
+            if let Event::Command { id, data } = event {
+                if *id == CM_CLIPBOARD_PASTE {
+                    if let Some(boxed) = data.as_ref() {
+                        if let Some(text) = boxed.downcast_ref::<String>() {
+                            let offset = self
+                                .editor
+                                .buffer
+                                .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                                .unwrap_or(0);
+                            self.editor.buffer.insert(offset, text);
+                            self.last_edit_tick = self.tick_counter;
+                            self.state.dirty = true;
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
+            }
             return HandleResult::Ignored;
         };
 

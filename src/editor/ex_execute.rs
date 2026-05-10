@@ -111,7 +111,7 @@ impl Editor {
         };
         if end_off > start_off {
             let content = self.buffer.content();
-            self.register = content[start_off..end_off].to_string();
+            self.yank(content[start_off..end_off].to_string());
             self.buffer.delete(start_off, end_off);
         }
         self.cursor_line = start.min(self.buffer.line_count().saturating_sub(1));
@@ -130,7 +130,7 @@ impl Editor {
             self.buffer.content().len()
         };
         let content = self.buffer.content();
-        self.register = content[start_off..end_off].to_string();
+        self.yank(content[start_off..end_off].to_string());
         let count = end - start + 1;
         self.status = format!("{count} line(s) yanked");
     }

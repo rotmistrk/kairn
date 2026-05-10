@@ -53,7 +53,7 @@ impl Editor {
                 };
                 if end > start {
                     let content = self.buffer.content();
-                    self.register = content[start..end].to_string();
+                    self.yank(content[start..end].to_string());
                     self.buffer.delete(start, end);
                 }
                 self.cursor_line = start_line.min(self.buffer.line_count().saturating_sub(1));
@@ -62,7 +62,7 @@ impl Editor {
         } else if let Some((start, end)) = self.visual_range() {
             if end > start {
                 let content = self.buffer.content();
-                self.register = content[start..end].to_string();
+                self.yank(content[start..end].to_string());
                 self.buffer.delete(start, end);
                 let (l, c) = self.buffer.offset_to_line_col(start);
                 self.cursor_line = l;
@@ -82,11 +82,11 @@ impl Editor {
                     self.buffer.content().len()
                 };
                 let content = self.buffer.content();
-                self.register = content[start..end].to_string();
+                self.yank(content[start..end].to_string());
             }
         } else if let Some((start, end)) = self.visual_range() {
             let content = self.buffer.content();
-            self.register = content[start..end].to_string();
+            self.yank(content[start..end].to_string());
         }
         self.exit_visual();
         self.status = "yanked".to_string();

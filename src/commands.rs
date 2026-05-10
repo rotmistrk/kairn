@@ -37,3 +37,6 @@ pub const CM_SET_GLOBAL: CommandId = 133;
 // Editor status
 pub const CM_MODE_CHANGED: CommandId = 141;
 pub const CM_CURSOR_MOVED: CommandId = 142;
+
+// Clipboard
+pub const CM_CLIPBOARD_PASTE: CommandId = 150;

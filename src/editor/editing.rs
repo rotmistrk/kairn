@@ -93,7 +93,7 @@ impl Editor {
 
     pub(super) fn delete_line(&mut self) {
         let line = self.buffer.line(self.cursor_line).unwrap_or_default();
-        self.register = line;
+        self.yank(line);
         let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         let end = if self.cursor_line + 1 < self.buffer.line_count() {
             self.buffer.line_col_to_offset(self.cursor_line + 1, 0).unwrap_or(start)
@@ -121,7 +121,7 @@ impl Editor {
             .unwrap_or(start_offset);
         if end_offset > start_offset {
             let content = self.buffer.content();
-            self.register = content[start_offset..end_offset].to_string();
+            self.yank(content[start_offset..end_offset].to_string());
             self.buffer.delete(start_offset, end_offset);
             let (l, c) = self.buffer.offset_to_line_col(start_offset);
             self.cursor_line = l;
@@ -138,7 +138,7 @@ impl Editor {
         let start_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(end_offset);
         if end_offset > start_offset {
             let content = self.buffer.content();
-            self.register = content[start_offset..end_offset].to_string();
+            self.yank(content[start_offset..end_offset].to_string());
             self.buffer.delete(start_offset, end_offset);
             self.cursor_line = new_line;
             self.cursor_col = new_col;
@@ -153,7 +153,7 @@ impl Editor {
         let start_offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         if end_offset > start_offset {
             let content = self.buffer.content();
-            self.register = content[start_offset..end_offset].to_string();
+            self.yank(content[start_offset..end_offset].to_string());
             self.buffer.delete(start_offset, end_offset);
             self.cursor_col = 0;
         }
@@ -171,7 +171,7 @@ impl Editor {
             .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
-            self.register = content[start..end].to_string();
+            self.yank(content[start..end].to_string());
             self.buffer.delete(start, end);
         }
         self.clamp_col();

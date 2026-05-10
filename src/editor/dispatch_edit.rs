@@ -136,7 +136,7 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             Command::OperatorYank => {
-                self.register = self.buffer.line(self.cursor_line).unwrap_or_default();
+                self.yank(self.buffer.line(self.cursor_line).unwrap_or_default());
                 EditorAction::None
             }
             Command::Undo => {
@@ -150,7 +150,7 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             Command::YankLine => {
-                self.register = self.buffer.line(self.cursor_line).unwrap_or_default();
+                self.yank(self.buffer.line(self.cursor_line).unwrap_or_default());
                 EditorAction::None
             }
             Command::YankWord => {

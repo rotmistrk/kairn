@@ -5,6 +5,12 @@ use super::motions;
 use super::Editor;
 
 impl Editor {
+    /// Set the yank register and copy to system clipboard via OSC 52.
+    pub fn yank(&mut self, text: String) {
+        self.register = text.clone();
+        crate::clipboard::copy_to_clipboard(&text);
+    }
+
     pub(super) fn paste_after(&mut self) {
         if !self.register.is_empty() {
             let line_len = self.buffer.line_len(self.cursor_line);
@@ -36,7 +42,7 @@ impl Editor {
         let end = self.buffer.line_col_to_offset(nl, nc).unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
-            self.register = content[start..end].to_string();
+            self.yank(content[start..end].to_string());
         }
     }
 
@@ -52,7 +58,7 @@ impl Editor {
             .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
-            self.register = content[start..end].to_string();
+            self.yank(content[start..end].to_string());
         }
     }
 
@@ -77,7 +83,7 @@ impl Editor {
             result.push_str(&self.buffer.line(i).unwrap_or_default());
             result.push('\n');
         }
-        self.register = result;
+        self.yank(result);
     }
 
     pub(super) fn delete_lines(&mut self, n: usize) {
