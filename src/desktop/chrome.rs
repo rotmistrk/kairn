@@ -107,9 +107,9 @@ impl SlottedDesktop {
 
         // Title text
         let title_str = format!(" {} ", display);
-        if x + title_str.len() as u16 > max_x { return; }
+        if x + display_width(&title_str, 1) > max_x { return; }
         surface.print(x, y, &title_str, ts);
-        x += title_str.len() as u16;
+        x += display_width(&title_str, 1);
 
         if count > 1 && self.dropdown != Some(sid) {
             // Arrow
@@ -210,7 +210,7 @@ impl SlottedDesktop {
 
         // Compute dropdown width and position
         let max_name_w = slot.tabs.iter().enumerate()
-            .map(|(i, _)| self.display_name(slot_id, i).len() + 4)
+            .map(|(i, _)| display_width(&self.display_name(slot_id, i), 1) as usize + 4)
             .max().unwrap_or(10);
         let w = (max_name_w as u16 + 2).min(slot_r.w);
         let x = slot_r.x;

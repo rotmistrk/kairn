@@ -36,7 +36,7 @@ impl View for WelcomeView {
             let line_i = (y as i32) - (start_y as i32);
             if line_i >= 0 && (line_i as usize) < lines.len() {
                 let (text, style) = lines[line_i as usize];
-                let pad_left = b.w.saturating_sub(text.len() as u16) / 2;
+                let pad_left = b.w.saturating_sub(display_width(text, 1)) / 2;
                 // Build centered line
                 let left_spaces: String = " ".repeat(pad_left as usize);
                 let centered = format!("{}{}", left_spaces, text);

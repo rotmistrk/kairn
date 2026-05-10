@@ -1,7 +1,6 @@
 //! EditorView draw implementation.
 
 use txv_core::prelude::*;
-use txv_core::surface::display_char_width;
 
 use super::EditorView;
 
@@ -146,12 +145,10 @@ impl EditorView {
                     col_offset
                 } else {
                     let line_ref = self.editor.buffer.line(line_idx).unwrap_or_default();
-                    let mut vcol: usize = 0;
-                    for (ci, ch) in line_ref.chars().enumerate() {
-                        if ci == self.editor.cursor_col { break; }
-                        if ch == '\t' { vcol += tab_width; } else { vcol += display_char_width(ch) as usize; }
-                    }
-                    vcol
+                    let positions = visual_positions(&line_ref, tab_width);
+                    positions.get(self.editor.cursor_col)
+                        .map(|(vcol, _, _)| *vcol as usize)
+                        .unwrap_or(col_offset)
                 };
                 if visual_row < b.h as usize && cursor_visual_col < avail {
                     let cx = text_x + cursor_visual_col as u16;

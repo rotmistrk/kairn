@@ -87,8 +87,8 @@ impl View for KairnStatusBar {
                 let b = self.inner.bounds();
                 let style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, ..Style::default() };
                 let mx_text = " M-x ";
-                let items_len: u16 = self.inner.items.iter().map(|i| i.label.len() as u16 + 2).sum();
-                if items_len + mx_text.len() as u16 <= b.w {
+                let items_len: u16 = self.inner.items.iter().map(|i| display_width(&i.label, 1) + 2).sum();
+                if items_len + display_width(mx_text, 1) <= b.w {
                     surface.print(b.x + items_len, b.y, mx_text, style);
                 }
             }
