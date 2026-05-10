@@ -64,6 +64,7 @@ pub mod program;
 pub mod run;
 pub mod status;
 pub mod surface;
+pub mod text;
 pub mod view;
 pub mod window;
 
@@ -78,7 +79,8 @@ pub mod prelude {
     pub use crate::group::GroupState;
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
-    pub use crate::surface::{display_char_width, display_width, visual_positions, SubSurface, Surface};
+    pub use crate::surface::{SubSurface, Surface};
+    pub use crate::text::{display_char_width, display_width, visual_positions};
     pub use crate::view::{EventQueue, HandleResult, View, ViewOptions, ViewState};
     pub use crate::window::{FrameStyle, WindowState};
 

@@ -55,11 +55,11 @@ fn multiple_insert_sessions_undo_separately() {
     // First undo removes second session
     h.inject_key(KeyCode::Char('u'), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("base11"));
-    assert!(!h.contains("22"));
+    assert!(h.content_contains("base11"));
+    assert!(!h.content_contains("22"));
     // Second undo removes first session
     h.inject_key(KeyCode::Char('u'), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("base"));
-    assert!(!h.contains("11"));
+    assert!(h.content_contains("base"));
+    assert!(!h.content_contains("11"));
 }
