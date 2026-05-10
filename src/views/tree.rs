@@ -55,13 +55,7 @@ impl View for FileTreeView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        // Auto-refresh tree every 60 ticks (~3 seconds at 50ms poll)
         if let Event::Tick = event {
-            self.refresh_counter += 1;
-            if self.refresh_counter >= 60 {
-                self.refresh_counter = 0;
-                self.inner.data.refresh();
-            }
             return HandleResult::Ignored;
         }
         if let Event::Key(key) = event {
