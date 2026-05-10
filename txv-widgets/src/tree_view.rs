@@ -75,13 +75,21 @@ impl<D: TreeData> View for TreeView<D> {
             };
             let node_style = self.data.style(id);
             let style = if idx == self.cursor {
-                Style {
-                    fg: node_style.fg,
-                    bg: Color::Ansi(4),
-                    attrs: Attrs {
-                        underline: true,
-                        ..node_style.attrs
-                    },
+                if self.state.focused {
+                    Style {
+                        fg: node_style.fg,
+                        bg: Color::Ansi(4),
+                        attrs: Attrs {
+                            underline: true,
+                            ..node_style.attrs
+                        },
+                    }
+                } else {
+                    Style {
+                        fg: node_style.fg,
+                        bg: Color::Ansi(8),
+                        attrs: node_style.attrs,
+                    }
                 }
             } else {
                 node_style
