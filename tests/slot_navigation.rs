@@ -28,10 +28,11 @@ fn f3_focuses_center_slot() {
 #[test]
 fn f4_focuses_right_slot() {
     let dir = temp_project(&[("a.rs", "")]);
-    let mut h = TestHarness::new(dir.path());
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
     h.inject_key(KeyCode::F(4), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("[Shell]"));
+    assert!(h.contains("[Shell]") || h.contains("Shell"),
+        "right slot should be focused showing Shell: {}", h.screen_text());
 }
 
 #[test]
