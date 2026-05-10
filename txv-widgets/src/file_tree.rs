@@ -45,12 +45,32 @@ impl FileTreeData {
         &self.root
     }
 
-    /// Rebuild the tree from disk (preserves expanded state).
+    /// Rebuild the tree from disk, preserving expanded directories.
     pub fn refresh(&mut self) {
+        // Collect expanded paths before clearing
+        let expanded_paths: Vec<PathBuf> = self
+            .nodes
+            .iter()
+            .filter(|n| n.is_dir && n.expanded)
+            .map(|n| n.path.clone())
+            .collect();
+
         let root = self.root.clone();
         self.nodes.clear();
         self.visible.clear();
         self.load_children(root, None, 0);
+
+        // Re-expand previously expanded directories
+        for path in &expanded_paths {
+            if let Some(idx) = self.nodes.iter().position(|n| n.path == *path) {
+                if self.nodes[idx].is_dir && !self.nodes[idx].expanded {
+                    self.nodes[idx].expanded = true;
+                    let depth = self.nodes[idx].depth;
+                    self.load_children(path.clone(), Some(idx), depth + 1);
+                }
+            }
+        }
+
         self.rebuild_visible();
     }
 
