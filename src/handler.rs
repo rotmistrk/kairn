@@ -15,6 +15,7 @@ use crate::commands::*;
 use crate::desktop::{SlotId, SlottedDesktop};
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
+use crate::views::messages::MessagesView;
 use crate::views::terminal::TerminalView;
 use crate::views::tree::FileTreeView;
 
@@ -45,6 +46,13 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
             }
         }
+        CM_SHOW_MESSAGES => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let messages = MessagesView::new();
+                desktop.insert_tab(SlotId::Bottom, "Messages", Box::new(messages));
+                desktop.focus_slot(SlotId::Bottom);
+            }
+        }
         CM_NEW_SHELL => {
             let term = TerminalView::new("Shell");
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -56,6 +64,15 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 if let Some(title) = boxed.downcast_ref::<String>() {
                     let full_path = state.root_dir.join(title).to_string_lossy().to_string();
                     state.broker.close(&full_path);
+                }
+            }
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                if desktop.tab_count(SlotId::Center) == 0 {
+                    desktop.insert_tab(
+                        SlotId::Center,
+                        "Welcome",
+                        Box::new(WelcomeView::new()),
+                    );
                 }
             }
         }
@@ -121,6 +138,7 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 desktop.insert_tab(SlotId::Right, "Shell", Box::new(TerminalView::new("Shell")));
             }
         }
+        "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
         _ => {}
     }
 }

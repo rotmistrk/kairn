@@ -25,6 +25,7 @@ pub const CM_TAB_DROPDOWN: CommandId = 119;
 
 // Display
 pub const CM_SHOW_HELP: CommandId = 120;
+pub const CM_SHOW_MESSAGES: CommandId = 121;
 
 // Command mode
 pub const CM_COMMAND_MODE: CommandId = 130;

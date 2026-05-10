@@ -27,8 +27,11 @@ impl View for WelcomeView {
             ("╠╩╗╠═╣║╠╦╝║║║", bright),
             ("╩ ╩╩ ╩╩╩╚═╝╚╝", bright),
             ("", dim),
-            ("F1:Help  F2:Tree  F3:Main  F4:Term", dim),
-            ("Ctrl-Q:Quit  M-x:Command", dim),
+            ("Navigate files in tree (F2), Enter to open", dim),
+            (":e <file>  to open by name", dim),
+            (":q  close tab   :w  save", dim),
+            ("", dim),
+            ("F1:Help  F5:Zoom  M-x:Command  Ctrl-Q:Quit", dim),
         ];
         let start_y = b.y + b.h.saturating_sub(lines.len() as u16) / 2;
         for row in 0..b.h {

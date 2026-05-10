@@ -35,6 +35,7 @@ impl KairnStatusBar {
         bar.add_item(KeyEvent { code: KeyCode::F(3), modifiers: KeyMod::default() }, CM_FOCUS_CENTER, "F3:Main");
         bar.add_item(KeyEvent { code: KeyCode::F(4), modifiers: KeyMod::default() }, CM_FOCUS_RIGHT, "F4:Term");
         bar.add_item(KeyEvent { code: KeyCode::F(5), modifiers: KeyMod::default() }, CM_ZOOM_TOGGLE, "F5:Zoom");
+        bar.add_item(KeyEvent { code: KeyCode::F(6), modifiers: KeyMod::default() }, CM_SHOW_MESSAGES, "F6:Msg");
         bar.add_item(
             KeyEvent { code: KeyCode::Char('q'), modifiers: KeyMod { ctrl: true, alt: false, shift: false } },
             CM_QUIT, "^Q:Quit",
