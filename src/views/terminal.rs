@@ -1,39 +1,55 @@
-//! TerminalView — placeholder terminal view (PTY integration in later step).
+//! TerminalView — real PTY terminal backed by txv-widgets::PtyTerminal.
 
-use txv_core::prelude::*;
+pub use txv_widgets::PtyTerminal as TerminalView;
 
-pub struct TerminalView {
-    state: ViewState,
+/// Create a shell terminal, falling back to a placeholder on failure.
+pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
+    // In test environments, don't spawn a real PTY
+    if std::env::var("KAIRN_TEST").is_ok() {
+        return Box::new(FallbackTerminal::new("Shell"));
+    }
+    match txv_widgets::PtyTerminal::spawn_shell(80, 24) {
+        Ok(term) => Box::new(term),
+        Err(e) => {
+            log::error!("Failed to spawn shell: {}", e);
+            Box::new(FallbackTerminal::new("Shell (failed)"))
+        }
+    }
+}
+
+/// Minimal fallback when PTY spawn fails.
+struct FallbackTerminal {
+    state: txv_core::prelude::ViewState,
     title: String,
 }
 
-impl TerminalView {
-    pub fn new(title: impl Into<String>) -> Self {
+impl FallbackTerminal {
+    fn new(title: impl Into<String>) -> Self {
         Self {
-            state: ViewState::default(),
+            state: txv_core::prelude::ViewState::default(),
             title: title.into(),
         }
     }
 }
 
-impl View for TerminalView {
-    delegate_view_state!(state, override { title });
+impl txv_core::view::View for FallbackTerminal {
+    txv_core::delegate_view_state!(state, override { title });
 
     fn title(&self) -> &str {
         &self.title
     }
 
-    fn draw(&self, surface: &mut Surface) {
+    fn draw(&self, surface: &mut txv_core::surface::Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 {
-            return;
-        }
-        let style = Style::default();
-        let msg = format!("[{}]", self.title);
-        surface.print(b.x, b.y, &msg, style);
+        let style = txv_core::cell::Style::default();
+        surface.print(b.x, b.y, &format!("[{}]", self.title), style);
     }
 
-    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
-        HandleResult::Ignored
+    fn handle(
+        &mut self,
+        _event: &txv_core::event::Event,
+        _queue: &mut txv_core::view::EventQueue,
+    ) -> txv_core::view::HandleResult {
+        txv_core::view::HandleResult::Ignored
     }
 }

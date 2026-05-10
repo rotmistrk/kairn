@@ -20,6 +20,7 @@ pub struct TermBuf {
     scroll_top: u16,
     scroll_bottom: u16,
     parser: vte::Parser,
+    responses: Vec<Vec<u8>>,
 }
 
 #[derive(Clone)]
@@ -46,6 +47,7 @@ impl TermBuf {
             saved_cursor: (0, 0),
             scroll_top: 0, scroll_bottom: rows.saturating_sub(1),
             parser: vte::Parser::new(),
+            responses: Vec::new(),
         }
     }
 
@@ -60,9 +62,15 @@ impl TermBuf {
                 style: &mut self.style,
                 saved_cursor: &mut self.saved_cursor,
                 scroll_top: &mut self.scroll_top, scroll_bottom: &mut self.scroll_bottom,
+                responses: &mut self.responses,
             };
             self.parser.advance(&mut performer, byte);
         }
+    }
+
+    /// Drain any pending response bytes (DA1, CPR replies).
+    pub fn drain_responses(&mut self) -> Vec<Vec<u8>> {
+        std::mem::take(&mut self.responses)
     }
 
     /// Resize the terminal buffer.
@@ -89,6 +97,20 @@ impl TermBuf {
             for x in 0..w {
                 let tc = &self.cells[y as usize][x as usize];
                 surface.put(x, y, tc.ch, tc.style);
+            }
+        }
+    }
+
+    /// Render terminal content to a Surface at a given offset.
+    pub fn render_at(&self, surface: &mut Surface, ox: u16, oy: u16, w: u16, h: u16) {
+        let rh = self.rows.min(h);
+        let rw = self.cols.min(w);
+        for y in 0..rh {
+            for x in 0..rw {
+                if ox + x < surface.width() && oy + y < surface.height() {
+                    let tc = &self.cells[y as usize][x as usize];
+                    surface.put(ox + x, oy + y, tc.ch, tc.style);
+                }
             }
         }
     }

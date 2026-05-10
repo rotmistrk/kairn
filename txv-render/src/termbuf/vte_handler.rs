@@ -17,6 +17,7 @@ pub(super) struct Performer<'a> {
     pub saved_cursor: &'a mut (u16, u16),
     pub scroll_top: &'a mut u16,
     pub scroll_bottom: &'a mut u16,
+    pub responses: &'a mut Vec<Vec<u8>>,
 }
 
 impl Performer<'_> {
@@ -240,6 +241,15 @@ impl vte::Perform for Performer<'_> {
                     for _ in 0..n { if x < row.len() { row.insert(x, TCell::default()); } }
                     row.truncate(self.cols as usize);
                 }
+            }
+            // DA1 — respond as VT100
+            ('c', []) => {
+                self.responses.push(b"\x1b[?1;2c".to_vec());
+            }
+            // DSR (CPR) — report cursor position
+            ('n', []) if p1 == 6 => {
+                let reply = format!("\x1b[{};{}R", *self.cursor_y + 1, *self.cursor_x + 1);
+                self.responses.push(reply.into_bytes());
             }
             _ => {}
         }

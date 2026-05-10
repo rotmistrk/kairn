@@ -17,7 +17,7 @@ use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
-use crate::views::terminal::TerminalView;
+use crate::views::terminal::new_shell_terminal;
 use crate::views::tree::FileTreeView;
 
 /// Application state shared across command handler invocations.
@@ -66,9 +66,9 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         CM_NEW_SHELL => {
-            let term = TerminalView::new("Shell");
+            let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
+                desktop.insert_tab(SlotId::Right, "Shell", term);
             }
         }
         CM_FILE_CLOSED => {
@@ -154,7 +154,7 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, "Shell", Box::new(TerminalView::new("Shell")));
+                desktop.insert_tab(SlotId::Right, "Shell", new_shell_terminal());
             }
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
@@ -221,7 +221,7 @@ pub fn build_desktop(root_dir: &Path) -> SlottedDesktop {
     desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
     let welcome = WelcomeView::new();
     desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
-    let term = TerminalView::new("Shell");
-    desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
+    let term = new_shell_terminal();
+    desktop.insert_tab(SlotId::Right, "Shell", term);
     desktop
 }
