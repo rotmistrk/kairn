@@ -146,6 +146,10 @@ impl Backend for CrosstermBackend {
             }
         }
     }
+
+    fn invalidate(&mut self) {
+        self.force_full = true;
+    }
 }
 
 fn apply_color_mode(style: Style, mode: ColorMode) -> Style {

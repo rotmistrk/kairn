@@ -19,6 +19,8 @@ pub trait Backend: Send {
     fn flush(&mut self, surface: &Surface);
     fn enter(&mut self);
     fn leave(&mut self);
+    /// Force next flush to redraw all cells (bypass diff).
+    fn invalidate(&mut self) {}
 }
 
 /// Run the main event loop. Returns when CM_QUIT is received.
