@@ -33,3 +33,7 @@ pub const CM_COMMAND_MODE: CommandId = 130;
 pub const CM_EXECUTE_COMMAND: CommandId = 131;
 pub const CM_SHELL_OUTPUT: CommandId = 132;
 pub const CM_SET_GLOBAL: CommandId = 133;
+
+// Editor status
+pub const CM_MODE_CHANGED: CommandId = 141;
+pub const CM_CURSOR_MOVED: CommandId = 142;

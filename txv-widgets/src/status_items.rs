@@ -5,7 +5,7 @@ use txv_core::prelude::*;
 use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 
 /// Command ID used by CommandItem to emit executed commands.
-const CM_EXECUTE_COMMAND: CommandId = 131;
+
 /// Command ID for setting status message externally.
 pub const CM_STATUS_MESSAGE: CommandId = 140;
 
@@ -93,6 +93,7 @@ fn local_hm() -> (u32, u32) {
 
 pub struct CommandItem {
     activation_keys: Vec<KeyEvent>,
+    command_id: CommandId,
     active: bool,
     text: String,
     cursor: usize,
@@ -103,9 +104,9 @@ pub struct CommandItem {
 }
 
 impl CommandItem {
-    pub fn new(keys: &[KeyEvent]) -> Self {
+    pub fn new(keys: &[KeyEvent], command_id: CommandId) -> Self {
         Self {
-            activation_keys: keys.to_vec(), active: false, text: String::new(),
+            activation_keys: keys.to_vec(), active: false, command_id, text: String::new(),
             cursor: 0, completer: None, label_text: String::new(),
             dormant_label: String::new(), gravity: Gravity::Left,
         }
@@ -159,7 +160,7 @@ impl ActiveItem for CommandItem {
                 let cmd = self.text.clone();
                 self.deactivate();
                 if !cmd.is_empty() {
-                    queue.put_command(CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
+                    queue.put_command(self.command_id, Some(Box::new(cmd)));
                 }
             }
             KeyCode::Tab => self.try_complete(),

@@ -95,10 +95,16 @@ impl View for EditorView {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else { return HandleResult::Ignored; };
 
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        let old_mode = self.editor.mode;
+        let old_line = self.editor.cursor_line;
+        let old_col = self.editor.cursor_col;
+
+        if old_mode == crate::editor::keymap::EditorMode::Command
+            || old_mode == crate::editor::keymap::EditorMode::Search
         {
-            return self.handle_command_input(key, queue);
+            let result = self.handle_command_input(key, queue);
+            self.emit_status_changes(old_mode, old_line, old_col, queue);
+            return result;
         }
 
         let cmd = self.editor.keymap.handle_key(key, self.editor.mode);
@@ -108,6 +114,7 @@ impl View for EditorView {
         self.handle_action(action, queue);
         self.ensure_cursor_visible();
         self.state.dirty = true;
+        self.emit_status_changes(old_mode, old_line, old_col, queue);
         HandleResult::Consumed
     }
 }
@@ -181,6 +188,36 @@ impl EditorView {
             self.editor.viewport_scroll = self.editor.cursor_line;
         } else if self.editor.cursor_line >= self.editor.viewport_scroll + h {
             self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
+        }
+    }
+
+    fn emit_status_changes(
+        &self,
+        old_mode: crate::editor::keymap::EditorMode,
+        old_line: usize,
+        old_col: usize,
+        queue: &mut EventQueue,
+    ) {
+        use crate::commands::{CM_CURSOR_MOVED, CM_MODE_CHANGED};
+        use txv_widgets::CursorPos;
+
+        if self.editor.mode != old_mode {
+            let name = match self.editor.mode {
+                crate::editor::keymap::EditorMode::Normal => "NOR",
+                crate::editor::keymap::EditorMode::Insert => "INS",
+                crate::editor::keymap::EditorMode::Visual
+                | crate::editor::keymap::EditorMode::VisualLine => "VIS",
+                crate::editor::keymap::EditorMode::Command => "CMD",
+                crate::editor::keymap::EditorMode::Search => "CMD",
+            };
+            queue.put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
+        }
+        if self.editor.cursor_line != old_line || self.editor.cursor_col != old_col {
+            let pos = CursorPos {
+                line: (self.editor.cursor_line + 1) as u32,
+                col: (self.editor.cursor_col + 1) as u32,
+            };
+            queue.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
         }
     }
 

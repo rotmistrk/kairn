@@ -2,6 +2,7 @@
 
 use txv_core::prelude::*;
 use txv_core::status::StatusBar;
+use txv_widgets::status_indicators::{ModeItem, PositionItem};
 use txv_widgets::status_items::{ClockItem, CommandItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
@@ -40,8 +41,10 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16) -> S
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN));
     // Command input (exclusive on activation)
-    bar.add(CommandItem::new(&[ALT_X, APPROX]).with_label("M-x").with_completer(completer));
+    bar.add(CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND).with_label("M-x").with_completer(completer));
     // Right side
+    bar.add(PositionItem::new(CM_CURSOR_MOVED));
+    bar.add(ModeItem::new(CM_MODE_CHANGED));
     bar.add_visible_only(MessageItem::new(5));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar
