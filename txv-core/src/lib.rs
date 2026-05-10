@@ -81,7 +81,7 @@ pub mod prelude {
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};
     pub use crate::text::{display_char_width, display_width, visual_positions};
-    pub use crate::view::{EventQueue, HandleResult, View, ViewOptions, ViewState};
+    pub use crate::view::{CloseResult, EventQueue, HandleResult, View, ViewOptions, ViewState};
     pub use crate::window::{FrameStyle, WindowState};
 
     // Re-export macros (they are already at crate root via #[macro_export])

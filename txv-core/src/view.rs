@@ -56,6 +56,15 @@ impl Default for EventQueue {
 }
 
 /// A rectangular UI element.
+/// Result of asking a view if it can be closed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CloseResult {
+    /// Tab can be closed immediately.
+    Ok,
+    /// Tab refuses to close (reason shown in status bar).
+    Denied(String),
+}
+
 pub trait View: Send {
     fn draw(&self, surface: &mut Surface);
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult;
@@ -76,6 +85,10 @@ pub trait View: Send {
         true
     }
     fn mark_redrawn(&mut self) {}
+    /// Called before closing. Return Ok to allow, Denied to prevent.
+    fn can_close(&self) -> CloseResult {
+        CloseResult::Ok
+    }
 }
 
 /// Common view state — embed in every view.

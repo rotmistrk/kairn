@@ -146,21 +146,24 @@ impl SlottedDesktop {
         let rects = self.layout(self.group.view.bounds);
         view.set_bounds(rects[slot as usize]);
         let s = &mut self.slots[slot as usize];
-        // Evict least recently used tab if at capacity
+        // Evict least recently used closeable tab if at capacity
         if s.tabs.len() >= 10 {
-            // Find tab with lowest lru value (excluding active)
             let evict = s
                 .lru
                 .iter()
                 .enumerate()
                 .filter(|(i, _)| *i != s.active)
+                .filter(|(i, _)| s.tabs[*i].1.can_close() == CloseResult::Ok)
                 .min_by_key(|(_, &ts)| ts)
-                .map(|(i, _)| i)
-                .unwrap_or(0);
-            s.tabs.remove(evict);
-            s.lru.remove(evict);
-            if s.active > evict {
-                s.active -= 1;
+                .map(|(i, _)| i);
+            if let Some(idx) = evict {
+                s.tabs.remove(idx);
+                s.lru.remove(idx);
+                if s.active > idx {
+                    s.active -= 1;
+                }
+            } else {
+                return; // All tabs denied close — reject new tab
             }
         }
         self.lru_counter += 1;
