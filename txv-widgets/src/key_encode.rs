@@ -73,21 +73,33 @@ mod tests {
 
     #[test]
     fn enter_is_cr() {
-        let key = KeyEvent { code: KeyCode::Enter, modifiers: KeyMod::default() };
+        let key = KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyMod::default(),
+        };
         assert_eq!(key_to_bytes(&key), Some(vec![b'\r']));
     }
 
     #[test]
     fn backspace_is_del() {
-        let key = KeyEvent { code: KeyCode::Backspace, modifiers: KeyMod::default() };
+        let key = KeyEvent {
+            code: KeyCode::Backspace,
+            modifiers: KeyMod::default(),
+        };
         assert_eq!(key_to_bytes(&key), Some(vec![0x7f]));
     }
 
     #[test]
     fn arrows_encode() {
-        let up = KeyEvent { code: KeyCode::Up, modifiers: KeyMod::default() };
+        let up = KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyMod::default(),
+        };
         assert_eq!(key_to_bytes(&up), Some(vec![0x1b, b'[', b'A']));
-        let down = KeyEvent { code: KeyCode::Down, modifiers: KeyMod::default() };
+        let down = KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyMod::default(),
+        };
         assert_eq!(key_to_bytes(&down), Some(vec![0x1b, b'[', b'B']));
     }
 
@@ -95,14 +107,21 @@ mod tests {
     fn ctrl_c() {
         let key = KeyEvent {
             code: KeyCode::Char('c'),
-            modifiers: KeyMod { ctrl: true, alt: false, shift: false },
+            modifiers: KeyMod {
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
         };
         assert_eq!(key_to_bytes(&key), Some(vec![3]));
     }
 
     #[test]
     fn char_encoding() {
-        let key = KeyEvent { code: KeyCode::Char('a'), modifiers: KeyMod::default() };
+        let key = KeyEvent {
+            code: KeyCode::Char('a'),
+            modifiers: KeyMod::default(),
+        };
         assert_eq!(key_to_bytes(&key), Some(vec![b'a']));
     }
 }

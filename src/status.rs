@@ -5,25 +5,53 @@ use std::path::PathBuf;
 use txv_core::prelude::*;
 use txv_core::status::StatusBar;
 use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
-use txv_widgets::status_items::{ClockItem, CommandItem, KeyLabelItem, MessageItem};
+use txv_widgets::command_item::CommandItem;
+use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
-    modifiers: KeyMod { ctrl: false, alt: true, shift: false },
+    modifiers: KeyMod {
+        ctrl: false,
+        alt: true,
+        shift: false,
+    },
 };
 const APPROX: KeyEvent = KeyEvent {
     code: KeyCode::Char('≈'),
-    modifiers: KeyMod { ctrl: false, alt: false, shift: false },
+    modifiers: KeyMod {
+        ctrl: false,
+        alt: false,
+        shift: false,
+    },
 };
 
-fn key(code: KeyCode) -> KeyEvent { KeyEvent { code, modifiers: KeyMod::default() } }
+fn key(code: KeyCode) -> KeyEvent {
+    KeyEvent {
+        code,
+        modifiers: KeyMod::default(),
+    }
+}
 fn ctrl(ch: char) -> KeyEvent {
-    KeyEvent { code: KeyCode::Char(ch), modifiers: KeyMod { ctrl: true, alt: false, shift: false } }
+    KeyEvent {
+        code: KeyCode::Char(ch),
+        modifiers: KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: false,
+        },
+    }
 }
 fn ctrl_shift(code: KeyCode) -> KeyEvent {
-    KeyEvent { code, modifiers: KeyMod { ctrl: true, alt: false, shift: true } }
+    KeyEvent {
+        code,
+        modifiers: KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
+    }
 }
 
 /// Build the application status bar with all items configured.
@@ -43,7 +71,11 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN));
     // Command input (exclusive on activation)
-    bar.add(CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND).with_label("M-x").with_completer(completer));
+    bar.add(
+        CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
+            .with_label("M-x")
+            .with_completer(completer),
+    );
     // Right side
     bar.add(PositionItem::new(CM_CURSOR_MOVED));
     bar.add(ModeItem::new(CM_MODE_CHANGED));

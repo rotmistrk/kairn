@@ -14,7 +14,6 @@ pub struct CursorPos {
     pub col: u32,
 }
 
-
 // --- ModeItem ---
 
 /// Displays the current editor mode (NOR, INS, VIS, CMD).
@@ -25,7 +24,10 @@ pub struct ModeItem {
 
 impl ModeItem {
     pub fn new(command_id: CommandId) -> Self {
-        Self { command_id, label_text: "NOR".to_string() }
+        Self {
+            command_id,
+            label_text: "NOR".to_string(),
+        }
     }
 }
 
@@ -46,8 +48,12 @@ impl ActiveItem for ModeItem {
 }
 
 impl VisibleItem for ModeItem {
-    fn label(&self) -> &str { &self.label_text }
-    fn gravity(&self) -> Gravity { Gravity::Right }
+    fn label(&self) -> &str {
+        &self.label_text
+    }
+    fn gravity(&self) -> Gravity {
+        Gravity::Right
+    }
 }
 
 // --- PositionItem ---
@@ -60,7 +66,10 @@ pub struct PositionItem {
 
 impl PositionItem {
     pub fn new(command_id: CommandId) -> Self {
-        Self { command_id, label_text: "Ln 1, Col 1".to_string() }
+        Self {
+            command_id,
+            label_text: "Ln 1, Col 1".to_string(),
+        }
     }
 }
 
@@ -81,8 +90,12 @@ impl ActiveItem for PositionItem {
 }
 
 impl VisibleItem for PositionItem {
-    fn label(&self) -> &str { &self.label_text }
-    fn gravity(&self) -> Gravity { Gravity::Right }
+    fn label(&self) -> &str {
+        &self.label_text
+    }
+    fn gravity(&self) -> Gravity {
+        Gravity::Right
+    }
 }
 
 // --- BranchItem ---
@@ -124,8 +137,12 @@ impl BranchItem {
 }
 
 impl VisibleItem for BranchItem {
-    fn label(&self) -> &str { &self.label_text }
-    fn gravity(&self) -> Gravity { Gravity::Right }
+    fn label(&self) -> &str {
+        &self.label_text
+    }
+    fn gravity(&self) -> Gravity {
+        Gravity::Right
+    }
     fn tick(&mut self) {
         if self.last_check.elapsed().as_secs() >= 30 {
             self.refresh();

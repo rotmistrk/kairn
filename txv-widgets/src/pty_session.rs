@@ -16,13 +16,7 @@ pub struct PtySession {
 
 impl PtySession {
     /// Spawn a new PTY process.
-    pub fn spawn(
-        cmd: &str,
-        args: &[&str],
-        cwd: &Path,
-        cols: u16,
-        rows: u16,
-    ) -> std::io::Result<Self> {
+    pub fn spawn(cmd: &str, args: &[&str], cwd: &Path, cols: u16, rows: u16) -> std::io::Result<Self> {
         let pair = Self::open_pty(cols, rows)?;
         Self::spawn_child(&pair, cmd, args, cwd)?;
         let writer = pair
@@ -30,23 +24,27 @@ impl PtySession {
             .take_writer()
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
         let rx = Self::start_reader(&pair.master)?;
-        Ok(Self { writer, rx, master: pair.master })
+        Ok(Self {
+            writer,
+            rx,
+            master: pair.master,
+        })
     }
 
     fn open_pty(cols: u16, rows: u16) -> std::io::Result<portable_pty::PtyPair> {
         let pty_system = native_pty_system();
-        let size = PtySize { rows, cols, pixel_width: 0, pixel_height: 0 };
+        let size = PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
         pty_system
             .openpty(size)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
     }
 
-    fn spawn_child(
-        pair: &portable_pty::PtyPair,
-        cmd: &str,
-        args: &[&str],
-        cwd: &Path,
-    ) -> std::io::Result<()> {
+    fn spawn_child(pair: &portable_pty::PtyPair, cmd: &str, args: &[&str], cwd: &Path) -> std::io::Result<()> {
         let mut cmd_builder = CommandBuilder::new(cmd);
         cmd_builder.args(args);
         cmd_builder.cwd(cwd);
@@ -86,7 +84,11 @@ impl PtySession {
                 Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
             }
         }
-        if data.is_empty() { None } else { Some(data) }
+        if data.is_empty() {
+            None
+        } else {
+            Some(data)
+        }
     }
 
     /// Write bytes to the PTY.
@@ -114,8 +116,7 @@ mod tests {
     #[test]
     fn spawn_echo_hello() {
         let cwd = std::env::current_dir().unwrap_or_else(|_| "/tmp".into());
-        let session = PtySession::spawn("echo", &["hello"], &cwd, 80, 24)
-            .expect("spawn failed");
+        let session = PtySession::spawn("echo", &["hello"], &cwd, 80, 24).expect("spawn failed");
         let deadline = Instant::now() + Duration::from_secs(3);
         let mut output = Vec::new();
         while Instant::now() < deadline {
@@ -134,8 +135,7 @@ mod tests {
     #[test]
     fn resize_does_not_panic() {
         let cwd = std::env::current_dir().unwrap_or_else(|_| "/tmp".into());
-        let session = PtySession::spawn("cat", &[], &cwd, 80, 24)
-            .expect("spawn failed");
+        let session = PtySession::spawn("cat", &[], &cwd, 80, 24).expect("spawn failed");
         session.resize(120, 40);
         session.resize(40, 10);
     }

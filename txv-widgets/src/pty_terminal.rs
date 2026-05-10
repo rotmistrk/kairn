@@ -36,13 +36,7 @@ impl PtyTerminal {
     }
 
     /// Spawn a specific command.
-    pub fn spawn_command(
-        cmd: &str,
-        args: &[&str],
-        cwd: &Path,
-        cols: u16,
-        rows: u16,
-    ) -> std::io::Result<Self> {
+    pub fn spawn_command(cmd: &str, args: &[&str], cwd: &Path, cols: u16, rows: u16) -> std::io::Result<Self> {
         let session = PtySession::spawn(cmd, args, cwd, cols, rows)?;
         Ok(Self {
             state: ViewState::default(),
@@ -55,7 +49,9 @@ impl PtyTerminal {
     }
 
     fn poll_and_feed(&mut self) {
-        let Some(session) = self.session.as_mut() else { return };
+        let Some(session) = self.session.as_mut() else {
+            return;
+        };
         if let Some(data) = session.poll() {
             self.termbuf.process(&data);
             self.state.dirty = true;
@@ -94,7 +90,9 @@ impl View for PtyTerminal {
 
     fn draw(&self, surface: &mut Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 { return; }
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
         self.termbuf.render_at(surface, b.x, b.y, b.w, b.h);
         if self.termbuf.cursor_visible() {
             let (cx, cy) = self.termbuf.cursor();
