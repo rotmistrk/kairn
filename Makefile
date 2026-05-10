@@ -42,8 +42,8 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: install-rusticle install-rusticle-tk install-demos
-	@echo "✅ Installed rusticle, rusticle-tk, and demos to $(LOCAL_PREFIX)"
+install-local: install-rusticle install-rusticle-tk install-kairn install-demos
+	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
 
 install-rusticle: release
 	install -d $(LOCAL_PREFIX)/bin
