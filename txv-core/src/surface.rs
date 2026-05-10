@@ -49,8 +49,9 @@ impl Surface {
             if col >= self.width {
                 break;
             }
+            let cw = display_char_width(ch);
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
     }
 
@@ -61,8 +62,9 @@ impl Surface {
         let end = x.saturating_add(width).min(self.width);
         for ch in text.chars() {
             if col >= end { break; }
+            let cw = display_char_width(ch);
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
         while col < end {
             self.put(col, y, ' ', style);
@@ -161,8 +163,9 @@ impl SubSurface<'_> {
             if col >= self.w {
                 break;
             }
+            let cw = display_char_width(ch);
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
     }
 
@@ -172,8 +175,9 @@ impl SubSurface<'_> {
         let end = x.saturating_add(width).min(self.w);
         for ch in text.chars() {
             if col >= end { break; }
+            let cw = display_char_width(ch);
             self.put(col, y, ch, style);
-            col = col.saturating_add(1);
+            col = col.saturating_add(cw);
         }
         while col < end {
             self.put(col, y, ' ', style);

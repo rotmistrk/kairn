@@ -79,20 +79,29 @@ impl Backend for CrosstermBackend {
         let mut last_style: Option<Style> = None;
 
         for y in 0..h {
-            let mut run_start: Option<u16> = None;
+            let mut cursor_x: Option<u16> = None;
 
-            for x in 0..w {
+            let mut x = 0u16;
+            while x < w {
                 let cell = surface.cell(x, y);
+
+                // Skip continuation cells (second half of wide char)
+                if cell.width == 0 {
+                    x += 1;
+                    continue;
+                }
 
                 if !self.force_full {
                     let prev = self.previous.cell(x, y);
-                    if cell.ch == prev.ch && cell.style == prev.style {
+                    if cell.ch == prev.ch && cell.style == prev.style && cell.width == prev.width {
+                        x += cell.width.max(1) as u16;
+                        cursor_x = None; // cursor position unknown after skip
                         continue;
                     }
                 }
 
                 // Need to emit this cell
-                if run_start.is_none() || run_start != Some(x) {
+                if cursor_x != Some(x) {
                     queue!(out, cursor::MoveTo(x, y)).ok();
                 }
 
@@ -103,7 +112,10 @@ impl Backend for CrosstermBackend {
                 }
 
                 queue!(out, style::Print(cell.ch)).ok();
-                run_start = Some(x + 1);
+                // Cursor advances by display width of the character
+                let advance = cell.width.max(1) as u16;
+                cursor_x = Some(x + advance);
+                x += advance;
             }
         }
 

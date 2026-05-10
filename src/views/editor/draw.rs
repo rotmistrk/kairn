@@ -1,6 +1,7 @@
 //! EditorView draw implementation.
 
 use txv_core::prelude::*;
+use txv_core::surface::display_char_width;
 use super::EditorView;
 
 impl EditorView {
@@ -64,7 +65,7 @@ impl EditorView {
                             } else {
                                 surface.put(x, vy, ' ', st);
                             }
-                            col_offset += 1;
+                            col_offset += display_char_width(ch) as usize;
                         }
                         char_idx += 1;
                         byte_pos += ch.len_utf8();
@@ -114,7 +115,7 @@ impl EditorView {
 
                     let vy = b.y + visual_row as u16;
                     surface.put(x, vy, display_ch, display_style);
-                    col_offset += 1;
+                    col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
                 }
