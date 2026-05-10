@@ -28,8 +28,14 @@ if [ -n "$VIOLATIONS" ]; then
     exit 1
 fi
 
-# 4. Tests pass
+# 4. Tests pass (--no-fail-fast ensures ALL binaries run; exit code catches compile errors too)
 echo "  tests..."
-cargo test --workspace 2>&1 | grep -q "FAILED" && { echo "❌ Tests failed"; exit 1; } || true
+TEST_OUTPUT=$(cargo test --workspace --no-fail-fast 2>&1)
+TEST_EXIT=$?
+if [ $TEST_EXIT -ne 0 ]; then
+    echo "$TEST_OUTPUT" | grep -E "^error|FAILED" | head -10
+    echo "❌ Tests failed (exit code $TEST_EXIT)"
+    exit 1
+fi
 
 echo "✅ All checks passed"
