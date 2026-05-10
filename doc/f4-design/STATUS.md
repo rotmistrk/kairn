@@ -118,3 +118,34 @@ Commit. Do NOT ask questions.
 - No manual-only verification
 - Agent can do the implementation cycle autonomously
 - User only does "feels right" testing
+
+### 240 CODE Lines Per File Rule
+
+**Reason:** Keep cognitive load low. Each file should do ONE thing well. When you
+can read the entire file without scrolling much, you understand it fully. This
+also keeps context small for AI agents working on the code.
+
+**What counts:** Only lines with actual code. Blank lines, comment-only lines
+(`//`, `//!`, `///`, `/* */`, `*`) do NOT count. The pre-commit hook enforces this.
+
+**SOP when a file exceeds 240 code lines:**
+
+```
+DO NOT:
+- Collapse code (shorter variable names, cramming logic onto one line)
+- Remove comments or documentation
+- Use macros just to reduce line count
+
+DO:
+- Split the file CONCEPTUALLY into two or more files
+- Each new file should have a clear, nameable responsibility
+- Use mod.rs to re-export if needed for API stability
+
+Examples:
+- editor/mod.rs too long → split into editor/movement.rs, editor/editing.rs
+- status_items.rs too long → split into status_items/key_label.rs, status_items/clock.rs
+- desktop/mod.rs too long → split into desktop/tabs.rs, desktop/layout.rs, desktop/chrome.rs
+```
+
+**The test:** If you can't name the new file with a clear noun or verb phrase
+that describes its single responsibility, you're splitting wrong.
