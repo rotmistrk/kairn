@@ -7,9 +7,9 @@ use std::thread;
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 
-/// A running PTY session with background reader thread.
+/// A running PTY session with background reader and writer threads.
 pub struct PtySession {
-    writer: Box<dyn Write + Send>,
+    write_tx: mpsc::Sender<Vec<u8>>,
     rx: Receiver<Vec<u8>>,
     master: Box<dyn MasterPty + Send>,
 }
@@ -24,8 +24,9 @@ impl PtySession {
             .take_writer()
             .map_err(|e| std::io::Error::other(e.to_string()))?;
         let rx = Self::start_reader(&pair.master)?;
+        let write_tx = Self::start_writer(writer);
         Ok(Self {
-            writer,
+            write_tx,
             rx,
             master: pair.master,
         })
@@ -101,10 +102,22 @@ impl PtySession {
         }
     }
 
-    /// Write bytes to the PTY.
-    pub fn write(&mut self, data: &[u8]) {
-        let _ = self.writer.write_all(data);
-        let _ = self.writer.flush();
+    /// Write bytes to the PTY (non-blocking — queued to background thread).
+    pub fn write(&self, data: &[u8]) {
+        let _ = self.write_tx.send(data.to_vec());
+    }
+
+    fn start_writer(mut writer: Box<dyn Write + Send>) -> mpsc::Sender<Vec<u8>> {
+        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        thread::spawn(move || {
+            while let Ok(data) = rx.recv() {
+                if writer.write_all(&data).is_err() {
+                    break;
+                }
+                let _ = writer.flush();
+            }
+        });
+        tx
     }
 
     /// Resize the PTY.
