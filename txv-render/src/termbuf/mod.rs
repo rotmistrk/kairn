@@ -1,5 +1,6 @@
 //! TermBuf — VTE-driven virtual terminal emulator that renders to a Surface.
 
+mod vte_actions;
 mod vte_handler;
 
 use txv_core::cell::Style;
@@ -33,7 +34,11 @@ pub(super) struct TCell {
 
 impl Default for TCell {
     fn default() -> Self {
-        Self { ch: ' ', style: Style::default(), width: 1 }
+        Self {
+            ch: ' ',
+            style: Style::default(),
+            width: 1,
+        }
     }
 }
 
@@ -41,11 +46,16 @@ impl TermBuf {
     pub fn new(cols: u16, rows: u16) -> Self {
         let cells = vec![vec![TCell::default(); cols as usize]; rows as usize];
         Self {
-            cols, rows, cells,
-            cursor_x: 0, cursor_y: 0, cursor_visible: true,
+            cols,
+            rows,
+            cells,
+            cursor_x: 0,
+            cursor_y: 0,
+            cursor_visible: true,
             style: Style::default(),
             saved_cursor: (0, 0),
-            scroll_top: 0, scroll_bottom: rows.saturating_sub(1),
+            scroll_top: 0,
+            scroll_bottom: rows.saturating_sub(1),
             parser: vte::Parser::new(),
             responses: Vec::new(),
         }
@@ -55,13 +65,16 @@ impl TermBuf {
     pub fn process(&mut self, bytes: &[u8]) {
         for &byte in bytes {
             let mut performer = Performer {
-                cols: self.cols, rows: self.rows,
+                cols: self.cols,
+                rows: self.rows,
                 cells: &mut self.cells,
-                cursor_x: &mut self.cursor_x, cursor_y: &mut self.cursor_y,
+                cursor_x: &mut self.cursor_x,
+                cursor_y: &mut self.cursor_y,
                 cursor_visible: &mut self.cursor_visible,
                 style: &mut self.style,
                 saved_cursor: &mut self.saved_cursor,
-                scroll_top: &mut self.scroll_top, scroll_bottom: &mut self.scroll_bottom,
+                scroll_top: &mut self.scroll_top,
+                scroll_bottom: &mut self.scroll_bottom,
                 responses: &mut self.responses,
             };
             self.parser.advance(&mut performer, byte);
@@ -115,8 +128,12 @@ impl TermBuf {
         }
     }
 
-    pub fn cursor(&self) -> (u16, u16) { (self.cursor_x, self.cursor_y) }
-    pub fn cursor_visible(&self) -> bool { self.cursor_visible }
+    pub fn cursor(&self) -> (u16, u16) {
+        (self.cursor_x, self.cursor_y)
+    }
+    pub fn cursor_visible(&self) -> bool {
+        self.cursor_visible
+    }
 }
 
 #[cfg(test)]

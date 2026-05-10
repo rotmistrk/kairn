@@ -6,6 +6,7 @@
 
 pub mod backend;
 pub mod color;
+mod event_translate;
 pub mod termbuf;
 pub mod text;
 
