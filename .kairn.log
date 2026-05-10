@@ -1,13 +1,27 @@
-[2026-05-10T11:53:57Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
-[2026-05-10T11:53:57Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
-[2026-05-10T11:53:57Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
-[2026-05-10T11:53:57Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.git: Ignore(IgnoreMatch(Hidden))
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.gitignore: Ignore(IgnoreMatch(Hidden))
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.idea: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".idea/", actual: "**/.idea", is_whitelist: false, is_only_dir: true })))
-[2026-05-10T11:53:57Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.idea/.gitignore
-[2026-05-10T11:53:57Z DEBUG globset] built glob set; 6 literals, 0 basenames, 0 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 0 regexes
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.log: Ignore(IgnoreMatch(Hidden))
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.state: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".kairn.state", actual: "**/.kairn.state", is_whitelist: false, is_only_dir: false })))
-[2026-05-10T11:53:57Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/target: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: "/target", actual: "target", is_whitelist: false, is_only_dir: false })))
-[2026-05-10T11:54:00Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T12:00:50Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
+[2026-05-10T12:00:50Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
+[2026-05-10T12:00:50Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
+[2026-05-10T12:00:50Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.git: Ignore(IgnoreMatch(Hidden))
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.gitignore: Ignore(IgnoreMatch(Hidden))
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.idea: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".idea/", actual: "**/.idea", is_whitelist: false, is_only_dir: true })))
+[2026-05-10T12:00:50Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.idea/.gitignore
+[2026-05-10T12:00:50Z DEBUG globset] built glob set; 6 literals, 0 basenames, 0 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 0 regexes
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.log: Ignore(IgnoreMatch(Hidden))
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/.kairn.state: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: ".kairn.state", actual: "**/.kairn.state", is_whitelist: false, is_only_dir: false })))
+[2026-05-10T12:00:50Z DEBUG ignore::walk] ignoring /Users/rotmistr/workplace/kairn/target: Ignore(IgnoreMatch(Gitignore(Glob { from: Some("/Users/rotmistr/workplace/kairn/.gitignore"), original: "/target", actual: "target", is_whitelist: false, is_only_dir: false })))
+[2026-05-10T12:00:53Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T12:01:22Z DEBUG txv_core::program] Program: command 117
+[2026-05-10T12:01:38Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:39Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:41Z DEBUG txv_core::program] Program: command 3
+[2026-05-10T12:01:41Z DEBUG txv_core::program] Program: command 3
+[2026-05-10T12:01:42Z DEBUG txv_core::program] Program: command 3
+[2026-05-10T12:01:44Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:46Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T12:01:49Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:50Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:52Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T12:01:54Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T12:01:56Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T12:01:58Z DEBUG txv_core::program] Program: command 3

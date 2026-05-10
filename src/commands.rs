@@ -9,6 +9,7 @@ pub const CM_SAVE: CommandId = 101;
 pub const CM_NEW_SHELL: CommandId = 102;
 pub const CM_NEW_KIRO: CommandId = 103;
 pub const CM_FILE_DELETED: CommandId = 104;
+pub const CM_FILE_CLOSED: CommandId = 105;
 
 // Focus / slot navigation
 pub const CM_FOCUS_LEFT: CommandId = 110;

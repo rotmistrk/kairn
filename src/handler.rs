@@ -51,6 +51,14 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
             }
         }
+        CM_FILE_CLOSED => {
+            if let Some(boxed) = ctx.data.as_ref() {
+                if let Some(title) = boxed.downcast_ref::<String>() {
+                    let full_path = state.root_dir.join(title).to_string_lossy().to_string();
+                    state.broker.close(&full_path);
+                }
+            }
+        }
         CM_SHELL_OUTPUT => handle_shell_output(ctx),
         _ => {
             log::debug!("Unhandled command: {}", ctx.command);

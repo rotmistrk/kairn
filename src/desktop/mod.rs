@@ -126,6 +126,11 @@ impl SlottedDesktop {
         false
     }
 
+    pub fn active_tab_title(&self, slot: SlotId) -> Option<&str> {
+        let s = &self.slots[slot as usize];
+        s.tabs.get(s.active).map(|(t, _)| t.as_str())
+    }
+
     pub fn tab_count(&self, slot: SlotId) -> usize { self.slots[slot as usize].tabs.len() }
 
     pub fn focused_slot(&self) -> SlotId { self.focused }
@@ -155,7 +160,7 @@ impl SlottedDesktop {
         self.focus_slot(visible[next]);
     }
 
-    fn handle_command(&mut self, id: CommandId, _queue: &mut EventQueue) -> HandleResult {
+    fn handle_command(&mut self, id: CommandId, queue: &mut EventQueue) -> HandleResult {
         match id {
             CM_FOCUS_LEFT => { self.focus_slot(SlotId::Left); HandleResult::Consumed }
             CM_FOCUS_CENTER => { self.focus_slot(SlotId::Center); HandleResult::Consumed }
@@ -185,9 +190,11 @@ impl SlottedDesktop {
             CM_TAB_CLOSE => {
                 let s = &mut self.slots[self.focused as usize];
                 if !s.tabs.is_empty() {
+                    let title = s.tabs[s.active].0.clone();
                     s.tabs.remove(s.active);
                     if s.active >= s.tabs.len() && s.active > 0 { s.active -= 1; }
                     self.group.view.dirty = true;
+                    queue.put_command(CM_FILE_CLOSED, Some(Box::new(title)));
                 }
                 HandleResult::Consumed
             }
