@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use txv_core::prelude::*;
 use txv_core::status::StatusBar;
-use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
 use txv_widgets::command_item::CommandItem;
+use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;

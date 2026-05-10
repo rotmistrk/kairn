@@ -3,6 +3,7 @@
 //! Concrete View implementations — ready-to-use interactive TUI components.
 //! Depends only on txv-core (plus `ignore` for filesystem widgets).
 
+pub mod command_item;
 pub mod dialog;
 pub mod file_list;
 pub mod file_tree;
@@ -21,12 +22,12 @@ pub mod split_pane;
 pub mod status_bar;
 pub mod status_indicators;
 pub mod status_items;
-pub mod command_item;
 pub mod tab_bar;
 pub mod table;
 pub mod text_area;
 pub mod tree_view;
 
+pub use command_item::CommandItem;
 pub use dialog::Dialog;
 pub use file_list::FileListData;
 pub use file_tree::FileTreeData;
@@ -42,7 +43,6 @@ pub use scrollbar::Scrollbar;
 pub use split_pane::{SplitDirection, SplitPane};
 pub use status_bar::{StatusBar, StatusItem};
 pub use status_indicators::{BranchItem, CursorPos, ModeItem, PositionItem};
-pub use command_item::CommandItem;
 pub use status_items::{ClockItem, KeyLabelItem, MessageItem, CM_STATUS_MESSAGE};
 pub use tab_bar::{Tab, TabBar};
 pub use table::{Column, Table};

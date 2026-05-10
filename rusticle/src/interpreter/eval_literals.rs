@@ -3,8 +3,8 @@
 use crate::error::TclError;
 use crate::value::TclValue;
 
-use super::Interpreter;
 use super::subst::substitute;
+use super::Interpreter;
 
 /// Evaluate a `%{ ... }` dict literal.
 pub fn eval_dict_literal(interp: &mut Interpreter, content: &str) -> Result<TclValue, TclError> {

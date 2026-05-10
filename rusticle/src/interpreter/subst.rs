@@ -1,5 +1,7 @@
 //! Variable and command substitution.
-use super::subst_access::{apply_index, apply_property, is_var_char, lookup_var, subst_command, try_parse_value, unescape_char};
+use super::subst_access::{
+    apply_index, apply_property, is_var_char, lookup_var, subst_command, try_parse_value, unescape_char,
+};
 
 use crate::error::TclError;
 use crate::value::TclValue;
@@ -130,4 +132,3 @@ pub(super) fn subst_variable(
     }
     Ok((val, i))
 }
-

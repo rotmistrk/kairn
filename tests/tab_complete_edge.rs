@@ -26,10 +26,7 @@ fn tab_no_match_does_nothing() {
 
 #[test]
 fn tab_multiple_matches_does_not_complete() {
-    let dir = temp_project(&[
-        ("main.rs", "fn main(){}"),
-        ("mod.rs", "mod x;"),
-    ]);
+    let dir = temp_project(&[("main.rs", "fn main(){}"), ("mod.rs", "mod x;")]);
     let mut h = TestHarness::new(dir.path());
     open_file_and_focus(&mut h);
     h.run_cycles(1);

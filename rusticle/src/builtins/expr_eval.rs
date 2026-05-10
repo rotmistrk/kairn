@@ -1,7 +1,7 @@
 //! Expression parser: tokenization and recursive-descent evaluation.
 
-use crate::error::TclError;
 use super::expr_ops::{eval_arithmetic, eval_comparison};
+use crate::error::TclError;
 use crate::value::TclValue;
 
 /// Evaluate an expression string.
@@ -270,4 +270,3 @@ fn parse_primary(tokens: &[Token], pos: &mut usize) -> Result<TclValue, TclError
         _ => Err(TclError::new("unexpected token in expression")),
     }
 }
-

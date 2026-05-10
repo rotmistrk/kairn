@@ -18,8 +18,16 @@ impl PieceTable {
                 } else if local == p.len {
                     self.pieces.insert(i + 1, new_piece);
                 } else {
-                    let left = Piece { source: p.source, start: p.start, len: local };
-                    let right = Piece { source: p.source, start: p.start + local, len: p.len - local };
+                    let left = Piece {
+                        source: p.source,
+                        start: p.start,
+                        len: local,
+                    };
+                    let right = Piece {
+                        source: p.source,
+                        start: p.start + local,
+                        len: p.len - local,
+                    };
                     self.pieces.splice(i..=i, [left, new_piece, right]);
                 }
                 return;
@@ -42,11 +50,19 @@ impl PieceTable {
             } else {
                 if p_start < start {
                     let keep = start - p_start;
-                    new_pieces.push(Piece { source: p.source, start: p.start, len: keep });
+                    new_pieces.push(Piece {
+                        source: p.source,
+                        start: p.start,
+                        len: keep,
+                    });
                 }
                 if p_end > end {
                     let skip = end - p_start;
-                    new_pieces.push(Piece { source: p.source, start: p.start + skip, len: p.len - skip });
+                    new_pieces.push(Piece {
+                        source: p.source,
+                        start: p.start + skip,
+                        len: p.len - skip,
+                    });
                 }
             }
         }

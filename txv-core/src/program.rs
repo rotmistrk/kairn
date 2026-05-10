@@ -37,7 +37,7 @@ use crate::geometry::Rect;
 use crate::group::GroupState;
 use crate::run::Backend;
 use crate::surface::Surface;
-use crate::view::{EventQueue, HandleResult, View, ViewOptions, ViewState};
+use crate::view::{EventQueue, HandleResult, View, ViewOptions};
 
 /// Context passed to the command handler.
 pub struct CommandContext<'a> {
@@ -105,8 +105,16 @@ impl Program {
                 for child in &mut self.group.children {
                     child.mark_redrawn();
                 }
-                // DEBUG: log cells at row 11, cols 10-15 to catch stale $ 
-                for cx in 10..16 { log::trace!("cell({},{})=({:?}, fg={:?})", cx, 11, surface.cell(cx, 11).ch, surface.cell(cx, 11).style.fg); }
+                // DEBUG: log cells at row 11, cols 10-15 to catch stale $
+                for cx in 10..16 {
+                    log::trace!(
+                        "cell({},{})=({:?}, fg={:?})",
+                        cx,
+                        11,
+                        surface.cell(cx, 11).ch,
+                        surface.cell(cx, 11).style.fg
+                    );
+                }
                 backend.flush(&surface);
             }
 

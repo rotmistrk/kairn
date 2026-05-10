@@ -123,9 +123,14 @@ fn cursor_visible_on_tab_in_nolist_mode() {
                 break;
             }
         }
-        if cursor_x.is_some() { break; }
+        if cursor_x.is_some() {
+            break;
+        }
     }
-    assert!(cursor_x.is_some(), "cursor must be visible on tab character in nolist mode");
+    assert!(
+        cursor_x.is_some(),
+        "cursor must be visible on tab character in nolist mode"
+    );
 
     // Cursor should be at the first text column (after gutter).
     // Gutter for a 1-line file is ~2-3 chars ("1 "). Cursor should be right after.
@@ -177,7 +182,9 @@ fn tab_expands_to_spaces_in_nolist_mode() {
                 }
             }
         }
-        if hello_x.is_some() { break; }
+        if hello_x.is_some() {
+            break;
+        }
     }
     assert!(hello_x.is_some(), "hello must be found on screen");
     // hello should be offset by tab_width (4) from text start

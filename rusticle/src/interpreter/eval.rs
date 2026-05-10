@@ -5,8 +5,8 @@ use crate::parser::Parser;
 use crate::parser::Word;
 use crate::value::TclValue;
 
-use super::{Interpreter, Proc};
 use super::eval_literals::{eval_dict_literal, eval_list_literal};
+use super::{Interpreter, Proc};
 
 pub use super::subst::substitute;
 

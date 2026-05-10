@@ -14,6 +14,12 @@ pub enum MsgLevel {
     Error,
 }
 
+impl Default for MessagesView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MessagesView {
     pub fn new() -> Self {
         Self {
@@ -36,11 +42,15 @@ impl MessagesView {
 impl View for MessagesView {
     delegate_view_state!(state, override { title });
 
-    fn title(&self) -> &str { "Messages" }
+    fn title(&self) -> &str {
+        "Messages"
+    }
 
     fn draw(&self, surface: &mut Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 { return; }
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
         let rows = b.h as usize;
         let start = if self.messages.len() > rows + self.scroll {
             self.messages.len() - rows - self.scroll
@@ -52,7 +62,10 @@ impl View for MessagesView {
             if let Some((msg, level)) = self.messages.get(start + row) {
                 let style = match level {
                     MsgLevel::Info => Style::default(),
-                    MsgLevel::Error => Style { fg: Color::Ansi(9), ..Style::default() },
+                    MsgLevel::Error => Style {
+                        fg: Color::Ansi(9),
+                        ..Style::default()
+                    },
                 };
                 surface.print_line(b.x, y, msg, b.w, style);
             } else {
@@ -65,12 +78,16 @@ impl View for MessagesView {
         if let Event::Key(key) = event {
             match key.code {
                 KeyCode::Up => {
-                    if self.scroll < self.messages.len() { self.scroll += 1; }
+                    if self.scroll < self.messages.len() {
+                        self.scroll += 1;
+                    }
                     self.state.dirty = true;
                     return HandleResult::Consumed;
                 }
                 KeyCode::Down => {
-                    if self.scroll > 0 { self.scroll -= 1; }
+                    if self.scroll > 0 {
+                        self.scroll -= 1;
+                    }
                     self.state.dirty = true;
                     return HandleResult::Consumed;
                 }

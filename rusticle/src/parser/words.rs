@@ -184,4 +184,3 @@ fn parse_bare(chars: &[char], pos: &mut usize, _line: &mut usize) -> Result<Word
     }
     Ok(Word::Bare(content))
 }
-

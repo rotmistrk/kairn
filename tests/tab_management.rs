@@ -25,5 +25,9 @@ fn tab_bar_shows_all_tabs() {
     let tab_bar = h.row(0);
     // New format: shows active tab + count
     assert!(tab_bar.contains("b.rs"), "active tab shown: {}", tab_bar);
-    assert!(tab_bar.contains("❨2❩") || tab_bar.contains("2"), "tab count shown: {}", tab_bar);
+    assert!(
+        tab_bar.contains("❨2❩") || tab_bar.contains("2"),
+        "tab count shown: {}",
+        tab_bar
+    );
 }

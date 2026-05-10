@@ -164,4 +164,3 @@ fn eval_condition(interp: &mut Interpreter, cond: &str) -> Result<bool, TclError
     let result = interp.eval(&format!("expr {{{cond}}}"))?;
     result.as_bool()
 }
-

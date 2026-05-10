@@ -113,8 +113,6 @@ fn clock_appears_in_status_bar() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     let screen = h.screen_text();
-    let has_time = regex::Regex::new(r"\d\d:\d\d")
-        .unwrap()
-        .is_match(&screen);
+    let has_time = regex::Regex::new(r"\d\d:\d\d").unwrap().is_match(&screen);
     assert!(has_time, "status bar should contain a time pattern (HH:MM)");
 }

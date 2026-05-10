@@ -4,8 +4,6 @@ use std::time::Instant;
 use txv_core::prelude::*;
 use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 
-/// Command ID used by CommandItem to emit executed commands.
-
 /// Command ID for setting status message externally.
 pub const CM_STATUS_MESSAGE: CommandId = 140;
 

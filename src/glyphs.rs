@@ -11,8 +11,8 @@ pub struct Glyphs {
 
 /// Nerd Font / Powerline glyphs (default).
 pub const NERD: Glyphs = Glyphs {
-    tab_left: "\u{E0B6}",  // 
-    tab_right: "\u{E0B4}", // 
+    tab_left: "\u{E0B6}",  //
+    tab_right: "\u{E0B4}", //
     dropdown_arrow: "▾",
     badge_left: "\u{E0B6}",
     badge_right: "\u{E0B4}",

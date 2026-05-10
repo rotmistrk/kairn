@@ -1,7 +1,7 @@
 //! VTE Perform trait implementation — dispatches terminal escape sequences.
 
-use super::TCell;
 use super::vte_handler::Performer;
+use super::TCell;
 
 impl vte::Perform for Performer<'_> {
     fn print(&mut self, c: char) {

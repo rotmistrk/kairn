@@ -158,7 +158,6 @@ fn cmd_split(_interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, T
     Ok(TclValue::List(parts))
 }
 
-
 pub(super) fn resolve_index(idx: i64, len: usize) -> usize {
     if idx < 0 {
         let adjusted = len as i64 + idx;

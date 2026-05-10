@@ -199,4 +199,3 @@ fn check_record(value: &TclValue, fields: &[(String, TypeDecl)]) -> Result<(), T
     }
     Ok(())
 }
-

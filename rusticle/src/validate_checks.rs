@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::parser::{Command, Parser};
 
-use crate::validate::{Diagnostic, Severity, ValidationContext, ValidationResult};
+use crate::validate::{ValidationContext, ValidationResult};
 
 pub(crate) fn validate_commands(commands: &[Command], ctx: &mut ValidationContext, result: &mut ValidationResult) {
     let mut after_return = false;

@@ -1,8 +1,8 @@
 //! Variable property and index access for substitution.
 
 use crate::error::TclError;
-use crate::interpreter::Interpreter;
 use crate::interpreter::subst::substitute;
+use crate::interpreter::Interpreter;
 use crate::value::TclValue;
 
 pub(super) fn lookup_var(interp: &Interpreter, name: &str) -> Result<TclValue, TclError> {

@@ -12,10 +12,7 @@ fn open_file_and_focus(h: &mut TestHarness) {
 
 #[test]
 fn colon_e_subdirectory_file() {
-    let dir = temp_project(&[
-        ("start.txt", "starter"),
-        ("sub/deep.txt", "DEEP_CONTENT"),
-    ]);
+    let dir = temp_project(&[("start.txt", "starter"), ("sub/deep.txt", "DEEP_CONTENT")]);
     let mut h = TestHarness::new(dir.path());
     // First open start.txt: navigate tree past sub/ dir to start.txt
     // Tree order: sub/ (dir first), start.txt

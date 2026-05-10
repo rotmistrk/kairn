@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::mpsc::{self, Receiver, TryRecvError};
+use std::sync::mpsc::{self, Receiver};
 use std::thread;
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
@@ -22,7 +22,7 @@ impl PtySession {
         let writer = pair
             .master
             .take_writer()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         let rx = Self::start_reader(&pair.master)?;
         Ok(Self {
             writer,
@@ -41,7 +41,7 @@ impl PtySession {
         };
         pty_system
             .openpty(size)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| std::io::Error::other(e.to_string()))
     }
 
     fn spawn_child(pair: &portable_pty::PtyPair, cmd: &str, args: &[&str], cwd: &Path) -> std::io::Result<()> {
@@ -50,14 +50,15 @@ impl PtySession {
         cmd_builder.cwd(cwd);
         pair.slave
             .spawn_command(cmd_builder)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         Ok(())
     }
 
+    #[allow(clippy::borrowed_box)]
     fn start_reader(master: &Box<dyn MasterPty + Send>) -> std::io::Result<Receiver<Vec<u8>>> {
         let mut reader = master
             .try_clone_reader()
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let mut buf = [0u8; 4096];
@@ -78,11 +79,8 @@ impl PtySession {
     /// Poll for available output. Returns combined bytes or None.
     pub fn poll(&self) -> Option<Vec<u8>> {
         let mut data = Vec::new();
-        loop {
-            match self.rx.try_recv() {
-                Ok(chunk) => data.extend(chunk),
-                Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
-            }
+        while let Ok(chunk) = self.rx.try_recv() {
+            data.extend(chunk);
         }
         if data.is_empty() {
             None

@@ -220,4 +220,3 @@ fn glob_match_impl(p: &[char], pi: usize, t: &[char], ti: usize) -> bool {
     }
     false
 }
-

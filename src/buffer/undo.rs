@@ -5,7 +5,7 @@ use super::piece_table::Piece;
 /// A snapshot of buffer state for undo.
 #[derive(Clone)]
 pub struct EditRecord {
-    pub pieces: Vec<Piece>,
+    pub(super) pieces: Vec<Piece>,
     pub line_starts: Vec<usize>,
 }
 

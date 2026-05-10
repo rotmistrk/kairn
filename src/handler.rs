@@ -80,11 +80,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 if desktop.tab_count(SlotId::Center) == 0 {
-                    desktop.insert_tab(
-                        SlotId::Center,
-                        "Welcome",
-                        Box::new(WelcomeView::new()),
-                    );
+                    desktop.insert_tab(SlotId::Center, "Welcome", Box::new(WelcomeView::new()));
                 }
             }
         }
@@ -117,10 +113,11 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.close_tab_by_title(SlotId::Center, "Welcome");
                 let defaults = &state.settings.editor_defaults;
-                let mut editor = EditorView::open(path, defaults)
-                    .unwrap_or_else(|_| EditorView::new_file(path, defaults));
+                let mut editor =
+                    EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
                 editor.set_root_dir(state.root_dir.clone());
-                let title = path.strip_prefix(&state.root_dir)
+                let title = path
+                    .strip_prefix(&state.root_dir)
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
@@ -134,8 +131,12 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
 }
 
 fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else { return; };
-    let Some(text) = boxed.downcast_ref::<String>() else { return; };
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(text) = boxed.downcast_ref::<String>() else {
+        return;
+    };
     log::debug!("execute_command: {:?}", text);
 
     let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
@@ -169,11 +170,14 @@ fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
             let defaults = &state.settings.editor_defaults;
-            let mut editor = EditorView::open(&path, defaults)
-                .unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+            let mut editor =
+                EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
             editor.set_root_dir(state.root_dir.clone());
-            let title = path.strip_prefix(&state.root_dir)
-                .unwrap_or(&path).to_string_lossy().to_string();
+            let title = path
+                .strip_prefix(&state.root_dir)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
             if let Some(d) = downcast_desktop(desktop) {
                 d.insert_tab(SlotId::Center, title, Box::new(editor));
             }
@@ -182,8 +186,12 @@ fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
 }
 
 fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else { return; };
-    let Some(opt) = boxed.downcast_ref::<String>() else { return; };
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(opt) = boxed.downcast_ref::<String>() else {
+        return;
+    };
     let defaults = &mut state.settings.editor_defaults;
     match opt.as_str() {
         "wrap" => defaults.wrap = true,
@@ -204,8 +212,12 @@ pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut SlottedDesktop> {
 }
 
 fn handle_shell_output(ctx: &mut CommandContext) {
-    let Some(boxed) = ctx.data.as_ref() else { return; };
-    let Some(output) = boxed.downcast_ref::<String>() else { return; };
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(output) = boxed.downcast_ref::<String>() else {
+        return;
+    };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = EditorView::from_text(output);
         desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));

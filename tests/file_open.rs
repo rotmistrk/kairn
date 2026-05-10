@@ -48,5 +48,9 @@ fn multiple_files_create_multiple_tabs() {
     let tab_bar = h.row(0);
     // New format: shows active tab + count "b.rs (2)"
     assert!(tab_bar.contains("b.rs"), "active tab should be shown: {}", tab_bar);
-    assert!(tab_bar.contains("❨2❩") || tab_bar.contains("2"), "tab count should be shown: {}", tab_bar);
+    assert!(
+        tab_bar.contains("❨2❩") || tab_bar.contains("2"),
+        "tab count should be shown: {}",
+        tab_bar
+    );
 }

@@ -64,7 +64,10 @@ fn welcome_view_closed_after_opening_file() {
     h.run_cycles(1);
     // Welcome tab should be gone
     let tab_bar = h.row(0);
-    assert!(!tab_bar.contains("Welcome"), "Welcome tab should be closed after opening file");
+    assert!(
+        !tab_bar.contains("Welcome"),
+        "Welcome tab should be closed after opening file"
+    );
 }
 
 // ─── Feature 3: Layout auto-detect (Wide vs Tall) ──────────────────────────
@@ -129,7 +132,11 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
     // Now c.rs is active. Ctrl-Shift-Down opens dropdown, press '1' for b.rs
     h.inject_key(
         KeyCode::Down,
-        KeyMod { ctrl: true, alt: false, shift: true },
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
     );
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('1'), KeyMod::default());
@@ -154,7 +161,11 @@ fn ctrl_shift_down_twice_cycles_further_back() {
     // Open dropdown and press '0' to select a.rs directly
     h.inject_key(
         KeyCode::Down,
-        KeyMod { ctrl: true, alt: false, shift: true },
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
     );
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('0'), KeyMod::default());

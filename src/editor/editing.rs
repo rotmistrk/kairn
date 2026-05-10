@@ -240,5 +240,4 @@ impl Editor {
             self.buffer.insert(offset, &ch.to_string());
         }
     }
-
 }

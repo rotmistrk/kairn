@@ -1,7 +1,7 @@
 //! Status bar indicator items: ModeItem, PositionItem, BranchItem.
 //! These are passive display items that react to commands from the editor.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use txv_core::prelude::*;
@@ -123,7 +123,7 @@ impl BranchItem {
         self.last_check = Instant::now();
     }
 
-    fn read_branch(root: &PathBuf) -> Option<String> {
+    fn read_branch(root: &Path) -> Option<String> {
         let head = std::fs::read_to_string(root.join(".git/HEAD")).ok()?;
         let head = head.trim();
         if let Some(r) = head.strip_prefix("ref: refs/heads/") {

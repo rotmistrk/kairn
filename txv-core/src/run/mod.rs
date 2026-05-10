@@ -37,7 +37,9 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
         }
 
         if let Some(event) = backend.poll_event(Duration::from_millis(50)) {
-            if let Event::Resize(nw, nh) = &event { surface = Surface::new(*nw, *nh); }
+            if let Event::Resize(nw, nh) = &event {
+                surface = Surface::new(*nw, *nh);
+            }
             root.handle(&event, &mut queue);
         } else {
             root.handle(&Event::Tick, &mut queue);
@@ -46,7 +48,10 @@ pub fn run(root: &mut dyn View, backend: &mut dyn Backend) {
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, .. } = &ev {
-                if *id == CM_QUIT { backend.leave(); return; }
+                if *id == CM_QUIT {
+                    backend.leave();
+                    return;
+                }
             }
             root.handle(&ev, &mut queue);
         }
@@ -65,8 +70,12 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
         backend.flush(&surface);
 
         match backend.poll_event(Duration::from_millis(50)) {
-            Some(Event::Key(ref k)) => { modal.handle(&Event::Key(k.clone()), &mut queue); }
-            Some(Event::Mouse(m)) => { modal.handle(&Event::Mouse(m), &mut queue); }
+            Some(Event::Key(ref k)) => {
+                modal.handle(&Event::Key(k.clone()), &mut queue);
+            }
+            Some(Event::Mouse(m)) => {
+                modal.handle(&Event::Mouse(m), &mut queue);
+            }
             Some(Event::Resize(nw, nh)) => {
                 let ev = Event::Resize(nw, nh);
                 root.handle(&ev, &mut queue);
@@ -76,13 +85,17 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
                 root.handle(&Event::Tick, &mut queue);
                 modal.handle(&Event::Tick, &mut queue);
             }
-            Some(ev @ Event::Command { .. }) => { root.handle(&ev, &mut queue); }
+            Some(ev @ Event::Command { .. }) => {
+                root.handle(&ev, &mut queue);
+            }
         }
 
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, .. } = &ev {
-                if matches!(*id, CM_CLOSE | CM_OK | CM_CANCEL) { return *id; }
+                if matches!(*id, CM_CLOSE | CM_OK | CM_CANCEL) {
+                    return *id;
+                }
             }
             root.handle(&ev, &mut queue);
         }

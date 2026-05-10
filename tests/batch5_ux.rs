@@ -26,10 +26,7 @@ fn tab_completes_filename_from_project_root() {
 
 #[test]
 fn tab_completes_subdir_file() {
-    let dir = temp_project(&[
-        ("start.rs", "start"),
-        ("src/lib.rs", "lib"),
-    ]);
+    let dir = temp_project(&[("start.rs", "start"), ("src/lib.rs", "lib")]);
     let mut h = TestHarness::new(dir.path());
     // Open start.rs
     h.inject_key(KeyCode::Down, KeyMod::default()); // past src/ dir
@@ -40,7 +37,10 @@ fn tab_completes_subdir_file() {
     h.inject_str("e src/l");
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains(":e src/lib.rs"), "Tab should complete 'src/l' to 'src/lib.rs'");
+    assert!(
+        h.contains(":e src/lib.rs"),
+        "Tab should complete 'src/l' to 'src/lib.rs'"
+    );
 }
 
 // ─── Feature 2: Dropdown tabs ──────────────────────────────────────────────
@@ -62,7 +62,11 @@ fn chrome_shows_active_tab_with_count() {
     h.run_cycles(1);
     // Chrome should show "c.rs (3)" not "(a.rs)(b.rs)(c.rs)"
     let top = h.row(0);
-    assert!(top.contains("❨3❩") || top.contains("3"), "should show tab count: {}", top);
+    assert!(
+        top.contains("❨3❩") || top.contains("3"),
+        "should show tab count: {}",
+        top
+    );
     assert!(!top.contains("(a.rs)"), "should NOT show all tab names: {}", top);
 }
 
@@ -77,11 +81,22 @@ fn ctrl_shift_down_shows_dropdown_overlay() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Ctrl-Shift-Down should show dropdown with tab list
-    h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
+    h.inject_key(
+        KeyCode::Down,
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
+    );
     h.run_cycles(1);
     let screen = h.screen_text();
     // Dropdown should show numbered entries
-    assert!(screen.contains("0:"), "dropdown should show numbered entries: {}", screen);
+    assert!(
+        screen.contains("0:"),
+        "dropdown should show numbered entries: {}",
+        screen
+    );
     assert!(screen.contains("a.rs"), "dropdown should list a.rs");
     assert!(screen.contains("b.rs"), "dropdown should list b.rs");
 }
@@ -101,7 +116,14 @@ fn dropdown_digit_selects_tab() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // c.rs is active. Open dropdown, press '0' to select a.rs
-    h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
+    h.inject_key(
+        KeyCode::Down,
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
+    );
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('0'), KeyMod::default());
     h.run_cycles(1);
@@ -120,7 +142,14 @@ fn dropdown_esc_cancels() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // b.rs is active. Open dropdown, press Esc
-    h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
+    h.inject_key(
+        KeyCode::Down,
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
+    );
     h.run_cycles(1);
     h.inject_key(KeyCode::Esc, KeyMod::default());
     h.run_cycles(1);
@@ -136,10 +165,7 @@ fn dropdown_esc_cancels() {
 
 #[test]
 fn duplicate_filenames_show_path_suffix() {
-    let dir = temp_project(&[
-        ("alpha/Cargo.toml", "[alpha]"),
-        ("beta/Cargo.toml", "[beta]"),
-    ]);
+    let dir = temp_project(&[("alpha/Cargo.toml", "[alpha]"), ("beta/Cargo.toml", "[beta]")]);
     let mut h = TestHarness::new(dir.path());
     // Open alpha/Cargo.toml
     h.inject_key(KeyCode::Right, KeyMod::default()); // expand alpha/
@@ -152,14 +178,27 @@ fn duplicate_filenames_show_path_suffix() {
     h.run_cycles(1);
     // Active tab should show disambiguated name with path prefix
     let top = h.row(0);
-    assert!(top.contains("beta/Cargo.toml"),
-        "active tab should show disambiguated path: {}", top);
+    assert!(
+        top.contains("beta/Cargo.toml"),
+        "active tab should show disambiguated path: {}",
+        top
+    );
     // Open dropdown to verify alpha is also disambiguated
-    h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
+    h.inject_key(
+        KeyCode::Down,
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: true,
+        },
+    );
     h.run_cycles(1);
     let screen = h.screen_text();
-    assert!(screen.contains("alpha/Cargo.toml"),
-        "dropdown should show disambiguated alpha: {}", screen);
+    assert!(
+        screen.contains("alpha/Cargo.toml"),
+        "dropdown should show disambiguated alpha: {}",
+        screen
+    );
 }
 
 #[test]
@@ -176,5 +215,9 @@ fn unique_filenames_show_basename_only() {
     let top = h.row(0);
     // Active tab is foo.rs (second opened, tree sorts alphabetically: bar, foo)
     assert!(top.contains("foo.rs"), "should show basename: {}", top);
-    assert!(!top.contains("/foo.rs"), "should NOT show path for unique names: {}", top);
+    assert!(
+        !top.contains("/foo.rs"),
+        "should NOT show path for unique names: {}",
+        top
+    );
 }

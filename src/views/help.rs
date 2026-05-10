@@ -9,6 +9,12 @@ pub struct HelpView {
     inner: TextArea,
 }
 
+impl Default for HelpView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HelpView {
     pub fn new() -> Self {
         let mut ta = TextArea::new();

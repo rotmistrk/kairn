@@ -7,9 +7,8 @@ use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
-use crate::commands::{CM_SAVE, CM_SET_GLOBAL, CM_TAB_CLOSE};
 use crate::editor::keymap::Keymap;
-use crate::editor::{Editor, EditorAction};
+use crate::editor::Editor;
 use crate::highlight::{self, Highlighter};
 use crate::settings::EditorSettings;
 
@@ -145,4 +144,3 @@ impl View for EditorView {
         HandleResult::Consumed
     }
 }
-

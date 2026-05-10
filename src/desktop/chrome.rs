@@ -254,5 +254,4 @@ impl SlottedDesktop {
             self.draw_slot_tabs(surface, SlotId::Right, bounds.x, div_y, bounds.x + bounds.w);
         }
     }
-
 }

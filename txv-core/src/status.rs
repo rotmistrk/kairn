@@ -20,7 +20,9 @@ pub enum Gravity {
 pub trait ActiveItem: Send {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult;
     /// Whether this item wants exclusive control of the status bar.
-    fn is_exclusive(&self) -> bool { false }
+    fn is_exclusive(&self) -> bool {
+        false
+    }
 }
 
 /// An item that renders a label on the status bar.
@@ -120,19 +122,40 @@ impl Default for StatusBar {
 }
 
 impl View for StatusBar {
-    fn bounds(&self) -> Rect { self.state.bounds }
-    fn set_bounds(&mut self, rect: Rect) { self.state.bounds = rect; self.state.dirty = true; }
-    fn options(&self) -> ViewOptions { self.state.options }
-    fn title(&self) -> &str { "" }
-    fn needs_redraw(&self) -> bool { self.state.dirty }
-    fn mark_redrawn(&mut self) { self.state.dirty = false; }
+    fn bounds(&self) -> Rect {
+        self.state.bounds
+    }
+    fn set_bounds(&mut self, rect: Rect) {
+        self.state.bounds = rect;
+        self.state.dirty = true;
+    }
+    fn options(&self) -> ViewOptions {
+        self.state.options
+    }
+    fn title(&self) -> &str {
+        ""
+    }
+    fn needs_redraw(&self) -> bool {
+        self.state.dirty
+    }
+    fn mark_redrawn(&mut self) {
+        self.state.dirty = false;
+    }
     fn select(&mut self) {}
     fn unselect(&mut self) {}
 
     fn draw(&self, surface: &mut Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 { return; }
-        let style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, ..Style::default() };
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
+        let style = Style {
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
+            ..Style::default()
+        };
         surface.hline(b.x, b.y, b.w, ' ', style);
 
         if let Some(idx) = self.exclusive {
@@ -154,7 +177,9 @@ impl View for StatusBar {
                 ItemSlot::VisibleOnly(item) => item.label(),
                 ItemSlot::ActiveOnly(_) => continue,
             };
-            if label.is_empty() { continue; }
+            if label.is_empty() {
+                continue;
+            }
             let gravity = match slot {
                 ItemSlot::Full(item) => item.gravity(),
                 ItemSlot::VisibleOnly(item) => item.gravity(),

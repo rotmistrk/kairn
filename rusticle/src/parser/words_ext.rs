@@ -1,7 +1,7 @@
 //! Heredoc parsing and word parser tests.
 
-use crate::error::TclError;
 use super::Word;
+use crate::error::TclError;
 
 pub(super) fn peek_heredoc(chars: &[char], pos: usize) -> bool {
     pos + 1 < chars.len() && chars[pos + 1] == '<'

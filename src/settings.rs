@@ -11,7 +11,12 @@ pub struct EditorSettings {
 
 impl Default for EditorSettings {
     fn default() -> Self {
-        Self { wrap: true, list: false, tabstop: 4, number: true }
+        Self {
+            wrap: true,
+            list: false,
+            tabstop: 4,
+            number: true,
+        }
     }
 }
 
@@ -24,6 +29,9 @@ pub struct AppSettings {
 
 impl Default for AppSettings {
     fn default() -> Self {
-        Self { clock_interval: 60, editor_defaults: EditorSettings::default() }
+        Self {
+            clock_interval: 60,
+            editor_defaults: EditorSettings::default(),
+        }
     }
 }

@@ -18,7 +18,11 @@ pub struct GroupState {
 
 impl GroupState {
     pub fn new(options: ViewOptions) -> Self {
-        Self { view: ViewState::new(options), children: Vec::new(), focused: 0 }
+        Self {
+            view: ViewState::new(options),
+            children: Vec::new(),
+            focused: 0,
+        }
     }
 
     pub fn insert(&mut self, child: Box<dyn View>) {
@@ -28,23 +32,33 @@ impl GroupState {
 
     pub fn remove(&mut self, index: usize) -> Box<dyn View> {
         let child = self.children.remove(index);
-        if self.focused >= self.children.len() && self.focused > 0 { self.focused -= 1; }
+        if self.focused >= self.children.len() && self.focused > 0 {
+            self.focused -= 1;
+        }
         self.view.dirty = true;
         child
     }
 
-    pub fn child_count(&self) -> usize { self.children.len() }
+    pub fn child_count(&self) -> usize {
+        self.children.len()
+    }
 
     pub fn focus_next(&mut self) {
-        if self.children.is_empty() { return; }
+        if self.children.is_empty() {
+            return;
+        }
         let old = self.focused;
         let count = self.children.len();
         let mut next = (old + 1) % count;
         let start = next;
         loop {
-            if self.children[next].options().focusable { break; }
+            if self.children[next].options().focusable {
+                break;
+            }
             next = (next + 1) % count;
-            if next == start { return; }
+            if next == start {
+                return;
+            }
         }
         if old != next {
             self.children[old].unselect();
@@ -55,15 +69,29 @@ impl GroupState {
     }
 
     pub fn focus_prev(&mut self) {
-        if self.children.is_empty() { return; }
+        if self.children.is_empty() {
+            return;
+        }
         let old = self.focused;
         let count = self.children.len();
-        let mut prev = if old == 0 { count - 1 } else { old - 1 };
+        let mut prev = if old == 0 {
+            count - 1
+        } else {
+            old - 1
+        };
         let start = prev;
         loop {
-            if self.children[prev].options().focusable { break; }
-            prev = if prev == 0 { count - 1 } else { prev - 1 };
-            if prev == start { return; }
+            if self.children[prev].options().focusable {
+                break;
+            }
+            prev = if prev == 0 {
+                count - 1
+            } else {
+                prev - 1
+            };
+            if prev == start {
+                return;
+            }
         }
         if old != prev {
             self.children[old].unselect();
@@ -76,7 +104,10 @@ impl GroupState {
 
 impl Default for GroupState {
     fn default() -> Self {
-        Self::new(ViewOptions { focusable: true, ..ViewOptions::default() })
+        Self::new(ViewOptions {
+            focusable: true,
+            ..ViewOptions::default()
+        })
     }
 }
 

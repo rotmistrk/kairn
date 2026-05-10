@@ -217,5 +217,4 @@ impl SlottedDesktop {
         };
         self.focus_slot(visible[next]);
     }
-
 }

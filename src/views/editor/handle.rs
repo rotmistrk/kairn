@@ -6,10 +6,14 @@ use txv_core::prelude::*;
 
 use super::EditorView;
 use crate::commands::*;
-use crate::editor::{EditorAction, keymap::EditorMode};
+use crate::editor::EditorAction;
 
 impl EditorView {
-    pub(super) fn handle_command_input(&mut self, key: &txv_core::event::KeyEvent, queue: &mut EventQueue) -> HandleResult {
+    pub(super) fn handle_command_input(
+        &mut self,
+        key: &txv_core::event::KeyEvent,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
         use txv_core::event::KeyCode;
         match &key.code {
             KeyCode::Esc => {

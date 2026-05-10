@@ -6,22 +6,40 @@ pub struct WelcomeView {
     state: ViewState,
 }
 
+impl Default for WelcomeView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WelcomeView {
     pub fn new() -> Self {
-        Self { state: ViewState::default() }
+        Self {
+            state: ViewState::default(),
+        }
     }
 }
 
 impl View for WelcomeView {
     delegate_view_state!(state, override { title });
 
-    fn title(&self) -> &str { "Welcome" }
+    fn title(&self) -> &str {
+        "Welcome"
+    }
 
     fn draw(&self, surface: &mut Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 { return; }
-        let dim = Style { fg: Color::Ansi(8), ..Style::default() };
-        let bright = Style { fg: Color::Ansi(14), ..Style::default() };
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
+        let dim = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
+        let bright = Style {
+            fg: Color::Ansi(14),
+            ..Style::default()
+        };
         let lines: &[(&str, Style)] = &[
             ("╦╔═╔═╗╦╦═╗╔╗╔", bright),
             ("╠╩╗╠═╣║╠╦╝║║║", bright),

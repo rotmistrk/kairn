@@ -1,6 +1,6 @@
 //! Procedure definition, pattern matching, and error handling commands.
 
-use crate::error::{ErrorCode, TclError};
+use crate::error::TclError;
 use crate::interpreter::{Interpreter, Proc, ProcParam};
 use crate::value::TclValue;
 
@@ -219,4 +219,3 @@ fn parse_switch_cases(body: &str) -> Result<Vec<(String, String)>, TclError> {
     }
     Ok(cases)
 }
-

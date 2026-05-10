@@ -85,9 +85,9 @@ impl View for FileTreeView {
 
 #[cfg(test)]
 mod tests {
-    use txv_core::prelude::*;
-    use crate::commands::CM_OPEN_FILE;
     use super::FileTreeView;
+    use crate::commands::CM_OPEN_FILE;
+    use txv_core::prelude::*;
 
     #[test]
     fn right_arrow_on_expanded_dir_does_not_open_file() {
@@ -103,18 +103,25 @@ mod tests {
         let mut queue = EventQueue::new();
 
         // First Right arrow expands the directory
-        let right = Event::Key(KeyEvent { code: KeyCode::Right, modifiers: KeyMod::default() });
+        let right = Event::Key(KeyEvent {
+            code: KeyCode::Right,
+            modifiers: KeyMod::default(),
+        });
         view.handle(&right, &mut queue);
         // Should not emit CM_OPEN_FILE (just expanded)
         let events: Vec<_> = queue.drain();
-        assert!(!events.iter().any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)));
+        assert!(!events
+            .iter()
+            .any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)));
 
         // Second Right arrow on already-expanded dir should NOT emit CM_OPEN_FILE
         let mut queue = EventQueue::new();
         view.handle(&right, &mut queue);
         let events: Vec<_> = queue.drain();
         assert!(
-            !events.iter().any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)),
+            !events
+                .iter()
+                .any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)),
             "CM_OPEN_FILE should not be emitted for directories"
         );
     }

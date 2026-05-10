@@ -34,10 +34,7 @@ fn colon_e_opens_file_in_new_tab() {
 
 #[test]
 fn colon_e_tab_completes_filename() {
-    let dir = temp_project(&[
-        ("hello.txt", "hello"),
-        ("Makefile", "all:"),
-    ]);
+    let dir = temp_project(&[("hello.txt", "hello"), ("Makefile", "all:")]);
     let mut h = TestHarness::new(dir.path());
     open_file_and_focus(&mut h);
     h.run_cycles(1);
