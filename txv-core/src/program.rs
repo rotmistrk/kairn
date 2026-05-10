@@ -105,7 +105,6 @@ impl Program {
                 for child in &mut self.group.children {
                     child.mark_redrawn();
                 }
-                backend.invalidate();
                 // DEBUG: log cells at row 11, cols 10-15 to catch stale $
                 for cx in 10..16 {
                     log::trace!(
