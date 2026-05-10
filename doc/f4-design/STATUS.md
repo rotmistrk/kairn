@@ -89,6 +89,33 @@
 
 604 tests passing (as of 2026-05-10). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
 
+### Features to Port from Master (ratatui → txv rewrite)
+
+| Feature | Priority | Complexity | Notes |
+|---------|----------|------------|-------|
+| Systematic tab names (shell:0, kiro:0) | P0 | Low | First available N, PTY title override |
+| Real PTY shell (VTE + terminal emulation) | P0 | Medium | txv-widgets PtyTerminal exists, needs wiring |
+| CLI argument parsing (clap) | P1 | Low | Open file/dir from command line |
+| File tree git status (colors + filter) | P1 | Medium | ignore crate + git2 or shell out |
+| Auto-preview on tree cursor move | P1 | Low | Emit command on cursor change |
+| Session save/restore | P1 | Medium | .kairn.state file |
+| Incremental search in main panel (/ n N) | P1 | Low | Already have vi search, need highlight |
+| OSC 52 yank to system clipboard | P2 | Low | Emit escape sequence on yank |
+| CSV table view (Tab cycles modes) | P2 | Medium | New view type |
+| Git commit log viewer (Ctrl-G / F6) | P2 | Medium | New view, shell out to git log |
+| Git blame mode | P2 | Medium | New view mode |
+| Git diff mode | P2 | Medium | New view mode |
+| Region select + send to shell/kiro | P2 | Medium | Visual selection → pipe to tab |
+| Template macros (@file @dir @line) | P2 | Low | String expansion before send |
+| Tab rename (Ctrl-R) | P2 | Low | Input prompt → rename |
+| Configurable keybindings (.kairnrc) | P3 | High | Needs rusticle integration |
+| Panic handler (save state + restore term) | P1 | Low | std::panic::set_hook |
+| Spatial navigation (Left/Right between panels) | P1 | Low | Already have F2/F3/F4 |
+| Tree auto-refresh + F11 manual refresh | P2 | Low | Filesystem watch or poll |
+| Resize panels (F7/F8/F9/F10) | P2 | Low | Adjust slot sizes |
+| Peek screen (Ctrl-O, MC style) | P3 | Low | Suspend TUI briefly |
+| Two-chord keys | P3 | Medium | Keymap state machine |
+
 ## Development SOP
 
 ### Cycle
