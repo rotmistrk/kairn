@@ -1,9 +1,11 @@
 //! FileTreeData — TreeData implementation for filesystem navigation.
 //! Uses the `ignore` crate to respect .gitignore rules.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use ignore::WalkBuilder;
+use txv_core::cell::{Color, Style};
 
 use crate::tree_view::TreeData;
 
@@ -22,6 +24,8 @@ pub struct FileTreeData {
     root: PathBuf,
     nodes: Vec<TreeNode>,
     visible: Vec<usize>,
+    /// Per-path foreground color (relative path → color).
+    colors: HashMap<String, Color>,
 }
 
 impl FileTreeData {
@@ -31,6 +35,7 @@ impl FileTreeData {
             root: root.clone(),
             nodes: Vec::new(),
             visible: Vec::new(),
+            colors: HashMap::new(),
         };
         data.load_children(root, None, 0);
         data.rebuild_visible();
@@ -43,6 +48,11 @@ impl FileTreeData {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    /// Set per-path foreground colors (relative path → color).
+    pub fn set_colors(&mut self, colors: HashMap<String, Color>) {
+        self.colors = colors;
     }
 
     /// Rebuild the tree from disk, preserving expanded directories.
@@ -197,5 +207,25 @@ impl TreeData for FileTreeData {
 
     fn visible_id(&self, row: usize) -> usize {
         self.visible[row]
+    }
+
+    fn style(&self, id: usize) -> Style {
+        let node = &self.nodes[id];
+        if node.is_dir {
+            return Style {
+                fg: Color::Ansi(14),
+                ..Style::default()
+            };
+        }
+        let rel = node.path.strip_prefix(&self.root).ok().and_then(|p| p.to_str());
+        if let Some(rel_path) = rel {
+            if let Some(&color) = self.colors.get(rel_path) {
+                return Style {
+                    fg: color,
+                    ..Style::default()
+                };
+            }
+        }
+        Style::default()
     }
 }
