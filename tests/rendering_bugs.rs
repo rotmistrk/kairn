@@ -15,7 +15,7 @@ fn scroll_clears_previous_content() {
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
 
     // Open the file
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
 
     // Verify line1 is visible initially
@@ -50,7 +50,7 @@ fn scroll_no_trailing_garbage_from_longer_lines() {
     }
     let dir = temp_project(&[("long.txt", &content)]);
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
 
     // Verify the long line is visible
@@ -75,7 +75,7 @@ fn list_mode_tab_renders_as_arrows() {
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
 
     // Open file
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
 
     // Enter command mode and set list
@@ -106,7 +106,7 @@ fn cursor_visible_on_tab_in_nolist_mode() {
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
 
     // Open file, cursor at (0,0) which is a tab character
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
 
     // Find cursor (reverse attribute) in the editor area.
@@ -140,7 +140,7 @@ fn tab_expands_to_spaces_in_nolist_mode() {
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
 
     // Open file
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
 
     // In nolist mode, tab should expand to spaces and "hello" should appear

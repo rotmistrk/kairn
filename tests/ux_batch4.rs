@@ -15,8 +15,8 @@ use txv_core::event::{KeyCode, KeyMod};
 fn enter_on_tree_file_focuses_center() {
     let dir = temp_project(&[("main.rs", "fn main() {}")]);
     let mut h = TestHarness::new(dir.path());
-    // Tree is focused by default. Press Enter to open file.
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    // Tree is focused by default. Press Right to open file and focus center.
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // After opening, focus should be on center (file content visible with
     // focused tab style). The tree cursor should NOT be highlighted.
@@ -116,15 +116,15 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
     // Open 3 files: a.rs, b.rs, c.rs (c.rs is active last)
-    h.inject_key(KeyCode::Enter, KeyMod::default()); // open a.rs
+    h.inject_key(KeyCode::Right, KeyMod::default()); // open a.rs + focus
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default()); // back to tree
     h.inject_key(KeyCode::Down, KeyMod::default()); // move to b.rs
-    h.inject_key(KeyCode::Enter, KeyMod::default()); // open b.rs
+    h.inject_key(KeyCode::Right, KeyMod::default()); // open b.rs + focus
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default()); // back to tree
     h.inject_key(KeyCode::Down, KeyMod::default()); // move to c.rs
-    h.inject_key(KeyCode::Enter, KeyMod::default()); // open c.rs
+    h.inject_key(KeyCode::Right, KeyMod::default()); // open c.rs + focus
     h.run_cycles(1);
     // Now c.rs is active. Ctrl-Shift-Down opens dropdown, press '1' for b.rs
     h.inject_key(
@@ -141,15 +141,15 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
 fn ctrl_shift_down_twice_cycles_further_back() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Open dropdown and press '0' to select a.rs directly
     h.inject_key(

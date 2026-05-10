@@ -5,10 +5,11 @@ use std::path::PathBuf;
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
-use crate::commands::CM_OPEN_FILE;
+use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
 
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
+    last_key_was_right: bool,
 }
 
 impl FileTreeView {
@@ -16,6 +17,7 @@ impl FileTreeView {
         let data = FileTreeData::new(root);
         Self {
             inner: TreeView::new(data),
+            last_key_was_right: false,
         }
     }
 }
@@ -51,9 +53,10 @@ impl View for FileTreeView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        if let Event::Key(key) = event {
+            self.last_key_was_right = key.code == KeyCode::Right;
+        }
         let result = self.inner.handle(event, queue);
-        // TreeView emits CM_OK with node id when a file is selected.
-        // Intercept and re-emit as CM_OPEN_FILE with the path.
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, data } = &ev {
@@ -62,7 +65,12 @@ impl View for FileTreeView {
                         if let Some(&node_id) = boxed.downcast_ref::<usize>() {
                             let path = self.inner.data.path(node_id).to_path_buf();
                             if !path.is_dir() {
-                                queue.put_command(CM_OPEN_FILE, Some(Box::new(path)));
+                                let cmd = if self.last_key_was_right {
+                                    CM_OPEN_FILE_FOCUS
+                                } else {
+                                    CM_OPEN_FILE
+                                };
+                                queue.put_command(cmd, Some(Box::new(path)));
                             }
                             continue;
                         }

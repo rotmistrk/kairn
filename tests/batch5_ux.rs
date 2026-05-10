@@ -13,7 +13,7 @@ fn tab_completes_filename_from_project_root() {
     let mut h = TestHarness::new(dir.path());
     // Open main.rs from tree, focus editor
     h.inject_key(KeyCode::Down, KeyMod::default()); // skip Makefile, go to main.rs
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Now in editor. Type :e M then Tab
     h.inject_key(KeyCode::Char(':'), KeyMod::default());
@@ -33,7 +33,7 @@ fn tab_completes_subdir_file() {
     let mut h = TestHarness::new(dir.path());
     // Open start.rs
     h.inject_key(KeyCode::Down, KeyMod::default()); // past src/ dir
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Type :e src/l then Tab
     h.inject_key(KeyCode::Char(':'), KeyMod::default());
@@ -50,15 +50,15 @@ fn chrome_shows_active_tab_with_count() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
     // Open all 3 files
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Chrome should show "c.rs (3)" not "(a.rs)(b.rs)(c.rs)"
     let top = h.row(0);
@@ -70,11 +70,11 @@ fn chrome_shows_active_tab_with_count() {
 fn ctrl_shift_down_shows_dropdown_overlay() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Ctrl-Shift-Down should show dropdown with tab list
     h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
@@ -90,15 +90,15 @@ fn ctrl_shift_down_shows_dropdown_overlay() {
 fn dropdown_digit_selects_tab() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // c.rs is active. Open dropdown, press '0' to select a.rs
     h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
@@ -113,11 +113,11 @@ fn dropdown_digit_selects_tab() {
 fn dropdown_esc_cancels() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // b.rs is active. Open dropdown, press Esc
     h.inject_key(KeyCode::Down, KeyMod { ctrl: true, alt: false, shift: true });
@@ -140,9 +140,9 @@ fn duplicate_filenames_show_path_suffix() {
     ]);
     let mut h = TestHarness::new(dir.path());
     // Open alpha/Cargo.toml
-    h.inject_key(KeyCode::Enter, KeyMod::default()); // expand alpha/
+    h.inject_key(KeyCode::Right, KeyMod::default()); // expand alpha/
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default()); // open Cargo.toml
+    h.inject_key(KeyCode::Right, KeyMod::default()); // open Cargo.toml + focus
     h.run_cycles(1);
     // Open beta/Cargo.toml via :e
     h.inject_key(KeyCode::Char(':'), KeyMod::default());
@@ -164,11 +164,11 @@ fn duplicate_filenames_show_path_suffix() {
 fn unique_filenames_show_basename_only() {
     let dir = temp_project(&[("foo.rs", "foo"), ("bar.rs", "bar")]);
     let mut h = TestHarness::new(dir.path());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.inject_key(KeyCode::Down, KeyMod::default());
-    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // No disambiguation needed — active tab shows basename only
     let top = h.row(0);

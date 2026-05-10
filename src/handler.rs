@@ -38,7 +38,8 @@ impl AppState {
 /// This is the single source of truth for command handling.
 pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     match ctx.command {
-        CM_OPEN_FILE => handle_open_file(ctx, state),
+        CM_OPEN_FILE => handle_open_file(ctx, state, false),
+        CM_OPEN_FILE_FOCUS => handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => handle_execute_command(ctx, state),
         CM_SHOW_HELP => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -83,7 +84,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
+fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
@@ -94,8 +95,10 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
 
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.focus_slot(SlotId::Center);
+            if focus_center {
+                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                    desktop.focus_slot(SlotId::Center);
+                }
             }
         }
         OpenResult::Opened => {
@@ -108,7 +111,9 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
                     .to_string_lossy()
                     .to_string();
                 desktop.insert_tab(SlotId::Center, title, Box::new(editor));
-                desktop.focus_slot(SlotId::Center);
+                if focus_center {
+                    desktop.focus_slot(SlotId::Center);
+                }
             }
         }
     }

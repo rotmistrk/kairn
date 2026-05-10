@@ -5,6 +5,7 @@ use txv_core::event::CommandId;
 
 // File operations
 pub const CM_OPEN_FILE: CommandId = 100;
+pub const CM_OPEN_FILE_FOCUS: CommandId = 106;
 pub const CM_SAVE: CommandId = 101;
 pub const CM_NEW_SHELL: CommandId = 102;
 pub const CM_NEW_KIRO: CommandId = 103;
