@@ -132,11 +132,10 @@ fn cursor_visible_on_tab_in_nolist_mode() {
         "cursor must be visible on tab character in nolist mode"
     );
 
-    // Cursor should be at the first text column (after gutter).
-    // Gutter for a 1-line file is ~2-3 chars ("1 "). Cursor should be right after.
+    // Cursor should be at the first text column (after tree panel + gutter).
+    // Tree panel is 24 wide + 1 border = 25, gutter "1 " = 2, so text starts at ~27.
     let cx = cursor_x.unwrap();
-    // The gutter is "1 " = 2 chars, so text starts at x=2. Cursor should be there.
-    assert!(cx <= 5, "cursor should be at start of text area (got x={})", cx);
+    assert!(cx <= 30, "cursor should be at start of text area (got x={})", cx);
 }
 
 #[test]

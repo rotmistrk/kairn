@@ -17,6 +17,10 @@ pub trait TreeData: Send + 'static {
     fn visible_count(&self) -> usize;
     /// Return the node id for a given visible row index.
     fn visible_id(&self, row: usize) -> usize;
+    /// Style for a node (default: default style).
+    fn style(&self, _id: usize) -> Style {
+        Style::default()
+    }
 }
 
 pub struct TreeView<D: TreeData> {
@@ -52,14 +56,6 @@ impl<D: TreeData> View for TreeView<D> {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let normal = Style::default();
-        let selected = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
         for row in 0..b.h as usize {
             let idx = self.scroll.offset + row;
             if idx >= self.data.visible_count() {
@@ -77,13 +73,20 @@ impl<D: TreeData> View for TreeView<D> {
             } else {
                 "  "
             };
+            let node_style = self.data.style(id);
             let style = if idx == self.cursor {
-                selected
+                Style {
+                    fg: node_style.fg,
+                    bg: Color::Ansi(4),
+                    attrs: Attrs {
+                        underline: true,
+                        ..node_style.attrs
+                    },
+                }
             } else {
-                normal
+                node_style
             };
             let y = b.y + row as u16;
-            // Clear line
             surface.hline(b.x, y, b.w, ' ', style);
             let x = b.x + indent;
             surface.print(x, y, marker, style);
