@@ -1,7 +1,9 @@
 //! The rusticle interpreter: eval, scope chain, command dispatch.
 
 pub(crate) mod eval;
+pub(crate) mod eval_literals;
 mod scope;
+pub(crate) mod subst;
 
 use std::collections::HashMap;
 use std::rc::Rc;
