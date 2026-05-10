@@ -1,26 +1,52 @@
 //! FileTreeView — wraps TreeView<FileTreeData>, emits CM_OPEN_FILE on Enter.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
+use txv_core::cell::Color;
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
 use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
+use crate::git_status::{collect_git_status, FileStatus};
 
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
     last_key_was_right: bool,
     refresh_counter: u16,
+    root: PathBuf,
 }
 
 impl FileTreeView {
     pub fn new(root: PathBuf) -> Self {
-        let data = FileTreeData::new(root);
-        Self {
+        let data = FileTreeData::new(root.clone());
+        let mut view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
             refresh_counter: 0,
-        }
+            root,
+        };
+        view.update_colors();
+        view
+    }
+
+    fn update_colors(&mut self) {
+        let statuses = collect_git_status(&self.root);
+        let colors: HashMap<String, Color> = statuses
+            .into_iter()
+            .map(|(path, status)| (path, status_color(status)))
+            .collect();
+        self.inner.data.set_colors(colors);
+    }
+}
+
+fn status_color(status: FileStatus) -> Color {
+    match status {
+        FileStatus::Modified => Color::Ansi(12),
+        FileStatus::Added => Color::Ansi(2),
+        FileStatus::Untracked => Color::Ansi(1),
+        FileStatus::Ignored => Color::Ansi(8),
+        FileStatus::Clean => Color::Ansi(7),
     }
 }
 
@@ -60,6 +86,7 @@ impl View for FileTreeView {
             if self.refresh_counter >= 60 {
                 self.refresh_counter = 0;
                 self.inner.data.refresh();
+                self.update_colors();
             }
             return HandleResult::Ignored;
         }
