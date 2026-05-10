@@ -6,6 +6,7 @@ pub mod broker;
 pub mod buffer;
 pub mod commands;
 pub mod completer;
+pub mod config;
 pub mod desktop;
 pub mod editor;
 pub mod glyphs;

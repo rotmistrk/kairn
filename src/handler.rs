@@ -35,6 +35,14 @@ impl AppState {
             settings: AppSettings::default(),
         }
     }
+
+    pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {
+        Self {
+            broker: FileBroker::new(),
+            root_dir,
+            settings,
+        }
+    }
 }
 
 /// Handle a command from the Program event loop.

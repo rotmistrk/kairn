@@ -425,6 +425,7 @@ dependencies = [
  "env_logger",
  "log",
  "regex",
+ "rusticle",
  "syntect",
  "tempfile",
  "txv-core",

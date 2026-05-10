@@ -8,6 +8,7 @@ use txv_render::backend::CrosstermBackend;
 use txv_render::color::detect_color_mode;
 
 use kairn::completer::AppCompleter;
+use kairn::config::load_config;
 use kairn::handler::{build_desktop, handle_command, AppState};
 use kairn::status::build_status_bar;
 
@@ -38,17 +39,24 @@ fn main() -> anyhow::Result<()> {
         .target(env_logger::Target::Pipe(Box::new(log_file)))
         .init();
 
+    // Load config
+    let settings = load_config(&root_dir);
+
     // Build desktop
     let desktop = build_desktop(&root_dir);
 
     // Build status bar
-    let status = build_status_bar(Box::new(AppCompleter::new(root_dir.clone())), 60, root_dir.clone());
+    let status = build_status_bar(
+        Box::new(AppCompleter::new(root_dir.clone())),
+        settings.clock_interval,
+        root_dir.clone(),
+    );
 
     // Build program
     let mut program = Program::new(Box::new(status), Box::new(desktop));
 
     // App state
-    let mut state = AppState::new(root_dir);
+    let mut state = AppState::with_settings(root_dir, settings);
 
     // Run
     let color_mode = detect_color_mode();
