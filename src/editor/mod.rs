@@ -32,6 +32,7 @@ pub enum EditorAction {
     ContentChanged,
     SaveRequested,
     CloseRequested,
+    ForceCloseRequested,
     ModeChanged,
     OpenFile(String),
     ShellOutput(String),

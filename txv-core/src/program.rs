@@ -219,6 +219,9 @@ impl Program {
                 }
             }
 
+            // Tick (simulates idle — triggers autosave, PTY poll, etc.)
+            self.group.dispatch(&Event::Tick, &mut queue);
+
             // Draw
             surface.fill(' ', Style::default());
             for child in &self.group.children {

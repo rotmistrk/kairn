@@ -177,7 +177,7 @@ fn ex_q_bang_force_closes() {
     ed.execute(Command::InsertChar('x')); // make dirty
     ed.mode = EditorMode::Normal;
     let action = ed.execute(Command::ExCommand("q!".to_string()));
-    assert_eq!(action, EditorAction::CloseRequested);
+    assert_eq!(action, EditorAction::ForceCloseRequested);
 }
 
 #[test]

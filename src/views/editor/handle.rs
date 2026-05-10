@@ -76,6 +76,10 @@ impl EditorView {
                     queue.put_command(CM_TAB_CLOSE, None);
                 }
             }
+            EditorAction::ForceCloseRequested => {
+                self.editor.buffer.mark_saved(); // discard changes
+                queue.put_command(CM_TAB_CLOSE, None);
+            }
             EditorAction::ShellOutput(output) => {
                 queue.put_command(crate::commands::CM_SHELL_OUTPUT, Some(Box::new(output)));
             }

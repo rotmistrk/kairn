@@ -81,6 +81,10 @@ impl MockBackend {
         }
     }
 
+    pub fn inject_paste(&mut self, text: &str) {
+        self.inject(Event::Paste(text.to_string()));
+    }
+
     pub fn surface(&self) -> Option<&Surface> {
         self.last_surface.as_ref()
     }

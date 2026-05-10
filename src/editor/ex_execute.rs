@@ -19,7 +19,7 @@ impl Editor {
                 }
                 return EditorAction::CloseRequested;
             }
-            "q!" => return EditorAction::CloseRequested,
+            "q!" => return EditorAction::ForceCloseRequested,
             "wq" | "x" => return EditorAction::SaveRequested,
             _ => {}
         }
