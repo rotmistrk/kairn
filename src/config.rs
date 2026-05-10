@@ -13,22 +13,27 @@ pub fn load_config(_root_dir: &Path) -> AppSettings {
         Some(p) => p,
         None => return AppSettings::default(),
     };
+    load_config_from(&config_path)
+}
 
-    if !config_path.exists() {
+/// Load configuration from a specific file path.
+/// Returns defaults if the file does not exist or on any error.
+pub fn load_config_from(path: &Path) -> AppSettings {
+    if !path.exists() {
         return AppSettings::default();
     }
 
-    let script = match std::fs::read_to_string(&config_path) {
+    let script = match std::fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
-            log::warn!("Failed to read config {}: {}", config_path.display(), e);
+            log::warn!("Failed to read config {}: {}", path.display(), e);
             return AppSettings::default();
         }
     };
 
     let mut interp = Interpreter::new();
     if let Err(e) = interp.eval(&script) {
-        log::warn!("Config eval error in {}: {}", config_path.display(), e);
+        log::warn!("Config eval error in {}: {}", path.display(), e);
         return AppSettings::default();
     }
 
@@ -81,25 +86,87 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
     use super::*;
 
+    fn write_config(dir: &Path, content: &str) -> PathBuf {
+        let file = dir.join("init.tcl");
+        fs::write(&file, content).unwrap();
+        file
+    }
+
     #[test]
-    fn test_extract_defaults_when_no_vars() {
-        let interp = Interpreter::new();
-        let s = extract_settings(&interp);
+    fn default_settings_when_no_config_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("nonexistent.tcl");
+        let s = load_config_from(&path);
         assert!(s.editor_defaults.wrap);
         assert!(!s.editor_defaults.list);
         assert_eq!(s.editor_defaults.tabstop, 4);
+        assert!(s.editor_defaults.number);
         assert_eq!(s.clock_interval, 60);
     }
 
     #[test]
-    fn test_extract_settings_from_script() {
-        let mut interp = Interpreter::new();
-        interp.eval("set editor.wrap off\nset clock.interval 30").ok();
-        let s = extract_settings(&interp);
+    fn config_sets_editor_wrap_off() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = write_config(tmp.path(), "set editor.wrap off");
+        let s = load_config_from(&path);
         assert!(!s.editor_defaults.wrap);
+    }
+
+    #[test]
+    fn config_sets_tabstop() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = write_config(tmp.path(), "set editor.tabstop 8");
+        let s = load_config_from(&path);
+        assert_eq!(s.editor_defaults.tabstop, 8);
+    }
+
+    #[test]
+    fn config_sets_clock_interval() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = write_config(tmp.path(), "set clock.interval 30");
+        let s = load_config_from(&path);
         assert_eq!(s.clock_interval, 30);
     }
-}
 
+    #[test]
+    fn config_ignores_unknown_variables() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = write_config(tmp.path(), "set unknown.thing foo");
+        let s = load_config_from(&path);
+        // Should return defaults without panic
+        assert_eq!(s.clock_interval, 60);
+        assert!(s.editor_defaults.wrap);
+    }
+
+    #[test]
+    fn config_handles_syntax_error_gracefully() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = write_config(tmp.path(), "{{{");
+        let s = load_config_from(&path);
+        // Should return defaults without panic
+        assert_eq!(s.clock_interval, 60);
+        assert!(s.editor_defaults.wrap);
+    }
+
+    #[test]
+    fn config_multiple_settings() {
+        let tmp = tempfile::tempdir().unwrap();
+        let script = "set editor.wrap off\n\
+                      set editor.list on\n\
+                      set editor.tabstop 2\n\
+                      set editor.number off\n\
+                      set clock.interval 120";
+        let path = write_config(tmp.path(), script);
+        let s = load_config_from(&path);
+        assert!(!s.editor_defaults.wrap);
+        assert!(s.editor_defaults.list);
+        assert_eq!(s.editor_defaults.tabstop, 2);
+        assert!(!s.editor_defaults.number);
+        assert_eq!(s.clock_interval, 120);
+    }
+}

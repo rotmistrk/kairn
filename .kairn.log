@@ -171,3 +171,15 @@
 [2026-05-10T13:57:35Z DEBUG txv_core::program] Program: command 142
 [2026-05-10T13:57:35Z DEBUG txv_core::program] Program: command 142
 [2026-05-10T13:57:35Z DEBUG txv_core::program] Program: command 142
+[2026-05-10T14:42:44Z DEBUG txv_core::program] Program: command 4
+[2026-05-10T14:42:47Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T14:42:48Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.gitignore
+[2026-05-10T14:42:48Z DEBUG globset] glob `Glob("**/*~")` converted to regex: `"(?-u)^(?:/?|.*/)[^/]*\\~$"`
+[2026-05-10T14:42:48Z DEBUG globset] built glob set; 1 literals, 5 basenames, 2 extensions, 0 prefixes, 0 suffixes, 0 required extensions, 1 regexes
+[2026-05-10T14:42:48Z DEBUG ignore::gitignore] opened gitignore file: /Users/rotmistr/workplace/kairn/.git/info/exclude
+[2026-05-10T14:42:50Z DEBUG txv_core::program] Program: command 100
+[2026-05-10T14:42:55Z DEBUG txv_core::program] Program: command 3
+[2026-05-10T14:42:56Z DEBUG txv_core::program] Program: command 119
+[2026-05-10T14:42:59Z DEBUG txv_core::program] Program: command 119
+[2026-05-10T14:43:01Z DEBUG txv_core::program] Program: command 119
+[2026-05-10T14:43:04Z DEBUG txv_core::program] Program: command 4
