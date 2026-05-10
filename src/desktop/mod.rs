@@ -39,12 +39,12 @@ impl Slot {
     }
 
     fn tab_next(&mut self) {
-        if !self.tabs.is_empty() { self.active = (self.active + 1) % self.tabs.len(); }
+        if !self.tabs.is_empty() { self.active = (self.active + 1) % self.tabs.len();  }
     }
 
     fn tab_prev(&mut self) {
         if !self.tabs.is_empty() {
-            self.active = if self.active == 0 { self.tabs.len() - 1 } else { self.active - 1 };
+            self.active = if self.active == 0 { self.tabs.len() - 1 } else { self.active - 1 }; 
         }
     }
 }
@@ -100,7 +100,7 @@ impl SlottedDesktop {
         view.set_bounds(rects[slot as usize]);
         let s = &mut self.slots[slot as usize];
         s.tabs.push((title.into(), view));
-        s.active = s.tabs.len() - 1;
+        s.active = s.tabs.len() - 1; self.group.view.dirty = true;
         s.visible = true;
         self.group.view.dirty = true;
     }
@@ -109,7 +109,7 @@ impl SlottedDesktop {
         self.focus_slot(slot);
         let s = &mut self.slots[slot as usize];
         if tab < s.tabs.len() {
-            s.active = tab;
+            s.active = tab; self.group.view.dirty = true;
             self.sync_active_bounds(slot);
             self.group.view.dirty = true;
         }
@@ -214,9 +214,18 @@ impl SlottedDesktop {
             KeyCode::Enter => {
                 if let Some(v) = self.slots[slot_id as usize].active_view_mut() { v.unselect(); }
                 let s = &mut self.slots[slot_id as usize];
-                s.active = self.dropdown_cursor;
+                s.active = self.dropdown_cursor; self.group.view.dirty = true;
                 self.dropdown = None;
                 self.sync_active_bounds(slot_id);
+                self.group.view.dirty = true;
+            }
+            KeyCode::Up | KeyCode::Down if key.modifiers.ctrl && key.modifiers.shift => {
+                // C-S-Up acts as Up, C-S-Down acts as Down in dropdown
+                if matches!(key.code, KeyCode::Up) {
+                    self.dropdown_cursor = if self.dropdown_cursor == 0 { tab_count - 1 } else { self.dropdown_cursor - 1 };
+                } else {
+                    self.dropdown_cursor = (self.dropdown_cursor + 1) % tab_count;
+                }
                 self.group.view.dirty = true;
             }
             KeyCode::Up => {
