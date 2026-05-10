@@ -7,13 +7,31 @@ use super::EditorView;
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
         let b = self.state.bounds;
-        if b.w == 0 || b.h == 0 { return; }
+        if b.w == 0 || b.h == 0 {
+            return;
+        }
 
         let normal = Style::default();
         let gutter_w = self.gutter_width();
-        let gutter_style = Style { fg: Color::Ansi(8), ..Style::default() };
-        let cursor_style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, ..Style::default() };
-        let visual_style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, fg: Color::Ansi(3), ..Style::default() };
+        let gutter_style = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
+        let cursor_style = Style {
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
+            ..Style::default()
+        };
+        let visual_style = Style {
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
+            fg: Color::Ansi(3),
+            ..Style::default()
+        };
 
         let scroll = self.editor.viewport_scroll;
         let visual_range = self.editor.visual_range();
@@ -48,19 +66,33 @@ impl EditorView {
                 for ch in span.text.chars() {
                     if ch == '\t' {
                         for ti in 0..tab_width {
-                            if col_offset >= avail { break; }
-                            if visual_row >= b.h as usize { break; }
+                            if col_offset >= avail {
+                                break;
+                            }
+                            if visual_row >= b.h as usize {
+                                break;
+                            }
                             let x = text_x + col_offset as u16;
                             let vy = b.y + visual_row as u16;
                             let st = if let Some((vs, ve)) = visual_range {
-                                if byte_pos >= vs && byte_pos < ve { visual_style }
-                                else { span.style }
+                                if byte_pos >= vs && byte_pos < ve {
+                                    visual_style
+                                } else {
+                                    span.style
+                                }
                             } else {
                                 span.style
                             };
                             if self.editor.options.list {
-                                let ls = Style { fg: Color::Ansi(8), ..st };
-                                let c = if ti == tab_width - 1 { '\u{2192}' } else { '\u{2500}' };
+                                let ls = Style {
+                                    fg: Color::Ansi(8),
+                                    ..st
+                                };
+                                let c = if ti == tab_width - 1 {
+                                    '\u{2192}'
+                                } else {
+                                    '\u{2500}'
+                                };
                                 surface.put(x, vy, c, ls);
                             } else {
                                 surface.put(x, vy, ' ', st);
@@ -81,7 +113,9 @@ impl EditorView {
                             }
                             col_offset = 0;
                             visual_row += 1;
-                            if visual_row >= b.h as usize { break; }
+                            if visual_row >= b.h as usize {
+                                break;
+                            }
                             // Gutter for wrapped line (blank)
                             if gutter_w > 0 {
                                 let wy = b.y + visual_row as u16;
@@ -94,17 +128,26 @@ impl EditorView {
                         continue;
                     }
 
-                    if visual_row >= b.h as usize { break; }
+                    if visual_row >= b.h as usize {
+                        break;
+                    }
                     let x = text_x + col_offset as u16;
 
                     let style = if let Some((vs, ve)) = visual_range {
-                        if byte_pos >= vs && byte_pos < ve { visual_style } else { span.style }
+                        if byte_pos >= vs && byte_pos < ve {
+                            visual_style
+                        } else {
+                            span.style
+                        }
                     } else {
                         span.style
                     };
 
                     let (display_ch, display_style) = if self.editor.options.list {
-                        let list_style = Style { fg: Color::Ansi(8), ..style };
+                        let list_style = Style {
+                            fg: Color::Ansi(8),
+                            ..style
+                        };
                         match ch {
                             ' ' => ('\u{00B7}', list_style),
                             _ => (ch, style),
@@ -119,12 +162,17 @@ impl EditorView {
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
                 }
-                if visual_row >= b.h as usize { break; }
+                if visual_row >= b.h as usize {
+                    break;
+                }
             }
 
             // End-of-line marker in list mode
             if self.editor.options.list && col_offset < avail && visual_row < b.h as usize {
-                let list_style = Style { fg: Color::Ansi(8), ..Style::default() };
+                let list_style = Style {
+                    fg: Color::Ansi(8),
+                    ..Style::default()
+                };
                 let vy = b.y + visual_row as u16;
                 let x = text_x + col_offset as u16;
                 surface.put(x, vy, '$', list_style);
@@ -146,7 +194,8 @@ impl EditorView {
                 } else {
                     let line_ref = self.editor.buffer.line(line_idx).unwrap_or_default();
                     let positions = visual_positions(&line_ref, tab_width);
-                    positions.get(self.editor.cursor_col)
+                    positions
+                        .get(self.editor.cursor_col)
                         .map(|(vcol, _, _)| *vcol as usize)
                         .unwrap_or(col_offset)
                 };
@@ -176,8 +225,18 @@ impl EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = b.y + b.h.saturating_sub(1);
-            let prompt_style = Style { attrs: Attrs { reverse: true, ..Attrs::default() }, ..Style::default() };
-            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search { "/" } else { ":" };
+            let prompt_style = Style {
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            };
+            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+                "/"
+            } else {
+                ":"
+            };
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
             surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
         }
@@ -186,8 +245,8 @@ impl EditorView {
 
 #[cfg(test)]
 mod tests {
-    use txv_core::prelude::*;
     use crate::views::editor::EditorView;
+    use txv_core::prelude::*;
 
     #[test]
     fn wide_char_positions_correct() {

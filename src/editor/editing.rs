@@ -9,13 +9,17 @@ impl Editor {
         self.buffer.begin_group();
         self.mode = EditorMode::Insert;
         let len = self.buffer.line_len(self.cursor_line);
-        if self.cursor_col < len { self.cursor_col += 1; }
+        if self.cursor_col < len {
+            self.cursor_col += 1;
+        }
     }
 
     pub(super) fn exit_insert(&mut self) {
         self.buffer.end_group();
         self.mode = EditorMode::Normal;
-        if self.cursor_col > 0 { self.cursor_col -= 1; }
+        if self.cursor_col > 0 {
+            self.cursor_col -= 1;
+        }
     }
 
     pub(super) fn open_line_below(&mut self) {
@@ -96,7 +100,9 @@ impl Editor {
         } else {
             self.buffer.content().len()
         };
-        if start < end { self.buffer.delete(start, end); }
+        if start < end {
+            self.buffer.delete(start, end);
+        }
         if self.cursor_line >= self.buffer.line_count() && self.cursor_line > 0 {
             self.cursor_line -= 1;
         }
@@ -104,9 +110,15 @@ impl Editor {
     }
 
     pub(super) fn delete_word(&mut self) {
-        let start_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (new_line, new_col) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
-        let end_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(start_offset);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(new_line, new_col)
+            .unwrap_or(start_offset);
         if end_offset > start_offset {
             let content = self.buffer.content();
             self.register = content[start_offset..end_offset].to_string();
@@ -118,7 +130,10 @@ impl Editor {
     }
 
     pub(super) fn delete_word_backward(&mut self) {
-        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (new_line, new_col) = motions::word_backward(&self.buffer, self.cursor_line, self.cursor_col);
         let start_offset = self.buffer.line_col_to_offset(new_line, new_col).unwrap_or(end_offset);
         if end_offset > start_offset {
@@ -131,7 +146,10 @@ impl Editor {
     }
 
     pub(super) fn delete_to_start(&mut self) {
-        let end_offset = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let end_offset = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let start_offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         if end_offset > start_offset {
             let content = self.buffer.content();
@@ -142,9 +160,15 @@ impl Editor {
     }
 
     pub(super) fn delete_to_end(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
             self.register = content[start..end].to_string();
@@ -157,14 +181,21 @@ impl Editor {
         self.buffer.begin_group();
         let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
-        if end > start { self.buffer.delete(start, end); }
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
+        if end > start {
+            self.buffer.delete(start, end);
+        }
         self.cursor_col = 0;
         self.mode = EditorMode::Insert;
     }
 
     pub(super) fn join_lines(&mut self) {
-        if self.cursor_line + 1 >= self.buffer.line_count() { return; }
+        if self.cursor_line + 1 >= self.buffer.line_count() {
+            return;
+        }
         let line_len = self.buffer.line_len(self.cursor_line);
         let end_offset = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(0);
         self.buffer.delete(end_offset, end_offset + 1);
@@ -173,7 +204,10 @@ impl Editor {
         let ws_count = after_join.chars().take_while(|c| c.is_whitespace()).count();
         if ws_count > 0 {
             let ws_start = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(0);
-            let ws_end = self.buffer.line_col_to_offset(self.cursor_line, line_len + ws_count).unwrap_or(ws_start);
+            let ws_end = self
+                .buffer
+                .line_col_to_offset(self.cursor_line, line_len + ws_count)
+                .unwrap_or(ws_start);
             self.buffer.delete(ws_start, ws_end);
         }
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, line_len) {
@@ -204,26 +238,6 @@ impl Editor {
             let old_len = content[offset..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
             self.buffer.delete(offset, offset + old_len);
             self.buffer.insert(offset, &ch.to_string());
-        }
-    }
-
-    pub(super) fn indent_line(&mut self) {
-        if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, 0) {
-            self.buffer.insert(offset, "    ");
-            self.cursor_col += 4;
-        }
-    }
-
-    pub(super) fn unindent_line(&mut self) {
-        let line = self.buffer.line(self.cursor_line).unwrap_or_default();
-        let remove = if line.starts_with("    ") { 4 }
-            else if line.starts_with('\t') { 1 }
-            else { line.chars().take_while(|c| c.is_whitespace()).count().min(4) };
-        if remove > 0 {
-            let start = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
-            let end = self.buffer.line_col_to_offset(self.cursor_line, remove).unwrap_or(start);
-            self.buffer.delete(start, end);
-            self.cursor_col = self.cursor_col.saturating_sub(remove);
         }
     }
 

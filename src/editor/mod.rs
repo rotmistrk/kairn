@@ -1,10 +1,13 @@
 //! Editor — cursor, mode, command execution over a PieceTable buffer.
 
-pub mod command;
 mod clipboard;
+pub mod command;
+mod dispatch_edit;
 mod editing;
-mod execute;
 pub mod ex;
+mod ex_execute;
+mod execute;
+mod indent;
 pub mod keymap;
 pub mod keymap_vim;
 mod keymap_vim_modes;
@@ -66,7 +69,12 @@ pub struct EditorOptions {
 
 impl Default for EditorOptions {
     fn default() -> Self {
-        Self { list: false, number: true, wrap: true, tab_width: 4 }
+        Self {
+            list: false,
+            number: true,
+            wrap: true,
+            tab_width: 4,
+        }
     }
 }
 
@@ -105,36 +113,53 @@ impl Editor {
 // --- Movement methods ---
 impl Editor {
     fn move_left(&mut self) {
-        if self.cursor_col > 0 { self.cursor_col -= 1; }
+        if self.cursor_col > 0 {
+            self.cursor_col -= 1;
+        }
     }
 
     fn move_right(&mut self) {
         let line_len = self.buffer.line_len(self.cursor_line);
-        let max = if self.mode == EditorMode::Insert { line_len } else { line_len.saturating_sub(1) };
-        if self.cursor_col < max { self.cursor_col += 1; }
+        let max = if self.mode == EditorMode::Insert {
+            line_len
+        } else {
+            line_len.saturating_sub(1)
+        };
+        if self.cursor_col < max {
+            self.cursor_col += 1;
+        }
     }
 
     fn move_up(&mut self) {
-        if self.cursor_line > 0 { self.cursor_line -= 1; self.clamp_col(); }
+        if self.cursor_line > 0 {
+            self.cursor_line -= 1;
+            self.clamp_col();
+        }
     }
 
     fn move_down(&mut self) {
-        if self.cursor_line + 1 < self.buffer.line_count() { self.cursor_line += 1; self.clamp_col(); }
+        if self.cursor_line + 1 < self.buffer.line_count() {
+            self.cursor_line += 1;
+            self.clamp_col();
+        }
     }
 
     fn move_word_forward(&mut self) {
         let (l, c) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
-        self.cursor_line = l; self.cursor_col = c;
+        self.cursor_line = l;
+        self.cursor_col = c;
     }
 
     fn move_word_backward(&mut self) {
         let (l, c) = motions::word_backward(&self.buffer, self.cursor_line, self.cursor_col);
-        self.cursor_line = l; self.cursor_col = c;
+        self.cursor_line = l;
+        self.cursor_col = c;
     }
 
     fn move_word_end(&mut self) {
         let (l, c) = motions::word_end(&self.buffer, self.cursor_line, self.cursor_col);
-        self.cursor_line = l; self.cursor_col = c;
+        self.cursor_line = l;
+        self.cursor_col = c;
     }
 
     fn move_line_end(&mut self) {
@@ -180,7 +205,8 @@ impl Editor {
 
     fn match_bracket(&mut self) {
         if let Some((l, c)) = motions::match_bracket(&self.buffer, self.cursor_line, self.cursor_col) {
-            self.cursor_line = l; self.cursor_col = c;
+            self.cursor_line = l;
+            self.cursor_col = c;
         }
     }
 
@@ -199,14 +225,24 @@ impl Editor {
                 .map(|c| (c + 1).min(self.cursor_col.saturating_sub(1))),
             _ => None,
         };
-        if let Some(col) = result { self.cursor_col = col; }
+        if let Some(col) = result {
+            self.cursor_col = col;
+        }
     }
 
     fn repeat_find(&mut self, reverse: bool) {
         if let Some((cmd, ch)) = self.last_find {
             let actual_cmd = if reverse {
-                match cmd { 'f' => 'F', 'F' => 'f', 't' => 'T', 'T' => 't', _ => cmd }
-            } else { cmd };
+                match cmd {
+                    'f' => 'F',
+                    'F' => 'f',
+                    't' => 'T',
+                    'T' => 't',
+                    _ => cmd,
+                }
+            } else {
+                cmd
+            };
             self.execute_find(actual_cmd, ch);
         }
     }
@@ -216,13 +252,21 @@ impl Editor {
 impl Editor {
     pub fn clamp_col(&mut self) {
         let line_len = self.buffer.line_len(self.cursor_line);
-        let max = if self.mode == EditorMode::Insert { line_len } else { line_len.saturating_sub(1) };
-        if self.cursor_col > max { self.cursor_col = max; }
+        let max = if self.mode == EditorMode::Insert {
+            line_len
+        } else {
+            line_len.saturating_sub(1)
+        };
+        if self.cursor_col > max {
+            self.cursor_col = max;
+        }
     }
 
     pub fn clamp_cursor(&mut self) {
         let max_line = self.buffer.line_count().saturating_sub(1);
-        if self.cursor_line > max_line { self.cursor_line = max_line; }
+        if self.cursor_line > max_line {
+            self.cursor_line = max_line;
+        }
         self.clamp_col();
     }
 }

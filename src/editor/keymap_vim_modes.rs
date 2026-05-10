@@ -1,8 +1,8 @@
 //! VimKeymap mode-specific key handlers (insert, visual).
 
-use txv_core::event::{KeyCode, KeyEvent};
 use super::command::Command;
 use super::keymap_vim::VimKeymap;
+use txv_core::event::{KeyCode, KeyEvent};
 
 impl VimKeymap {
     pub(super) fn insert_key(&self, key: &KeyEvent) -> Command {
@@ -22,7 +22,9 @@ impl VimKeymap {
     }
 
     pub(super) fn visual_key(&mut self, key: &KeyEvent) -> Command {
-        if key.modifiers.ctrl { return Command::Noop; }
+        if key.modifiers.ctrl {
+            return Command::Noop;
+        }
         match &key.code {
             KeyCode::Esc => Command::ExitVisual,
             KeyCode::Char('h') | KeyCode::Left => Command::MoveLeft,

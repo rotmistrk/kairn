@@ -130,9 +130,13 @@ impl Editor {
         };
         for line in (start_line..=end_line).rev() {
             let text = self.buffer.line(line).unwrap_or_default();
-            let remove = if text.starts_with("    ") { 4 }
-                else if text.starts_with('\t') { 1 }
-                else { text.chars().take_while(|c| c.is_whitespace()).count().min(4) };
+            let remove = if text.starts_with("    ") {
+                4
+            } else if text.starts_with('\t') {
+                1
+            } else {
+                text.chars().take_while(|c| c.is_whitespace()).count().min(4)
+            };
             if remove > 0 {
                 let start = self.buffer.line_col_to_offset(line, 0).unwrap_or(0);
                 let end = self.buffer.line_col_to_offset(line, remove).unwrap_or(start);

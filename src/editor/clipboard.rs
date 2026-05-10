@@ -28,7 +28,10 @@ impl Editor {
     }
 
     pub(super) fn yank_word(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let (nl, nc) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
         let end = self.buffer.line_col_to_offset(nl, nc).unwrap_or(start);
         if end > start {
@@ -38,9 +41,15 @@ impl Editor {
     }
 
     pub(super) fn yank_to_end(&mut self) {
-        let start = self.buffer.line_col_to_offset(self.cursor_line, self.cursor_col).unwrap_or(0);
+        let start = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
         let line_len = self.buffer.line_len(self.cursor_line);
-        let end = self.buffer.line_col_to_offset(self.cursor_line, line_len).unwrap_or(start);
+        let end = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, line_len)
+            .unwrap_or(start);
         if end > start {
             let content = self.buffer.content();
             self.register = content[start..end].to_string();
@@ -55,7 +64,9 @@ impl Editor {
             "nonumber" | "nonu" => self.options.number = false,
             "wrap" => self.options.wrap = true,
             "nowrap" => self.options.wrap = false,
-            _ => { self.status = format!("Unknown option: {opt}"); }
+            _ => {
+                self.status = format!("Unknown option: {opt}");
+            }
         }
     }
 
@@ -70,11 +81,15 @@ impl Editor {
     }
 
     pub(super) fn delete_lines(&mut self, n: usize) {
-        for _ in 0..n { self.delete_line(); }
+        for _ in 0..n {
+            self.delete_line();
+        }
     }
 
     pub(super) fn change_lines(&mut self, n: usize) {
-        for _ in 0..n { self.delete_line(); }
+        for _ in 0..n {
+            self.delete_line();
+        }
         let offset = self.buffer.line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         self.buffer.insert(offset, "\n");
         self.cursor_col = 0;
