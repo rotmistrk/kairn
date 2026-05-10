@@ -57,6 +57,7 @@ pub struct SlottedDesktop {
     zoomed: Option<SlotId>,
     layout_mode: LayoutMode,
     dropdown: Option<SlotId>,
+    dropdown_cursor: usize,
 }
 
 impl Default for SlottedDesktop {
@@ -72,6 +73,7 @@ impl SlottedDesktop {
             zoomed: None,
             layout_mode: LayoutMode::Auto,
             dropdown: None,
+            dropdown_cursor: 0,
         }
     }
 
@@ -164,7 +166,12 @@ impl SlottedDesktop {
                 HandleResult::Consumed
             }
             CM_TAB_DROPDOWN => {
-                self.dropdown = Some(self.focused);
+                if self.dropdown.is_some() {
+                    self.dropdown = None;
+                } else if self.slots[self.focused as usize].tabs.len() > 1 {
+                    self.dropdown_cursor = self.slots[self.focused as usize].active;
+                    self.dropdown = Some(self.focused);
+                }
                 self.group.view.dirty = true;
                 HandleResult::Consumed
             }
@@ -175,9 +182,27 @@ impl SlottedDesktop {
     fn handle_dropdown_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         use txv_core::event::KeyCode;
         let Some(slot_id) = self.dropdown else { return HandleResult::Ignored; };
+        let tab_count = self.slots[slot_id as usize].tabs.len();
         match &key.code {
             KeyCode::Esc => { self.dropdown = None; self.group.view.dirty = true; }
-            KeyCode::Enter => { self.dropdown = None; self.group.view.dirty = true; }
+            KeyCode::Enter => {
+                let s = &mut self.slots[slot_id as usize];
+                s.active = self.dropdown_cursor;
+                self.dropdown = None;
+                self.group.view.dirty = true;
+            }
+            KeyCode::Up => {
+                self.dropdown_cursor = if self.dropdown_cursor == 0 {
+                    tab_count - 1
+                } else {
+                    self.dropdown_cursor - 1
+                };
+                self.group.view.dirty = true;
+            }
+            KeyCode::Down => {
+                self.dropdown_cursor = (self.dropdown_cursor + 1) % tab_count;
+                self.group.view.dirty = true;
+            }
             KeyCode::Char(c) if c.is_ascii_digit() => {
                 let idx = (*c as u8 - b'0') as usize;
                 let s = &mut self.slots[slot_id as usize];

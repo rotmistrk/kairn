@@ -42,11 +42,11 @@ impl KairnStatusBar {
         bar.add_item(KeyEvent { code: KeyCode::Char('≈'), modifiers: KeyMod::default() }, CM_COMMAND_MODE, "");
         bar.add_item(
             KeyEvent { code: KeyCode::Left, modifiers: KeyMod { ctrl: true, alt: false, shift: true } },
-            CM_TAB_PREV, "",
+            CM_FOCUS_PREV, "",
         );
         bar.add_item(
             KeyEvent { code: KeyCode::Right, modifiers: KeyMod { ctrl: true, alt: false, shift: true } },
-            CM_TAB_NEXT, "",
+            CM_FOCUS_NEXT, "",
         );
         bar.add_item(
             KeyEvent { code: KeyCode::Up, modifiers: KeyMod { ctrl: true, alt: false, shift: true } },
@@ -105,6 +105,12 @@ impl View for KairnStatusBar {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         match self.mode {
             Mode::Normal => {
+                if let Event::Command { id, .. } = event {
+                    if *id == CM_COMMAND_MODE {
+                        self.enter_prompt();
+                        return HandleResult::Consumed;
+                    }
+                }
                 if let Event::Key(key) = event {
                     if *key == ALT_X { self.enter_prompt(); return HandleResult::Consumed; }
                     if key.code == KeyCode::Char('≈') && !key.modifiers.ctrl && !key.modifiers.alt {

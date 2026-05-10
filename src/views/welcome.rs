@@ -39,7 +39,13 @@ impl View for WelcomeView {
         }
     }
 
-    fn handle(&mut self, _event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        if let Event::Key(key) = event {
+            if key.code == KeyCode::Char(':') {
+                queue.put_command(crate::commands::CM_COMMAND_MODE, None);
+                return HandleResult::Consumed;
+            }
+        }
         HandleResult::Ignored
     }
 }

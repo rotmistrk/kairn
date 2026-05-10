@@ -201,20 +201,46 @@ impl SlottedDesktop {
             rects[slot_id as usize]
         };
 
-        let x = slot_r.x;
-        let y = bounds.y + 1;
-        let style = Style {
-            fg: Color::Ansi(15), bg: Color::Ansi(0),
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+        let border = Style { fg: Color::Ansi(6), bg: Color::Ansi(0), attrs: Attrs::default() };
+        let normal = Style { fg: Color::Ansi(15), bg: Color::Ansi(0), attrs: Attrs::default() };
+        let cursor_style = Style {
+            fg: Color::Ansi(14), bg: Color::Ansi(0),
+            attrs: Attrs { bold: true, ..Attrs::default() },
         };
 
-        for (i, (_title, _)) in slot.tabs.iter().enumerate() {
-            let row_y = y + i as u16;
+        // Compute dropdown width and position
+        let max_name_w = slot.tabs.iter().enumerate()
+            .map(|(i, _)| self.display_name(slot_id, i).len() + 4)
+            .max().unwrap_or(10);
+        let w = (max_name_w as u16 + 2).min(slot_r.w);
+        let x = slot_r.x;
+        let start_y = bounds.y + 1; // directly below title bar (open top)
+        let count = slot.tabs.len().min(10);
+
+        // Draw entries (no top border — connects to title)
+        for i in 0..count {
+            let row_y = start_y + i as u16;
             if row_y >= bounds.y + bounds.h { break; }
             let display = self.display_name(slot_id, i);
-            let entry = format!(" {}:{} ", i, display);
-            let w = entry.len().min(slot_r.w as usize);
-            surface.print(x, row_y, &entry[..w], style);
+            let entry = format!(" {}:{}", i, display);
+            let padded = format!("{:<width$}", entry, width = (w - 2) as usize);
+            let st = if i == self.dropdown_cursor { cursor_style } else { normal };
+            // Left border
+            surface.put(x, row_y, '│', border);
+            // Content
+            surface.print(x + 1, row_y, &padded, st);
+            // Right border
+            surface.put(x + w - 1, row_y, '│', border);
+        }
+
+        // Bottom border
+        let bot_y = start_y + count as u16;
+        if bot_y < bounds.y + bounds.h {
+            surface.put(x, bot_y, '╰', border);
+            for bx in (x + 1)..(x + w - 1) {
+                surface.put(bx, bot_y, '─', border);
+            }
+            surface.put(x + w - 1, bot_y, '╯', border);
         }
     }
 }
