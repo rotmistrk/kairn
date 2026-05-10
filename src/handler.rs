@@ -17,7 +17,7 @@ use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
-use crate::views::terminal::new_shell_terminal;
+use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
 use crate::views::tree::FileTreeView;
 
 /// Application state shared across command handler invocations.
@@ -68,7 +68,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_NEW_SHELL => {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, "Shell", term);
+                let name = desktop.next_tab_name(SlotId::Right, "Shell");
+                desktop.insert_tab(SlotId::Right, name, term);
             }
         }
         CM_FILE_CLOSED => {
@@ -153,9 +154,29 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "edit" | "e" if !arg.is_empty() => handle_edit_file(ctx.desktop, state, arg),
         "save" => ctx.queue.put_command(CM_SAVE, None),
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
+        "rename" if !arg.is_empty() => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                desktop.rename_focused_tab(arg);
+            }
+        }
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, "Shell", new_shell_terminal());
+                let name = desktop.next_tab_name(SlotId::Right, "Shell");
+                desktop.insert_tab(SlotId::Right, name, new_shell_terminal());
+            }
+        }
+        "kiro" => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let name = desktop.next_tab_name(SlotId::Right, "Kiro");
+                let agent_arg = if arg.starts_with("--agent=") {
+                    Some(arg.trim_start_matches("--agent="))
+                } else if !arg.is_empty() {
+                    Some(arg)
+                } else {
+                    None
+                };
+                let term = new_kiro_terminal(agent_arg);
+                desktop.insert_tab(SlotId::Right, name, term);
             }
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
@@ -234,6 +255,6 @@ pub fn build_desktop(root_dir: &Path) -> SlottedDesktop {
     let welcome = WelcomeView::new();
     desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
     let term = new_shell_terminal();
-    desktop.insert_tab(SlotId::Right, "Shell", term);
+    desktop.insert_tab(SlotId::Right, "Shell:0", term);
     desktop
 }

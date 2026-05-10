@@ -53,13 +53,19 @@ impl SlottedDesktop {
         let x = slot_r.x;
         let start_y = slot_r.y + 1; // directly below slot's title bar
         let count = slot.tabs.len().min(10);
+        let avail_h = (bounds.y + bounds.h).saturating_sub(start_y + 1) as usize; // -1 for bottom border
+        let visible = count.min(avail_h);
+        // Scroll offset: keep cursor visible
+        let scroll = if self.dropdown_cursor >= visible {
+            self.dropdown_cursor - visible + 1
+        } else {
+            0
+        };
 
         // Draw entries (no top border — connects to title)
-        for i in 0..count {
-            let row_y = start_y + i as u16;
-            if row_y >= bounds.y + bounds.h {
-                break;
-            }
+        for vi in 0..visible {
+            let i = scroll + vi;
+            let row_y = start_y + vi as u16;
             let display = self.display_name(slot_id, i);
             let entry = format!(" {}:{}", i, display);
             let padded = format!("{:<width$}", entry, width = (w - 2) as usize);
@@ -77,7 +83,7 @@ impl SlottedDesktop {
         }
 
         // Bottom border
-        let bot_y = start_y + count as u16;
+        let bot_y = start_y + visible as u16;
         if bot_y < bounds.y + bounds.h {
             surface.put(x, bot_y, '╰', border);
             for bx in (x + 1)..(x + w - 1) {

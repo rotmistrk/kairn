@@ -17,6 +17,32 @@ pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
     }
 }
 
+/// Create a kiro-cli chat terminal, optionally with a specific agent.
+pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
+    if std::env::var("KAIRN_TEST").is_ok() {
+        return Box::new(FallbackTerminal::new("Kiro"));
+    }
+    let mut args = vec!["chat"];
+    let agent_flag;
+    if let Some(name) = agent {
+        agent_flag = format!("--agent={name}");
+        args.push(&agent_flag);
+    }
+    match txv_widgets::PtyTerminal::spawn_command(
+        "kiro-cli",
+        &args,
+        &std::env::current_dir().unwrap_or_default(),
+        80,
+        24,
+    ) {
+        Ok(term) => Box::new(term),
+        Err(e) => {
+            log::error!("Failed to spawn kiro: {}", e);
+            Box::new(FallbackTerminal::new("Kiro (failed)"))
+        }
+    }
+}
+
 /// Minimal fallback when PTY spawn fails.
 struct FallbackTerminal {
     state: txv_core::prelude::ViewState,

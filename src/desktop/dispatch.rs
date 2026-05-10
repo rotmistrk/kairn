@@ -227,6 +227,12 @@ impl View for SlottedDesktop {
                 return self.handle_dropdown_key(key);
             }
         }
+        // M-0..9: select tab N in focused slot
+        if let Event::Key(key) = event {
+            if let HandleResult::Consumed = self.handle_alt_digit(key) {
+                return HandleResult::Consumed;
+            }
+        }
         if let Event::Command { id, .. } = event {
             let r = self.handle_command(*id, queue);
             if r == HandleResult::Consumed {
