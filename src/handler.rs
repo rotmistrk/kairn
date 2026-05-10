@@ -76,8 +76,12 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.close_tab_by_title(SlotId::Center, "Welcome");
-                let editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
-                let title = editor.title().to_string();
+                let mut editor = EditorView::open(path).unwrap_or_else(|_| EditorView::new_file(path));
+                editor.set_root_dir(state.root_dir.clone());
+                let title = path.strip_prefix(&state.root_dir)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
                 desktop.insert_tab(SlotId::Center, title, Box::new(editor));
                 desktop.focus_slot(SlotId::Center);
             }
@@ -86,12 +90,8 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(text) = boxed.downcast_ref::<String>() else {
-        return;
-    };
+    let Some(boxed) = ctx.data.as_ref() else { return; };
+    let Some(text) = boxed.downcast_ref::<String>() else { return; };
     log::debug!("execute_command: {:?}", text);
 
     let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
@@ -101,38 +101,37 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
     match cmd {
         "help" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let help = HelpView::new();
-                desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                desktop.insert_tab(SlotId::Center, "Help", Box::new(HelpView::new()));
             }
         }
         "quit" => ctx.queue.put_command(CM_QUIT, None),
-        "edit" | "e" if !arg.is_empty() => {
-            let path = state.root_dir.join(arg);
-            // NOTE: App command handlers call each other directly (not via queue).
-            // This is correct — the queue is for cross-view communication.
-            // When the App already knows what to do, it does it immediately.
-            // Same pattern as TXV's Program::handle.
-            let path_str = path.to_string_lossy().to_string();
-            match state.broker.open(&path_str, SlotId::Center, 0) {
-                OpenResult::AlreadyOpen { .. } => {}
-                OpenResult::Opened => {
-                    let editor = EditorView::open(&path).unwrap_or_else(|_| EditorView::new_file(&path));
-                    let title = editor.title().to_string();
-                    if let Some(d) = downcast_desktop(ctx.desktop) {
-                        d.insert_tab(SlotId::Center, title, Box::new(editor));
-                    }
-                }
-            }
-        }
+        "edit" | "e" if !arg.is_empty() => handle_edit_file(ctx.desktop, state, arg),
         "save" => ctx.queue.put_command(CM_SAVE, None),
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
         "shell" => {
-            let term = TerminalView::new("Shell");
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, "Shell", Box::new(term));
+                desktop.insert_tab(SlotId::Right, "Shell", Box::new(TerminalView::new("Shell")));
             }
         }
         _ => {}
+    }
+}
+
+fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
+    let path = state.root_dir.join(arg);
+    let path_str = path.to_string_lossy().to_string();
+    match state.broker.open(&path_str, SlotId::Center, 0) {
+        OpenResult::AlreadyOpen { .. } => {}
+        OpenResult::Opened => {
+            let mut editor = EditorView::open(&path)
+                .unwrap_or_else(|_| EditorView::new_file(&path));
+            editor.set_root_dir(state.root_dir.clone());
+            let title = path.strip_prefix(&state.root_dir)
+                .unwrap_or(&path).to_string_lossy().to_string();
+            if let Some(d) = downcast_desktop(desktop) {
+                d.insert_tab(SlotId::Center, title, Box::new(editor));
+            }
+        }
     }
 }
 

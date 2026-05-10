@@ -15,6 +15,7 @@ pub struct EditorView {
     state: ViewState,
     pub editor: Editor,
     path: PathBuf,
+    root_dir: PathBuf,
     highlighter: Highlighter,
     file_ext: String,
 }
@@ -23,13 +24,21 @@ impl EditorView {
     pub fn open(path: &Path) -> anyhow::Result<Self> {
         let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
         let file_ext = highlight::extension_from_path(path).to_string();
-        Ok(Self { state: ViewState::default(), editor, path: path.to_path_buf(), highlighter: Highlighter::new(), file_ext })
+        let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        Ok(Self {
+            state: ViewState::default(), editor, path: path.to_path_buf(),
+            root_dir, highlighter: Highlighter::new(), file_ext,
+        })
     }
 
     pub fn new_file(path: &Path) -> Self {
         let editor = Editor::from_text("");
         let file_ext = highlight::extension_from_path(path).to_string();
-        Self { state: ViewState::default(), editor, path: path.to_path_buf(), highlighter: Highlighter::new(), file_ext }
+        let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        Self {
+            state: ViewState::default(), editor, path: path.to_path_buf(),
+            root_dir, highlighter: Highlighter::new(), file_ext,
+        }
     }
 
     pub fn from_text(content: &str) -> Self {
@@ -38,10 +47,13 @@ impl EditorView {
             state: ViewState::default(),
             editor,
             path: PathBuf::from("[cmd output]"),
+            root_dir: PathBuf::from("."),
             highlighter: Highlighter::new(),
             file_ext: String::new(),
         }
     }
+
+    pub fn set_root_dir(&mut self, root: PathBuf) { self.root_dir = root; }
 
     pub fn path(&self) -> &Path { &self.path }
 
@@ -157,15 +169,24 @@ impl EditorView {
         let buf = &self.editor.command_buf;
         let partial = buf.strip_prefix("e ").or_else(|| buf.strip_prefix("edit "));
         let Some(partial) = partial else { return; };
-        let root = self.path.parent().unwrap_or(std::path::Path::new("."));
-        let search_dir = root;
-        let Ok(entries) = std::fs::read_dir(search_dir) else { return; };
+
+        let (search_dir, file_prefix, dir_prefix) = if partial.contains('/') {
+            let p = Path::new(partial);
+            let parent = p.parent().unwrap_or(Path::new(""));
+            let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let dp = format!("{}/", parent.display());
+            (self.root_dir.join(parent), prefix.to_string(), dp)
+        } else {
+            (self.root_dir.clone(), partial.to_string(), String::new())
+        };
+
+        let Ok(entries) = std::fs::read_dir(&search_dir) else { return; };
         let mut matches: Vec<String> = Vec::new();
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name_str = name.to_string_lossy().to_string();
-            if name_str.starts_with(partial) {
-                matches.push(name_str);
+            if name_str.starts_with(&file_prefix) {
+                matches.push(format!("{dir_prefix}{name_str}"));
             }
         }
         if matches.len() == 1 {

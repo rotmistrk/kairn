@@ -8,6 +8,7 @@ pub mod commands;
 pub mod completer;
 pub mod desktop;
 pub mod editor;
+pub mod glyphs;
 pub mod handler;
 pub mod help;
 pub mod highlight;

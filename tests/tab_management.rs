@@ -23,6 +23,7 @@ fn tab_bar_shows_all_tabs() {
     h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
     let tab_bar = h.row(0);
-    assert!(tab_bar.contains("a.rs"));
-    assert!(tab_bar.contains("b.rs"));
+    // New format: shows active tab + count
+    assert!(tab_bar.contains("b.rs"), "active tab shown: {}", tab_bar);
+    assert!(tab_bar.contains("❨2❩") || tab_bar.contains("2"), "tab count shown: {}", tab_bar);
 }

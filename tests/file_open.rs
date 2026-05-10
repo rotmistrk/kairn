@@ -46,6 +46,7 @@ fn multiple_files_create_multiple_tabs() {
     h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
     let tab_bar = h.row(0);
-    assert!(tab_bar.contains("a.rs"));
-    assert!(tab_bar.contains("b.rs"));
+    // New format: shows active tab + count "b.rs (2)"
+    assert!(tab_bar.contains("b.rs"), "active tab should be shown: {}", tab_bar);
+    assert!(tab_bar.contains("❨2❩") || tab_bar.contains("2"), "tab count should be shown: {}", tab_bar);
 }

@@ -26,10 +26,10 @@ fn tab_names_in_top_line() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     let top = h.row(0);
-    assert!(top.contains("(Files)"), "tab name missing: {}", top);
+    assert!(top.contains("Files"), "tab name missing: {}", top);
     // In tall layout (<200 width), Shell tab is in bottom divider, not top
     let screen = h.screen_text();
-    assert!(screen.contains("(Shell)"), "Shell tab missing from screen");
+    assert!(screen.contains("Shell"), "Shell tab missing from screen");
 }
 
 #[test]

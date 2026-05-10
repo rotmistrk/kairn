@@ -50,11 +50,11 @@ impl KairnStatusBar {
         );
         bar.add_item(
             KeyEvent { code: KeyCode::Up, modifiers: KeyMod { ctrl: true, alt: false, shift: true } },
-            CM_TAB_NEXT, "",
+            CM_TAB_DROPDOWN, "",
         );
         bar.add_item(
             KeyEvent { code: KeyCode::Down, modifiers: KeyMod { ctrl: true, alt: false, shift: true } },
-            CM_TAB_PREV, "",
+            CM_TAB_DROPDOWN, "",
         );
         Self { inner: bar, input: InputLine::new(), mode: Mode::Normal, completer: None }
     }

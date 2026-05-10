@@ -126,14 +126,15 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
     h.inject_key(KeyCode::Down, KeyMod::default()); // move to c.rs
     h.inject_key(KeyCode::Enter, KeyMod::default()); // open c.rs
     h.run_cycles(1);
-    // Now c.rs is active. LRU order: c.rs (current), b.rs, a.rs
-    // Ctrl-Shift-Down should switch to b.rs (previous in LRU)
+    // Now c.rs is active. Ctrl-Shift-Down opens dropdown, press '1' for b.rs
     h.inject_key(
         KeyCode::Down,
         KeyMod { ctrl: true, alt: false, shift: true },
     );
     h.run_cycles(1);
-    assert!(h.contains("bbb"), "should switch to b.rs (previous LRU tab)");
+    h.inject_key(KeyCode::Char('1'), KeyMod::default());
+    h.run_cycles(1);
+    assert!(h.contains("bbb"), "should switch to b.rs via dropdown");
 }
 
 #[test]
@@ -150,16 +151,13 @@ fn ctrl_shift_down_twice_cycles_further_back() {
     h.inject_key(KeyCode::Down, KeyMod::default());
     h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
-    // Ctrl-Shift-Down twice: c→b→a
+    // Open dropdown and press '0' to select a.rs directly
     h.inject_key(
         KeyCode::Down,
         KeyMod { ctrl: true, alt: false, shift: true },
     );
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod { ctrl: true, alt: false, shift: true },
-    );
+    h.inject_key(KeyCode::Char('0'), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("aaa"), "should switch to a.rs (2nd previous LRU tab)");
+    assert!(h.contains("aaa"), "should switch to a.rs via dropdown '0'");
 }

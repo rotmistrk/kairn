@@ -56,6 +56,7 @@ pub struct SlottedDesktop {
     focused: SlotId,
     zoomed: Option<SlotId>,
     layout_mode: LayoutMode,
+    dropdown: Option<SlotId>,
 }
 
 impl Default for SlottedDesktop {
@@ -70,6 +71,7 @@ impl SlottedDesktop {
             focused: SlotId::Left,
             zoomed: None,
             layout_mode: LayoutMode::Auto,
+            dropdown: None,
         }
     }
 
@@ -161,8 +163,33 @@ impl SlottedDesktop {
                 }
                 HandleResult::Consumed
             }
+            CM_TAB_DROPDOWN => {
+                self.dropdown = Some(self.focused);
+                self.group.view.dirty = true;
+                HandleResult::Consumed
+            }
             _ => HandleResult::Ignored,
         }
+    }
+
+    fn handle_dropdown_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
+        use txv_core::event::KeyCode;
+        let Some(slot_id) = self.dropdown else { return HandleResult::Ignored; };
+        match &key.code {
+            KeyCode::Esc => { self.dropdown = None; self.group.view.dirty = true; }
+            KeyCode::Enter => { self.dropdown = None; self.group.view.dirty = true; }
+            KeyCode::Char(c) if c.is_ascii_digit() => {
+                let idx = (*c as u8 - b'0') as usize;
+                let s = &mut self.slots[slot_id as usize];
+                if idx < s.tabs.len() {
+                    s.active = idx;
+                }
+                self.dropdown = None;
+                self.group.view.dirty = true;
+            }
+            _ => {}
+        }
+        HandleResult::Consumed
     }
 }
 
@@ -212,9 +239,16 @@ impl View for SlottedDesktop {
             if r.w == 0 || r.h == 0 { continue; }
             if let Some(view) = slot.active_view() { view.draw(surface); }
         }
+        self.draw_dropdown(surface, bounds);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        // Dropdown intercepts all keys when open
+        if self.dropdown.is_some() {
+            if let Event::Key(key) = event {
+                return self.handle_dropdown_key(key);
+            }
+        }
         if let Event::Command { id, .. } = event {
             let r = self.handle_command(*id, queue);
             if r == HandleResult::Consumed { return r; }

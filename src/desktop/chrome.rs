@@ -2,17 +2,67 @@
 
 use txv_core::prelude::*;
 use super::{SlotId, SlottedDesktop, TOP_SLOTS};
+use crate::glyphs::glyphs;
 
 fn chrome_style() -> Style { Style { fg: Color::Ansi(7), bg: Color::Ansi(0), attrs: Attrs::default() } }
-fn focused_tab() -> Style {
+
+/// Tab title styles (focused slot)
+fn focused_title() -> Style {
     Style { fg: Color::Ansi(14), bg: Color::Ansi(4), attrs: Attrs { bold: true, ..Attrs::default() } }
 }
-fn active_tab() -> Style {
+fn focused_arrow() -> Style {
+    Style { fg: Color::Ansi(10), bg: Color::Ansi(4), attrs: Attrs::default() }
+}
+fn focused_count() -> Style {
+    Style { fg: Color::Ansi(15), bg: Color::Ansi(6), attrs: Attrs { bold: true, ..Attrs::default() } }
+}
+
+/// Tab title styles (unfocused slot)
+fn active_title() -> Style {
     Style { fg: Color::Ansi(15), bg: Color::Ansi(8), attrs: Attrs { bold: true, ..Attrs::default() } }
 }
-fn inactive_tab() -> Style { Style { fg: Color::Ansi(8), bg: Color::Ansi(0), attrs: Attrs::default() } }
+fn active_arrow() -> Style {
+    Style { fg: Color::Ansi(7), bg: Color::Ansi(8), attrs: Attrs::default() }
+}
+fn active_count() -> Style {
+    Style { fg: Color::Ansi(15), bg: Color::Ansi(8), attrs: Attrs::default() }
+}
+
+/// Find shortest path suffix that distinguishes `path` from `others`.
+fn disambiguate_path(path: &str, others: &[&str]) -> String {
+    let parts: Vec<&str> = path.rsplit('/').collect();
+    for depth in 2..=parts.len() {
+        let suffix: String = parts[..depth].iter().rev()
+            .copied().collect::<Vec<_>>().join("/");
+        let unique = others.iter().all(|other| {
+            let oparts: Vec<&str> = other.rsplit('/').collect();
+            let osuffix: String = oparts[..depth.min(oparts.len())].iter().rev()
+                .copied().collect::<Vec<_>>().join("/");
+            osuffix != suffix
+        });
+        if unique { return suffix; }
+    }
+    path.to_string()
+}
 
 impl SlottedDesktop {
+    /// Compute display name for a tab, disambiguating duplicates.
+    pub fn display_name(&self, slot: SlotId, idx: usize) -> String {
+        let s = &self.slots[slot as usize];
+        let title = match s.tabs.get(idx) {
+            Some((t, _)) => t.as_str(),
+            None => return String::new(),
+        };
+        let basename = title.rsplit('/').next().unwrap_or(title);
+        let dups: Vec<&str> = s.tabs.iter().enumerate()
+            .filter(|(i, (t, _))| {
+                *i != idx && t.rsplit('/').next().unwrap_or(t) == basename
+            })
+            .map(|(_, (t, _))| t.as_str())
+            .collect();
+        if dups.is_empty() { return basename.to_string(); }
+        disambiguate_path(title, &dups)
+    }
     pub(super) fn draw_chrome(&self, surface: &mut Surface, bounds: Rect) {
         if bounds.w == 0 || bounds.h == 0 { return; }
         let rects = self.layout(bounds);
@@ -36,15 +86,55 @@ impl SlottedDesktop {
 
     fn draw_slot_tabs(&self, surface: &mut Surface, sid: SlotId, start_x: u16, y: u16, max_x: u16) {
         let slot = &self.slots[sid as usize];
-        let mut tx = start_x;
-        for (i, (title, _)) in slot.tabs.iter().enumerate() {
-            let label = format!("({})", title);
-            if tx + label.len() as u16 > max_x { break; }
-            let style = if i == slot.active {
-                if sid == self.focused { focused_tab() } else { active_tab() }
-            } else { inactive_tab() };
-            surface.print(tx, y, &label, style);
-            tx += label.len() as u16;
+        if slot.tabs.is_empty() { return; }
+        let display = self.display_name(sid, slot.active);
+        let focused = sid == self.focused;
+        let count = slot.tabs.len();
+        let g = glyphs();
+
+        let (ts, as_, cs) = if focused {
+            (focused_title(), focused_arrow(), focused_count())
+        } else {
+            (active_title(), active_arrow(), active_count())
+        };
+
+        let mut x = start_x;
+
+        // Left cap (fg=title_bg on chrome_bg)
+        let cap_style = Style { fg: ts.bg, bg: chrome_style().bg, attrs: Attrs::default() };
+        surface.print(x, y, g.tab_left, cap_style);
+        x += g.tab_left.chars().count() as u16;
+
+        // Title text
+        let title_str = format!(" {} ", display);
+        if x + title_str.len() as u16 > max_x { return; }
+        surface.print(x, y, &title_str, ts);
+        x += title_str.len() as u16;
+
+        if count > 1 && self.dropdown != Some(sid) {
+            // Arrow
+            surface.put(x, y, g.dropdown_arrow.chars().next().unwrap_or('v'), as_);
+            x += 1;
+
+            // Right cap of title / left cap of badge
+            let bridge = Style { fg: ts.bg, bg: cs.bg, attrs: Attrs::default() };
+            surface.print(x, y, g.tab_right, bridge);
+            x += g.tab_right.chars().count() as u16;
+
+            // Badge count
+            let num = format!("{}", count);
+            if x + num.len() as u16 <= max_x {
+                surface.print(x, y, &num, cs);
+                x += num.len() as u16;
+            }
+
+            // Right cap of badge
+            let end_cap = Style { fg: cs.bg, bg: chrome_style().bg, attrs: Attrs::default() };
+            surface.print(x, y, g.tab_right, end_cap);
+        } else {
+            // Right cap (no badge)
+            let end_cap = Style { fg: ts.bg, bg: chrome_style().bg, attrs: Attrs::default() };
+            surface.print(x, y, g.tab_right, end_cap);
         }
     }
 
@@ -95,6 +185,36 @@ impl SlottedDesktop {
             self.draw_slot_tabs(
                 surface, SlotId::Right, bounds.x, div_y, bounds.x + bounds.w,
             );
+        }
+    }
+
+    pub(super) fn draw_dropdown(&self, surface: &mut Surface, bounds: Rect) {
+        let Some(slot_id) = self.dropdown else { return; };
+        let slot = &self.slots[slot_id as usize];
+        if slot.tabs.is_empty() { return; }
+
+        let rects = self.layout(bounds);
+        let tall = self.is_tall(bounds.w);
+        let slot_r = if tall && slot_id == SlotId::Right {
+            rects[SlotId::Bottom as usize]
+        } else {
+            rects[slot_id as usize]
+        };
+
+        let x = slot_r.x;
+        let y = bounds.y + 1;
+        let style = Style {
+            fg: Color::Ansi(15), bg: Color::Ansi(0),
+            attrs: Attrs { reverse: true, ..Attrs::default() },
+        };
+
+        for (i, (_title, _)) in slot.tabs.iter().enumerate() {
+            let row_y = y + i as u16;
+            if row_y >= bounds.y + bounds.h { break; }
+            let display = self.display_name(slot_id, i);
+            let entry = format!(" {}:{} ", i, display);
+            let w = entry.len().min(slot_r.w as usize);
+            surface.print(x, row_y, &entry[..w], style);
         }
     }
 }
