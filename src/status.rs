@@ -70,9 +70,11 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Right), CM_FOCUS_NEXT));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN));
-    // Panel resize: ≠ (Alt+=) grow, – (Alt+-) shrink
+    // Panel resize: ≠ (Alt+=) grow, – (Alt+-) shrink, ± (Alt+Shift+=) grow vertical, — (Alt+Shift+-) shrink vertical
     bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_PANEL_GROW));
     bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_PANEL_SHRINK));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('±')), CM_PANEL_GROW_V));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('—')), CM_PANEL_SHRINK_V));
     // Suspend and peek
     bar.add_active_only(KeyLabelItem::hidden(ctrl('z'), CM_SUSPEND));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('o'), CM_PEEK));

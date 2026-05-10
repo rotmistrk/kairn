@@ -63,4 +63,15 @@ impl SlottedDesktop {
         }
         self.set_bounds(self.group.view.bounds);
     }
+
+    /// Resize the bottom panel vertically (grows/shrinks its height).
+    pub(super) fn resize_vertical(&mut self, delta: i16) {
+        let s = &mut self.slots[SlotId::Bottom as usize];
+        if delta > 0 {
+            s.size += delta as u16;
+        } else {
+            s.size = s.size.saturating_sub((-delta) as u16);
+        }
+        self.set_bounds(self.group.view.bounds);
+    }
 }

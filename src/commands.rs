@@ -44,5 +44,7 @@ pub const CM_CLIPBOARD_PASTE: CommandId = 150;
 // Panel resize
 pub const CM_PANEL_GROW: CommandId = 160;
 pub const CM_PANEL_SHRINK: CommandId = 161;
-pub const CM_SUSPEND: CommandId = 162;
-pub const CM_PEEK: CommandId = 163;
+pub const CM_PANEL_GROW_V: CommandId = 162;
+pub const CM_PANEL_SHRINK_V: CommandId = 163;
+pub const CM_SUSPEND: CommandId = 164;
+pub const CM_PEEK: CommandId = 165;

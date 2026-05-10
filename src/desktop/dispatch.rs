@@ -91,6 +91,14 @@ impl SlottedDesktop {
                 self.resize_focused(-2);
                 HandleResult::Consumed
             }
+            CM_PANEL_GROW_V => {
+                self.resize_vertical(2);
+                HandleResult::Consumed
+            }
+            CM_PANEL_SHRINK_V => {
+                self.resize_vertical(-2);
+                HandleResult::Consumed
+            }
             _ => HandleResult::Ignored,
         }
     }
