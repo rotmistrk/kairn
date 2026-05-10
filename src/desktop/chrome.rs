@@ -214,7 +214,7 @@ impl SlottedDesktop {
             .max().unwrap_or(10);
         let w = (max_name_w as u16 + 2).min(slot_r.w);
         let x = slot_r.x;
-        let start_y = bounds.y + 1; // directly below title bar (open top)
+        let start_y = slot_r.y + 1; // directly below slot's title bar
         let count = slot.tabs.len().min(10);
 
         // Draw entries (no top border — connects to title)
