@@ -1,7 +1,7 @@
 # rusticle-tk
 
 TUI application framework where apps are written in rusticle (Tcl) scripts
-and rendered via txv/txv-widgets. The terminal equivalent of Tcl/Tk.
+and rendered via txv-widgets. The terminal equivalent of Tcl/Tk.
 
 ## Quick Start
 
@@ -20,13 +20,33 @@ cargo build --release -p rusticle-tk
 
 ## Architecture
 
+Built on the TXV framework (txv-core + txv-widgets):
+
 ```
-rusticle-tk binary
-├── main.rs           — CLI, script loading, event loop launch
-├── tk_bridge.rs      — registers all widget commands in rusticle
-├── widget_mgr.rs     — widget ID registry, lifecycle management
-├── layout_mgr.rs     — window/layout commands → Tk-style pack model
-└── event_mgr.rs      — bind/after/on-* → txv-widgets EventLoop
+Program (txv_core::program)
+├── StatusBar (preprocess) — key→command translation via KeyLabelItem
+└── TkDesktop (GroupState) — holds script widgets as Box<dyn View> children
+```
+
+Source layout:
+
+```
+src/
+  main.rs              — CLI, panic handler, Program::run
+  desktop.rs           — TkDesktop (GroupState + name→index mapping)
+  event_mgr.rs         — builds StatusBar, runs Program event loop
+  keyspec.rs           — parse/format key specifications
+  layout_mgr.rs        — Tk-style pack layout computation
+  layout_side.rs       — Side enum (left/right/top/bottom/fill)
+  widget_mgr.rs        — StringListData helper for ListView
+  tk_bridge/
+    mod.rs             — SharedState, register_all, helpers
+    window_app.rs      — window + app commands
+    text_list.rs       — text + list widget commands
+    tree_input.rs      — tree + input + statusbar commands
+    tabbar_table.rs    — tabbar + table + progress commands
+    commands.rs        — dialog, menu, bind, after, focus, notify, files
+    tests.rs           — unit tests
 ```
 
 ## Widget Commands
@@ -34,9 +54,9 @@ rusticle-tk binary
 | Command | Subcommands |
 |---------|-------------|
 | `window` | `create`, `add`, `title` |
-| `text` | `create`, `load`, `set`, `get`, `clear`, `append`, `line-numbers` |
+| `text` | `create`, `set`, `get`, `clear`, `append`, `line-numbers` |
 | `list` | `create`, `set-items`, `selected`, `index`, `on-select`, `on-activate` |
-| `tree` | `create`, `selected`, `expand`, `collapse`, `refresh`, `on-select` |
+| `tree` | `create`, `selected`, `refresh`, `on-select`, `on-activate` |
 | `input` | `create`, `get`, `set`, `clear`, `focus`, `on-change`, `on-submit` |
 | `statusbar` | `create`, `left`, `right` |
 | `tabbar` | `create`, `add`, `remove`, `active`, `set-active`, `on-change` |
@@ -47,9 +67,10 @@ rusticle-tk binary
 | `fuzzy-select` | (modal, returns selected item) |
 | `bind` | `keyspec script` — global key binding |
 | `after` | `ms script`, `ms -repeat script` — timers |
-| `notify` | `message ?-duration ms?` |
+| `notify` | `message` — status notification |
+| `focus` | `widget_id` — set keyboard focus |
 | `files` | `path ?-recursive? ?-filter pattern?` |
-| `app` | `run`, `quit`, `on-quit`, `on-resize` |
+| `app` | `run`, `quit`, `on-quit` |
 
 ## Layout Model
 
@@ -63,6 +84,24 @@ window add $win $main   -side fill                ;# fills remaining space
 
 **Important:** add fixed-size widgets (bottom, left, etc.) *before* the fill
 widget. Fill consumes all remaining space.
+
+Sides: `left`, `right`, `top`, `bottom`, `fill`.
+
+## Key Bindings
+
+Scripts register bindings with `bind keyspec { script }`. These become
+`KeyLabelItem` entries in the StatusBar (preprocess phase):
+
+```tcl
+bind Ctrl-Q { app quit }
+bind F5    { load-file $current_file }
+bind Tab   { focus $filter }
+```
+
+Key spec format: modifiers joined with `-`, then key name.
+- Modifiers: `Ctrl`, `Alt`, `Shift`
+- Keys: `A`-`Z`, `F1`-`F12`, `Enter`, `Escape`, `Tab`, `Backspace`, `Delete`,
+  `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PageUp`, `PageDown`
 
 ## Examples
 
@@ -86,34 +125,21 @@ if {$answer} { puts "yes" } else { puts "no" }
 
 ### Full demos in `examples/`
 
-| Script | Description | Widgets used |
-|--------|-------------|--------------|
-| `hello.tcl` | Minimal app | text, statusbar |
-| `dialog-demo.tcl` | Shell dialog replacement | dialog |
-| `file-browser.tcl` | Three-panel file browser | tree, text, statusbar |
-| `widget-gallery.tcl` | Every widget on one screen | all widget types |
-| `log-viewer.tcl` | File viewer with filter | text, input, statusbar, bind |
-| `todo-list.tcl` | Add/remove items | list, input, statusbar |
-| `config-editor.tcl` | Section tree + key/value table | list, table, input, statusbar |
-| `dashboard.tcl` | Live-updating metrics | progress ×4, statusbar, after -repeat |
-
-## Key Bindings
-
-Scripts register bindings with `bind keyspec { script }`:
-
-```tcl
-bind Ctrl-Q { app quit }
-bind F5    { load-file $current_file }
-bind Tab   { input focus $filter }
-```
-
-Key spec format: `Ctrl-Q`, `Shift-F1`, `Alt-Left`, `Escape`, `F5`, etc.
+| Script | Description |
+|--------|-------------|
+| `hello.tcl` | Minimal app — text + statusbar |
+| `dialog-demo.tcl` | Shell dialog replacement |
+| `file-browser.tcl` | Three-panel file browser |
+| `widget-gallery.tcl` | Every widget type on one screen |
+| `log-viewer.tcl` | File viewer with filter input |
+| `todo-list.tcl` | Add/remove list items |
+| `config-editor.tcl` | Section tree + key/value table |
+| `dashboard.tcl` | Live-updating progress bars |
 
 ## Known Limitations
 
-- `dialog` commands return defaults in non-interactive mode (no modal event loop yet)
-- `menu show` is a stub (no overlay positioning yet)
-- `text` is read-only (TextArea widget doesn't support editing)
-- `table sort` is a stub
-- rusticle lacks the `eq`/`ne` string operators — use `==`/`!=` instead
+- `dialog` commands return defaults in non-interactive mode (no modal yet)
+- `menu show` is a stub (no overlay positioning)
+- `text` is read-only (TextArea widget)
 - `fuzzy-select` returns first item in non-interactive mode
+- Binding redesign planned — see `doc/design-binding-architecture.md`

@@ -89,6 +89,10 @@ pub trait View: Send {
     fn can_close(&self) -> CloseResult {
         CloseResult::Ok
     }
+    /// Downcast support. Override to return `self`.
+    fn as_any_mut(&mut self) -> Option<&mut dyn Any> {
+        None
+    }
 }
 
 /// Common view state — embed in every view.
@@ -187,6 +191,9 @@ macro_rules! delegate_view_state {
             self.$field.focused = false;
             self.$field.dirty = true;
         }
+        fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+            Some(self)
+        }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
@@ -230,6 +237,11 @@ macro_rules! delegate_view_state {
             fn unselect(&mut self) {
                 self.$field.focused = false;
                 self.$field.dirty = true;
+            }
+        });
+        $crate::__dvs_maybe!(as_any_mut, [$($skip),*], {
+            fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+                Some(self)
             }
         });
     };

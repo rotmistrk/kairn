@@ -5,7 +5,7 @@ use txv_core::prelude::*;
 use crate::scroll_view::ScrollView;
 
 /// Trait for providing tree data to TreeView.
-pub trait TreeData: Send {
+pub trait TreeData: Send + 'static {
     fn root_count(&self) -> usize;
     fn child_count(&self, id: usize) -> usize;
     fn label(&self, id: usize) -> &str;

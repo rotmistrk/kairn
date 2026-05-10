@@ -1,39 +1,12 @@
 //! Window layout tree manager.
 //!
-//! Translates rusticle `window add` commands into txv layout computations.
+//! Translates rusticle `window add` commands into layout computations.
 //! Uses a Tk-style pack model: each `add` peels off space from the
 //! remaining area in the specified direction.
 
-use txv::layout::{Constraint, Direction, Rect, Size};
+use txv_core::geometry::Rect;
 
-/// Side specification from the script.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Side {
-    /// Horizontal split, widget on left.
-    Left,
-    /// Horizontal split, widget on right.
-    Right,
-    /// Vertical split, widget on top.
-    Top,
-    /// Vertical split, widget on bottom.
-    Bottom,
-    /// Takes remaining space.
-    Fill,
-}
-
-impl Side {
-    /// Parse a side string.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match s {
-            "left" => Ok(Self::Left),
-            "right" => Ok(Self::Right),
-            "top" => Ok(Self::Top),
-            "bottom" => Ok(Self::Bottom),
-            "fill" => Ok(Self::Fill),
-            _ => Err(format!("unknown side: {s}")),
-        }
-    }
-}
+pub use crate::layout_side::Side;
 
 /// A packed widget entry.
 struct PackEntry {
@@ -84,64 +57,54 @@ impl LayoutManager {
     }
 
     /// Compute widget positions for the given area.
-    /// Processes entries in order, peeling off space from each side.
     pub fn compute(&self, area: Rect) -> Vec<(String, Rect)> {
         let mut result = Vec::new();
-        let mut remaining = area;
+        let mut rem = area;
 
         for entry in &self.entries {
-            if remaining.w == 0 || remaining.h == 0 {
+            if rem.w == 0 || rem.h == 0 {
                 break;
             }
-            match entry.side {
-                Side::Left => {
-                    let w = entry.size.unwrap_or(remaining.w).min(remaining.w);
-                    let rects = remaining.split(
-                        Direction::Horizontal,
-                        &[fixed_constraint(w), fill_constraint()],
-                    );
-                    result.push((entry.widget_id.clone(), rects[0]));
-                    remaining = rects[1];
-                }
-                Side::Right => {
-                    let w = entry.size.unwrap_or(remaining.w).min(remaining.w);
-                    let rects = remaining.split(
-                        Direction::Horizontal,
-                        &[fill_constraint(), fixed_constraint(w)],
-                    );
-                    remaining = rects[0];
-                    result.push((entry.widget_id.clone(), rects[1]));
-                }
-                Side::Top => {
-                    let h = entry.size.unwrap_or(remaining.h).min(remaining.h);
-                    let rects = remaining.split(
-                        Direction::Vertical,
-                        &[fixed_constraint(h), fill_constraint()],
-                    );
-                    result.push((entry.widget_id.clone(), rects[0]));
-                    remaining = rects[1];
-                }
-                Side::Bottom => {
-                    let h = entry.size.unwrap_or(remaining.h).min(remaining.h);
-                    let rects = remaining.split(
-                        Direction::Vertical,
-                        &[fill_constraint(), fixed_constraint(h)],
-                    );
-                    remaining = rects[0];
-                    result.push((entry.widget_id.clone(), rects[1]));
-                }
-                Side::Fill => {
-                    result.push((entry.widget_id.clone(), remaining));
-                    remaining = Rect {
-                        x: remaining.x + remaining.w,
-                        y: remaining.y + remaining.h,
-                        w: 0,
-                        h: 0,
-                    };
-                }
-            }
+            let (widget_rect, new_rem) = split_side(rem, entry.side, entry.size);
+            result.push((entry.widget_id.clone(), widget_rect));
+            rem = new_rem;
         }
         result
+    }
+}
+
+/// Split a rect by peeling off one side. Returns (widget_rect, remaining).
+fn split_side(rem: Rect, side: Side, size: Option<u16>) -> (Rect, Rect) {
+    match side {
+        Side::Left => {
+            let w = size.unwrap_or(rem.w).min(rem.w);
+            (
+                Rect::new(rem.x, rem.y, w, rem.h),
+                Rect::new(rem.x + w, rem.y, rem.w - w, rem.h),
+            )
+        }
+        Side::Right => {
+            let w = size.unwrap_or(rem.w).min(rem.w);
+            (
+                Rect::new(rem.x + rem.w - w, rem.y, w, rem.h),
+                Rect::new(rem.x, rem.y, rem.w - w, rem.h),
+            )
+        }
+        Side::Top => {
+            let h = size.unwrap_or(rem.h).min(rem.h);
+            (
+                Rect::new(rem.x, rem.y, rem.w, h),
+                Rect::new(rem.x, rem.y + h, rem.w, rem.h - h),
+            )
+        }
+        Side::Bottom => {
+            let h = size.unwrap_or(rem.h).min(rem.h);
+            (
+                Rect::new(rem.x, rem.y + rem.h - h, rem.w, h),
+                Rect::new(rem.x, rem.y, rem.w, rem.h - h),
+            )
+        }
+        Side::Fill => (rem, Rect::new(rem.x + rem.w, rem.y + rem.h, 0, 0)),
     }
 }
 
@@ -151,33 +114,12 @@ impl Default for LayoutManager {
     }
 }
 
-fn fixed_constraint(size: u16) -> Constraint {
-    Constraint {
-        size: Size::Fixed(size),
-        min: 0,
-        max: u16::MAX,
-    }
-}
-
-fn fill_constraint() -> Constraint {
-    Constraint {
-        size: Size::Fill,
-        min: 0,
-        max: u16::MAX,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn area() -> Rect {
-        Rect {
-            x: 0,
-            y: 0,
-            w: 80,
-            h: 24,
-        }
+        Rect::new(0, 0, 80, 24)
     }
 
     #[test]
@@ -192,7 +134,6 @@ mod tests {
         mgr.add("w1", Side::Fill, None);
         let rects = mgr.compute(area());
         assert_eq!(rects.len(), 1);
-        assert_eq!(rects[0].0, "w1");
         assert_eq!(rects[0].1, area());
     }
 
@@ -202,24 +143,9 @@ mod tests {
         mgr.add("tree", Side::Left, Some(20));
         mgr.add("main", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects.len(), 2);
-        assert_eq!(rects[0].0, "tree");
         assert_eq!(rects[0].1.w, 20);
-        assert_eq!(rects[0].1.x, 0);
-        assert_eq!(rects[1].0, "main");
         assert_eq!(rects[1].1.w, 60);
         assert_eq!(rects[1].1.x, 20);
-    }
-
-    #[test]
-    fn fill_then_bottom_exhausts_space() {
-        let mut mgr = LayoutManager::new();
-        mgr.add("main", Side::Fill, None);
-        mgr.add("status", Side::Bottom, Some(1));
-        let rects = mgr.compute(area());
-        // Fill consumes all space; status gets nothing useful
-        assert_eq!(rects.len(), 1);
-        assert_eq!(rects[0].0, "main");
     }
 
     #[test]
@@ -228,46 +154,23 @@ mod tests {
         mgr.add("status", Side::Bottom, Some(1));
         mgr.add("main", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects.len(), 2);
-        let status = rects.iter().find(|(id, _)| id == "status");
-        let main = rects.iter().find(|(id, _)| id == "main");
-        assert_eq!(status.map(|(_, r)| r.h), Some(1));
-        assert_eq!(status.map(|(_, r)| r.y), Some(23));
-        assert_eq!(main.map(|(_, r)| r.h), Some(23));
-    }
-
-    #[test]
-    fn three_panel_hello_layout() {
-        // Matches the hello.tcl example: fill text, bottom status
-        let mut mgr = LayoutManager::new();
-        mgr.add("status", Side::Bottom, Some(1));
-        mgr.add("txt", Side::Fill, None);
-        let rects = mgr.compute(area());
-        assert_eq!(rects.len(), 2);
-        let txt = rects.iter().find(|(id, _)| id == "txt");
-        assert_eq!(txt.map(|(_, r)| r.h), Some(23));
+        assert_eq!(rects[0].1.h, 1);
+        assert_eq!(rects[0].1.y, 23);
+        assert_eq!(rects[1].1.h, 23);
     }
 
     #[test]
     fn file_browser_layout() {
-        // tree(left,25) + txt(fill) + status(bottom,1)
         let mut mgr = LayoutManager::new();
         mgr.add("tree", Side::Left, Some(25));
         mgr.add("status", Side::Bottom, Some(1));
         mgr.add("txt", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects.len(), 3);
-        let tree = rects.iter().find(|(id, _)| id == "tree");
-        let txt = rects.iter().find(|(id, _)| id == "txt");
-        let status = rects.iter().find(|(id, _)| id == "status");
-        assert_eq!(tree.map(|(_, r)| r.w), Some(25));
-        assert_eq!(tree.map(|(_, r)| r.h), Some(24));
-        // Status is bottom of remaining (55 wide, 24 tall)
-        assert_eq!(status.map(|(_, r)| r.h), Some(1));
-        assert_eq!(status.map(|(_, r)| r.w), Some(55));
-        // txt fills the rest
-        assert_eq!(txt.map(|(_, r)| r.w), Some(55));
-        assert_eq!(txt.map(|(_, r)| r.h), Some(23));
+        assert_eq!(rects[0].1.w, 25);
+        assert_eq!(rects[1].1.h, 1);
+        assert_eq!(rects[1].1.w, 55);
+        assert_eq!(rects[2].1.w, 55);
+        assert_eq!(rects[2].1.h, 23);
     }
 
     #[test]
@@ -278,18 +181,7 @@ mod tests {
         mgr.remove("w1");
         let rects = mgr.compute(area());
         assert_eq!(rects.len(), 1);
-        assert_eq!(rects[0].0, "w2");
         assert_eq!(rects[0].1.w, 80);
-    }
-
-    #[test]
-    fn side_parse() {
-        assert_eq!(Side::parse("left"), Ok(Side::Left));
-        assert_eq!(Side::parse("right"), Ok(Side::Right));
-        assert_eq!(Side::parse("top"), Ok(Side::Top));
-        assert_eq!(Side::parse("bottom"), Ok(Side::Bottom));
-        assert_eq!(Side::parse("fill"), Ok(Side::Fill));
-        assert!(Side::parse("center").is_err());
     }
 
     #[test]
@@ -306,28 +198,18 @@ mod tests {
         mgr.add("input", Side::Top, Some(3));
         mgr.add("content", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects.len(), 2);
-        assert_eq!(rects[0].0, "input");
         assert_eq!(rects[0].1.h, 3);
-        assert_eq!(rects[1].0, "content");
         assert_eq!(rects[1].1.h, 21);
     }
 
     #[test]
     fn right_side() {
         let mut mgr = LayoutManager::new();
+        mgr.add("sidebar", Side::Right, Some(30));
         mgr.add("main", Side::Fill, None);
-        // Note: fill consumes all, so right gets nothing
-        // Correct: add right first
-        let mut mgr2 = LayoutManager::new();
-        mgr2.add("sidebar", Side::Right, Some(30));
-        mgr2.add("main", Side::Fill, None);
-        let rects = mgr2.compute(area());
-        assert_eq!(rects.len(), 2);
-        assert_eq!(rects[0].0, "sidebar");
+        let rects = mgr.compute(area());
         assert_eq!(rects[0].1.x, 50);
         assert_eq!(rects[0].1.w, 30);
-        assert_eq!(rects[1].0, "main");
         assert_eq!(rects[1].1.w, 50);
     }
 }

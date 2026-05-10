@@ -18,10 +18,7 @@ fn eval_ok(interp: &mut Interpreter, script: &str) -> String {
 fn text_create_returns_id() {
     let mut interp = setup();
     let id = eval_ok(&mut interp, "text create");
-    assert!(
-        id.starts_with("widget_"),
-        "expected widget_ prefix, got: {id}"
-    );
+    assert!(id.starts_with("widget_"), "expected widget_ prefix, got: {id}");
 }
 
 #[test]
@@ -56,10 +53,7 @@ fn text_clear_empties() {
 fn list_create_returns_id() {
     let mut interp = setup();
     let id = eval_ok(&mut interp, "list create");
-    assert!(
-        id.starts_with("widget_"),
-        "expected widget_ prefix, got: {id}"
-    );
+    assert!(id.starts_with("widget_"), "expected widget_ prefix, got: {id}");
 }
 
 #[test]
@@ -76,10 +70,7 @@ fn list_selected_default() {
 fn tree_create_returns_id() {
     let mut interp = setup();
     let id = eval_ok(&mut interp, r#"tree create -data ".""#);
-    assert!(
-        id.starts_with("widget_"),
-        "expected tree_ prefix, got: {id}"
-    );
+    assert!(id.starts_with("widget_"), "expected tree_ prefix, got: {id}");
 }
 
 // ── input widget ────────────────────────────────────────────────────
@@ -142,10 +133,7 @@ fn tabbar_create_add_active() {
 fn table_create_returns_id() {
     let mut interp = setup();
     let id = eval_ok(&mut interp, r#"table create -columns "A B""#);
-    assert!(
-        id.starts_with("widget_"),
-        "expected widget_ prefix, got: {id}"
-    );
+    assert!(id.starts_with("widget_"), "expected widget_ prefix, got: {id}");
 }
 
 #[test]

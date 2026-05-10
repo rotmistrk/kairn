@@ -5,7 +5,7 @@ use txv_core::prelude::*;
 use crate::scroll_view::ScrollView;
 
 /// Trait for providing list data to ListView.
-pub trait ListData: Send {
+pub trait ListData: Send + 'static {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool {
         self.len() == 0

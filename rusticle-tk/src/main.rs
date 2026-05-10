@@ -1,17 +1,27 @@
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
 //! rusticle-tk — TUI application framework with rusticle scripting.
-//!
-//! Usage:
-//! - `rusticle-tk script.tcl` — run a script file
-//! - `rusticle-tk -e 'script'` — run inline script
-//! - `rusticle-tk -i` — interactive REPL (stub)
 
 use std::process;
 
-use rusticle_tk::{event_mgr, tk_bridge, widget_mgr};
+use txv_render::backend::CrosstermBackend;
+use txv_render::color::detect_color_mode;
+
+use rusticle_tk::tk_bridge;
 
 fn main() {
+    // Panic handler: restore terminal before crashing
+    std::panic::set_hook(Box::new(|info| {
+        let _ = crossterm::terminal::disable_raw_mode();
+        let _ = crossterm::execute!(
+            std::io::stderr(),
+            crossterm::terminal::LeaveAlternateScreen,
+            crossterm::cursor::Show
+        );
+        eprintln!("\n\x1b[1;31mrusticle-tk panicked!\x1b[0m");
+        eprintln!("{info}");
+    }));
+
     let args: Vec<String> = std::env::args().skip(1).collect();
     if let Err(e) = run(&args) {
         eprintln!("rusticle-tk: {e}");
@@ -22,34 +32,25 @@ fn main() {
 /// Parse CLI args and execute.
 fn run(args: &[String]) -> Result<(), String> {
     if args.is_empty() {
-        return Err("usage: rusticle-tk <script.tcl> | -e 'script' | -i".into());
+        return Err("usage: rusticle-tk <script.tcl> | -e 'script'".into());
     }
     match args[0].as_str() {
         "-e" => {
             let script = args.get(1).ok_or("missing script after -e")?;
-            run_script(script, args)
+            run_script(script)
         }
-        "-i" => Err("interactive REPL not yet implemented".into()),
         path => {
-            let content =
-                std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))?;
-            run_script(&content, args)
+            let content = std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))?;
+            run_script(&content)
         }
     }
 }
 
 /// Execute a rusticle script with the TK bridge.
-fn run_script(script: &str, args: &[String]) -> Result<(), String> {
+fn run_script(script: &str) -> Result<(), String> {
     let mut interp = rusticle::interpreter::Interpreter::new();
-
-    // Set argv for the script
-    let argv: Vec<rusticle::value::TclValue> = args
-        .iter()
-        .map(|s| rusticle::value::TclValue::Str(s.clone()))
-        .collect();
-    interp.set_var("argv", rusticle::value::TclValue::List(argv));
-
     let shared = tk_bridge::register_all(&mut interp);
+
     interp.eval(script).map_err(|e| format!("{e}"))?;
 
     // Print any captured output (from puts in non-TUI mode)
@@ -58,40 +59,19 @@ fn run_script(script: &str, args: &[String]) -> Result<(), String> {
     }
 
     // If the script called `app run`, start the event loop
-    let needs_run = shared
-        .lock()
-        .map(|st| st.run_requested && !st.has_run)
-        .unwrap_or(false);
+    let needs_run = shared.lock().map(|st| st.run_requested && !st.has_run).unwrap_or(false);
+
     if needs_run {
-        // Auto-focus the first focusable widget if none set
-        auto_focus(&shared);
-        event_mgr::run_event_loop(&mut interp, &shared)?;
+        let (mut events, desktop) = {
+            let mut st = shared.lock().map_err(|_| "lock poisoned")?;
+            st.has_run = true;
+            let desktop = std::mem::take(&mut st.desktop);
+            let events = std::mem::take(&mut st.events);
+            (events, desktop)
+        };
+        let color_mode = detect_color_mode();
+        let mut backend = CrosstermBackend::new(color_mode);
+        rusticle_tk::event_mgr::run_event_loop(&mut interp, &mut events, desktop, &mut backend)?;
     }
     Ok(())
-}
-
-/// Set focus to the first widget if none is focused.
-fn auto_focus(shared: &tk_bridge::Shared) {
-    let Ok(mut st) = shared.lock() else { return };
-    if st.focused.is_some() {
-        return;
-    }
-    // Pick the first widget that is focusable (not statusbar/tabbar/progress)
-    let first = st
-        .widgets
-        .ids()
-        .find(|id| {
-            matches!(
-                st.widgets.get(id),
-                Some(
-                    widget_mgr::WidgetEntry::Text(_)
-                        | widget_mgr::WidgetEntry::List(_)
-                        | widget_mgr::WidgetEntry::Tree(_)
-                        | widget_mgr::WidgetEntry::Input(_)
-                        | widget_mgr::WidgetEntry::Table(_)
-                )
-            )
-        })
-        .cloned();
-    st.focused = first;
 }

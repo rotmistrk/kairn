@@ -16,7 +16,7 @@ cargo clippy --workspace -- -D warnings 2>&1 | grep -q "^error" && { echo "❌ C
 echo "  file length..."
 MAX_CODE_LINES=240
 VIOLATIONS=""
-for f in $(find src txv-core/src txv-render/src txv-widgets/src rusticle/src -name '*.rs' 2>/dev/null); do
+for f in $(find src txv-core/src txv-render/src txv-widgets/src rusticle/src rusticle-tk/src -name '*.rs' 2>/dev/null); do
     # Count lines that are NOT: blank, // comments, //! doc comments, /* */ block comments, or * continuation
     CODE_LINES=$(sed 's/[[:space:]]*$//' "$f" | grep -v '^\s*$' | grep -v '^\s*//' | grep -v '^\s*\*' | grep -v '^\s*/\*' | grep -v '^\s*\*/' | wc -l | tr -d ' ')
     if [ "$CODE_LINES" -gt "$MAX_CODE_LINES" ]; then

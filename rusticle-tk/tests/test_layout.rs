@@ -1,5 +1,6 @@
 use rusticle::interpreter::Interpreter;
 use rusticle_tk::tk_bridge;
+use txv_core::geometry::Rect;
 
 fn setup() -> (Interpreter, rusticle_tk::tk_bridge::Shared) {
     let mut interp = Interpreter::new();
@@ -7,19 +8,12 @@ fn setup() -> (Interpreter, rusticle_tk::tk_bridge::Shared) {
     (interp, shared)
 }
 
-fn area() -> txv::layout::Rect {
-    txv::layout::Rect {
-        x: 0,
-        y: 0,
-        w: 80,
-        h: 24,
-    }
+fn area() -> Rect {
+    Rect::new(0, 0, 80, 24)
 }
 
 fn eval(interp: &mut Interpreter, script: &str) {
-    interp
-        .eval(script)
-        .unwrap_or_else(|e| panic!("eval failed: {e}"));
+    interp.eval(script).unwrap_or_else(|e| panic!("eval failed: {e}"));
 }
 
 #[test]
@@ -30,7 +24,7 @@ fn single_fill_widget() {
     eval(&mut interp, "window add $w $t -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.layout.compute(area());
+    let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 1);
     assert_eq!(rects[0].1, area());
 }
@@ -45,7 +39,7 @@ fn left_and_fill() {
     eval(&mut interp, "window add $w $b -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.layout.compute(area());
+    let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 2);
     assert_eq!(rects[0].1.w, 20);
     assert_eq!(rects[0].1.x, 0);
@@ -63,7 +57,7 @@ fn bottom_and_fill() {
     eval(&mut interp, "window add $w $b -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.layout.compute(area());
+    let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 2);
     assert_eq!(rects[0].1.h, 1);
     assert_eq!(rects[0].1.y, 23);
@@ -83,15 +77,12 @@ fn three_panel_layout() {
     eval(&mut interp, "window add $w $main -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.layout.compute(area());
+    let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 3);
-    // Left panel: w=25, full height
     assert_eq!(rects[0].1.w, 25);
     assert_eq!(rects[0].1.h, 24);
-    // Bottom status: h=1, remaining width
     assert_eq!(rects[1].1.h, 1);
     assert_eq!(rects[1].1.w, 55);
-    // Fill: remaining area
     assert_eq!(rects[2].1.w, 55);
     assert_eq!(rects[2].1.h, 23);
 }
@@ -110,20 +101,16 @@ fn multiple_widgets_mixed_sides() {
     eval(&mut interp, "window add $w $main -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.layout.compute(area());
+    let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 4);
-    // Top: h=1, full width
     assert_eq!(rects[0].1.h, 1);
     assert_eq!(rects[0].1.w, 80);
     assert_eq!(rects[0].1.y, 0);
-    // Bottom: h=1, full width, at y=23
     assert_eq!(rects[1].1.h, 1);
     assert_eq!(rects[1].1.w, 80);
     assert_eq!(rects[1].1.y, 23);
-    // Left: w=20, remaining height (22)
     assert_eq!(rects[2].1.w, 20);
     assert_eq!(rects[2].1.h, 22);
-    // Fill: remaining
     assert_eq!(rects[3].1.w, 60);
     assert_eq!(rects[3].1.h, 22);
 }

@@ -1,0 +1,134 @@
+//! Scenario tests using MockBackend — exercises the full Program loop.
+
+use txv_core::prelude::*;
+use txv_core::run::MockBackend;
+
+use rusticle_tk::desktop::TkDesktop;
+use rusticle_tk::layout_mgr::Side;
+
+use txv_widgets::TextArea;
+
+/// Build a simple desktop with one text widget.
+fn build_desktop(content: &str) -> TkDesktop {
+    let mut desktop = TkDesktop::new();
+    let mut ta = TextArea::new();
+    ta.set_content(content);
+    desktop.insert_widget("txt".into(), Box::new(ta));
+    desktop.layout.add("txt", Side::Fill, None);
+    desktop
+}
+
+#[test]
+fn desktop_renders_text_widget() {
+    let mut desktop = build_desktop("Hello, world!");
+    desktop.set_bounds(Rect::new(0, 0, 80, 24));
+
+    let mut surface = Surface::new(80, 24);
+    desktop.draw(&mut surface);
+
+    let mut row = String::new();
+    for x in 0..80 {
+        row.push(surface.cell(x, 0).ch);
+    }
+    assert!(
+        row.contains("Hello, world!"),
+        "expected 'Hello, world!' in first row, got: '{}'",
+        row.trim()
+    );
+}
+
+#[test]
+fn desktop_dispatches_keys_to_focused() {
+    let mut desktop = build_desktop("Line 1\nLine 2\nLine 3");
+    desktop.insert_widget("input".into(), Box::new(txv_widgets::InputLine::new()));
+    desktop.layout.add("input", Side::Bottom, Some(1));
+    desktop.focus("input");
+    desktop.set_bounds(Rect::new(0, 0, 80, 24));
+
+    let mut queue = EventQueue::new();
+    let event = Event::Key(KeyEvent {
+        code: KeyCode::Char('x'),
+        modifiers: KeyMod::default(),
+    });
+    let result = desktop.handle(&event, &mut queue);
+    assert_eq!(result, HandleResult::Consumed);
+}
+
+#[test]
+fn desktop_layout_sets_bounds_on_children() {
+    let mut desktop = TkDesktop::new();
+    let ta = TextArea::new();
+    desktop.insert_widget("main".into(), Box::new(ta));
+    desktop.layout.add("main", Side::Fill, None);
+    desktop.set_bounds(Rect::new(0, 0, 80, 24));
+
+    let child = desktop.get("main");
+    assert!(child.is_some());
+    let bounds = child.map(|v| v.bounds()).unwrap_or_default();
+    assert_eq!(bounds, Rect::new(0, 0, 80, 24));
+}
+
+#[test]
+fn desktop_focus_switches_child() {
+    let mut desktop = TkDesktop::new();
+    desktop.insert_widget("a".into(), Box::new(TextArea::new()));
+    desktop.insert_widget("b".into(), Box::new(txv_widgets::InputLine::new()));
+    desktop.layout.add("a", Side::Fill, None);
+    desktop.layout.add("b", Side::Bottom, Some(1));
+    desktop.set_bounds(Rect::new(0, 0, 80, 24));
+
+    desktop.focus("b");
+
+    // Typing should go to input (b), not text (a)
+    let mut queue = EventQueue::new();
+    let event = Event::Key(KeyEvent {
+        code: KeyCode::Char('z'),
+        modifiers: KeyMod::default(),
+    });
+    desktop.handle(&event, &mut queue);
+
+    // Verify input received the character
+    let view = desktop.get("b");
+    assert!(view.is_some());
+}
+
+#[test]
+fn program_quit_via_command() {
+    use txv_core::program::Program;
+    use txv_core::status::StatusBar;
+    use txv_widgets::status_items::KeyLabelItem;
+
+    let desktop = build_desktop("test");
+    let mut bar = StatusBar::new();
+    bar.add(KeyLabelItem::new(
+        KeyEvent {
+            code: KeyCode::Char('q'),
+            modifiers: KeyMod {
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+        },
+        CM_QUIT,
+        "^Q",
+    ));
+
+    let mut program = Program::new(Box::new(bar), Box::new(desktop));
+    let mut backend = MockBackend::new(80, 24);
+
+    // Inject Ctrl-Q — StatusBar translates to CM_QUIT, Program exits
+    backend.inject_key(
+        KeyCode::Char('q'),
+        KeyMod {
+            ctrl: true,
+            alt: false,
+            shift: false,
+        },
+    );
+
+    // run_cycles should process the quit and return
+    program.run_cycles(&mut backend, &mut |_| {}, 5);
+
+    // If we reach here, quit worked. Verify something rendered.
+    assert!(backend.surface().is_some());
+}

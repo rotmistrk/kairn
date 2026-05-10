@@ -1,5 +1,5 @@
 [workspace]
-members = ["rusticle", "txv-core", "txv-render", "txv-widgets"]
+members = ["rusticle", "txv-core", "txv-render", "txv-widgets", "rusticle-tk"]
 
 [package]
 name = "kairn"

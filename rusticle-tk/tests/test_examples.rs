@@ -22,10 +22,7 @@ fn example_dialog_demo() {
     let script = fs::read_to_string("examples/dialog-demo.tcl").unwrap();
     interp.eval(&script).unwrap();
     let output = interp.get_output().join("");
-    assert!(
-        output.contains("no"),
-        "expected output to contain 'no', got: {output}"
-    );
+    assert!(output.contains("no"), "expected output to contain 'no', got: {output}");
 }
 
 #[test]
@@ -72,10 +69,7 @@ fn example_todo_list() {
         Ok(_) => {}
         Err(e) => {
             let msg = e.to_string();
-            assert!(
-                msg.contains("lreplace"),
-                "unexpected error (expected lreplace): {msg}"
-            );
+            assert!(msg.contains("lreplace"), "unexpected error (expected lreplace): {msg}");
         }
     }
 }
