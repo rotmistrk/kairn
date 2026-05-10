@@ -74,7 +74,21 @@
 | Config file loading | ✅ | ~/.config/kairn/init.tcl (v-015 Phase 1) |
 | Statusbar customization | ❌ | Planned (v-015 Phase 2) |
 | Git status in tree | ❌ | |
-| Real PTY shell tab | ❌ | Placeholder only |
+| Real PTY shell tab | ✅ | VTE + exit detection + non-blocking writes |
+| Kiro launch (M-x kiro) | ✅ | --agent=name option |
+| Systematic tab names (Shell:N, Kiro:N) | ✅ | First available N |
+| M-0..9 tab select | ✅ | In focused slot |
+| Tab rename (M-x rename) | ✅ | Tool tabs only |
+| Max 10 tabs + LRU eviction | ✅ | Respects can_close |
+| Autosave | ✅ | 5-tick inactivity, configurable |
+| Close protocol (can_close) | ✅ | Deny if dirty/running |
+| OSC 52 clipboard + bracketed paste | ✅ | Yank → system clipboard |
+| Panel resize (≠–) | ✅ | Alt+=/Alt+- |
+| Suspend to shell (Ctrl-Z) | ✅ | Nesting guard |
+| Peek screen (Ctrl-O) | ✅ | MC-style |
+| Panic handler | ✅ | Restore terminal on crash |
+| Tree auto-refresh | ✅ | Preserves expanded state |
+| rusticle-tk | ✅ | Production-ready, 79 tests |
 | LSP integration | ❌ | |
 | :split / :vsplit | ❌ | |
 | Session persistence | ❌ | |
@@ -87,7 +101,7 @@
 
 ### Test Coverage
 
-604 tests passing (as of 2026-05-10). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
+692 tests passing (as of 2026-05-10). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
 
 ### Features to Port from Master (ratatui → txv rewrite)
 
