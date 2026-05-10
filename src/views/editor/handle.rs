@@ -63,7 +63,18 @@ impl EditorView {
                 queue.put_command(CM_SAVE, None);
             }
             EditorAction::CloseRequested => {
-                queue.put_command(CM_TAB_CLOSE, None);
+                if self.editor.buffer.is_dirty() && !self.settings.autosave {
+                    self.close_prompt = true;
+                    self.editor.status = "Save changes? [y]es [n]o [Esc]cancel".to_string();
+                    self.state.dirty = true;
+                } else {
+                    if self.settings.autosave && self.editor.buffer.is_dirty() {
+                        let content = self.editor.buffer.content();
+                        let _ = crate::editor::save::save_file(&self.path, &content);
+                        self.editor.buffer.mark_saved();
+                    }
+                    queue.put_command(CM_TAB_CLOSE, None);
+                }
             }
             EditorAction::ShellOutput(output) => {
                 queue.put_command(crate::commands::CM_SHELL_OUTPUT, Some(Box::new(output)));

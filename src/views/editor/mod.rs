@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
+use crate::commands::CM_TAB_CLOSE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
 use crate::highlight::{self, Highlighter};
@@ -20,6 +21,9 @@ pub struct EditorView {
     highlighter: Highlighter,
     file_ext: String,
     pub settings: EditorSettings,
+    last_edit_tick: u64,
+    tick_counter: u64,
+    close_prompt: bool,
 }
 
 impl EditorView {
@@ -35,6 +39,9 @@ impl EditorView {
             highlighter: Highlighter::new(),
             file_ext,
             settings: settings.clone(),
+            last_edit_tick: 0,
+            tick_counter: 0,
+            close_prompt: false,
         };
         view.apply_settings();
         Ok(view)
@@ -52,6 +59,9 @@ impl EditorView {
             highlighter: Highlighter::new(),
             file_ext,
             settings: settings.clone(),
+            last_edit_tick: 0,
+            tick_counter: 0,
+            close_prompt: false,
         };
         view.apply_settings();
         view
@@ -67,6 +77,9 @@ impl EditorView {
             highlighter: Highlighter::new(),
             file_ext: String::new(),
             settings: EditorSettings::default(),
+            last_edit_tick: 0,
+            tick_counter: 0,
+            close_prompt: false,
         }
     }
 
@@ -115,9 +128,52 @@ impl View for EditorView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        // Tick: autosave check
+        if let Event::Tick = event {
+            self.tick_counter += 1;
+            if self.settings.autosave
+                && self.last_edit_tick > 0
+                && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
+            {
+                self.last_edit_tick = 0;
+                if self.editor.buffer.is_dirty() {
+                    let content = self.editor.buffer.content();
+                    if crate::editor::save::save_file(&self.path, &content).is_ok() {
+                        self.editor.buffer.mark_saved();
+                    }
+                }
+            }
+            return HandleResult::Ignored;
+        }
+
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+
+        // Close prompt: y/n/c
+        if self.close_prompt {
+            use txv_core::event::KeyCode;
+            match &key.code {
+                KeyCode::Char('y') => {
+                    self.close_prompt = false;
+                    let content = self.editor.buffer.content();
+                    let _ = crate::editor::save::save_file(&self.path, &content);
+                    self.editor.buffer.mark_saved();
+                    queue.put_command(CM_TAB_CLOSE, None);
+                }
+                KeyCode::Char('n') => {
+                    self.close_prompt = false;
+                    self.editor.buffer.mark_saved(); // discard
+                    queue.put_command(CM_TAB_CLOSE, None);
+                }
+                _ => {
+                    self.close_prompt = false;
+                    self.editor.status = String::new();
+                }
+            }
+            self.state.dirty = true;
+            return HandleResult::Consumed;
+        }
 
         let old_mode = self.editor.mode;
         let old_line = self.editor.cursor_line;
@@ -137,10 +193,24 @@ impl View for EditorView {
         }
 
         let action = self.editor.execute(cmd);
+        // Track edits for autosave
+        if matches!(action, crate::editor::EditorAction::ContentChanged) {
+            self.last_edit_tick = self.tick_counter;
+        }
         self.handle_action(action, queue);
         self.ensure_cursor_visible();
         self.state.dirty = true;
         self.emit_status_changes(old_mode, old_line, old_col, queue);
         HandleResult::Consumed
+    }
+
+    fn can_close(&self) -> CloseResult {
+        if !self.editor.buffer.is_dirty() {
+            return CloseResult::Ok;
+        }
+        if self.settings.autosave {
+            return CloseResult::Ok; // will be saved on close
+        }
+        CloseResult::Denied("unsaved changes".to_string())
     }
 }

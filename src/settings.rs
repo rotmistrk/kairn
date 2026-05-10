@@ -7,6 +7,8 @@ pub struct EditorSettings {
     pub list: bool,
     pub tabstop: u16,
     pub number: bool,
+    pub autosave: bool,
+    pub autosave_delay: u16,
 }
 
 impl Default for EditorSettings {
@@ -16,6 +18,8 @@ impl Default for EditorSettings {
             list: false,
             tabstop: 4,
             number: true,
+            autosave: true,
+            autosave_delay: 5,
         }
     }
 }
