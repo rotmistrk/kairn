@@ -10,6 +10,7 @@ pub mod completer;
 pub mod config;
 pub mod desktop;
 pub mod editor;
+pub mod git_status;
 pub mod glyphs;
 pub mod handler;
 pub mod help;
