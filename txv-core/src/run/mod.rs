@@ -73,7 +73,7 @@ pub fn exec_view(root: &mut dyn View, modal: &mut dyn View, backend: &mut dyn Ba
 
         match backend.poll_event(Duration::from_millis(50)) {
             Some(Event::Key(ref k)) => {
-                modal.handle(&Event::Key(k.clone()), &mut queue);
+                modal.handle(&Event::Key(*k), &mut queue);
             }
             Some(Event::Mouse(m)) => {
                 modal.handle(&Event::Mouse(m), &mut queue);

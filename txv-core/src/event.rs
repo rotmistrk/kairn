@@ -6,7 +6,7 @@ use std::any::Any;
 pub type CommandId = u16;
 
 /// Key codes (terminal-independent).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyCode {
     Char(char),
     F(u8),
@@ -36,7 +36,7 @@ pub struct KeyMod {
 }
 
 /// A key event.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct KeyEvent {
     pub code: KeyCode,
     pub modifiers: KeyMod,

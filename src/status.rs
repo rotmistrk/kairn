@@ -9,6 +9,7 @@ use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
+use crate::settings::StatusKeys;
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
@@ -55,16 +56,21 @@ fn ctrl_shift(code: KeyCode) -> KeyEvent {
 }
 
 /// Build the application status bar with all items configured.
-pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root_dir: PathBuf) -> StatusBar {
+pub fn build_status_bar(
+    completer: Box<dyn Completer>,
+    clock_interval: u16,
+    root_dir: PathBuf,
+    keys: &StatusKeys,
+) -> StatusBar {
     let mut bar = StatusBar::new();
-    // Left key labels
-    bar.add(KeyLabelItem::new(key(KeyCode::F(1)), CM_SHOW_HELP, "F1:Help"));
-    bar.add(KeyLabelItem::new(key(KeyCode::F(2)), CM_FOCUS_LEFT, "F2:Tree"));
-    bar.add(KeyLabelItem::new(key(KeyCode::F(3)), CM_FOCUS_CENTER, "F3:Main"));
-    bar.add(KeyLabelItem::new(key(KeyCode::F(4)), CM_FOCUS_RIGHT, "F4:Term"));
-    bar.add(KeyLabelItem::new(key(KeyCode::F(5)), CM_ZOOM_TOGGLE, "F5:Zoom"));
-    bar.add(KeyLabelItem::new(key(KeyCode::F(6)), CM_SHOW_MESSAGES, "F6:Msg"));
-    bar.add(KeyLabelItem::new(ctrl('q'), CM_QUIT, "^Q:Quit"));
+    // Left key labels (from config)
+    bar.add(KeyLabelItem::new(keys.help, CM_SHOW_HELP, "F1:Help"));
+    bar.add(KeyLabelItem::new(keys.tree, CM_FOCUS_LEFT, "F2:Tree"));
+    bar.add(KeyLabelItem::new(keys.main, CM_FOCUS_CENTER, "F3:Main"));
+    bar.add(KeyLabelItem::new(keys.term, CM_FOCUS_RIGHT, "F4:Term"));
+    bar.add(KeyLabelItem::new(keys.zoom, CM_ZOOM_TOGGLE, "F5:Zoom"));
+    bar.add(KeyLabelItem::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"));
+    bar.add(KeyLabelItem::new(keys.quit, CM_QUIT, "^Q:Quit"));
     // Hidden hotkeys
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Left), CM_FOCUS_PREV));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Right), CM_FOCUS_NEXT));

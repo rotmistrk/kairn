@@ -76,6 +76,7 @@ fn main() -> anyhow::Result<()> {
         Box::new(AppCompleter::new(root_dir.clone())),
         settings.clock_interval,
         root_dir.clone(),
+        &settings.status_keys,
     );
 
     // Build program

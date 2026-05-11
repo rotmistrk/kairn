@@ -103,11 +103,48 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
         }
     }
 
+    // Status bar key bindings
+    if let Some(val) = interp.get_var("keys.help") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.help = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.tree") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.tree = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.main") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.main = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.term") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.term = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.zoom") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.zoom = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.messages") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.messages = k;
+        }
+    }
+    if let Some(val) = interp.get_var("keys.quit") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.status_keys.quit = k;
+        }
+    }
+
     settings
 }
 
 /// Parse a simple key variable value into a KeyEvent.
-/// Supports single chars ("s") and modifier combos ("Ctrl-s").
+/// Supports: single chars ("s"), modifier combos ("Ctrl-s"), function keys ("F1").
 fn parse_key_var(spec: &str) -> Option<KeyEvent> {
     let spec = spec.trim();
     if spec.is_empty() {
@@ -124,14 +161,29 @@ fn parse_key_var(spec: &str) -> Option<KeyEvent> {
             _ => {}
         }
     }
-    if key_part.len() == 1 {
-        let ch = key_part.chars().next()?;
-        Some(KeyEvent {
-            code: KeyCode::Char(ch),
-            modifiers,
-        })
-    } else {
-        None
+    let code = parse_key_code(key_part)?;
+    Some(KeyEvent { code, modifiers })
+}
+
+fn parse_key_code(s: &str) -> Option<KeyCode> {
+    if s.len() == 1 {
+        return Some(KeyCode::Char(s.chars().next()?));
+    }
+    // Function keys: F1..F12
+    if let Some(n) = s.strip_prefix('F').or_else(|| s.strip_prefix('f')) {
+        if let Ok(num) = n.parse::<u8>() {
+            return Some(KeyCode::F(num));
+        }
+    }
+    match s {
+        "Esc" | "esc" => Some(KeyCode::Esc),
+        "Enter" | "enter" => Some(KeyCode::Enter),
+        "Tab" | "tab" => Some(KeyCode::Tab),
+        "Left" | "left" => Some(KeyCode::Left),
+        "Right" | "right" => Some(KeyCode::Right),
+        "Up" | "up" => Some(KeyCode::Up),
+        "Down" | "down" => Some(KeyCode::Down),
+        _ => None,
     }
 }
 

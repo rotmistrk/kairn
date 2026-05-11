@@ -67,6 +67,36 @@ pub struct AppSettings {
     pub run_command: Option<String>,
     pub test_command: Option<String>,
     pub git_keys: GitKeys,
+    pub status_keys: StatusKeys,
+}
+
+/// Key bindings for the status bar (visible labels).
+#[derive(Debug, Clone)]
+pub struct StatusKeys {
+    pub help: KeyEvent,
+    pub tree: KeyEvent,
+    pub main: KeyEvent,
+    pub term: KeyEvent,
+    pub zoom: KeyEvent,
+    pub messages: KeyEvent,
+    pub quit: KeyEvent,
+}
+
+impl Default for StatusKeys {
+    fn default() -> Self {
+        Self {
+            help: KeyEvent { code: KeyCode::F(1), modifiers: KeyMod::default() },
+            tree: KeyEvent { code: KeyCode::F(2), modifiers: KeyMod::default() },
+            main: KeyEvent { code: KeyCode::F(3), modifiers: KeyMod::default() },
+            term: KeyEvent { code: KeyCode::F(4), modifiers: KeyMod::default() },
+            zoom: KeyEvent { code: KeyCode::F(5), modifiers: KeyMod::default() },
+            messages: KeyEvent { code: KeyCode::F(6), modifiers: KeyMod::default() },
+            quit: KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: KeyMod { ctrl: true, alt: false, shift: false },
+            },
+        }
+    }
 }
 
 impl Default for AppSettings {
@@ -78,6 +108,7 @@ impl Default for AppSettings {
             run_command: None,
             test_command: None,
             git_keys: GitKeys::default(),
+            status_keys: StatusKeys::default(),
         }
     }
 }

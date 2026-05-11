@@ -10,7 +10,7 @@ use txv_core::run::MockBackend;
 use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
 use kairn::handler::{handle_command, AppState};
-use kairn::settings::GitKeys;
+use kairn::settings::{GitKeys, StatusKeys};
 use kairn::status::build_status_bar;
 
 /// Test harness that mirrors the real app exactly.
@@ -35,6 +35,7 @@ impl TestHarness {
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
             0,
             root_dir.to_path_buf(),
+            &StatusKeys::default(),
         );
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(80, 24);
@@ -54,6 +55,7 @@ impl TestHarness {
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
             0,
             root_dir.to_path_buf(),
+            &StatusKeys::default(),
         );
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(width, height);
