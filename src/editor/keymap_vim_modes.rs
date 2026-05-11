@@ -7,7 +7,11 @@ use txv_core::event::{KeyCode, KeyEvent};
 impl VimKeymap {
     pub(super) fn insert_key(&self, key: &KeyEvent) -> Command {
         if key.modifiers.ctrl {
-            return Command::Noop;
+            return match &key.code {
+                KeyCode::Char('n') => Command::CompletionNext,
+                KeyCode::Char('p') => Command::CompletionPrev,
+                _ => Command::Noop, // pass through to status bar
+            };
         }
         match &key.code {
             KeyCode::Esc => Command::ExitInsertMode,

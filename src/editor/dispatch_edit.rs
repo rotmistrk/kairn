@@ -239,6 +239,7 @@ impl Editor {
                 self.command_buf.clear();
                 EditorAction::ModeChanged
             }
+            Command::CompletionNext | Command::CompletionPrev => EditorAction::LspCompletion,
             _ => return None,
         })
     }

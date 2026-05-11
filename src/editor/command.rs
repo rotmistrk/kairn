@@ -118,6 +118,10 @@ pub enum Command {
     /// Repeat a command N times (count prefix).
     Repeat(usize, Box<Command>),
 
+    // Completion
+    CompletionNext,
+    CompletionPrev,
+
     // No-op
     Noop,
 }

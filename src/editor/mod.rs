@@ -44,6 +44,7 @@ pub enum EditorAction {
     LspGotoDefinition,
     LspFindReferences,
     LspHover,
+    LspCompletion,
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.
