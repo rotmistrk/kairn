@@ -19,6 +19,7 @@ pub enum FileStatus {
 pub fn collect_git_status(root: &Path) -> HashMap<String, FileStatus> {
     let output = Command::new("git")
         .args([
+            "--no-optional-locks",
             "-C",
             &root.display().to_string(),
             "status",
