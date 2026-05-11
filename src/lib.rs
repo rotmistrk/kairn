@@ -18,7 +18,6 @@ pub mod git_watcher;
 pub mod glyphs;
 pub mod handler;
 pub mod handler_build;
-pub mod handler_diff;
 pub mod handler_exec;
 pub mod handler_git;
 pub mod help;

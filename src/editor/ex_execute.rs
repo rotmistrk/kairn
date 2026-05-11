@@ -57,6 +57,15 @@ impl Editor {
             return EditorAction::CursorMoved;
         }
 
+        if trimmed == "diff" || trimmed.starts_with("diff ") {
+            let args = trimmed.strip_prefix("diff").unwrap_or("").trim().to_string();
+            return EditorAction::Diff(args);
+        }
+
+        if trimmed == "nodiff" {
+            return EditorAction::NoDiff;
+        }
+
         let total = self.buffer.line_count();
         if let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) {
             match ex_cmd {
@@ -94,11 +103,6 @@ impl Editor {
                     return EditorAction::None;
                 }
             }
-        }
-
-        if trimmed == "diff" || trimmed.starts_with("diff ") {
-            let args = trimmed.strip_prefix("diff").unwrap_or("").trim().to_string();
-            return EditorAction::Diff(args);
         }
 
         self.status = format!("Unknown: {trimmed}");

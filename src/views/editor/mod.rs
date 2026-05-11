@@ -1,10 +1,12 @@
 //! EditorView — View wrapper around the Editor core.
 
+mod build;
+mod diff;
 mod draw;
 mod draw_diagnostics;
 mod handle;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use txv_core::prelude::*;
 
@@ -12,8 +14,16 @@ use crate::commands::CM_CLIPBOARD_PASTE;
 use crate::commands::CM_TAB_CLOSE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
-use crate::highlight::{self, Highlighter};
+use crate::highlight::Highlighter;
 use crate::settings::EditorSettings;
+
+/// Per-line diff tag for inline diff rendering.
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum DiffTag {
+    Context,
+    Added,
+    Removed,
+}
 
 pub struct EditorView {
     state: ViewState,
@@ -28,90 +38,13 @@ pub struct EditorView {
     close_prompt: bool,
     display_title: String,
     diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
+    /// Diff mode: per-line tag ('+' added, '-' removed, ' ' context). None = normal mode.
+    diff_lines: Option<Vec<DiffTag>>,
+    diff_base: String,
 }
 
 impl EditorView {
-    pub fn open(path: &Path, settings: &EditorSettings) -> anyhow::Result<Self> {
-        let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
-        let file_ext = highlight::extension_from_path(path).to_string();
-        let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        let display_title = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("untitled")
-            .to_string();
-        let mut view = Self {
-            state: ViewState::default(),
-            editor,
-            path: path.to_path_buf(),
-            root_dir,
-            highlighter: Highlighter::new(),
-            file_ext,
-            settings: settings.clone(),
-            last_edit_tick: 0,
-            tick_counter: 0,
-            close_prompt: false,
-            display_title,
-            diagnostics: None,
-        };
-        view.apply_settings();
-        Ok(view)
-    }
-
-    pub fn new_file(path: &Path, settings: &EditorSettings) -> Self {
-        let editor = Editor::from_text("");
-        let file_ext = highlight::extension_from_path(path).to_string();
-        let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        let display_title = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("untitled")
-            .to_string();
-        let mut view = Self {
-            state: ViewState::default(),
-            editor,
-            path: path.to_path_buf(),
-            root_dir,
-            highlighter: Highlighter::new(),
-            file_ext,
-            settings: settings.clone(),
-            last_edit_tick: 0,
-            tick_counter: 0,
-            close_prompt: false,
-            display_title,
-            diagnostics: None,
-        };
-        view.apply_settings();
-        view
-    }
-
-    pub fn from_text(content: &str) -> Self {
-        let editor = Editor::from_text(content);
-        Self {
-            state: ViewState::default(),
-            editor,
-            path: PathBuf::from("[cmd output]"),
-            root_dir: PathBuf::from("."),
-            highlighter: Highlighter::new(),
-            file_ext: String::new(),
-            settings: EditorSettings::default(),
-            last_edit_tick: 0,
-            tick_counter: 0,
-            close_prompt: false,
-            display_title: "[cmd output]".to_string(),
-            diagnostics: None,
-        }
-    }
-
-    pub fn set_root_dir(&mut self, root: PathBuf) {
-        self.root_dir = root;
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.path
-    }
-
-    fn apply_settings(&mut self) {
+    pub(super) fn apply_settings(&mut self) {
         self.editor.options.wrap = self.settings.wrap;
         self.editor.options.list = self.settings.list;
         self.editor.options.tab_width = self.settings.tabstop as usize;
@@ -170,6 +103,15 @@ impl View for EditorView {
             }
             // Handle clipboard paste command
             if let Event::Command { id, data } = event {
+                if *id == crate::commands::CM_DIFF {
+                    let args = data
+                        .as_ref()
+                        .and_then(|b| b.downcast_ref::<String>())
+                        .map(|s| s.as_str())
+                        .unwrap_or("");
+                    self.toggle_diff(args);
+                    return HandleResult::Consumed;
+                }
                 if *id == CM_CLIPBOARD_PASTE {
                     if let Some(boxed) = data.as_ref() {
                         if let Some(text) = boxed.downcast_ref::<String>() {
@@ -198,11 +140,19 @@ impl View for EditorView {
                     let content = self.editor.buffer.content();
                     let _ = crate::editor::save::save_file(&self.path, &content);
                     self.editor.buffer.mark_saved();
+                    queue.put_command(
+                        crate::commands::CM_FILE_CLOSED,
+                        Some(Box::new(self.path.to_string_lossy().to_string())),
+                    );
                     queue.put_command(CM_TAB_CLOSE, None);
                 }
                 KeyCode::Char('n') => {
                     self.close_prompt = false;
                     self.editor.buffer.mark_saved(); // discard
+                    queue.put_command(
+                        crate::commands::CM_FILE_CLOSED,
+                        Some(Box::new(self.path.to_string_lossy().to_string())),
+                    );
                     queue.put_command(CM_TAB_CLOSE, None);
                 }
                 _ => {

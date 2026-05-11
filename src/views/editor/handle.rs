@@ -73,11 +73,19 @@ impl EditorView {
                         let _ = crate::editor::save::save_file(&self.path, &content);
                         self.editor.buffer.mark_saved();
                     }
+                    queue.put_command(
+                        crate::commands::CM_FILE_CLOSED,
+                        Some(Box::new(self.path.to_string_lossy().to_string())),
+                    );
                     queue.put_command(CM_TAB_CLOSE, None);
                 }
             }
             EditorAction::ForceCloseRequested => {
                 self.editor.buffer.mark_saved(); // discard changes
+                queue.put_command(
+                    crate::commands::CM_FILE_CLOSED,
+                    Some(Box::new(self.path.to_string_lossy().to_string())),
+                );
                 queue.put_command(CM_TAB_CLOSE, None);
             }
             EditorAction::ShellOutput(output) => {
@@ -91,7 +99,10 @@ impl EditorView {
                 queue.put_command(CM_SET_GLOBAL, Some(Box::new(opt)));
             }
             EditorAction::Diff(args) => {
-                queue.put_command(crate::commands::CM_DIFF, Some(Box::new(args)));
+                self.toggle_diff(&args);
+            }
+            EditorAction::NoDiff => {
+                self.exit_diff();
             }
             EditorAction::LspGotoDefinition => {
                 let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);

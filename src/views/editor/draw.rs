@@ -47,9 +47,15 @@ impl EditorView {
             let text_x = b.x + gutter_w;
 
             // --- Gutter ---
+            let diff_fg = self.diff_line_color(line_idx);
             if gutter_w > 0 {
+                let gs = if let Some(fg) = diff_fg {
+                    Style { fg, ..Style::default() }
+                } else {
+                    gutter_style
+                };
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                surface.print(b.x, y, &num, gutter_style);
+                surface.print(b.x, y, &num, gs);
             }
 
             // --- Line content: write char-by-char, then pad to full width ---
@@ -157,7 +163,12 @@ impl EditorView {
                     };
 
                     let vy = b.y + visual_row as u16;
-                    surface.put(x, vy, display_ch, display_style);
+                    let final_style = if let Some(fg) = diff_fg {
+                        Style { fg, ..display_style }
+                    } else {
+                        display_style
+                    };
+                    surface.put(x, vy, display_ch, final_style);
                     col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();

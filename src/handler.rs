@@ -102,9 +102,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
         CM_FILE_CLOSED => {
             if let Some(boxed) = ctx.data.as_ref() {
-                if let Some(title) = boxed.downcast_ref::<String>() {
-                    let full_path = state.root_dir.join(title).to_string_lossy().to_string();
-                    state.broker.close(&full_path);
+                if let Some(path) = boxed.downcast_ref::<String>() {
+                    state.broker.close(path);
                 }
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -129,7 +128,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_GIT_UNTRACK => crate::handler_git::handle_git_untrack(ctx, state),
         CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
-        CM_DIFF => crate::handler_diff::handle_diff(ctx, state),
+        CM_DIFF => {} // Handled by the focused editor view directly
         CM_CURSOR_MOVED => {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
