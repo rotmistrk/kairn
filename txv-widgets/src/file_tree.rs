@@ -26,6 +26,8 @@ pub struct FileTreeData {
     visible: Vec<usize>,
     /// Per-path foreground color (relative path → color).
     colors: HashMap<String, Color>,
+    /// Whether to show hidden (dot) files.
+    pub show_hidden: bool,
 }
 
 impl FileTreeData {
@@ -36,6 +38,7 @@ impl FileTreeData {
             nodes: Vec::new(),
             visible: Vec::new(),
             colors: HashMap::new(),
+            show_hidden: false,
         };
         data.load_children(root, None, 0);
         data.rebuild_visible();
@@ -87,6 +90,7 @@ impl FileTreeData {
     fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
         let walker = WalkBuilder::new(&dir)
             .max_depth(Some(1))
+            .hidden(!self.show_hidden)
             .sort_by_file_name(|a, b| a.cmp(b))
             .build();
 

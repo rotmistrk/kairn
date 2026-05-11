@@ -12,6 +12,8 @@ pub struct TextArea {
     pub search_query: String,
     pub search_matches: Vec<usize>,
     pub current_match: usize,
+    searching: bool,
+    search_input: String,
 }
 
 impl TextArea {
@@ -24,6 +26,8 @@ impl TextArea {
             search_query: String::new(),
             search_matches: Vec::new(),
             current_match: 0,
+            searching: false,
+            search_input: String::new(),
         }
     }
 
@@ -112,7 +116,13 @@ impl View for TextArea {
             ..Style::default()
         };
 
-        for row in 0..b.h as usize {
+        let content_h = if self.searching {
+            b.h.saturating_sub(1) as usize
+        } else {
+            b.h as usize
+        };
+
+        for row in 0..content_h {
             let line_idx = self.scroll.offset + row;
             let y = b.y + row as u16;
             surface.hline(b.x, y, b.w, ' ', normal);
@@ -140,12 +150,51 @@ impl View for TextArea {
             let visible: String = line.chars().take(avail).collect();
             surface.print(text_x, y, &visible, style);
         }
+
+        // Search prompt at bottom
+        if self.searching {
+            let y = b.y + b.h.saturating_sub(1);
+            let prompt_style = Style {
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            };
+            surface.hline(b.x, y, b.w, ' ', prompt_style);
+            let prompt = format!("/{}", self.search_input);
+            surface.print(b.x, y, &prompt, prompt_style);
+        }
     }
 
     fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+        // Search input mode
+        if self.searching {
+            match key.code {
+                KeyCode::Enter => {
+                    self.searching = false;
+                    self.search(&self.search_input.clone());
+                }
+                KeyCode::Esc => {
+                    self.searching = false;
+                    self.search_input.clear();
+                    self.state.dirty = true;
+                }
+                KeyCode::Backspace => {
+                    self.search_input.pop();
+                    self.state.dirty = true;
+                }
+                KeyCode::Char(ch) => {
+                    self.search_input.push(ch);
+                    self.state.dirty = true;
+                }
+                _ => {}
+            }
+            return HandleResult::Consumed;
+        }
         match key.code {
             KeyCode::Up => {
                 self.scroll.scroll_up(1);
@@ -177,6 +226,12 @@ impl View for TextArea {
             KeyCode::End => {
                 let max = self.scroll.max_offset();
                 self.scroll.scroll_to(max);
+                self.state.dirty = true;
+                HandleResult::Consumed
+            }
+            KeyCode::Char('/') if !key.modifiers.ctrl => {
+                self.searching = true;
+                self.search_input.clear();
                 self.state.dirty = true;
                 HandleResult::Consumed
             }
