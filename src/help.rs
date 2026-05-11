@@ -12,16 +12,29 @@ pub fn help_text() -> String {
   F3              Focus main (center slot)
   F4              Focus terminal (right slot)
   F5              Zoom toggle (maximize focused slot)
-  Ctrl-Shift-Up   Focus previous slot
-  Ctrl-Shift-Down Focus next slot
+  F6              Messages window
+  Ctrl-Shift-Left   Focus previous slot
+  Ctrl-Shift-Right  Focus next slot
 
 ─── Tabs ─────────────────────────────────────────────
-  Ctrl-Shift-Left   Previous tab in focused slot
-  Ctrl-Shift-Right  Next tab in focused slot
+  Ctrl-Shift-Up/Down  Open tab dropdown picker
+  Alt-0..9            Select tab by number
+  Tab cycling         Use dropdown or Alt-N
+
+─── Panel Resize ─────────────────────────────────────
+  ≠ (Alt+=)         Grow focused slot width
+  – (Alt+-)         Shrink focused slot width
+  ± (Alt+Shift+=)   Grow focused slot height
+  — (Alt+Shift+-)   Shrink focused slot height
+  M-x grow/shrink   Same (command fallback)
+  M-x grow-v/shrink-v  Vertical (command fallback)
 
 ─── Global ───────────────────────────────────────────
   F1              Show this help
   Ctrl-Q          Quit
+  Ctrl-Z          Suspend to shell
+  Ctrl-O          Peek screen (show terminal underneath)
+  Ctrl-D          Diff current file vs HEAD
   M-x (Alt-x/≈)  Command mode prompt
 
 ─── Command Mode (M-x) ──────────────────────────────
@@ -31,10 +44,25 @@ pub fn help_text() -> String {
   e <path>        Short for edit
   save            Save current file
   close           Close current tab
+  tab-rename <n>  Rename tool tab
   shell           New shell tab
-  git-stage <p>   Stage file at path
-  git-unstage <p> Unstage file at path
-  git-untrack <p> Untrack file at path
+  kiro [--agent=] New kiro session
+  build           Run build command
+  run             Run project
+  test            Run tests
+  test-file       Test current file
+  test-at-cursor  Test at cursor
+  next-error      Jump to next error
+  prev-error      Jump to previous error
+  lsp-rename <n>  Rename symbol (LSP)
+  code-action     Show code actions (LSP)
+  paste           Paste from system clipboard
+  messages        Show messages window
+  grow / shrink   Resize panel width
+  grow-v / shrink-v  Resize panel height
+  diff            Diff current file
+  git-stage <p>   Stage file
+  git-unstage <p> Unstage file
   git-commit <m>  Commit with message
   Tab             Complete command / file path
 
@@ -70,6 +98,11 @@ pub fn help_text() -> String {
   %               Match bracket
   f/F/t/T <ch>    Find char forward/back, till char
   ; / ,           Repeat / reverse last find
+
+─── Editor — LSP (Normal Mode) ───────────────────────
+  gd              Go to definition
+  gr              Find references
+  K               Hover info
 
   i / a           Insert before / after cursor
   I / A           Insert at line start / end
