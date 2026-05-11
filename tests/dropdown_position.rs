@@ -27,15 +27,18 @@ fn dropdown_position_wide_layout_right_slot() {
     // Open dropdown
     h.inject_key(KeyCode::Down, CTRL_SHIFT_DOWN);
     h.run_cycles(1);
-    // The dropdown "0:" should NOT appear on row 1 (that's the tree/center area)
+    // The dropdown "0:" should appear in the right slot area (not at column 0)
     let row1 = h.row(1);
     assert!(
-        !row1.contains("0:"),
-        "dropdown should NOT render at row 1 in wide layout. Row 1: {row1:?}"
+        row1.contains("0:"),
+        "dropdown should render at row 1 in right slot area. Row 1: {row1:?}"
     );
-    // It should appear somewhere in the right slot area
-    let screen = h.screen_text();
-    assert!(screen.contains("0:"), "dropdown should be visible somewhere: {screen}");
+    // It should NOT be at the far left (that's the tree)
+    let left_part: String = row1.chars().take(10).collect();
+    assert!(
+        !left_part.contains("0:"),
+        "dropdown should be in right slot, not left: {row1:?}"
+    );
 }
 
 /// In tall layout (<200 cols), slots stack vertically.

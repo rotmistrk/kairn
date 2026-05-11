@@ -51,7 +51,7 @@ impl SlottedDesktop {
             .unwrap_or(10);
         let w = (max_name_w as u16 + 2).min(slot_r.w);
         let x = slot_r.x;
-        let start_y = slot_r.y + 1; // directly below slot's title bar
+        let start_y = slot_r.y; // directly below title bar (slot_r.y is first content row)
         let count = slot.tabs.len().min(10);
         let avail_h = (bounds.y + bounds.h).saturating_sub(start_y + 1) as usize; // -1 for bottom border
         let visible = count.min(avail_h);
