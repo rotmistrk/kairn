@@ -26,6 +26,8 @@ pub(crate) enum PendingKind {
     FindReferences,
     Hover,
     Completion,
+    Rename,
+    CodeAction,
 }
 
 impl PendingRequests {
@@ -46,6 +48,8 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_LSP_FIND_REFS => send_find_refs(ctx, state),
         CM_LSP_HOVER => send_hover(ctx, state),
         CM_LSP_COMPLETION => send_completion(ctx, state),
+        CM_LSP_RENAME => send_rename(ctx, state),
+        CM_CODE_ACTION => send_code_action(ctx, state),
         _ => {}
     }
 }
@@ -103,6 +107,18 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
             if !items.is_empty() {
                 let labels: Vec<String> = items.iter().map(|i| i.label.clone()).collect();
                 queue.put_command(CM_LSP_COMPLETION, Some(Box::new(labels)));
+            }
+        }
+        PendingKind::Rename => {
+            let count = requests::apply_workspace_edit(result);
+            let msg = format!("Renamed in {count} location(s)");
+            queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
+        }
+        PendingKind::CodeAction => {
+            let actions = requests::parse_code_actions(result);
+            if !actions.is_empty() {
+                let text = actions.join("\n");
+                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(text)));
             }
         }
     }
@@ -197,6 +213,38 @@ fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
 
     let id = requests::completion(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::Completion);
+}
+
+fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(new_name) = boxed.downcast_ref::<String>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let (line, col) = state.cursor_pos;
+    let id = requests::rename(client, &uri, line, col, new_name);
+    state.lsp_pending.insert(id, PendingKind::Rename);
+}
+
+fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let (line, col) = state.cursor_pos;
+    let id = requests::code_action(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::CodeAction);
+    let _ = ctx;
 }
 
 fn current_file_info(state: &AppState) -> (String, String) {

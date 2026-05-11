@@ -29,6 +29,8 @@ pub struct AppState {
     pub(crate) lsp_pending: crate::lsp::handler::PendingRequests,
     pub build_errors: Vec<crate::build::ErrorLocation>,
     pub build_error_idx: usize,
+    /// Last known cursor position (0-indexed line, col) from the editor.
+    pub cursor_pos: (u32, u32),
 }
 
 impl AppState {
@@ -41,6 +43,7 @@ impl AppState {
             lsp_pending: Default::default(),
             build_errors: Vec::new(),
             build_error_idx: 0,
+            cursor_pos: (0, 0),
         }
     }
 
@@ -53,6 +56,7 @@ impl AppState {
             lsp_pending: Default::default(),
             build_errors: Vec::new(),
             build_error_idx: 0,
+            cursor_pos: (0, 0),
         }
     }
 }
@@ -113,6 +117,14 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SET_GLOBAL => handle_set_global(ctx, state),
         CM_SUSPEND => crate::suspend::suspend_to_shell(),
         CM_PEEK => crate::suspend::peek_screen(),
+        CM_CURSOR_MOVED => {
+            if let Some(boxed) = ctx.data.as_ref() {
+                if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
+                    // CursorPos is 1-indexed; LSP uses 0-indexed
+                    state.cursor_pos = (pos.line.saturating_sub(1), pos.col.saturating_sub(1));
+                }
+            }
+        }
         _ => {
             log::debug!("Unhandled command: {}", ctx.command);
         }

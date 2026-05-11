@@ -129,6 +129,44 @@ pub fn parse_hover(result: &Value) -> Option<String> {
     None
 }
 
+/// Send `textDocument/rename` request. Returns request id.
+pub fn rename(client: &mut LspClient, uri: &str, line: u32, character: u32, new_name: &str) -> u64 {
+    let params = json!({
+        "textDocument": { "uri": uri },
+        "position": { "line": line, "character": character },
+        "newName": new_name
+    });
+    client.send_request("textDocument/rename", params)
+}
+
+/// Send `textDocument/codeAction` request. Returns request id.
+pub fn code_action(client: &mut LspClient, uri: &str, line: u32, character: u32) -> u64 {
+    let params = json!({
+        "textDocument": { "uri": uri },
+        "range": {
+            "start": { "line": line, "character": character },
+            "end": { "line": line, "character": character }
+        },
+        "context": { "diagnostics": [] }
+    });
+    client.send_request("textDocument/codeAction", params)
+}
+
+/// Apply a workspace edit from a rename response. Returns number of files changed.
+pub use super::workspace_edit::apply_workspace_edit;
+
+/// Parse code actions response into action titles.
+pub fn parse_code_actions(result: &Value) -> Vec<String> {
+    let arr = result.as_array();
+    match arr {
+        Some(items) => items
+            .iter()
+            .filter_map(|v| v.get("title").and_then(|t| t.as_str()).map(|s| s.to_string()))
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

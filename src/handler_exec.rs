@@ -33,10 +33,13 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "edit" | "e" if !arg.is_empty() => crate::handler::handle_edit_file(ctx.desktop, state, arg),
         "save" => ctx.queue.put_command(CM_SAVE, None),
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
-        "rename" if !arg.is_empty() => {
+        "tab-rename" if !arg.is_empty() => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.rename_focused_tab(arg);
             }
+        }
+        "lsp-rename" if !arg.is_empty() => {
+            ctx.queue.put_command(CM_LSP_RENAME, Some(Box::new(arg.to_string())));
         }
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -70,6 +73,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "test-at-cursor" => ctx.queue.put_command(CM_TEST_AT_CURSOR, None),
         "next-error" => ctx.queue.put_command(CM_NEXT_ERROR, None),
         "prev-error" => ctx.queue.put_command(CM_PREV_ERROR, None),
+        "code-action" => ctx.queue.put_command(CM_CODE_ACTION, None),
         "paste" => {
             if let Some(text) = crate::clipboard::paste_from_clipboard() {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
