@@ -46,6 +46,7 @@ fn status_color(status: FileStatus) -> Color {
         FileStatus::Added => Color::Ansi(2),
         FileStatus::Untracked => Color::Ansi(1),
         FileStatus::Ignored => Color::Ansi(8),
+        FileStatus::Conflict => Color::Ansi(5),
         FileStatus::Clean => Color::Ansi(7),
     }
 }

@@ -10,6 +10,7 @@ pub enum FileStatus {
     Added,
     Untracked,
     Ignored,
+    Conflict,
 }
 
 /// Collect git status for all files under `root` using libgit2.
@@ -36,7 +37,9 @@ pub fn collect_git_status(root: &Path) -> HashMap<String, FileStatus> {
             continue;
         };
         let s = entry.status();
-        let status = if s.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
+        let status = if s.contains(git2::Status::CONFLICTED) {
+            FileStatus::Conflict
+        } else if s.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
             if s.contains(git2::Status::INDEX_NEW) {
                 FileStatus::Added
             } else {
@@ -79,6 +82,7 @@ fn status_priority(s: FileStatus) -> u8 {
         FileStatus::Added => 1,
         FileStatus::Modified => 2,
         FileStatus::Untracked => 3,
+        FileStatus::Conflict => 4,
     }
 }
 
