@@ -7,23 +7,25 @@ use txv_core::cell::Color;
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
-use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
+use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_SAVE};
 use crate::git_status::{collect_git_status, FileStatus};
+use crate::git_watcher::GitWatcher;
 
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
     last_key_was_right: bool,
-    refresh_counter: u16,
+    watcher: Option<GitWatcher>,
     root: PathBuf,
 }
 
 impl FileTreeView {
     pub fn new(root: PathBuf) -> Self {
         let data = FileTreeData::new(root.clone());
+        let watcher = GitWatcher::new(&root);
         let mut view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
-            refresh_counter: 0,
+            watcher,
             root,
         };
         view.update_colors();
@@ -37,6 +39,13 @@ impl FileTreeView {
             .map(|(path, status)| (path, status_color(status)))
             .collect();
         self.inner.data.set_colors(colors);
+    }
+
+    /// Signal that a save occurred (immediate refresh trigger).
+    pub fn notify_save(&self) {
+        if let Some(w) = &self.watcher {
+            w.signal_change();
+        }
     }
 }
 
@@ -83,11 +92,14 @@ impl View for FileTreeView {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
-            self.refresh_counter += 1;
-            if self.refresh_counter >= 60 {
-                self.refresh_counter = 0;
+            if self.watcher.as_ref().is_some_and(|w| w.has_changes()) {
+                self.update_colors();
                 self.inner.data.refresh();
             }
+            return HandleResult::Ignored;
+        }
+        if let Event::Command { id: CM_SAVE, .. } = event {
+            self.notify_save();
             return HandleResult::Ignored;
         }
         if let Event::Key(key) = event {
