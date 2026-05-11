@@ -53,9 +53,9 @@ impl SlottedDesktop {
 
         let avail = total_h.saturating_sub(chrome_h + 2);
         if tall && right_has {
-            right.size.min(avail / 2)
+            right.height.min(avail / 2)
         } else if bottom_has {
-            bottom.size.min(avail)
+            bottom.height.min(avail)
         } else {
             0
         }
@@ -64,7 +64,7 @@ impl SlottedDesktop {
     fn fill_top_slots(&self, rects: &mut [Rect; SLOT_COUNT], bounds: Rect, y: u16, h: u16, tall: bool) {
         let left = &self.slots[SlotId::Left as usize];
         let left_w = if left.visible && !left.tabs.is_empty() {
-            left.size.min(bounds.w / 3)
+            left.width.min(bounds.w / 3)
         } else {
             0
         };
@@ -80,7 +80,7 @@ impl SlottedDesktop {
             (0u16, 0u16)
         } else {
             let rw = if right_has {
-                right.size.min(bounds.w / 3)
+                right.width.min(bounds.w / 3)
             } else {
                 0
             };

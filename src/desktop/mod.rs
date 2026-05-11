@@ -34,17 +34,19 @@ struct Slot {
     lru: Vec<u64>,
     active: usize,
     visible: bool,
-    size: u16,
+    width: u16,
+    height: u16,
 }
 
 impl Slot {
-    fn new(size: u16) -> Self {
+    fn new(width: u16, height: u16) -> Self {
         Self {
             tabs: Vec::new(),
             lru: Vec::new(),
             active: 0,
             visible: true,
-            size,
+            width,
+            height,
         }
     }
 
@@ -132,7 +134,7 @@ impl SlottedDesktop {
                 focusable: true,
                 ..ViewOptions::default()
             }),
-            slots: [Slot::new(24), Slot::new(0), Slot::new(40), Slot::new(10)],
+            slots: [Slot::new(24, 0), Slot::new(0, 0), Slot::new(40, 10), Slot::new(0, 10)],
             focused: SlotId::Left,
             zoomed: None,
             layout_mode: LayoutMode::Auto,

@@ -53,33 +53,25 @@ impl SlottedDesktop {
         HandleResult::Ignored
     }
 
-    /// Resize the focused slot by delta (positive = grow, negative = shrink).
+    /// Resize the focused slot horizontally (width).
     pub(super) fn resize_focused(&mut self, delta: i16) {
         let s = &mut self.slots[self.focused as usize];
         if delta > 0 {
-            s.size += delta as u16;
+            s.width += delta as u16;
         } else {
-            s.size = s.size.saturating_sub((-delta) as u16);
+            s.width = s.width.saturating_sub((-delta) as u16);
         }
         self.set_bounds(self.group.view.bounds);
     }
 
-    /// Resize vertically — adjusts the tool panel height.
-    /// Tall mode: Right slot uses Bottom position, so adjust Right.size.
-    /// Wide mode: adjust Bottom.size (if bottom panel exists).
+    /// Resize the focused slot vertically (height).
     pub(super) fn resize_vertical(&mut self, delta: i16) {
-        let bounds = self.group.view.bounds;
-        let target = if self.is_tall(bounds.w) {
-            SlotId::Right
-        } else {
-            SlotId::Bottom
-        };
-        let s = &mut self.slots[target as usize];
+        let s = &mut self.slots[self.focused as usize];
         if delta > 0 {
-            s.size += delta as u16;
+            s.height += delta as u16;
         } else {
-            s.size = s.size.saturating_sub((-delta) as u16);
+            s.height = s.height.saturating_sub((-delta) as u16);
         }
-        self.set_bounds(bounds);
+        self.set_bounds(self.group.view.bounds);
     }
 }
