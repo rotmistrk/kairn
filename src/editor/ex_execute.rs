@@ -1,4 +1,4 @@
-//! Ex command execution — :w, :q, :s, :d, :y, :!, :set, etc.
+//! Ex command execution — dispatches parsed ex commands to editor actions.
 
 use super::ex;
 use super::{Editor, EditorAction};
@@ -10,34 +10,7 @@ impl Editor {
             return EditorAction::None;
         }
 
-        match trimmed {
-            "w" => return EditorAction::SaveRequested,
-            "q" => {
-                if self.buffer.is_dirty() {
-                    self.status = "No write since last change (use :q! to override)".to_string();
-                    return EditorAction::None;
-                }
-                return EditorAction::CloseRequested;
-            }
-            "q!" => return EditorAction::ForceCloseRequested,
-            "wq" | "x" => return EditorAction::SaveRequested,
-            _ => {}
-        }
-
-        if let Some(filename) = trimmed.strip_prefix("e ") {
-            let filename = filename.trim();
-            if !filename.is_empty() {
-                return EditorAction::OpenFile(filename.to_string());
-            }
-        }
-
-        if let Some(opt) = trimmed.strip_prefix("setg ") {
-            let opt = opt.trim();
-            if !opt.is_empty() {
-                return EditorAction::SetGlobal(opt.to_string());
-            }
-        }
-
+        // Shell command without range: :!cmd
         if let Some(cmd) = trimmed.strip_prefix('!') {
             let cmd = cmd.trim();
             if !cmd.is_empty() {
@@ -52,61 +25,74 @@ impl Editor {
             }
         }
 
-        if let Ok(n) = trimmed.parse::<usize>() {
-            self.goto_line(n);
-            return EditorAction::CursorMoved;
-        }
-
-        if trimmed == "diff" || trimmed.starts_with("diff ") {
-            let args = trimmed.strip_prefix("diff").unwrap_or("").trim().to_string();
-            return EditorAction::Diff(args);
-        }
-
-        if trimmed == "nodiff" {
-            return EditorAction::NoDiff;
-        }
-
         let total = self.buffer.line_count();
-        if let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) {
-            match ex_cmd {
-                ex::ExCommand::Save => return EditorAction::SaveRequested,
-                ex::ExCommand::Quit => return EditorAction::CloseRequested,
-                ex::ExCommand::SaveQuit => return EditorAction::SaveRequested,
-                ex::ExCommand::GotoLine(n) => {
-                    self.goto_line(n);
-                    return EditorAction::CursorMoved;
-                }
-                ex::ExCommand::Delete { start, end } => {
-                    self.ex_delete(start, end);
-                    return EditorAction::ContentChanged;
-                }
-                ex::ExCommand::Yank { start, end } => {
-                    self.ex_yank(start, end);
-                    return EditorAction::None;
-                }
-                ex::ExCommand::Substitute {
-                    start,
-                    end,
-                    pattern,
-                    replacement,
-                    global,
-                } => {
-                    self.ex_substitute(start, end, &pattern, &replacement, global);
-                    return EditorAction::ContentChanged;
-                }
-                ex::ExCommand::Shell { start, end, command } => {
-                    self.ex_shell(start, end, &command);
-                    return EditorAction::ContentChanged;
-                }
-                ex::ExCommand::Set(opt) => {
-                    self.apply_set_option(&opt);
-                    return EditorAction::None;
+        let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) else {
+            self.status = format!("Unknown: {trimmed}");
+            return EditorAction::None;
+        };
+
+        match ex_cmd {
+            ex::ExCommand::Save => EditorAction::SaveRequested,
+            ex::ExCommand::Quit => {
+                if self.buffer.is_dirty() {
+                    self.status =
+                        "No write since last change (use :q! to override)".to_string();
+                    EditorAction::None
+                } else {
+                    EditorAction::CloseRequested
                 }
             }
+            ex::ExCommand::QuitForce => EditorAction::ForceCloseRequested,
+            ex::ExCommand::SaveQuit => EditorAction::SaveRequested,
+            ex::ExCommand::GotoLine(n) => {
+                self.goto_line(n);
+                EditorAction::CursorMoved
+            }
+            ex::ExCommand::Edit(filename) => {
+                if filename.is_empty() {
+                    EditorAction::None
+                } else {
+                    EditorAction::OpenFile(filename)
+                }
+            }
+            ex::ExCommand::SetGlobal(opt) => {
+                if opt.is_empty() {
+                    EditorAction::None
+                } else {
+                    EditorAction::SetGlobal(opt)
+                }
+            }
+            ex::ExCommand::Set(opt) => {
+                if !opt.is_empty() {
+                    self.apply_set_option(&opt);
+                }
+                EditorAction::None
+            }
+            ex::ExCommand::Diff(args) => EditorAction::Diff(args),
+            ex::ExCommand::NoDiff => EditorAction::NoDiff,
+            ex::ExCommand::Delete { start, end } => {
+                self.ex_delete(start, end);
+                EditorAction::ContentChanged
+            }
+            ex::ExCommand::Yank { start, end } => {
+                self.ex_yank(start, end);
+                EditorAction::None
+            }
+            ex::ExCommand::Substitute {
+                start,
+                end,
+                pattern,
+                replacement,
+                global,
+            } => {
+                self.ex_substitute(start, end, &pattern, &replacement, global);
+                EditorAction::ContentChanged
+            }
+            ex::ExCommand::Shell { start, end, command } => {
+                self.ex_shell(start, end, &command);
+                EditorAction::ContentChanged
+            }
         }
-
-        self.status = format!("Unknown: {trimmed}");
-        EditorAction::None
     }
 
     fn ex_delete(&mut self, start: usize, end: usize) {

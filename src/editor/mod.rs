@@ -5,6 +5,7 @@ pub mod command;
 mod dispatch_edit;
 mod editing;
 pub mod ex;
+pub mod ex_commands;
 mod ex_execute;
 mod execute;
 mod indent;

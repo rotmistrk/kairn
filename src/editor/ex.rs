@@ -1,12 +1,11 @@
 //! Ex command parser — handles :w, :q, :wq, :N, :s/pat/rep/, :d, :y, :!cmd.
 
-use super::command::Command;
-
 /// Parsed ex-command with resolved line range.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ExCommand {
     Save,
     Quit,
+    QuitForce,
     SaveQuit,
     GotoLine(usize),
     Delete {
@@ -30,51 +29,27 @@ pub enum ExCommand {
         command: String,
     },
     Set(String),
-}
-
-/// Parse an ex command string into a Command (for simple commands) or ExCommand.
-pub fn parse_ex(input: &str) -> Command {
-    let trimmed = input.trim();
-    match trimmed {
-        "w" => Command::Save,
-        "q" | "q!" => Command::CloseBuffer,
-        "wq" | "x" => Command::Save,
-        _ => {
-            if let Ok(n) = trimmed.parse::<usize>() {
-                Command::GotoLine(n)
-            } else {
-                Command::Noop
-            }
-        }
-    }
+    SetGlobal(String),
+    Edit(String),
+    Diff(String),
+    NoDiff,
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
 pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option<ExCommand> {
+    use super::ex_commands::{lookup_command, split_cmd_word, ExCmdId};
+
     let cmd = cmd.trim();
     if cmd.is_empty() {
         return None;
     }
 
-    // Simple commands first
-    match cmd {
-        "w" => return Some(ExCommand::Save),
-        "q" | "q!" => return Some(ExCommand::Quit),
-        "wq" | "x" => return Some(ExCommand::SaveQuit),
-        _ => {}
-    }
-
-    // Check for :set
-    if let Some(rest) = cmd.strip_prefix("set ") {
-        return Some(ExCommand::Set(rest.trim().to_string()));
-    }
-
-    // Goto line number
+    // Goto line number (pure digits)
     if let Ok(n) = cmd.parse::<usize>() {
         return Some(ExCommand::GotoLine(n));
     }
 
-    // Find where the command letter starts
+    // Find where the command letter starts (skip range prefix)
     let cmd_start = cmd
         .find(|c: char| c.is_ascii_alphabetic() || c == '!' || c == 's')
         .unwrap_or(cmd.len());
@@ -82,32 +57,56 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
     let range_str = cmd[..cmd_start].trim();
     let cmd_part = &cmd[cmd_start..];
 
-    let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
-
-    if cmd_part.starts_with('y') {
-        return Some(ExCommand::Yank { start, end });
-    }
-    if cmd_part.starts_with('d') {
-        return Some(ExCommand::Delete { start, end });
-    }
-    if let Some(rest) = cmd_part.strip_prefix('s') {
-        let (pattern, replacement, flags) = parse_substitute(rest)?;
-        return Some(ExCommand::Substitute {
-            start,
-            end,
-            pattern,
-            replacement,
-            global: flags.contains('g'),
-        });
-    }
+    // Shell filter: range!command
     if let Some(rest) = cmd_part.strip_prefix('!') {
+        let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
         return Some(ExCommand::Shell {
             start,
             end,
             command: rest.to_string(),
         });
     }
-    None
+
+    // Extract command word and look it up
+    let (cmd_word, rest) = split_cmd_word(cmd_part);
+
+    // Handle q! as a special case (! modifies the command)
+    let (cmd_id, rest) = if cmd_word == "q" && rest.starts_with('!') {
+        (lookup_command("q!")?, &rest[1..])
+    } else {
+        (lookup_command(cmd_word)?, rest)
+    };
+
+    match cmd_id {
+        ExCmdId::Write => Some(ExCommand::Save),
+        ExCmdId::Quit => Some(ExCommand::Quit),
+        ExCmdId::QuitForce => Some(ExCommand::QuitForce),
+        ExCmdId::WriteQuit | ExCmdId::Exit => Some(ExCommand::SaveQuit),
+        ExCmdId::Set => Some(ExCommand::Set(rest.trim().to_string())),
+        ExCmdId::SetGlobal => Some(ExCommand::SetGlobal(rest.trim().to_string())),
+        ExCmdId::Edit => Some(ExCommand::Edit(rest.trim().to_string())),
+        ExCmdId::Diff => Some(ExCommand::Diff(rest.trim().to_string())),
+        ExCmdId::NoDiff => Some(ExCommand::NoDiff),
+        ExCmdId::Delete => {
+            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+            Some(ExCommand::Delete { start, end })
+        }
+        ExCmdId::Yank => {
+            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+            Some(ExCommand::Yank { start, end })
+        }
+        ExCmdId::Substitute => {
+            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+            let (pattern, replacement, flags) = parse_substitute(rest)?;
+            Some(ExCommand::Substitute {
+                start,
+                end,
+                pattern,
+                replacement,
+                global: flags.contains('g'),
+            })
+        }
+    }
 }
 
 fn parse_range(range: &str, cursor: usize, total: usize) -> Option<(usize, usize)> {
@@ -184,13 +183,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_simple() {
-        assert_eq!(parse_ex("w"), Command::Save);
-        assert_eq!(parse_ex("q"), Command::CloseBuffer);
-        assert_eq!(parse_ex("5"), Command::GotoLine(5));
-    }
-
-    #[test]
     fn test_parse_substitute() {
         let result = parse_ex_full("%s/foo/bar/g", 0, 10);
         assert_eq!(
@@ -215,6 +207,45 @@ mod tests {
     fn test_parse_yank() {
         let result = parse_ex_full("%y", 0, 5);
         assert_eq!(result, Some(ExCommand::Yank { start: 0, end: 4 }));
+    }
+
+    #[test]
+    fn test_diff_not_delete() {
+        assert_eq!(parse_ex_full("diff", 0, 10), Some(ExCommand::Diff(String::new())));
+        assert_eq!(parse_ex_full("dif", 0, 10), Some(ExCommand::Diff(String::new())));
+        assert_eq!(parse_ex_full("diff HEAD~1", 0, 10), Some(ExCommand::Diff("HEAD~1".to_string())));
+    }
+
+    #[test]
+    fn test_d_is_delete() {
+        assert_eq!(parse_ex_full("d", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
+        assert_eq!(parse_ex_full("de", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
+        assert_eq!(parse_ex_full("del", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
+    }
+
+    #[test]
+    fn test_nodiff() {
+        assert_eq!(parse_ex_full("nodiff", 0, 10), Some(ExCommand::NoDiff));
+        assert_eq!(parse_ex_full("nod", 0, 10), Some(ExCommand::NoDiff));
+    }
+
+    #[test]
+    fn test_edit() {
+        assert_eq!(parse_ex_full("e foo.rs", 0, 10), Some(ExCommand::Edit("foo.rs".to_string())));
+        assert_eq!(parse_ex_full("edit foo.rs", 0, 10), Some(ExCommand::Edit("foo.rs".to_string())));
+    }
+
+    #[test]
+    fn test_quit_force() {
+        assert_eq!(parse_ex_full("q!", 0, 10), Some(ExCommand::QuitForce));
+    }
+
+    #[test]
+    fn test_set_and_setglobal() {
+        assert_eq!(parse_ex_full("set nu", 0, 10), Some(ExCommand::Set("nu".to_string())));
+        assert_eq!(parse_ex_full("se nu", 0, 10), Some(ExCommand::Set("nu".to_string())));
+        assert_eq!(parse_ex_full("setg nu", 0, 10), Some(ExCommand::SetGlobal("nu".to_string())));
+        assert_eq!(parse_ex_full("setglobal nu", 0, 10), Some(ExCommand::SetGlobal("nu".to_string())));
     }
 }
 
