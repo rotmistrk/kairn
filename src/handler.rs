@@ -9,7 +9,6 @@ use std::path::PathBuf;
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
-use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
@@ -19,7 +18,7 @@ use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
-use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
+use crate::views::terminal::new_shell_terminal;
 
 /// Application state shared across command handler invocations.
 pub struct AppState {
@@ -28,6 +27,8 @@ pub struct AppState {
     pub settings: AppSettings,
     pub lsp: LspRegistry,
     pub(crate) lsp_pending: crate::lsp::handler::PendingRequests,
+    pub build_errors: Vec<crate::build::ErrorLocation>,
+    pub build_error_idx: usize,
 }
 
 impl AppState {
@@ -38,6 +39,8 @@ impl AppState {
             settings: AppSettings::default(),
             lsp: LspRegistry::new(),
             lsp_pending: Default::default(),
+            build_errors: Vec::new(),
+            build_error_idx: 0,
         }
     }
 
@@ -48,6 +51,8 @@ impl AppState {
             settings,
             lsp: LspRegistry::new(),
             lsp_pending: Default::default(),
+            build_errors: Vec::new(),
+            build_error_idx: 0,
         }
     }
 }
@@ -63,7 +68,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     match ctx.command {
         CM_OPEN_FILE => handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => handle_open_file(ctx, state, true),
-        CM_EXECUTE_COMMAND => handle_execute_command(ctx, state),
+        CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),
         CM_SHOW_HELP => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let help = HelpView::new();
@@ -98,6 +103,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         CM_SHELL_OUTPUT => handle_shell_output(ctx),
+        CM_BUILD => crate::handler_build::handle_build(ctx, state),
         CM_SET_GLOBAL => handle_set_global(ctx, state),
         CM_SUSPEND => crate::suspend::suspend_to_shell(),
         CM_PEEK => crate::suspend::peek_screen(),
@@ -145,72 +151,7 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
     }
 }
 
-fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(text) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    log::debug!("execute_command: {:?}", text);
-
-    let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
-    let cmd = parts.first().copied().unwrap_or("");
-    let arg = parts.get(1).copied().unwrap_or("");
-
-    match cmd {
-        "help" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Center, "Help", Box::new(HelpView::new()));
-            }
-        }
-        "quit" => ctx.queue.put_command(CM_QUIT, None),
-        "edit" | "e" if !arg.is_empty() => handle_edit_file(ctx.desktop, state, arg),
-        "save" => ctx.queue.put_command(CM_SAVE, None),
-        "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
-        "rename" if !arg.is_empty() => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.rename_focused_tab(arg);
-            }
-        }
-        "shell" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                desktop.insert_tab(SlotId::Right, name, new_shell_terminal());
-            }
-        }
-        "kiro" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let name = desktop.next_tab_name(SlotId::Right, "Kiro");
-                let agent_arg = if arg.starts_with("--agent=") {
-                    Some(arg.trim_start_matches("--agent="))
-                } else if !arg.is_empty() {
-                    Some(arg)
-                } else {
-                    None
-                };
-                let term = new_kiro_terminal(agent_arg);
-                desktop.insert_tab(SlotId::Right, name, term);
-            }
-        }
-        "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
-        "lsp-status" => {
-            let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
-            ctx.queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
-        }
-        "paste" => {
-            if let Some(text) = crate::clipboard::paste_from_clipboard() {
-                ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
-            }
-        }
-        _ => {
-            let msg = format!("Unknown command: {cmd}");
-            ctx.queue.put_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-    }
-}
-
-fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
+pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
     let path_str = path.to_string_lossy().to_string();
     match state.broker.open(&path_str, SlotId::Center, 0) {

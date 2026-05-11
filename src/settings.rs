@@ -29,6 +29,9 @@ impl Default for EditorSettings {
 pub struct AppSettings {
     pub clock_interval: u16,
     pub editor_defaults: EditorSettings,
+    pub build_command: Option<String>,
+    pub run_command: Option<String>,
+    pub test_command: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -36,6 +39,9 @@ impl Default for AppSettings {
         Self {
             clock_interval: 60,
             editor_defaults: EditorSettings::default(),
+            build_command: None,
+            run_command: None,
+            test_command: None,
         }
     }
 }

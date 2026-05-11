@@ -4,6 +4,7 @@
 
 pub mod broker;
 pub mod buffer;
+pub mod build;
 pub mod build_desktop;
 pub mod clipboard;
 pub mod commands;
@@ -14,6 +15,8 @@ pub mod editor;
 pub mod git_status;
 pub mod glyphs;
 pub mod handler;
+pub mod handler_build;
+pub mod handler_exec;
 pub mod help;
 pub mod highlight;
 pub mod lsp;

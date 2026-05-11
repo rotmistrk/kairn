@@ -45,6 +45,13 @@ pub const CM_LSP_COMPLETION: CommandId = 147;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;
+pub const CM_BUILD: CommandId = 151;
+pub const CM_RUN: CommandId = 152;
+pub const CM_TEST: CommandId = 153;
+pub const CM_TEST_FILE: CommandId = 154;
+pub const CM_TEST_AT_CURSOR: CommandId = 155;
+pub const CM_NEXT_ERROR: CommandId = 156;
+pub const CM_PREV_ERROR: CommandId = 157;
 
 // Panel resize
 pub const CM_PANEL_GROW: CommandId = 160;
