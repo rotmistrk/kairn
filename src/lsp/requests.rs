@@ -32,6 +32,46 @@ pub fn hover(client: &mut LspClient, uri: &str, line: u32, character: u32) -> u6
     client.send_request("textDocument/hover", params)
 }
 
+/// Send `textDocument/completion` request. Returns request id.
+pub fn completion(client: &mut LspClient, uri: &str, line: u32, character: u32) -> u64 {
+    let params = json!({
+        "textDocument": { "uri": uri },
+        "position": { "line": line, "character": character }
+    });
+    client.send_request("textDocument/completion", params)
+}
+
+/// A completion item from the server.
+#[derive(Debug, Clone)]
+pub struct CompletionItem {
+    pub label: String,
+    pub detail: Option<String>,
+    pub insert_text: Option<String>,
+}
+
+/// Parse a completion response into items.
+pub fn parse_completion(result: &Value) -> Vec<CompletionItem> {
+    let items = if let Some(arr) = result.as_array() {
+        arr
+    } else if let Some(arr) = result.get("items").and_then(|v| v.as_array()) {
+        arr
+    } else {
+        return Vec::new();
+    };
+    items.iter().filter_map(parse_one_completion).collect()
+}
+
+fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
+    let label = val.get("label")?.as_str()?.to_string();
+    let detail = val.get("detail").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let insert_text = val.get("insertText").and_then(|v| v.as_str()).map(|s| s.to_string());
+    Some(CompletionItem {
+        label,
+        detail,
+        insert_text,
+    })
+}
+
 /// A location result from definition/references responses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location {
@@ -139,5 +179,32 @@ mod tests {
     #[test]
     fn parse_hover_null() {
         assert_eq!(parse_hover(&json!(null)), None);
+    }
+
+    #[test]
+    fn parse_completion_array() {
+        let result = json!([
+            {"label": "println!", "detail": "macro"},
+            {"label": "print!", "insertText": "print!($0)"}
+        ]);
+        let items = parse_completion(&result);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].label, "println!");
+        assert_eq!(items[0].detail, Some("macro".to_string()));
+        assert_eq!(items[1].insert_text, Some("print!($0)".to_string()));
+    }
+
+    #[test]
+    fn parse_completion_list_object() {
+        let result = json!({"isIncomplete": false, "items": [{"label": "foo"}]});
+        let items = parse_completion(&result);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].label, "foo");
+    }
+
+    #[test]
+    fn parse_completion_empty() {
+        let items = parse_completion(&json!(null));
+        assert!(items.is_empty());
     }
 }
