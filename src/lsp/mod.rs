@@ -2,6 +2,7 @@
 
 pub mod client;
 pub mod completion;
+pub mod config_commands;
 pub mod diagnostics;
 pub mod handler;
 pub mod messages;

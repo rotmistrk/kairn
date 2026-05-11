@@ -32,6 +32,7 @@ pub fn load_config_from(path: &Path) -> AppSettings {
     };
 
     let mut interp = Interpreter::new();
+    crate::lsp::config_commands::register_lsp_commands(&mut interp);
     if let Err(e) = interp.eval(&script) {
         log::warn!("Config eval error in {}: {}", path.display(), e);
         return AppSettings::default();

@@ -193,6 +193,10 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
+        "lsp-status" => {
+            let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
+            ctx.queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
+        }
         "paste" => {
             if let Some(text) = crate::clipboard::paste_from_clipboard() {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
