@@ -89,6 +89,7 @@ impl LspRegistry {
             Some(c) => c,
             None => {
                 log::error!("Failed to spawn LSP: {} (is it installed?)", config.command);
+                self.disabled.push(language_id.to_string());
                 return None;
             }
         };
