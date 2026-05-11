@@ -85,15 +85,37 @@ pub struct StatusKeys {
 impl Default for StatusKeys {
     fn default() -> Self {
         Self {
-            help: KeyEvent { code: KeyCode::F(1), modifiers: KeyMod::default() },
-            tree: KeyEvent { code: KeyCode::F(2), modifiers: KeyMod::default() },
-            main: KeyEvent { code: KeyCode::F(3), modifiers: KeyMod::default() },
-            term: KeyEvent { code: KeyCode::F(4), modifiers: KeyMod::default() },
-            zoom: KeyEvent { code: KeyCode::F(5), modifiers: KeyMod::default() },
-            messages: KeyEvent { code: KeyCode::F(6), modifiers: KeyMod::default() },
+            help: KeyEvent {
+                code: KeyCode::F(1),
+                modifiers: KeyMod::default(),
+            },
+            tree: KeyEvent {
+                code: KeyCode::F(2),
+                modifiers: KeyMod::default(),
+            },
+            main: KeyEvent {
+                code: KeyCode::F(3),
+                modifiers: KeyMod::default(),
+            },
+            term: KeyEvent {
+                code: KeyCode::F(4),
+                modifiers: KeyMod::default(),
+            },
+            zoom: KeyEvent {
+                code: KeyCode::F(5),
+                modifiers: KeyMod::default(),
+            },
+            messages: KeyEvent {
+                code: KeyCode::F(6),
+                modifiers: KeyMod::default(),
+            },
             quit: KeyEvent {
                 code: KeyCode::Char('q'),
-                modifiers: KeyMod { ctrl: true, alt: false, shift: false },
+                modifiers: KeyMod {
+                    ctrl: true,
+                    alt: false,
+                    shift: false,
+                },
             },
         }
     }

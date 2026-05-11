@@ -4,8 +4,8 @@ mod build;
 mod diff;
 pub mod diff_model;
 mod draw;
-mod draw_diff;
 mod draw_diagnostics;
+mod draw_diff;
 mod handle;
 mod handle_diff;
 
@@ -115,16 +115,15 @@ impl View for EditorView {
                         .unwrap_or("");
                     self.toggle_diff(args);
                     if !self.editor.status.is_empty() {
-                        queue.put_command(
-                            txv_widgets::CM_STATUS_MESSAGE,
-                            Some(Box::new(self.editor.status.clone())),
-                        );
+                        let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
+                        queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                     }
-                    let mode = if self.in_diff_mode() { "DIFF" } else { "NOR" };
-                    queue.put_command(
-                        crate::commands::CM_MODE_CHANGED,
-                        Some(Box::new(mode.to_string())),
-                    );
+                    let mode = if self.in_diff_mode() {
+                        "DIFF"
+                    } else {
+                        "NOR"
+                    };
+                    queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
                     return HandleResult::Consumed;
                 }
                 if *id == CM_CLIPBOARD_PASTE {

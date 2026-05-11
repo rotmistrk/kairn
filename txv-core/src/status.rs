@@ -3,7 +3,7 @@
 //! Items implement `ActiveItem` (event handling), `VisibleItem` (rendering),
 //! or both. The `StatusBar` container lays them out and routes events.
 
-use crate::cell::{Attrs, Style};
+use crate::cell::{Attrs, Color, Style};
 use crate::event::Event;
 use crate::geometry::Rect;
 use crate::surface::Surface;
@@ -29,6 +29,10 @@ pub trait ActiveItem: Send {
 pub trait VisibleItem: Send {
     fn label(&self) -> &str;
     fn gravity(&self) -> Gravity;
+    /// Style for rendering the label. Default is plain.
+    fn style(&self) -> crate::cell::Style {
+        crate::cell::Style::default()
+    }
     /// Called on tick so the item can update its label.
     fn tick(&mut self) {}
 }
@@ -169,7 +173,12 @@ impl View for StatusBar {
         // Normal: left items from left, right items from right
         let mut lx = b.x;
         let right_edge = b.x + b.w;
-        let mut right_labels: Vec<&str> = Vec::new();
+
+        struct RightEntry<'a> {
+            label: &'a str,
+            item_style: Style,
+        }
+        let mut right_entries: Vec<RightEntry> = Vec::new();
 
         for slot in &self.items {
             let label = match slot {
@@ -185,6 +194,11 @@ impl View for StatusBar {
                 ItemSlot::VisibleOnly(item) => item.gravity(),
                 ItemSlot::ActiveOnly(_) => continue,
             };
+            let item_style = match slot {
+                ItemSlot::Full(item) => item.style(),
+                ItemSlot::VisibleOnly(item) => item.style(),
+                ItemSlot::ActiveOnly(_) => Style::default(),
+            };
             match gravity {
                 Gravity::Left => {
                     let text = format!(" {label} ");
@@ -195,19 +209,28 @@ impl View for StatusBar {
                     }
                 }
                 Gravity::Right => {
-                    right_labels.push(label);
+                    right_entries.push(RightEntry { label, item_style });
                 }
             }
         }
 
         // Render right-gravity items from right edge
         let mut rx = right_edge;
-        for label in right_labels.iter().rev() {
-            let text = format!(" {label} ");
+        for entry in right_entries.iter().rev() {
+            let text = format!(" {} ", entry.label);
             let tw = text.len() as u16;
             if rx >= b.x + tw && rx - tw >= lx {
                 rx -= tw;
-                surface.print(rx, b.y, &text, style);
+                let s = if entry.item_style.fg != Color::default() {
+                    Style {
+                        fg: entry.item_style.fg,
+                        attrs: style.attrs,
+                        ..Style::default()
+                    }
+                } else {
+                    style
+                };
+                surface.print(rx, b.y, &text, s);
             }
         }
     }

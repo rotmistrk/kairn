@@ -6,6 +6,7 @@
 //! Same pattern as TXV's Program::handle.
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
@@ -15,6 +16,7 @@ use crate::commands::*;
 use crate::layout_group::LayoutGroup;
 use crate::layout_group::SlotId;
 use crate::lsp::registry::LspRegistry;
+use crate::message_ring::MessageRing;
 use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
@@ -32,6 +34,8 @@ pub struct AppState {
     pub build_error_idx: usize,
     /// Last known cursor position (0-indexed line, col) from the editor.
     pub cursor_pos: (u32, u32),
+    /// Shared message ring buffer.
+    pub messages: Arc<Mutex<MessageRing>>,
 }
 
 impl AppState {
@@ -45,6 +49,7 @@ impl AppState {
             build_errors: Vec::new(),
             build_error_idx: 0,
             cursor_pos: (0, 0),
+            messages: Arc::new(Mutex::new(MessageRing::new())),
         }
     }
 
@@ -58,6 +63,7 @@ impl AppState {
             build_errors: Vec::new(),
             build_error_idx: 0,
             cursor_pos: (0, 0),
+            messages: Arc::new(Mutex::new(MessageRing::new())),
         }
     }
 }
@@ -65,6 +71,18 @@ impl AppState {
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
 pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
+    // Intercept status messages and append to ring buffer
+    if ctx.command == txv_widgets::CM_STATUS_MESSAGE {
+        if let Some(boxed) = ctx.data.as_ref() {
+            if let Some(msg) = boxed.downcast_ref::<Message>() {
+                if let Ok(mut ring) = state.messages.lock() {
+                    ring.push(msg.clone());
+                }
+            }
+        }
+        return;
+    }
+
     // LSP: send didOpen on file open
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
@@ -87,7 +105,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 if desktop.focus_tab_by_title(SlotId::Right, "Messages") {
                     desktop.focus_slot(SlotId::Right);
                 } else {
-                    let messages = MessagesView::new();
+                    let messages = MessagesView::new(state.messages.clone());
                     desktop.insert_tab(SlotId::Right, "Messages", Box::new(messages));
                     desktop.focus_slot(SlotId::Right);
                 }
@@ -97,7 +115,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                desktop.insert_tab(SlotId::Right, name, term);
+                desktop.insert_tab(SlotId::Right, &name, term);
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::info("shell", format!("Started: {name}")))),
+                );
             }
         }
         CM_FILE_CLOSED => {
@@ -137,9 +159,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 }
             }
         }
-        _ => {
-            log::debug!("Unhandled command: {}", ctx.command);
-        }
+        _ => {}
     }
 }
 
@@ -176,10 +196,14 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
-                desktop.insert_tab(SlotId::Center, title, Box::new(editor));
+                desktop.insert_tab(SlotId::Center, &title, Box::new(editor));
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
+                );
             }
         }
     }

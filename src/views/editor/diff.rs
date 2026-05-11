@@ -23,11 +23,7 @@ impl EditorView {
 
     /// Exit diff mode and jump cursor to the buffer line at current diff cursor.
     pub(super) fn exit_diff_at_cursor(&mut self) {
-        let buf_line = self
-            .diff_state
-            .as_ref()
-            .map(|ds| ds.cursor_buf_line())
-            .unwrap_or(0);
+        let buf_line = self.diff_state.as_ref().map(|ds| ds.cursor_buf_line()).unwrap_or(0);
         self.exit_diff();
         self.editor.cursor_line = buf_line;
         self.editor.cursor_col = 0;

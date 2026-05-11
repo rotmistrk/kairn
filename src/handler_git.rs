@@ -1,5 +1,6 @@
 //! Git command handlers — stage, unstage, untrack, commit.
 
+use txv_core::message::Message;
 use txv_core::program::CommandContext;
 
 use crate::commands::*;
@@ -14,12 +15,14 @@ pub fn handle_git_stage(ctx: &mut CommandContext, state: &AppState) {
     };
     match crate::git_ops::git_stage(&state.root_dir, rel) {
         Ok(()) => {
-            let msg = format!("Staged: {rel}");
+            let msg = Message::info("git", format!("Staged: {rel}"));
             ctx.queue
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
-            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(e)));
+            let msg = Message::error("git", e);
+            ctx.queue
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -33,12 +36,14 @@ pub fn handle_git_unstage(ctx: &mut CommandContext, state: &AppState) {
     };
     match crate::git_ops::git_unstage(&state.root_dir, rel) {
         Ok(()) => {
-            let msg = format!("Unstaged: {rel}");
+            let msg = Message::info("git", format!("Unstaged: {rel}"));
             ctx.queue
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
-            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(e)));
+            let msg = Message::error("git", e);
+            ctx.queue
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -52,12 +57,14 @@ pub fn handle_git_untrack(ctx: &mut CommandContext, state: &AppState) {
     };
     match crate::git_ops::git_untrack(&state.root_dir, rel) {
         Ok(()) => {
-            let msg = format!("Untracked: {rel}");
+            let msg = Message::info("git", format!("Untracked: {rel}"));
             ctx.queue
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
-            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(e)));
+            let msg = Message::error("git", e);
+            ctx.queue
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -74,18 +81,17 @@ pub fn handle_git_commit(ctx: &mut CommandContext, state: &AppState) {
     }
     match crate::git_ops::git_commit(&state.root_dir, msg) {
         Ok(()) => {
-            let status = format!("Committed: {msg}");
-            ctx.queue
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(status)));
+            let m = Message::info("git", format!("Committed: {msg}"));
+            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(m)));
         }
         Err(e) => {
-            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(e)));
+            let m = Message::error("git", e);
+            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(m)));
         }
     }
 }
 
 pub fn handle_git_commit_prompt(ctx: &mut CommandContext, _state: &AppState) {
-    // Emit prefill command — CommandItem activates with this prefix
     let prefill = "git-commit ".to_string();
     ctx.queue.put_command(CM_COMMAND_PREFILL, Some(Box::new(prefill)));
 }

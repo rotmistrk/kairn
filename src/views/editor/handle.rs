@@ -58,6 +58,9 @@ impl EditorView {
             EditorAction::SaveRequested => {
                 self.save_buffer();
                 queue.put_command(CM_SAVE, None);
+                let name = self.path.file_name().unwrap_or(self.path.as_os_str());
+                let msg = txv_core::message::Message::info("editor", format!("Saved: {}", name.to_string_lossy()));
+                queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
             EditorAction::CloseRequested => {
                 if self.editor.buffer.is_dirty() && !self.settings.autosave {
@@ -96,12 +99,14 @@ impl EditorView {
             EditorAction::Diff(args) => {
                 self.toggle_diff(&args);
                 if !self.editor.status.is_empty() {
-                    queue.put_command(
-                        txv_widgets::CM_STATUS_MESSAGE,
-                        Some(Box::new(self.editor.status.clone())),
-                    );
+                    let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
+                    queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                 }
-                let mode = if self.in_diff_mode() { "DIFF" } else { "NOR" };
+                let mode = if self.in_diff_mode() {
+                    "DIFF"
+                } else {
+                    "NOR"
+                };
                 queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
             }
             EditorAction::NoDiff => {

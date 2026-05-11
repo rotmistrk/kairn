@@ -49,7 +49,11 @@ impl TabGroup {
             KeyCode::Up => {
                 let count = self.group.children.len();
                 if count > 0 {
-                    let prev = if cursor == 0 { count - 1 } else { cursor - 1 };
+                    let prev = if cursor == 0 {
+                        count - 1
+                    } else {
+                        cursor - 1
+                    };
                     self.dropdown_cursor = Some(prev);
                     self.group.view.dirty = true;
                 }
@@ -68,16 +72,30 @@ impl TabGroup {
         if b.w == 0 || self.titles.is_empty() {
             return;
         }
-        let border = Style { fg: Color::Ansi(6), bg: Color::Ansi(0), ..Style::default() };
-        let normal = Style { fg: Color::Ansi(15), bg: Color::Ansi(0), ..Style::default() };
+        let border = Style {
+            fg: Color::Ansi(6),
+            bg: Color::Ansi(0),
+            ..Style::default()
+        };
+        let normal = Style {
+            fg: Color::Ansi(15),
+            bg: Color::Ansi(0),
+            ..Style::default()
+        };
         let cursor_style = Style {
             fg: Color::Ansi(14),
             bg: Color::Ansi(0),
-            attrs: Attrs { bold: true, ..Attrs::default() },
+            attrs: Attrs {
+                bold: true,
+                ..Attrs::default()
+            },
         };
 
         let count = self.titles.len().min(10);
-        let max_w = self.titles.iter().enumerate()
+        let max_w = self
+            .titles
+            .iter()
+            .enumerate()
             .map(|(i, t)| format!(" {i}:{t}").len())
             .max()
             .unwrap_or(6);
@@ -86,7 +104,11 @@ impl TabGroup {
         let start_y = b.y + 1; // Below chrome
         let avail_h = (b.y + b.h).saturating_sub(start_y + 1) as usize;
         let visible = count.min(avail_h);
-        let scroll = if cursor >= visible { cursor - visible + 1 } else { 0 };
+        let scroll = if cursor >= visible {
+            cursor - visible + 1
+        } else {
+            0
+        };
 
         for vi in 0..visible {
             let i = scroll + vi;
@@ -94,7 +116,11 @@ impl TabGroup {
             let title = self.titles.get(i).map(|s| s.as_str()).unwrap_or("");
             let entry = format!(" {i}:{title}");
             let padded = format!("{:<width$}", entry, width = (w - 2) as usize);
-            let st = if i == cursor { cursor_style } else { normal };
+            let st = if i == cursor {
+                cursor_style
+            } else {
+                normal
+            };
             surface.put(x, row_y, '│', border);
             surface.print(x + 1, row_y, &padded, st);
             if x + w > 1 {

@@ -35,8 +35,7 @@ impl Editor {
             ex::ExCommand::Save => EditorAction::SaveRequested,
             ex::ExCommand::Quit => {
                 if self.buffer.is_dirty() {
-                    self.status =
-                        "No write since last change (use :q! to override)".to_string();
+                    self.status = "No write since last change (use :q! to override)".to_string();
                     EditorAction::None
                 } else {
                     EditorAction::CloseRequested

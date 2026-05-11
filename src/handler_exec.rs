@@ -46,7 +46,14 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                desktop.insert_tab(SlotId::Right, name, new_shell_terminal());
+                desktop.insert_tab(SlotId::Right, &name, new_shell_terminal());
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info(
+                        "shell",
+                        format!("Started: {name}"),
+                    ))),
+                );
             }
         }
         "kiro" => {
@@ -60,7 +67,14 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                     None
                 };
                 let term = new_kiro_terminal(agent_arg, &state.root_dir);
-                desktop.insert_tab(SlotId::Right, name, term);
+                desktop.insert_tab(SlotId::Right, &name, term);
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info(
+                        "kiro",
+                        format!("Started: {name}"),
+                    ))),
+                );
             }
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
@@ -101,7 +115,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
         }
         _ => {
-            let msg = format!("Unknown command: {cmd}");
+            let msg = txv_core::message::Message::warn("handler", format!("Unknown command: {cmd}"));
             ctx.queue
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }

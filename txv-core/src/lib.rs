@@ -60,6 +60,7 @@ pub mod dialog;
 pub mod event;
 pub mod geometry;
 pub mod group;
+pub mod message;
 pub mod program;
 pub mod run;
 pub mod status;
@@ -77,6 +78,7 @@ pub mod prelude {
     pub use crate::event::{CommandId, Event, KeyCode, KeyEvent, KeyMod, MouseAction, MouseButton, MouseEvent};
     pub use crate::geometry::{Point, Rect};
     pub use crate::group::GroupState;
+    pub use crate::message::{Message, MsgLevel};
     pub use crate::run::{exec_view, run, run_cycles, Backend, MockBackend};
     pub use crate::status::{ActiveItem, Gravity, StatusBarItem, VisibleItem};
     pub use crate::surface::{SubSurface, Surface};
@@ -85,5 +87,7 @@ pub mod prelude {
     pub use crate::window::{FrameStyle, WindowState};
 
     // Re-export macros (they are already at crate root via #[macro_export])
-    pub use crate::{delegate_dialog_state, delegate_group_state, delegate_view, delegate_view_state, delegate_window_state};
+    pub use crate::{
+        delegate_dialog_state, delegate_group_state, delegate_view, delegate_view_state, delegate_window_state,
+    };
 }

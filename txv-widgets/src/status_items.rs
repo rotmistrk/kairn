@@ -120,7 +120,8 @@ fn local_hm() -> (u32, u32) {
 // --- MessageItem ---
 
 pub struct MessageItem {
-    message: String,
+    display: String,
+    style: Style,
     timeout_secs: u16,
     last_set: Option<Instant>,
     gravity: Gravity,
@@ -129,7 +130,8 @@ pub struct MessageItem {
 impl MessageItem {
     pub fn new(timeout_secs: u16) -> Self {
         Self {
-            message: String::new(),
+            display: String::new(),
+            style: Style::default(),
             timeout_secs,
             last_set: None,
             gravity: Gravity::Right,
@@ -139,10 +141,6 @@ impl MessageItem {
         self.gravity = g;
         self
     }
-    pub fn set_message(&mut self, msg: impl Into<String>) {
-        self.message = msg.into();
-        self.last_set = Some(Instant::now());
-    }
 }
 
 impl ActiveItem for MessageItem {
@@ -150,9 +148,20 @@ impl ActiveItem for MessageItem {
         if let Event::Command { id, data } = event {
             if *id == CM_STATUS_MESSAGE {
                 if let Some(boxed) = data.as_ref() {
-                    if let Some(msg) = boxed.downcast_ref::<String>() {
-                        self.set_message(msg.clone());
-                        return HandleResult::Consumed;
+                    if let Some(msg) = boxed.downcast_ref::<Message>() {
+                        if msg.level != MsgLevel::Debug {
+                            self.display = format!("[{}] {}", msg.origin, msg.text);
+                            self.style = Style {
+                                fg: match msg.level {
+                                    MsgLevel::Error => Color::Ansi(9),
+                                    MsgLevel::Warn => Color::Ansi(11),
+                                    _ => Color::Ansi(7),
+                                },
+                                ..Style::default()
+                            };
+                            self.last_set = Some(Instant::now());
+                        }
+                        // Don't consume — let handler append to ring
                     }
                 }
             }
@@ -163,7 +172,10 @@ impl ActiveItem for MessageItem {
 
 impl VisibleItem for MessageItem {
     fn label(&self) -> &str {
-        &self.message
+        &self.display
+    }
+    fn style(&self) -> Style {
+        self.style
     }
     fn gravity(&self) -> Gravity {
         self.gravity
@@ -174,7 +186,7 @@ impl VisibleItem for MessageItem {
         }
         if let Some(set_at) = self.last_set {
             if set_at.elapsed().as_secs() >= u64::from(self.timeout_secs) {
-                self.message.clear();
+                self.display.clear();
                 self.last_set = None;
             }
         }

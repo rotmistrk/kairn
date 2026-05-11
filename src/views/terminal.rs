@@ -42,8 +42,7 @@ pub fn new_kiro_terminal(agent: Option<&str>, cwd: &std::path::Path) -> Box<dyn 
         agent_flag = format!("--agent={name}");
         args.push(&agent_flag);
     }
-    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, cwd, 80, 24)
-    {
+    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, cwd, 80, 24) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);

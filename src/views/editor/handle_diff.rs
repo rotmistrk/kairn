@@ -28,12 +28,18 @@ impl EditorView {
             KeyCode::Esc => {
                 self.exit_diff();
                 queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
-                queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(String::new())));
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
+                );
             }
             KeyCode::Enter => {
                 self.exit_diff_at_cursor();
                 queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
-                queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(String::new())));
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
+                );
             }
             KeyCode::Char('n') => self.diff_next_hunk(),
             KeyCode::Char('N') => self.diff_prev_hunk(),

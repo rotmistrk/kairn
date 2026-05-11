@@ -84,5 +84,4 @@ impl LayoutGroup {
             surface.vline(x, b.y + 1, right_r.h.saturating_sub(1), '│', cs);
         }
     }
-
 }

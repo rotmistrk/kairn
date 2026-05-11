@@ -213,14 +213,20 @@ mod tests {
     fn test_diff_not_delete() {
         assert_eq!(parse_ex_full("diff", 0, 10), Some(ExCommand::Diff(String::new())));
         assert_eq!(parse_ex_full("dif", 0, 10), Some(ExCommand::Diff(String::new())));
-        assert_eq!(parse_ex_full("diff HEAD~1", 0, 10), Some(ExCommand::Diff("HEAD~1".to_string())));
+        assert_eq!(
+            parse_ex_full("diff HEAD~1", 0, 10),
+            Some(ExCommand::Diff("HEAD~1".to_string()))
+        );
     }
 
     #[test]
     fn test_d_is_delete() {
         assert_eq!(parse_ex_full("d", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
         assert_eq!(parse_ex_full("de", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
-        assert_eq!(parse_ex_full("del", 0, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
+        assert_eq!(
+            parse_ex_full("del", 0, 10),
+            Some(ExCommand::Delete { start: 0, end: 0 })
+        );
     }
 
     #[test]
@@ -231,8 +237,14 @@ mod tests {
 
     #[test]
     fn test_edit() {
-        assert_eq!(parse_ex_full("e foo.rs", 0, 10), Some(ExCommand::Edit("foo.rs".to_string())));
-        assert_eq!(parse_ex_full("edit foo.rs", 0, 10), Some(ExCommand::Edit("foo.rs".to_string())));
+        assert_eq!(
+            parse_ex_full("e foo.rs", 0, 10),
+            Some(ExCommand::Edit("foo.rs".to_string()))
+        );
+        assert_eq!(
+            parse_ex_full("edit foo.rs", 0, 10),
+            Some(ExCommand::Edit("foo.rs".to_string()))
+        );
     }
 
     #[test]
@@ -244,8 +256,14 @@ mod tests {
     fn test_set_and_setglobal() {
         assert_eq!(parse_ex_full("set nu", 0, 10), Some(ExCommand::Set("nu".to_string())));
         assert_eq!(parse_ex_full("se nu", 0, 10), Some(ExCommand::Set("nu".to_string())));
-        assert_eq!(parse_ex_full("setg nu", 0, 10), Some(ExCommand::SetGlobal("nu".to_string())));
-        assert_eq!(parse_ex_full("setglobal nu", 0, 10), Some(ExCommand::SetGlobal("nu".to_string())));
+        assert_eq!(
+            parse_ex_full("setg nu", 0, 10),
+            Some(ExCommand::SetGlobal("nu".to_string()))
+        );
+        assert_eq!(
+            parse_ex_full("setglobal nu", 0, 10),
+            Some(ExCommand::SetGlobal("nu".to_string()))
+        );
     }
 }
 

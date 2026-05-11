@@ -17,16 +17,35 @@ impl EditorView {
         let max_buf = self.editor.buffer.line_count();
         let dw = digit_width(max_base.max(max_buf));
         // Two gutter columns: "NNN NNN " (dw + space + dw + space)
-        let gutter_w = if self.editor.options.number { (dw * 2 + 2) as u16 } else { 0 };
+        let gutter_w = if self.editor.options.number {
+            (dw * 2 + 2) as u16
+        } else {
+            0
+        };
         let text_x = b.x + gutter_w;
         let avail = b.w.saturating_sub(gutter_w) as usize;
 
-        let added_style = Style { fg: Color::Ansi(2), ..Style::default() };
-        let deleted_style = Style { fg: Color::Ansi(1), ..Style::default() };
-        let context_style = Style { fg: Color::Ansi(8), ..Style::default() };
-        let fold_style = Style { fg: Color::Ansi(5), ..Style::default() };
+        let added_style = Style {
+            fg: Color::Ansi(2),
+            ..Style::default()
+        };
+        let deleted_style = Style {
+            fg: Color::Ansi(1),
+            ..Style::default()
+        };
+        let context_style = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
+        let fold_style = Style {
+            fg: Color::Ansi(5),
+            ..Style::default()
+        };
         let cursor_style = Style {
-            attrs: Attrs { reverse: true, ..Attrs::default() },
+            attrs: Attrs {
+                reverse: true,
+                ..Attrs::default()
+            },
             ..Style::default()
         };
 
@@ -50,23 +69,39 @@ impl EditorView {
                 DiffLine::Context { buf_line, base_line } => {
                     self.draw_diff_gutter(surface, b.x, y, dw, Some(*base_line), Some(*buf_line));
                     let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
-                    let st = if is_cursor { cursor_style } else { context_style };
+                    let st = if is_cursor {
+                        cursor_style
+                    } else {
+                        context_style
+                    };
                     self.draw_diff_text(surface, text_x, y, avail, &text, st);
                 }
                 DiffLine::Added { buf_line } => {
                     self.draw_diff_gutter(surface, b.x, y, dw, None, Some(*buf_line));
                     let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
-                    let st = if is_cursor { cursor_style } else { added_style };
+                    let st = if is_cursor {
+                        cursor_style
+                    } else {
+                        added_style
+                    };
                     self.draw_diff_text(surface, text_x, y, avail, &text, st);
                 }
                 DiffLine::Deleted { text, base_line } => {
                     self.draw_diff_gutter(surface, b.x, y, dw, Some(*base_line), None);
-                    let st = if is_cursor { cursor_style } else { deleted_style };
+                    let st = if is_cursor {
+                        cursor_style
+                    } else {
+                        deleted_style
+                    };
                     self.draw_diff_text(surface, text_x, y, avail, text, st);
                 }
                 DiffLine::Folded { count } => {
                     let label = format!("--- {} lines ---", count);
-                    let st = if is_cursor { cursor_style } else { fold_style };
+                    let st = if is_cursor {
+                        cursor_style
+                    } else {
+                        fold_style
+                    };
                     surface.print_line(b.x, y, &label, b.w, st);
                 }
             }
@@ -78,7 +113,10 @@ impl EditorView {
         {
             let prompt_y = b.y + b.h.saturating_sub(1);
             let prompt_style = Style {
-                attrs: Attrs { reverse: true, ..Attrs::default() },
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
                 ..Style::default()
             };
             let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
@@ -103,7 +141,10 @@ impl EditorView {
         if !self.editor.options.number {
             return;
         }
-        let gs = Style { fg: Color::Ansi(8), ..Style::default() };
+        let gs = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
         let left = match base_line {
             Some(n) => format!("{:>width$}", n + 1, width = dw),
             None => " ".repeat(dw),
@@ -146,13 +187,22 @@ impl EditorView {
     }
 
     fn max_base_line(&self, ds: &super::diff_model::DiffState) -> usize {
-        ds.lines.iter().filter_map(|l| match l {
-            DiffLine::Context { base_line, .. } | DiffLine::Deleted { base_line, .. } => Some(*base_line),
-            _ => None,
-        }).max().unwrap_or(0) + 1
+        ds.lines
+            .iter()
+            .filter_map(|l| match l {
+                DiffLine::Context { base_line, .. } | DiffLine::Deleted { base_line, .. } => Some(*base_line),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0)
+            + 1
     }
 }
 
 fn digit_width(n: usize) -> usize {
-    if n == 0 { 1 } else { (n as f64).log10() as usize + 1 }
+    if n == 0 {
+        1
+    } else {
+        (n as f64).log10() as usize + 1
+    }
 }

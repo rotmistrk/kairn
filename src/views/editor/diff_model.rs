@@ -43,7 +43,11 @@ pub fn parse_diff_args(args: &str) -> DiffOpts {
             base = arg.to_string();
         }
     }
-    DiffOpts { base, context, ignore_ws }
+    DiffOpts {
+        base,
+        context,
+        ignore_ws,
+    }
 }
 
 pub fn is_change(line: &DiffLine) -> bool {
@@ -148,7 +152,10 @@ pub fn build_diff_lines(base: &str, current: &str, opts: &DiffOpts) -> Vec<DiffL
     for change in diff.iter_all_changes() {
         match change.tag() {
             ChangeTag::Equal => {
-                full.push(DiffLine::Context { buf_line: buf_idx, base_line: base_idx });
+                full.push(DiffLine::Context {
+                    buf_line: buf_idx,
+                    base_line: base_idx,
+                });
                 base_idx += 1;
                 buf_idx += 1;
             }
@@ -158,7 +165,10 @@ pub fn build_diff_lines(base: &str, current: &str, opts: &DiffOpts) -> Vec<DiffL
             }
             ChangeTag::Delete => {
                 let text = base_lines.get(base_idx).unwrap_or(&"").to_string();
-                full.push(DiffLine::Deleted { text, base_line: base_idx });
+                full.push(DiffLine::Deleted {
+                    text,
+                    base_line: base_idx,
+                });
                 base_idx += 1;
             }
         }
@@ -204,6 +214,9 @@ fn normalize_ws(text: &str) -> String {
         .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
         .collect::<Vec<_>>()
         .join("\n")
-        + if text.ends_with('\n') { "\n" } else { "" }
+        + if text.ends_with('\n') {
+            "\n"
+        } else {
+            ""
+        }
 }
-

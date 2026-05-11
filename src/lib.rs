@@ -24,6 +24,7 @@ pub mod help;
 pub mod highlight;
 pub mod layout_group;
 pub mod lsp;
+pub mod message_ring;
 pub mod settings;
 pub mod status;
 pub mod suspend;

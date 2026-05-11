@@ -1,41 +1,26 @@
-//! MessagesView — displays application message log.
+//! MessagesView — displays application message log from shared ring buffer.
+
+use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
+use crate::message_ring::MessageRing;
+
 pub struct MessagesView {
     state: ViewState,
-    messages: Vec<(String, MsgLevel)>,
+    ring: Arc<Mutex<MessageRing>>,
     scroll: usize,
-}
-
-#[derive(Clone, Copy)]
-pub enum MsgLevel {
-    Info,
-    Error,
-}
-
-impl Default for MessagesView {
-    fn default() -> Self {
-        Self::new()
-    }
+    last_gen: u64,
 }
 
 impl MessagesView {
-    pub fn new() -> Self {
+    pub fn new(ring: Arc<Mutex<MessageRing>>) -> Self {
         Self {
             state: ViewState::default(),
-            messages: Vec::new(),
+            ring,
             scroll: 0,
+            last_gen: 0,
         }
-    }
-
-    pub fn push(&mut self, level: MsgLevel, msg: String) {
-        self.messages.push((msg, level));
-        self.state.dirty = true;
-    }
-
-    pub fn messages(&self) -> &[(String, MsgLevel)] {
-        &self.messages
     }
 }
 
@@ -51,23 +36,47 @@ impl View for MessagesView {
         if b.w == 0 || b.h == 0 {
             return;
         }
+        let ring = match self.ring.lock() {
+            Ok(r) => r,
+            Err(_) => return,
+        };
+        let entries = ring.entries();
         let rows = b.h as usize;
-        let start = if self.messages.len() > rows + self.scroll {
-            self.messages.len() - rows - self.scroll
+        let total = entries.len();
+        let start = if total > rows + self.scroll {
+            total - rows - self.scroll
         } else {
             0
         };
         for row in 0..rows {
             let y = b.y + row as u16;
-            if let Some((msg, level)) = self.messages.get(start + row) {
-                let style = match level {
-                    MsgLevel::Info => Style::default(),
+            if let Some(msg) = entries.get(start + row) {
+                let elapsed = msg.timestamp.elapsed().as_secs();
+                let mins = (elapsed / 60) % 60;
+                let secs = elapsed % 60;
+                let hrs = (elapsed / 3600) % 24;
+                let line = format!(
+                    "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}",
+                    msg.level.label(),
+                    msg.origin,
+                    msg.text,
+                );
+                let style = match msg.level {
                     MsgLevel::Error => Style {
                         fg: Color::Ansi(9),
                         ..Style::default()
                     },
+                    MsgLevel::Warn => Style {
+                        fg: Color::Ansi(11),
+                        ..Style::default()
+                    },
+                    MsgLevel::Debug => Style {
+                        fg: Color::Ansi(8),
+                        ..Style::default()
+                    },
+                    MsgLevel::Info => Style::default(),
                 };
-                surface.print_line(b.x, y, msg, b.w, style);
+                surface.print_line(b.x, y, &line, b.w, style);
             } else {
                 surface.print_line(b.x, y, "", b.w, Style::default());
             }
@@ -75,25 +84,45 @@ impl View for MessagesView {
     }
 
     fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
-        if let Event::Key(key) = event {
-            match key.code {
-                KeyCode::Up => {
-                    if self.scroll < self.messages.len() {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => {
+                    let total = self.ring.lock().map(|r| r.len()).unwrap_or(0);
+                    if self.scroll < total {
                         self.scroll += 1;
                     }
                     self.state.dirty = true;
-                    return HandleResult::Consumed;
+                    HandleResult::Consumed
                 }
-                KeyCode::Down => {
+                KeyCode::Down | KeyCode::Char('j') => {
                     if self.scroll > 0 {
                         self.scroll -= 1;
                     }
                     self.state.dirty = true;
-                    return HandleResult::Consumed;
+                    HandleResult::Consumed
                 }
-                _ => {}
+                KeyCode::Home | KeyCode::Char('g') => {
+                    let total = self.ring.lock().map(|r| r.len()).unwrap_or(0);
+                    self.scroll = total.saturating_sub(1);
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
+                KeyCode::End | KeyCode::Char('G') => {
+                    self.scroll = 0;
+                    self.state.dirty = true;
+                    HandleResult::Consumed
+                }
+                _ => HandleResult::Ignored,
+            },
+            Event::Tick => {
+                let gen = self.ring.lock().map(|r| r.generation()).unwrap_or(0);
+                if gen != self.last_gen {
+                    self.last_gen = gen;
+                    self.state.dirty = true;
+                }
+                HandleResult::Ignored
             }
+            _ => HandleResult::Ignored,
         }
-        HandleResult::Ignored
     }
 }
