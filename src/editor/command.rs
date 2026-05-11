@@ -110,6 +110,7 @@ pub enum Command {
     GotoDefinition,
     FindReferences,
     Hover,
+    LspRename,
 
     // Repeat
     DotRepeat,

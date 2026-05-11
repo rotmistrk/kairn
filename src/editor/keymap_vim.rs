@@ -203,6 +203,7 @@ impl VimKeymap {
             }
             ('g', 'd') => Command::GotoDefinition,
             ('g', 'r') => Command::FindReferences,
+            ('g', 'R') => Command::LspRename,
             ('>', '>') => Command::Indent,
             ('<', '<') => Command::Unindent,
             ('r', _) => Command::ReplaceChar(ch),

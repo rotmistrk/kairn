@@ -1,6 +1,8 @@
 //! Command dispatch and execution.
 
 use super::command::Command;
+use super::keymap::EditorMode;
+use super::motions;
 use super::{Editor, EditorAction};
 
 impl Editor {
@@ -118,6 +120,12 @@ impl Editor {
             Command::GotoDefinition => EditorAction::LspGotoDefinition,
             Command::FindReferences => EditorAction::LspFindReferences,
             Command::Hover => EditorAction::LspHover,
+            Command::LspRename => {
+                let word = motions::word_at(&self.buffer, self.cursor_line, self.cursor_col).unwrap_or_default();
+                self.mode = EditorMode::Command;
+                self.command_buf = format!("lsp-rename {word}");
+                EditorAction::ModeChanged
+            }
             Command::DotRepeat => {
                 if let Some(last) = self.last_command.clone() {
                     self.dispatch(last)
