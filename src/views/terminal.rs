@@ -32,7 +32,7 @@ pub fn new_shell_with_command(cmd: &str, cwd: &std::path::Path) -> Box<dyn txv_c
 }
 
 /// Create a kiro-cli chat terminal, optionally with a specific agent.
-pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
+pub fn new_kiro_terminal(agent: Option<&str>, cwd: &std::path::Path) -> Box<dyn txv_core::view::View> {
     if std::env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Kiro"));
     }
@@ -42,7 +42,7 @@ pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
         agent_flag = format!("--agent={name}");
         args.push(&agent_flag);
     }
-    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, &std::env::current_dir().unwrap_or_default(), 80, 24)
+    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, cwd, 80, 24)
     {
         Ok(term) => Box::new(term),
         Err(e) => {

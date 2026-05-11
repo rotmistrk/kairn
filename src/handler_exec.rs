@@ -59,7 +59,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 } else {
                     None
                 };
-                let term = new_kiro_terminal(agent_arg);
+                let term = new_kiro_terminal(agent_arg, &state.root_dir);
                 desktop.insert_tab(SlotId::Right, name, term);
             }
         }
