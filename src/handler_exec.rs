@@ -74,6 +74,10 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "next-error" => ctx.queue.put_command(CM_NEXT_ERROR, None),
         "prev-error" => ctx.queue.put_command(CM_PREV_ERROR, None),
         "code-action" => ctx.queue.put_command(CM_CODE_ACTION, None),
+        "grow" => ctx.queue.put_command(CM_PANEL_GROW, None),
+        "shrink" => ctx.queue.put_command(CM_PANEL_SHRINK, None),
+        "grow-v" => ctx.queue.put_command(CM_PANEL_GROW_V, None),
+        "shrink-v" => ctx.queue.put_command(CM_PANEL_SHRINK_V, None),
         "paste" => {
             if let Some(text) = crate::clipboard::paste_from_clipboard() {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
