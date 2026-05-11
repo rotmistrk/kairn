@@ -23,6 +23,8 @@ pub mod handler_exec;
 pub mod handler_git;
 pub mod handler_open;
 pub mod help;
+pub mod help_editor;
+pub mod help_global;
 pub mod highlight;
 pub mod kiro_registry;
 pub mod layout_group;

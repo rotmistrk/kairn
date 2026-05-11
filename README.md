@@ -10,20 +10,19 @@ A TUI IDE oriented around [Kiro](https://kiro.dev) AI. Named after *cairn* — s
 
 ## Features
 
-- **Three-panel layout**: File tree ←→ Main viewer ←→ Terminal (kiro/shell)
-- **Spatial navigation**: Left/Right arrows move between panels naturally
+- **Three-panel layout**: Files/Git/Todo ←→ Editor ←→ Terminal (kiro/shell)
+- **Left panel tabs**: File tree, Git changes, Todo tree (cycle with tab dropdown)
 - **Full terminal emulation** (vte + PTY) for kiro-cli and shell tabs
-- **Syntax-highlighted** file viewer with line numbers, search (`/n/N`)
-- **Main panel modes**: File → Diff → Log → Blame (sticky, cycle with `Ctrl-Shift-↑/↓`)
-- **Vim-style selection**: `v` stream, `V` line, `Ctrl-V` block → send to kiro/shell
-- **Git integration**: diff, commit log, blame, file status colors, commit graph
-- **Git panel**: stage/unstage/untrack/commit from the "Git" tab (`s`/`u`/`x`/`c`)
-- **Fuzzy file search** (`Ctrl-P`) via nucleo
-- **Template macros**: `@file`, `@name`, `@dir`, `@line` expand in terminal input
-- **Two-chord key sequences**: Emacs-style `Ctrl-X` prefix bindings (status bar shows pending chord)
-- **Terminal capture**: scrape terminal output into main panel for review/saving
-- **Configurable keybindings** via `.kairnrc` (JSON, sparse overlay with source tracking)
+- **Scrollback buffer**: PgUp/PgDn to scroll terminal history (configurable size)
+- **Inline editing**: Vim-style editor with syntax highlighting, line numbers
+- **LSP integration**: completion, go-to-definition, references, hover, diagnostics, rename, code actions
+- **Git integration**: diff, file status colors, stage/unstage/untrack/commit from Git panel
+- **Todo tree**: hierarchical task management (`.kairn.todo`, duir-compatible format)
+- **MCP server**: exposes tabs and terminal content to kiro for AI integration
 - **Session persistence**: auto-save on quit, auto-restore on launch
+- **Fuzzy file search** (`Ctrl-P`) via nucleo
+- **Configurable keybindings** via `.kairnrc` (JSON, sparse overlay with source tracking)
+- **Build integration**: build/run/test commands with error navigation (next-error/prev-error)
 
 ## Quick Start
 
@@ -42,52 +41,31 @@ Press `F1` for full interactive help.
 
 | Context | Key | Action |
 |---------|-----|--------|
-| Tree | `→` on file | Focus main panel |
+| Tree | `Enter`/`→` on file | Open in editor |
 | Tree | `→` on dir | Expand directory |
-| Main (scroll) | `←` | Focus tree |
-| Main (scroll) | `→` | Focus terminal |
-| Main | `Space` | Toggle cursor mode (double-line border) |
-| Terminal | `Esc Esc` | Escape to main panel |
-| Terminal | `Ctrl-]` | Escape to main panel |
-| Any | `F3`/`F4`/`F5` | Direct focus: Tree/Main/Terminal |
-| Any | `F2` | Cycle focus |
+| Any | `F2`/`F3`/`F4` | Direct focus: Tree/Main/Terminal |
+| Any | `F5` | Zoom toggle (maximize focused slot) |
+| Any | `Ctrl-Shift-←/→` | Focus prev/next slot |
 
 ## Key Bindings
-
-Some bindings use a two-chord sequence: press the prefix (e.g. `Ctrl-X`), then the second key. The status bar shows the pending prefix.
 
 | Key | Action |
 |-----|--------|
 | `F1` | Help (full docs in main panel) |
-| `F6` | Toggle left panel: Files / Commits |
-| `F7`/`F8` | Resize tree (Shift: ×5; in stacked layouts, resizes terminal vertically when focused) |
-| `F9`/`F10` | Resize terminal (Shift: ×5) |
-| `Ctrl-P` | Fuzzy file search |
-| `Ctrl-X T` | New shell tab |
-| `Ctrl-X N` | New Kiro tab |
-| `Ctrl-X K` | Close tab |
-| `Ctrl-R` | Rename tab |
-| `Ctrl-D` | Diff vs HEAD (`:diff` for options) |
-| `Ctrl-G` | Git commit log |
-| `Ctrl-E` | Open in $EDITOR |
-| `Ctrl-L` | Rotate layout |
-| `Ctrl-B` | Toggle file tree |
-| `Ctrl-T` | Suspend to shell |
-| `Ctrl-O` | Peek screen (MC style) |
+| `F2`/`F3`/`F4` | Focus: Tree / Main / Terminal |
+| `F5` | Zoom toggle (maximize focused slot) |
+| `F6` | Messages window |
 | `Ctrl-Q` | Quit |
-| `Ctrl-Shift-↑/↓` | Cycle mode/filter/tabs (context-aware) |
-| `Ctrl-Enter` | Expand @macros in terminal |
-| `/` | Search in main panel |
-| `n`/`N` | Next/prev search match |
+| `Ctrl-Z` | Suspend to shell |
+| `Ctrl-O` | Peek screen (MC style) |
+| `Ctrl-D` | Diff vs HEAD (`:diff` for options) |
 | `Ctrl-.` | Toggle hidden (dot) files in tree |
-| `v`/`V`/`Ctrl-V` | Visual select (stream/line/block) |
-| `Enter` | Send selection to terminal |
+| `Ctrl-Shift-←/→` | Focus prev/next slot |
+| `Ctrl-Shift-↑/↓` | Open tab dropdown picker |
+| `≠/–` (Alt+=/Alt+-) | Grow/shrink panel width |
+| `±/—` (Alt+Shift) | Grow/shrink panel height |
+| `M-x` (Alt-x/≈) | Command mode prompt |
 | `PgUp`/`PgDn` | Scroll back in terminal |
-| `Ctrl-X O` | Capture last command output to main panel |
-| `Ctrl-X A` | Capture full terminal content to main panel |
-| `Ctrl-X Ctrl-S` | Save main panel buffer to file |
-| `Ctrl-X S` | Save session |
-| `Ctrl-Shift-O` | Load session |
 
 ## Layouts
 
