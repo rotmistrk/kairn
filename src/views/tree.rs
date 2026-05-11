@@ -48,6 +48,16 @@ impl FileTreeView {
             w.signal_change();
         }
     }
+
+    /// Return paths of all expanded directories.
+    pub fn expanded_paths(&self) -> Vec<PathBuf> {
+        self.inner.data.expanded_paths()
+    }
+
+    /// Expand directories matching the given paths.
+    pub fn expand_paths(&mut self, paths: &[PathBuf]) {
+        self.inner.data.expand_paths(paths);
+    }
 }
 
 fn status_color(status: FileStatus) -> Color {
@@ -66,6 +76,10 @@ impl View for FileTreeView {
 
     fn title(&self) -> &str {
         "Files"
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {

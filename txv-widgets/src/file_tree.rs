@@ -87,6 +87,32 @@ impl FileTreeData {
         self.rebuild_visible();
     }
 
+    /// Return paths of all currently expanded directories.
+    pub fn expanded_paths(&self) -> Vec<PathBuf> {
+        self.nodes
+            .iter()
+            .filter(|n| n.is_dir && n.expanded)
+            .map(|n| n.path.clone())
+            .collect()
+    }
+
+    /// Expand directories matching the given paths.
+    pub fn expand_paths(&mut self, paths: &[PathBuf]) {
+        for path in paths {
+            if let Some(idx) = self.nodes.iter().position(|n| n.path == *path) {
+                if self.nodes[idx].is_dir && !self.nodes[idx].expanded {
+                    self.nodes[idx].expanded = true;
+                    let depth = self.nodes[idx].depth;
+                    let has_children = self.nodes.iter().any(|n| n.parent == Some(idx));
+                    if !has_children {
+                        self.load_children(path.clone(), Some(idx), depth + 1);
+                    }
+                }
+            }
+        }
+        self.rebuild_visible();
+    }
+
     fn load_children(&mut self, dir: PathBuf, parent: Option<usize>, depth: usize) {
         let walker = WalkBuilder::new(&dir)
             .max_depth(Some(1))

@@ -11,6 +11,7 @@ use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
 use kairn::handler::{handle_command, AppState};
+use kairn::session;
 use kairn::status::build_status_bar;
 
 #[derive(Parser)]
@@ -68,8 +69,17 @@ fn main() -> anyhow::Result<()> {
     // Load config
     let settings = load_config(&root_dir);
 
+    // Load saved session (if any)
+    let saved_session = session::load_session(&root_dir);
+
     // Build desktop
-    let desktop = build_desktop(&root_dir, settings.git_keys.clone());
+    let mut desktop = build_desktop(&root_dir, settings.git_keys.clone());
+
+    // Restore session state (layout, editor tabs, unfolded dirs)
+    if let Some(ref state) = saved_session {
+        session::restore_session(&mut desktop, state);
+        session::restore_tabs(&mut desktop, state, &root_dir, &settings.editor_defaults);
+    }
 
     // Build status bar
     let status = build_status_bar(
@@ -83,7 +93,7 @@ fn main() -> anyhow::Result<()> {
     let mut program = Program::new(Box::new(status), Box::new(desktop));
 
     // App state
-    let mut state = AppState::with_settings(root_dir, settings);
+    let mut state = AppState::with_settings(root_dir.clone(), settings);
 
     // Run
     let color_mode = detect_color_mode();
@@ -92,6 +102,15 @@ fn main() -> anyhow::Result<()> {
     program.run(&mut backend, |ctx| {
         handle_command(ctx, &mut state);
     });
+
+    // Save session on quit
+    if let Some(desktop) = program
+        .desktop_mut()
+        .as_any_mut()
+        .and_then(|a| a.downcast_mut::<kairn::layout_group::LayoutGroup>())
+    {
+        session::save_session(desktop, &root_dir);
+    }
 
     Ok(())
 }

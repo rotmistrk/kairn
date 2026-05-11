@@ -86,6 +86,16 @@ impl TabGroup {
         self.group.children.get_mut(self.group.focused)
     }
 
+    /// Access a child view by index.
+    pub fn view_at(&self, index: usize) -> Option<&dyn View> {
+        self.group.children.get(index).map(|v| &**v)
+    }
+
+    /// Mutable access to a child view by index.
+    pub fn view_at_mut(&mut self, index: usize) -> Option<&mut Box<dyn View>> {
+        self.group.children.get_mut(index)
+    }
+
     pub fn tab_next(&mut self) {
         if self.group.children.len() > 1 {
             self.set_active((self.group.focused + 1) % self.group.children.len());
