@@ -120,6 +120,9 @@ pub const CM_DIFF: CommandId = 176;
 /// Editor content changed — triggers didChange to LSP server.
 pub const CM_CONTENT_CHANGED: CommandId = 180;
 
+/// Show results in a quickfix-style list (data: Vec<ResultEntry>).
+pub const CM_SHOW_RESULTS: CommandId = 181;
+
 /// Payload for CM_CONTENT_CHANGED.
 #[derive(Debug, Clone)]
 pub struct ContentChanged {

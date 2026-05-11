@@ -17,6 +17,7 @@ pub mod git_ops;
 pub mod git_status;
 pub mod git_watcher;
 pub mod glyphs;
+pub mod grep;
 pub mod handler;
 pub mod handler_build;
 pub mod handler_exec;

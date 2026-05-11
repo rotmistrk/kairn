@@ -96,6 +96,18 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "build" => ctx.queue.put_command(CM_BUILD, None),
         "run" => ctx.queue.put_command(CM_RUN, None),
         "test" => ctx.queue.put_command(CM_TEST, None),
+        "grep" if !arg.is_empty() => {
+            let entries = crate::grep::grep_project(arg, &state.root_dir);
+            if entries.is_empty() {
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info("grep", "No matches"))),
+                );
+            } else {
+                let title = format!("grep: {arg}");
+                ctx.queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
+            }
+        }
         "test-file" => ctx.queue.put_command(CM_TEST_FILE, None),
         "test-at-cursor" => ctx.queue.put_command(CM_TEST_AT_CURSOR, None),
         "next-error" => ctx.queue.put_command(CM_NEXT_ERROR, None),

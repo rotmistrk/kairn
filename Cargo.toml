@@ -6,6 +6,10 @@ name = "kairn"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "mock_lsp"
+path = "tests/mock_lsp/main.rs"
+
 [dependencies]
 txv-core = { path = "txv-core" }
 txv-render = { path = "txv-render" }

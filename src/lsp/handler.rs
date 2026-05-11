@@ -117,13 +117,17 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         }
         PendingKind::FindReferences => {
             let locs = requests::parse_locations(result);
-            let text = locs
-                .iter()
-                .map(|l| format!("{}:{}:{}", uri_to_path(&l.uri), l.line + 1, l.character + 1))
-                .collect::<Vec<_>>()
-                .join("\n");
-            if !text.is_empty() {
-                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(text)));
+            if !locs.is_empty() {
+                let entries: Vec<crate::views::results::ResultEntry> = locs
+                    .iter()
+                    .map(|l| crate::views::results::ResultEntry {
+                        path: std::path::PathBuf::from(uri_to_path(&l.uri)),
+                        line: l.line,
+                        col: l.character,
+                        text: String::new(),
+                    })
+                    .collect();
+                queue.put_command(CM_SHOW_RESULTS, Some(Box::new(("References".to_string(), entries))));
             }
         }
         PendingKind::Hover => {

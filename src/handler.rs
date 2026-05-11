@@ -145,6 +145,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         CM_SHELL_OUTPUT => handle_shell_output(ctx),
+        CM_SHOW_RESULTS => handle_show_results(ctx),
         CM_BUILD => crate::handler_build::handle_build(ctx, state),
         CM_RUN => crate::handler_build::handle_run(ctx, state),
         CM_TEST => crate::handler_build::handle_test(ctx, state),
@@ -207,6 +208,20 @@ fn handle_shell_output(ctx: &mut CommandContext) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = EditorView::from_text(output);
         desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));
+    }
+}
+
+fn handle_show_results(ctx: &mut CommandContext) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((title, entries)) = boxed.downcast_ref::<(String, Vec<crate::views::results::ResultEntry>)>() else {
+        return;
+    };
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        let view = crate::views::results::ResultsView::new(title, entries.clone());
+        desktop.insert_tab(SlotId::Center, title, Box::new(view));
+        desktop.focus_slot(SlotId::Center);
     }
 }
 
