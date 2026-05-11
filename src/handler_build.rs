@@ -130,3 +130,32 @@ fn detect_test_command(root: &std::path::Path) -> String {
         "make test".to_string()
     }
 }
+
+/// Handle M-x next-error: jump to next error location.
+pub fn handle_next_error(ctx: &mut CommandContext, state: &mut AppState) {
+    if state.build_errors.is_empty() {
+        return;
+    }
+    if state.build_error_idx < state.build_errors.len() - 1 {
+        state.build_error_idx += 1;
+    }
+    jump_to_error(ctx, state);
+}
+
+/// Handle M-x prev-error: jump to previous error location.
+pub fn handle_prev_error(ctx: &mut CommandContext, state: &mut AppState) {
+    if state.build_errors.is_empty() {
+        return;
+    }
+    if state.build_error_idx > 0 {
+        state.build_error_idx -= 1;
+    }
+    jump_to_error(ctx, state);
+}
+
+fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
+    let err = &state.build_errors[state.build_error_idx];
+    let path = state.root_dir.join(&err.file);
+    ctx.queue
+        .put_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(path)));
+}
