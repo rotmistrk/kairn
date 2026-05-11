@@ -38,7 +38,7 @@ impl SlottedDesktop {
                 } else {
                     Some(self.focused)
                 };
-                self.group.view.dirty = true;
+                self.set_bounds(self.group.view.bounds);
                 HandleResult::Consumed
             }
             CM_TAB_NEXT => {
