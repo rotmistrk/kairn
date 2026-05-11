@@ -12,7 +12,8 @@ use txv_core::program::CommandContext;
 
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
-use crate::desktop::{SlotId, SlottedDesktop};
+use crate::layout_group::LayoutGroup;
+use crate::layout_group::SlotId;
 use crate::lsp::registry::LspRegistry;
 use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
@@ -226,11 +227,11 @@ fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-/// Downcast the desktop View to SlottedDesktop.
-pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut SlottedDesktop> {
+/// Downcast the desktop View to LayoutGroup.
+pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut LayoutGroup> {
     let ptr = view as *mut dyn View;
-    // SAFETY: we know the desktop is a SlottedDesktop (we created it).
-    unsafe { (ptr as *mut SlottedDesktop).as_mut() }
+    // SAFETY: we know the desktop is a LayoutGroup (we created it).
+    unsafe { (ptr as *mut LayoutGroup).as_mut() }
 }
 
 fn handle_shell_output(ctx: &mut CommandContext) {

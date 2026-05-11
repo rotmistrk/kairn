@@ -25,7 +25,8 @@ fn insert_and_active() {
     tg.insert_tab("A", Box::new(Dummy::new()));
     tg.insert_tab("B", Box::new(Dummy::new()));
     assert_eq!(tg.tab_count(), 2);
-    assert_eq!(tg.active_title(), Some("A"));
+    // Last inserted tab becomes active
+    assert_eq!(tg.active_title(), Some("B"));
 }
 
 #[test]
@@ -35,10 +36,11 @@ fn set_active_and_cycle() {
     tg.insert_tab("A", Box::new(Dummy::new()));
     tg.insert_tab("B", Box::new(Dummy::new()));
     tg.insert_tab("C", Box::new(Dummy::new()));
-    tg.set_active(2);
-    assert_eq!(tg.active_title(), Some("C"));
-    tg.tab_next();
+    // C is already active (last inserted), switch to A
+    tg.set_active(0);
     assert_eq!(tg.active_title(), Some("A"));
+    tg.tab_next();
+    assert_eq!(tg.active_title(), Some("B"));
 }
 
 #[test]
@@ -58,5 +60,5 @@ fn set_bounds_propagates() {
     let mut tg = TabGroup::new();
     tg.insert_tab("T", Box::new(Dummy::new()));
     tg.set_bounds(Rect::new(5, 10, 40, 20));
-    assert_eq!(tg.tabs[0].1.bounds(), Rect::new(5, 11, 40, 19));
+    assert_eq!(tg.group.children[0].bounds(), Rect::new(5, 11, 40, 19));
 }

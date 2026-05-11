@@ -1,4 +1,4 @@
-//! LayoutGroup — the desktop. Holds TabGroup panels, computes layout in set_bounds.
+//! LayoutGroup — the desktop. Uses GroupState with 4 TabGroup children.
 //!
 //! set_bounds is the SINGLE source of truth for child bounds.
 //! Resize/zoom change constraints then call set_bounds.
@@ -6,12 +6,21 @@
 use txv_core::prelude::*;
 use txv_widgets::TabGroup;
 
+mod dispatch;
 mod layout;
+mod view_impl;
 
-pub use crate::desktop::SlotId;
+/// Identifies one of the four panel slots.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SlotId {
+    Left = 0,
+    Center = 1,
+    Right = 2,
+    Bottom = 3,
+}
 
-const WIDE_THRESHOLD: u16 = 200;
-const PANEL_COUNT: usize = 4;
+pub(crate) const WIDE_THRESHOLD: u16 = 200;
+pub(crate) const PANEL_COUNT: usize = 4;
 
 /// Layout mode for the desktop.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -21,70 +30,90 @@ pub enum LayoutMode {
     Tall,
 }
 
-/// The desktop — holds 4 TabGroup panels and computes layout.
+/// The desktop — GroupState with 4 TabGroup children, custom layout.
 pub struct LayoutGroup {
-    state: ViewState,
-    pub panels: [TabGroup; PANEL_COUNT],
-    pub focused: usize,
+    pub(crate) group: GroupState,
     pub zoomed: Option<usize>,
     pub layout_mode: LayoutMode,
     pub left_width: u16,
     pub right_width: u16,
     pub right_height: u16,
     pub bottom_height: u16,
+    pub dropdown: Option<usize>,
+    pub dropdown_cursor: usize,
 }
 
 impl LayoutGroup {
     pub fn new() -> Self {
+        let mut group = GroupState::new(ViewOptions {
+            focusable: true,
+            ..ViewOptions::default()
+        });
+        // Insert 4 TabGroup panels as children
+        for _ in 0..PANEL_COUNT {
+            group.insert(Box::new(TabGroup::new()));
+        }
+        group.focused = SlotId::Left as usize;
         Self {
-            state: ViewState::new(ViewOptions {
-                focusable: true,
-                ..ViewOptions::default()
-            }),
-            panels: [TabGroup::new(), TabGroup::new(), TabGroup::new(), TabGroup::new()],
-            focused: SlotId::Left as usize,
+            group,
             zoomed: None,
             layout_mode: LayoutMode::Auto,
             left_width: 24,
             right_width: 40,
             right_height: 10,
             bottom_height: 10,
+            dropdown: None,
+            dropdown_cursor: 0,
         }
     }
 
-    // ─── Public API (mirrors SlottedDesktop) ───────────────────
+    /// Access a panel as TabGroup (downcast from Box<dyn View>).
+    pub fn panel(&self, slot: SlotId) -> &TabGroup {
+        let child = &self.group.children[slot as usize];
+        // SAFETY: we only insert TabGroup instances at construction
+        unsafe { &*(child.as_ref() as *const dyn View as *const TabGroup) }
+    }
+
+    /// Access a panel mutably as TabGroup.
+    pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabGroup {
+        let child = &mut self.group.children[slot as usize];
+        // SAFETY: we only insert TabGroup instances at construction
+        unsafe { &mut *(child.as_mut() as *mut dyn View as *mut TabGroup) }
+    }
 
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
-        self.panels[slot as usize].insert_tab(title, view);
-        self.recompute_bounds();
+        self.panel_mut(slot).insert_tab(title, view);
+        if self.group.view.bounds.w > 0 {
+            self.recompute_bounds();
+        }
     }
 
     pub fn active_tab_title(&self, slot: SlotId) -> Option<&str> {
-        self.panels[slot as usize].active_title()
+        self.panel(slot).active_title()
     }
 
     pub fn close_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
-        self.panels[slot as usize].close_tab_by_title(title)
+        self.panel_mut(slot).close_tab_by_title(title)
     }
 
     pub fn tab_count(&self, slot: SlotId) -> usize {
-        self.panels[slot as usize].tab_count()
+        self.panel(slot).tab_count()
     }
 
     pub fn set_active_tab(&mut self, slot: SlotId, index: usize) {
-        self.panels[slot as usize].set_active(index);
+        self.panel_mut(slot).set_active(index);
     }
 
     pub fn focus_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
-        self.panels[slot as usize].focus_tab_by_title(title)
+        self.panel_mut(slot).focus_tab_by_title(title)
     }
 
     pub fn active_view_mut(&mut self, slot: SlotId) -> Option<&mut Box<dyn View>> {
-        self.panels[slot as usize].active_view_mut()
+        self.panel_mut(slot).active_view_mut()
     }
 
     pub fn focused_slot(&self) -> SlotId {
-        match self.focused {
+        match self.group.focused {
             0 => SlotId::Left,
             1 => SlotId::Center,
             2 => SlotId::Right,
@@ -94,109 +123,96 @@ impl LayoutGroup {
 
     pub fn focus_slot(&mut self, id: SlotId) {
         let new = id as usize;
-        if new == self.focused {
+        if new == self.group.focused {
             return;
         }
-        self.panels[self.focused].unselect();
-        self.focused = new;
-        self.panels[self.focused].select();
-        self.state.dirty = true;
+        self.group.children[self.group.focused].unselect();
+        self.group.focused = new;
+        self.group.children[self.group.focused].select();
+        self.group.view.dirty = true;
     }
 
     pub fn focus_tab(&mut self, slot: SlotId, tab: usize) {
         self.focus_slot(slot);
-        self.panels[slot as usize].set_active(tab);
+        self.panel_mut(slot).set_active(tab);
     }
 
     pub fn toggle_zoom(&mut self) {
         self.zoomed = if self.zoomed.is_some() {
             None
         } else {
-            Some(self.focused)
+            Some(self.group.focused)
         };
         self.recompute_bounds();
     }
 
     pub fn cycle_focus(&mut self, dir: i32) {
-        let visible: Vec<usize> = (0..PANEL_COUNT).filter(|&i| self.panels[i].tab_count() > 0).collect();
+        let visible: Vec<usize> = (0..PANEL_COUNT)
+            .filter(|&i| self.panel(Self::slot_from(i)).tab_count() > 0)
+            .collect();
         if visible.is_empty() {
             return;
         }
-        let cur = visible.iter().position(|&i| i == self.focused).unwrap_or(0);
+        let cur = visible.iter().position(|&i| i == self.group.focused).unwrap_or(0);
         let next = if dir > 0 {
             (cur + 1) % visible.len()
         } else {
             (cur + visible.len() - 1) % visible.len()
         };
-        let new_slot = match visible[next] {
-            0 => SlotId::Left,
-            1 => SlotId::Center,
-            2 => SlotId::Right,
-            _ => SlotId::Bottom,
-        };
-        self.focus_slot(new_slot);
+        self.focus_slot(Self::slot_from(visible[next]));
     }
 
     pub fn is_tall(&self) -> bool {
         match self.layout_mode {
             LayoutMode::Wide => false,
             LayoutMode::Tall => true,
-            LayoutMode::Auto => self.state.bounds.w < WIDE_THRESHOLD,
+            LayoutMode::Auto => self.group.view.bounds.w < WIDE_THRESHOLD,
+        }
+    }
+
+    pub fn layout_rects(&self) -> [Rect; PANEL_COUNT] {
+        self.compute_rects(self.group.view.bounds)
+    }
+
+    pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
+        let panel = self.panel(slot);
+        for n in 0..10 {
+            let candidate = format!("{prefix}:{n}");
+            if !panel.has_tab_starting_with(&candidate) {
+                return candidate;
+            }
+        }
+        format!("{prefix}:0")
+    }
+
+    pub fn rename_focused_tab(&mut self, new_user_part: &str) {
+        let focused = self.group.focused;
+        let panel = self.panel_mut(Self::slot_from(focused));
+        if let Some(title) = panel.active_title().map(|s| s.to_string()) {
+            if let Some(colon) = title.find(':') {
+                let prefix = &title[..=colon];
+                panel.rename_active(format!("{prefix}{new_user_part}"));
+            }
         }
     }
 
     fn recompute_bounds(&mut self) {
-        let b = self.state.bounds;
+        let b = self.group.view.bounds;
         self.apply_layout(b);
+    }
+
+    fn slot_from(idx: usize) -> SlotId {
+        match idx {
+            0 => SlotId::Left,
+            1 => SlotId::Center,
+            2 => SlotId::Right,
+            _ => SlotId::Bottom,
+        }
     }
 }
 
 impl Default for LayoutGroup {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl View for LayoutGroup {
-    fn bounds(&self) -> Rect {
-        self.state.bounds
-    }
-    fn set_bounds(&mut self, r: Rect) {
-        self.state.bounds = r;
-        self.apply_layout(r);
-        self.state.dirty = true;
-    }
-    fn options(&self) -> ViewOptions {
-        self.state.options
-    }
-    fn title(&self) -> &str {
-        ""
-    }
-    fn needs_redraw(&self) -> bool {
-        self.state.dirty || self.panels.iter().any(|p| p.needs_redraw())
-    }
-    fn mark_redrawn(&mut self) {
-        self.state.dirty = false;
-        for p in &mut self.panels {
-            p.mark_redrawn();
-        }
-    }
-    fn select(&mut self) {
-        self.state.focused = true;
-        self.panels[self.focused].select();
-    }
-    fn unselect(&mut self) {
-        self.state.focused = false;
-        self.panels[self.focused].unselect();
-    }
-    fn draw(&self, surface: &mut Surface) {
-        for panel in &self.panels {
-            if panel.bounds().w > 0 && panel.bounds().h > 0 {
-                panel.draw(surface);
-            }
-        }
-    }
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        self.panels[self.focused].handle(event, queue)
     }
 }

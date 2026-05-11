@@ -3,8 +3,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::desktop::{SlotId, SlottedDesktop};
 use crate::git_watcher::{GitWatcher, WatchHandle};
+use crate::layout_group::LayoutGroup;
+use crate::layout_group::SlotId;
 use crate::settings::GitKeys;
 use crate::views::git_changes::GitChangesView;
 use crate::views::terminal::new_shell_terminal;
@@ -12,8 +13,8 @@ use crate::views::tree::FileTreeView;
 use crate::views::welcome::WelcomeView;
 
 /// Build the standard kairn desktop with tree and terminal.
-pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> SlottedDesktop {
-    let mut desktop = SlottedDesktop::new();
+pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> LayoutGroup {
+    let mut desktop = LayoutGroup::new();
 
     // Shared git watcher — both tree and git panel react to same events
     let watcher = GitWatcher::new(root_dir).map(Arc::new);

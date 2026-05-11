@@ -4,9 +4,9 @@ use txv_core::cell::Color;
 use txv_core::program::CommandContext;
 use txv_widgets::TextArea;
 
-use crate::desktop::SlotId;
 use crate::diff::{git_file_content, unified_diff, DiffOptions};
 use crate::handler::{downcast_desktop, AppState};
+use crate::layout_group::SlotId;
 
 /// Parsed diff command arguments.
 struct DiffArgs {

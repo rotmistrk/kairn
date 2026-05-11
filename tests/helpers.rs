@@ -20,10 +20,16 @@ pub struct TestHarness {
     pub state: AppState,
 }
 
+/// Initialize logger for tests (safe to call multiple times).
+fn init_test_logger() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 impl TestHarness {
     /// Create a new test harness for the given project directory.
     /// Same setup as main.rs: StatusBar + Desktop + AppState.
     pub fn new(root_dir: &Path) -> Self {
+        init_test_logger();
         let desktop = build_desktop(root_dir, GitKeys::default());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
@@ -42,6 +48,7 @@ impl TestHarness {
 
     /// Create with custom dimensions.
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
+        init_test_logger();
         let desktop = build_desktop(root_dir, GitKeys::default());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),

@@ -2,36 +2,38 @@
 
 use txv_core::prelude::*;
 
-use super::{LayoutGroup, PANEL_COUNT};
-use crate::desktop::SlotId;
+use super::{LayoutGroup, SlotId, PANEL_COUNT};
 
 impl LayoutGroup {
     /// Compute and apply layout to all panels.
     pub(super) fn apply_layout(&mut self, bounds: Rect) {
+        if let Some(z) = self.zoomed {
+            // Zoomed panel gets full bounds; others keep their existing bounds
+            self.group.children[z].set_bounds(bounds);
+            return;
+        }
         let rects = self.compute_rects(bounds);
-        for (i, panel) in self.panels.iter_mut().enumerate() {
-            panel.set_bounds(rects[i]);
+        let tall = self.is_tall();
+        for i in 0..PANEL_COUNT {
+            let r = if tall && i == SlotId::Right as usize {
+                rects[SlotId::Bottom as usize]
+            } else if tall && i == SlotId::Bottom as usize {
+                Rect::default()
+            } else {
+                rects[i]
+            };
+            self.group.children[i].set_bounds(r);
         }
     }
 
-    fn compute_rects(&self, bounds: Rect) -> [Rect; PANEL_COUNT] {
+    pub(crate) fn compute_rects(&self, bounds: Rect) -> [Rect; PANEL_COUNT] {
         let mut rects = [Rect::default(); PANEL_COUNT];
         if bounds.w == 0 || bounds.h == 0 {
             return rects;
         }
-
-        if let Some(z) = self.zoomed {
-            rects[z] = bounds;
-            return rects;
-        }
-
         let tall = self.is_tall();
         let bottom_h = self.effective_bottom_height(bounds.h, tall);
-        let div_h = if bottom_h > 0 {
-            1u16
-        } else {
-            0
-        };
+        let div_h = u16::from(bottom_h > 0);
         let top_h = bounds.h.saturating_sub(bottom_h + div_h);
 
         self.fill_top(&mut rects, bounds, top_h, tall);
@@ -44,8 +46,8 @@ impl LayoutGroup {
     }
 
     fn effective_bottom_height(&self, total_h: u16, tall: bool) -> u16 {
-        let right_has = self.panels[SlotId::Right as usize].tab_count() > 0;
-        let bottom_has = self.panels[SlotId::Bottom as usize].tab_count() > 0;
+        let right_has = self.panel(SlotId::Right).tab_count() > 0;
+        let bottom_has = self.panel(SlotId::Bottom).tab_count() > 0;
         let avail = total_h.saturating_sub(4);
 
         if tall && right_has {
@@ -58,19 +60,15 @@ impl LayoutGroup {
     }
 
     fn fill_top(&self, rects: &mut [Rect; PANEL_COUNT], bounds: Rect, h: u16, tall: bool) {
-        let left_has = self.panels[SlotId::Left as usize].tab_count() > 0;
+        let left_has = self.panel(SlotId::Left).tab_count() > 0;
         let left_w = if left_has {
             self.left_width.min(bounds.w / 3)
         } else {
             0
         };
-        let left_div = if left_w > 0 {
-            1u16
-        } else {
-            0
-        };
+        let left_div = u16::from(left_w > 0);
 
-        let right_has = self.panels[SlotId::Right as usize].tab_count() > 0;
+        let right_has = self.panel(SlotId::Right).tab_count() > 0;
         let (right_w, right_div) = if tall || !right_has {
             (0u16, 0u16)
         } else {
@@ -87,15 +85,13 @@ impl LayoutGroup {
         x += center_w + right_div;
         if !tall {
             rects[SlotId::Right as usize] = Rect::new(x, bounds.y, right_w, h);
-        } else if right_has {
-            // In tall mode, right panel goes below center (uses bottom area)
-            // Already handled by effective_bottom_height putting right in bottom slot
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::LayoutMode;
     use super::*;
 
     struct Dv {
@@ -120,31 +116,38 @@ mod tests {
     #[test]
     fn zoom_gives_full_bounds() {
         let mut lg = LayoutGroup::new();
-        lg.zoomed = Some(1);
         let bounds = Rect::new(0, 0, 200, 50);
-        let rects = lg.compute_rects(bounds);
-        assert_eq!(rects[1], bounds);
-        assert_eq!(rects[0], Rect::default());
-    }
-
-    #[test]
-    fn wide_layout_three_columns() {
-        let mut lg = LayoutGroup::new();
-        lg.state.bounds = Rect::new(0, 0, 200, 50);
-        lg.layout_mode = crate::layout_group::LayoutMode::Wide;
-        lg.panels[0].insert_tab(
-            "Files",
-            Box::new(Dv {
-                state: ViewState::default(),
-            }),
-        );
-        lg.panels[1].insert_tab(
+        lg.panel_mut(SlotId::Center).insert_tab(
             "Editor",
             Box::new(Dv {
                 state: ViewState::default(),
             }),
         );
-        lg.panels[2].insert_tab(
+        lg.zoomed = Some(1);
+        lg.group.view.bounds = bounds;
+        lg.apply_layout(bounds);
+        // Zoomed panel gets full bounds
+        assert_eq!(lg.group.children[1].bounds(), bounds);
+    }
+
+    #[test]
+    fn wide_layout_three_columns() {
+        let mut lg = LayoutGroup::new();
+        lg.group.view.bounds = Rect::new(0, 0, 200, 50);
+        lg.layout_mode = LayoutMode::Wide;
+        lg.panel_mut(SlotId::Left).insert_tab(
+            "Files",
+            Box::new(Dv {
+                state: ViewState::default(),
+            }),
+        );
+        lg.panel_mut(SlotId::Center).insert_tab(
+            "Editor",
+            Box::new(Dv {
+                state: ViewState::default(),
+            }),
+        );
+        lg.panel_mut(SlotId::Right).insert_tab(
             "Shell",
             Box::new(Dv {
                 state: ViewState::default(),

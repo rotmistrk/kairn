@@ -29,6 +29,7 @@ fn tab_names_in_top_line() {
     assert!(top.contains("Files"), "tab name missing: {}", top);
     // In tall layout (<200 width), Shell tab is in bottom divider, not top
     let screen = h.screen_text();
+    eprintln!("SCREEN:\n{}", screen);
     assert!(screen.contains("Shell"), "Shell tab missing from screen");
 }
 

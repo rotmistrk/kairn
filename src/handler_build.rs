@@ -3,8 +3,8 @@
 use txv_core::program::CommandContext;
 
 use crate::build;
-use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
+use crate::layout_group::SlotId;
 use crate::views::editor::EditorView;
 
 /// Handle M-x build: run build command, show output in Compile tab.

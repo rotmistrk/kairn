@@ -1,0 +1,112 @@
+//! Command dispatch for LayoutGroup.
+
+use txv_core::prelude::*;
+
+use super::{LayoutGroup, SlotId};
+use crate::commands::*;
+
+impl LayoutGroup {
+    pub(super) fn handle_command(&mut self, id: CommandId, queue: &mut EventQueue) -> HandleResult {
+        match id {
+            CM_FOCUS_LEFT => {
+                self.focus_slot(SlotId::Left);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_CENTER => {
+                self.focus_slot(SlotId::Center);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_RIGHT => {
+                self.focus_slot(SlotId::Right);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_BOTTOM => {
+                self.focus_slot(SlotId::Bottom);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_PREV => {
+                self.cycle_focus(-1);
+                HandleResult::Consumed
+            }
+            CM_FOCUS_NEXT => {
+                self.cycle_focus(1);
+                HandleResult::Consumed
+            }
+            CM_ZOOM_TOGGLE => {
+                self.toggle_zoom();
+                HandleResult::Consumed
+            }
+            CM_TAB_NEXT => {
+                self.panel_mut(self.focused_slot()).tab_next();
+                HandleResult::Consumed
+            }
+            CM_TAB_PREV => {
+                self.panel_mut(self.focused_slot()).tab_prev();
+                HandleResult::Consumed
+            }
+            CM_TAB_CLOSE => {
+                let slot = self.focused_slot();
+                let title = self.panel(slot).active_title().map(|s| s.to_string());
+                if self.panel_mut(slot).close_active() {
+                    if let Some(t) = title {
+                        queue.put_command(CM_FILE_CLOSED, Some(Box::new(t)));
+                    }
+                }
+                HandleResult::Consumed
+            }
+            CM_TAB_DROPDOWN => {
+                if self.dropdown.is_some() {
+                    self.dropdown = None;
+                } else if self.panel(self.focused_slot()).tab_count() > 1 {
+                    self.dropdown_cursor = 0;
+                    self.dropdown = Some(self.group.focused);
+                }
+                self.group.view.dirty = true;
+                HandleResult::Consumed
+            }
+            CM_PANEL_GROW => {
+                self.resize_focused(2);
+                HandleResult::Consumed
+            }
+            CM_PANEL_SHRINK => {
+                self.resize_focused(-2);
+                HandleResult::Consumed
+            }
+            CM_PANEL_GROW_V => {
+                self.resize_vertical(2);
+                HandleResult::Consumed
+            }
+            CM_PANEL_SHRINK_V => {
+                self.resize_vertical(-2);
+                HandleResult::Consumed
+            }
+            _ => HandleResult::Ignored,
+        }
+    }
+
+    pub(super) fn resize_focused(&mut self, delta: i16) {
+        match self.group.focused {
+            0 => {
+                self.left_width = (self.left_width as i16 + delta).max(8) as u16;
+            }
+            2 => {
+                self.right_width = (self.right_width as i16 + delta).max(8) as u16;
+            }
+            _ => return,
+        }
+        self.recompute_bounds();
+    }
+
+    pub(super) fn resize_vertical(&mut self, delta: i16) {
+        match self.group.focused {
+            2 => {
+                self.right_height = (self.right_height as i16 + delta).max(3) as u16;
+            }
+            3 => {
+                self.bottom_height = (self.bottom_height as i16 + delta).max(3) as u16;
+            }
+            _ => return,
+        }
+        self.recompute_bounds();
+    }
+}
