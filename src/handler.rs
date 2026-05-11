@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
+use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
@@ -202,7 +203,10 @@ fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
             }
         }
-        _ => {}
+        _ => {
+            let msg = format!("Unknown command: {cmd}");
+            ctx.queue.put_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
     }
 }
 

@@ -12,7 +12,7 @@ pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn shell: {}", e);
-            Box::new(FallbackTerminal::new("Shell (failed)"))
+            Box::new(FallbackTerminal::with_error("Shell (failed)", format!("{e}")))
         }
     }
 }
@@ -38,7 +38,7 @@ pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);
-            Box::new(FallbackTerminal::new("Kiro (failed)"))
+            Box::new(FallbackTerminal::with_error("Kiro (failed)", format!("kiro-cli: {e}")))
         }
     }
 }
@@ -47,6 +47,7 @@ pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
 struct FallbackTerminal {
     state: txv_core::prelude::ViewState,
     title: String,
+    message: String,
 }
 
 impl FallbackTerminal {
@@ -54,6 +55,15 @@ impl FallbackTerminal {
         Self {
             state: txv_core::prelude::ViewState::default(),
             title: title.into(),
+            message: String::new(),
+        }
+    }
+
+    fn with_error(title: impl Into<String>, error: impl Into<String>) -> Self {
+        Self {
+            state: txv_core::prelude::ViewState::default(),
+            title: title.into(),
+            message: error.into(),
         }
     }
 }
@@ -68,7 +78,15 @@ impl txv_core::view::View for FallbackTerminal {
     fn draw(&self, surface: &mut txv_core::surface::Surface) {
         let b = self.state.bounds;
         let style = txv_core::cell::Style::default();
+        let err_style = txv_core::cell::Style {
+            fg: txv_core::cell::Color::Ansi(1),
+            ..style
+        };
         surface.print(b.x, b.y, &format!("[{}]", self.title), style);
+        if !self.message.is_empty() {
+            surface.print(b.x, b.y + 1, &self.message, err_style);
+            surface.print(b.x, b.y + 2, "Check that the command is installed and in PATH.", style);
+        }
     }
 
     fn handle(
