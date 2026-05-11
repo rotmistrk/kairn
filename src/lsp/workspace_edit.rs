@@ -7,26 +7,36 @@ pub fn apply_workspace_edit(result: &Value) -> usize {
     let mut files_changed = 0;
     if let Some(map) = result.get("changes").and_then(|v| v.as_object()) {
         for (uri, edits) in map {
-            let path = uri.strip_prefix("file://").unwrap_or(uri);
-            if apply_text_edits(path, edits) {
+            let path = uri_to_path(uri);
+            if apply_text_edits(&path, edits) {
                 files_changed += 1;
             }
         }
     } else if let Some(arr) = result.get("documentChanges").and_then(|v| v.as_array()) {
         for doc_change in arr {
-            let uri = doc_change
-                .get("textDocument")
-                .and_then(|td| td.get("uri"))
-                .and_then(|u| u.as_str())
-                .unwrap_or("");
-            let path = uri.strip_prefix("file://").unwrap_or(uri);
-            let edits = doc_change.get("edits").unwrap_or(&Value::Null);
-            if apply_text_edits(path, edits) {
-                files_changed += 1;
+            if let Some(kind) = doc_change.get("kind").and_then(|k| k.as_str()) {
+                if super::resource_ops::apply_resource_op(kind, doc_change) {
+                    files_changed += 1;
+                }
+            } else {
+                let uri = doc_change
+                    .get("textDocument")
+                    .and_then(|td| td.get("uri"))
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("");
+                let path = uri_to_path(uri);
+                let edits = doc_change.get("edits").unwrap_or(&Value::Null);
+                if apply_text_edits(&path, edits) {
+                    files_changed += 1;
+                }
             }
         }
     }
     files_changed
+}
+
+fn uri_to_path(uri: &str) -> String {
+    uri.strip_prefix("file://").unwrap_or(uri).to_string()
 }
 
 /// Apply text edits to a single file. Returns true on success.
@@ -136,5 +146,84 @@ mod tests {
     fn empty_edit_returns_zero() {
         let count = apply_workspace_edit(&json!({}));
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn rename_file_operation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let old_file = dir.path().join("Old.java");
+        std::fs::write(&old_file, "class Old {}").expect("write");
+        let old_uri = format!("file://{}", old_file.display());
+        let new_file = dir.path().join("New.java");
+        let new_uri = format!("file://{}", new_file.display());
+        let edit = json!({
+            "documentChanges": [
+                {"kind": "rename", "oldUri": old_uri, "newUri": new_uri}
+            ]
+        });
+        let count = apply_workspace_edit(&edit);
+        assert_eq!(count, 1);
+        assert!(!old_file.exists(), "old file should be gone");
+        assert!(new_file.exists(), "new file should exist");
+        let content = std::fs::read_to_string(&new_file).expect("read");
+        assert_eq!(content, "class Old {}");
+    }
+
+    #[test]
+    fn create_file_operation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let new_file = dir.path().join("sub").join("Created.java");
+        let uri = format!("file://{}", new_file.display());
+        let edit = json!({
+            "documentChanges": [
+                {"kind": "create", "uri": uri}
+            ]
+        });
+        let count = apply_workspace_edit(&edit);
+        assert_eq!(count, 1);
+        assert!(new_file.exists(), "file should be created");
+    }
+
+    #[test]
+    fn delete_file_operation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("doomed.txt");
+        std::fs::write(&file, "bye").expect("write");
+        let uri = format!("file://{}", file.display());
+        let edit = json!({
+            "documentChanges": [
+                {"kind": "delete", "uri": uri}
+            ]
+        });
+        let count = apply_workspace_edit(&edit);
+        assert_eq!(count, 1);
+        assert!(!file.exists(), "file should be deleted");
+    }
+
+    #[test]
+    fn mixed_text_edits_and_rename() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("Foo.java");
+        std::fs::write(&file, "class Foo {}\n").expect("write");
+        let uri = format!("file://{}", file.display());
+        let new_file = dir.path().join("Bar.java");
+        let new_uri = format!("file://{}", new_file.display());
+        let edit = json!({
+            "documentChanges": [
+                {
+                    "textDocument": {"uri": uri, "version": 1},
+                    "edits": [
+                        {"range": {"start": {"line": 0, "character": 6}, "end": {"line": 0, "character": 9}}, "newText": "Bar"}
+                    ]
+                },
+                {"kind": "rename", "oldUri": uri, "newUri": new_uri}
+            ]
+        });
+        let count = apply_workspace_edit(&edit);
+        assert_eq!(count, 2);
+        assert!(!file.exists(), "old file should be renamed");
+        assert!(new_file.exists(), "new file should exist");
+        let content = std::fs::read_to_string(&new_file).expect("read");
+        assert!(content.contains("class Bar {}"));
     }
 }
