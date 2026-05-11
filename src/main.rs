@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     let settings = load_config(&root_dir);
 
     // Build desktop
-    let desktop = build_desktop(&root_dir);
+    let desktop = build_desktop(&root_dir, settings.git_keys.clone());
 
     // Build status bar
     let status = build_status_bar(

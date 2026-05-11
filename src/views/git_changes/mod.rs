@@ -3,10 +3,12 @@
 use std::path::PathBuf;
 
 use txv_core::prelude::*;
+use txv_widgets::tree_view::TreeData;
 use txv_widgets::TreeView;
 
-use crate::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
+use crate::commands::*;
 use crate::git_watcher::WatchHandle;
+use crate::settings::GitKeys;
 
 pub use self::data::GitChangesData;
 mod data;
@@ -16,16 +18,30 @@ pub struct GitChangesView {
     inner: TreeView<GitChangesData>,
     watcher: Option<WatchHandle>,
     root: PathBuf,
+    last_key_was_right: bool,
+    keys: GitKeys,
 }
 
 impl GitChangesView {
-    pub fn new(root: PathBuf, watcher: Option<WatchHandle>) -> Self {
+    pub fn new(root: PathBuf, watcher: Option<WatchHandle>, keys: GitKeys) -> Self {
         let data = GitChangesData::new(&root);
         Self {
             inner: TreeView::new(data),
             watcher,
             root,
+            last_key_was_right: false,
+            keys,
         }
+    }
+
+    /// Get the relative path of the currently selected file (for git operations).
+    fn selected_rel_path(&self) -> Option<String> {
+        let row = self.inner.cursor;
+        let id = self.inner.data.visible_id(row);
+        let abs = self.inner.data.file_path(id)?;
+        abs.strip_prefix(&self.root)
+            .ok()
+            .map(|p| p.to_string_lossy().to_string())
     }
 }
 
@@ -71,7 +87,34 @@ impl View for GitChangesView {
             }
             return HandleResult::Ignored;
         }
+        // Handle git-specific keys before passing to TreeView
+        if let Event::Key(key) = event {
+            if *key == self.keys.stage {
+                if let Some(rel) = self.selected_rel_path() {
+                    queue.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
+                }
+                return HandleResult::Consumed;
+            }
+            if *key == self.keys.unstage {
+                if let Some(rel) = self.selected_rel_path() {
+                    queue.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
+                }
+                return HandleResult::Consumed;
+            }
+            if *key == self.keys.untrack {
+                if let Some(rel) = self.selected_rel_path() {
+                    queue.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
+                }
+                return HandleResult::Consumed;
+            }
+            if *key == self.keys.commit {
+                queue.put_command(CM_GIT_COMMIT_PROMPT, None);
+                return HandleResult::Consumed;
+            }
+            self.last_key_was_right = key.code == KeyCode::Right;
+        }
         let result = self.inner.handle(event, queue);
+        // Intercept CM_OK from TreeView (Enter/Right on a node)
         let events = queue.drain();
         for ev in events {
             if let Event::Command { id, data } = &ev {
@@ -79,8 +122,13 @@ impl View for GitChangesView {
                     if let Some(boxed) = data.as_ref() {
                         if let Some(&node_id) = boxed.downcast_ref::<usize>() {
                             if let Some(path) = self.inner.data.file_path(node_id) {
+                                let cmd = if self.last_key_was_right {
+                                    CM_OPEN_FILE_FOCUS
+                                } else {
+                                    CM_OPEN_FILE
+                                };
                                 let req = OpenFileRequest::new(path.to_path_buf());
-                                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+                                queue.put_command(cmd, Some(Box::new(req)));
                                 continue;
                             }
                         }

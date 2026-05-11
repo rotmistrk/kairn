@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use rusticle::interpreter::Interpreter;
+use txv_core::prelude::*;
 
 use crate::settings::AppSettings;
 
@@ -81,8 +82,57 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.clock_interval = n as u16;
         }
     }
+    if let Some(val) = interp.get_var("git.stage") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.git_keys.stage = k;
+        }
+    }
+    if let Some(val) = interp.get_var("git.unstage") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.git_keys.unstage = k;
+        }
+    }
+    if let Some(val) = interp.get_var("git.untrack") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.git_keys.untrack = k;
+        }
+    }
+    if let Some(val) = interp.get_var("git.commit") {
+        if let Some(k) = parse_key_var(&val.as_str()) {
+            settings.git_keys.commit = k;
+        }
+    }
 
     settings
+}
+
+/// Parse a simple key variable value into a KeyEvent.
+/// Supports single chars ("s") and modifier combos ("Ctrl-s").
+fn parse_key_var(spec: &str) -> Option<KeyEvent> {
+    let spec = spec.trim();
+    if spec.is_empty() {
+        return None;
+    }
+    let parts: Vec<&str> = spec.split('-').collect();
+    let mut modifiers = KeyMod::default();
+    let key_part = parts.last()?;
+    for &part in &parts[..parts.len().saturating_sub(1)] {
+        match part {
+            "Ctrl" | "ctrl" => modifiers.ctrl = true,
+            "Alt" | "alt" => modifiers.alt = true,
+            "Shift" | "shift" => modifiers.shift = true,
+            _ => {}
+        }
+    }
+    if key_part.len() == 1 {
+        let ch = key_part.chars().next()?;
+        Some(KeyEvent {
+            code: KeyCode::Char(ch),
+            modifiers,
+        })
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

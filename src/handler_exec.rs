@@ -83,6 +83,18 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
             }
         }
+        "git-stage" if !arg.is_empty() => {
+            ctx.queue.put_command(CM_GIT_STAGE, Some(Box::new(arg.to_string())));
+        }
+        "git-unstage" if !arg.is_empty() => {
+            ctx.queue.put_command(CM_GIT_UNSTAGE, Some(Box::new(arg.to_string())));
+        }
+        "git-untrack" if !arg.is_empty() => {
+            ctx.queue.put_command(CM_GIT_UNTRACK, Some(Box::new(arg.to_string())));
+        }
+        "git-commit" if !arg.is_empty() => {
+            ctx.queue.put_command(CM_GIT_COMMIT, Some(Box::new(arg.to_string())));
+        }
         _ => {
             let msg = format!("Unknown command: {cmd}");
             ctx.queue

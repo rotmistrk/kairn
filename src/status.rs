@@ -82,6 +82,7 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root
     bar.add(
         CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
             .with_label("M-x")
+            .with_prefill_command(CM_COMMAND_PREFILL)
             .with_completer(completer),
     );
     // Right side

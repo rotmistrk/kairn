@@ -117,6 +117,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SET_GLOBAL => handle_set_global(ctx, state),
         CM_SUSPEND => crate::suspend::suspend_to_shell(),
         CM_PEEK => crate::suspend::peek_screen(),
+        CM_GIT_STAGE => crate::handler_git::handle_git_stage(ctx, state),
+        CM_GIT_UNSTAGE => crate::handler_git::handle_git_unstage(ctx, state),
+        CM_GIT_UNTRACK => crate::handler_git::handle_git_untrack(ctx, state),
+        CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
+        CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
         CM_CURSOR_MOVED => {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {

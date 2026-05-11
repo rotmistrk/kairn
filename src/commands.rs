@@ -92,3 +92,12 @@ pub const CM_PANEL_GROW_V: CommandId = 162;
 pub const CM_PANEL_SHRINK_V: CommandId = 163;
 pub const CM_SUSPEND: CommandId = 164;
 pub const CM_PEEK: CommandId = 165;
+
+// Git operations
+pub const CM_GIT_STAGE: CommandId = 170;
+pub const CM_GIT_UNSTAGE: CommandId = 171;
+pub const CM_GIT_UNTRACK: CommandId = 172;
+pub const CM_GIT_COMMIT: CommandId = 173;
+pub const CM_GIT_COMMIT_PROMPT: CommandId = 174;
+/// Activates the command input with pre-filled text.
+pub const CM_COMMAND_PREFILL: CommandId = 175;

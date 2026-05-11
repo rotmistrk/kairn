@@ -6,6 +6,7 @@ use txv_core::status::{ActiveItem, Gravity, VisibleItem};
 pub struct CommandItem {
     activation_keys: Vec<KeyEvent>,
     command_id: CommandId,
+    prefill_command_id: Option<CommandId>,
     active: bool,
     text: String,
     cursor: usize,
@@ -21,6 +22,7 @@ impl CommandItem {
             activation_keys: keys.to_vec(),
             active: false,
             command_id,
+            prefill_command_id: None,
             text: String::new(),
             cursor: 0,
             completer: None,
@@ -36,6 +38,10 @@ impl CommandItem {
     }
     pub fn with_completer(mut self, c: Box<dyn Completer>) -> Self {
         self.completer = Some(c);
+        self
+    }
+    pub fn with_prefill_command(mut self, id: CommandId) -> Self {
+        self.prefill_command_id = Some(id);
         self
     }
     pub fn set_completer(&mut self, c: Box<dyn Completer>) {
@@ -77,6 +83,20 @@ impl ActiveItem for CommandItem {
                 if self.activation_keys.contains(k) {
                     self.activate();
                     return HandleResult::Consumed;
+                }
+            }
+            // Respond to prefill command
+            if let Event::Command { id, data } = event {
+                if Some(*id) == self.prefill_command_id {
+                    if let Some(boxed) = data.as_ref() {
+                        if let Some(prefix) = boxed.downcast_ref::<String>() {
+                            self.activate();
+                            self.text = prefix.clone();
+                            self.cursor = self.text.len();
+                            self.update_label();
+                            return HandleResult::Consumed;
+                        }
+                    }
                 }
             }
             return HandleResult::Ignored;

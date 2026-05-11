@@ -10,6 +10,7 @@ use txv_core::run::MockBackend;
 use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
 use kairn::handler::{handle_command, AppState};
+use kairn::settings::GitKeys;
 use kairn::status::build_status_bar;
 
 /// Test harness that mirrors the real app exactly.
@@ -23,7 +24,7 @@ impl TestHarness {
     /// Create a new test harness for the given project directory.
     /// Same setup as main.rs: StatusBar + Desktop + AppState.
     pub fn new(root_dir: &Path) -> Self {
-        let desktop = build_desktop(root_dir);
+        let desktop = build_desktop(root_dir, GitKeys::default());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
             0,
@@ -41,7 +42,7 @@ impl TestHarness {
 
     /// Create with custom dimensions.
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
-        let desktop = build_desktop(root_dir);
+        let desktop = build_desktop(root_dir, GitKeys::default());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf())),
             0,
