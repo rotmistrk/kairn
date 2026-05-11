@@ -169,9 +169,7 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
                     EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
                 editor.set_root_dir(state.root_dir.clone());
                 if let (Some(line), Some(col)) = (req.line, req.col) {
-                    let max_line = editor.editor.buffer.line_count().saturating_sub(1);
-                    editor.editor.cursor_line = (line as usize).min(max_line);
-                    editor.editor.cursor_col = col as usize;
+                    editor.goto(line, col);
                 }
                 let title = path
                     .strip_prefix(&state.root_dir)

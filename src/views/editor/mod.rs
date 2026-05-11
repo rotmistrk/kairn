@@ -46,6 +46,15 @@ impl EditorView {
         self.editor.options.number = self.settings.number;
     }
 
+    /// Position cursor at (line, col), clamping to buffer bounds.
+    pub fn goto(&mut self, line: u32, col: u32) {
+        let max_line = self.editor.buffer.line_count().saturating_sub(1);
+        self.editor.cursor_line = (line as usize).min(max_line);
+        self.editor.cursor_col = col as usize;
+        self.ensure_cursor_visible();
+        self.state.dirty = true;
+    }
+
     fn gutter_width(&self) -> u16 {
         if !self.editor.options.number {
             return 0;
