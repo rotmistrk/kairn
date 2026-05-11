@@ -64,9 +64,9 @@ impl SlottedDesktop {
         self.set_bounds(self.group.view.bounds);
     }
 
-    /// Resize vertically — adjusts the focused slot's size.
+    /// Resize vertically — adjusts the vertical split (bottom/right panel height).
     pub(super) fn resize_vertical(&mut self, delta: i16) {
-        let s = &mut self.slots[self.focused as usize];
+        let s = &mut self.slots[SlotId::Bottom as usize];
         if delta > 0 {
             s.size += delta as u16;
         } else {
