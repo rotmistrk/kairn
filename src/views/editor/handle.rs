@@ -56,10 +56,7 @@ impl EditorView {
     pub(super) fn handle_action(&mut self, action: EditorAction, queue: &mut EventQueue) {
         match action {
             EditorAction::SaveRequested => {
-                let content = self.editor.buffer.content();
-                if crate::editor::save::save_file(&self.path, &content).is_ok() {
-                    self.editor.buffer.mark_saved();
-                }
+                self.save_buffer();
                 queue.put_command(CM_SAVE, None);
             }
             EditorAction::CloseRequested => {
@@ -69,9 +66,7 @@ impl EditorView {
                     self.state.dirty = true;
                 } else {
                     if self.settings.autosave && self.editor.buffer.is_dirty() {
-                        let content = self.editor.buffer.content();
-                        let _ = crate::editor::save::save_file(&self.path, &content);
-                        self.editor.buffer.mark_saved();
+                        self.save_buffer();
                     }
                     queue.put_command(
                         crate::commands::CM_FILE_CLOSED,
@@ -240,13 +235,20 @@ impl EditorView {
             && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
         {
             self.last_edit_tick = 0;
-            if self.editor.buffer.is_dirty() {
-                let content = self.editor.buffer.content();
-                if crate::editor::save::save_file(&self.path, &content).is_ok() {
-                    self.editor.buffer.mark_saved();
-                    self.sync_title();
-                }
+            if self.editor.buffer.is_dirty() && self.save_buffer() {
+                self.sync_title();
             }
+        }
+    }
+
+    /// Save buffer to disk. Returns true on success.
+    fn save_buffer(&mut self) -> bool {
+        let content = self.editor.buffer.content();
+        if crate::editor::save::save_file(&self.path, &content).is_ok() {
+            self.editor.buffer.mark_saved();
+            true
+        } else {
+            false
         }
     }
 }
