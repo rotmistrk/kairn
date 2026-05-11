@@ -139,10 +139,23 @@ impl<D: TreeData> View for TreeView<D> {
                     if self.cursor < self.data.visible_count() {
                         let id = self.data.visible_id(self.cursor);
                         if self.data.is_expandable(id) && self.data.is_expanded(id) {
+                            // Collapse expanded directory
                             self.data.toggle(id);
-                            self.sync_scroll();
-                            self.state.dirty = true;
+                        } else {
+                            // Go to parent: find nearest visible row above with depth-1
+                            let my_depth = self.data.depth(id);
+                            if my_depth > 0 {
+                                for row in (0..self.cursor).rev() {
+                                    let pid = self.data.visible_id(row);
+                                    if self.data.depth(pid) < my_depth {
+                                        self.cursor = row;
+                                        break;
+                                    }
+                                }
+                            }
                         }
+                        self.sync_scroll();
+                        self.state.dirty = true;
                     }
                     HandleResult::Consumed
                 }
