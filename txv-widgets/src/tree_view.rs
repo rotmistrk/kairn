@@ -24,7 +24,7 @@ pub trait TreeData: Send + 'static {
 }
 
 pub struct TreeView<D: TreeData> {
-    state: ViewState,
+    pub state: ViewState,
     pub data: D,
     pub cursor: usize,
     pub scroll: ScrollView,

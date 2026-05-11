@@ -204,6 +204,13 @@ impl SlottedDesktop {
         s.tabs.get(s.active).map(|(t, _)| t.as_str())
     }
 
+    pub fn set_active_tab(&mut self, slot: SlotId, index: usize) {
+        let s = &mut self.slots[slot as usize];
+        if index < s.tabs.len() {
+            s.active = index;
+        }
+    }
+
     pub fn tab_count(&self, slot: SlotId) -> usize {
         self.slots[slot as usize].tabs.len()
     }

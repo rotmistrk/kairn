@@ -1,59 +1,82 @@
 //! GitWatcher — reactive file watching for git status changes.
 //! Uses notify crate (inotify/kqueue) to detect changes without polling.
+//! Supports multiple consumers via generation counter.
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
-/// Watches git-relevant paths and signals when status may have changed.
+/// Shared generation counter — incremented on each relevant change.
 pub struct GitWatcher {
-    changed: Arc<AtomicBool>,
+    generation: Arc<AtomicU64>,
     _watcher: RecommendedWatcher,
 }
 
 impl GitWatcher {
     /// Create a watcher for the given project root.
-    /// Watches .git/index, .git/refs, and the working tree.
     /// Returns None if watcher creation fails.
     pub fn new(root: &Path) -> Option<Self> {
         let git_dir = find_git_dir(root)?;
-        let changed = Arc::new(AtomicBool::new(false));
-        let flag = changed.clone();
+        let generation = Arc::new(AtomicU64::new(1));
+        let gen = generation.clone();
 
         let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
             if let Ok(event) = res {
                 if is_relevant(&event) {
-                    flag.store(true, Ordering::Relaxed);
+                    gen.fetch_add(1, Ordering::Relaxed);
                 }
             }
         })
         .ok()?;
 
-        // Watch .git/index and .git/refs for commit/stage changes
         let _ = watcher.watch(&git_dir.join("index"), RecursiveMode::NonRecursive);
         let _ = watcher.watch(&git_dir.join("refs"), RecursiveMode::Recursive);
-
-        // Watch working tree for file modifications (non-recursive at root,
-        // rely on notify's recursive mode for subdirs)
         let _ = watcher.watch(root, RecursiveMode::Recursive);
 
         Some(Self {
-            changed,
+            generation,
             _watcher: watcher,
         })
     }
 
-    /// Non-blocking check: returns true if changes detected since last call.
-    /// Resets the flag on read.
-    pub fn has_changes(&self) -> bool {
-        self.changed.swap(false, Ordering::Relaxed)
+    /// Current generation number.
+    pub fn generation(&self) -> u64 {
+        self.generation.load(Ordering::Relaxed)
     }
 
-    /// Force a change signal (e.g., on CM_SAVE).
+    /// Force a generation bump (e.g., on CM_SAVE).
     pub fn signal_change(&self) {
-        self.changed.store(true, Ordering::Relaxed);
+        self.generation.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+/// Per-consumer handle that tracks last-seen generation.
+pub struct WatchHandle {
+    watcher: Arc<GitWatcher>,
+    last_gen: u64,
+}
+
+impl WatchHandle {
+    pub fn new(watcher: Arc<GitWatcher>) -> Self {
+        let last_gen = watcher.generation();
+        Self { watcher, last_gen }
+    }
+
+    /// Returns true if changes occurred since last check. Updates internal state.
+    pub fn has_changes(&mut self) -> bool {
+        let current = self.watcher.generation();
+        if current != self.last_gen {
+            self.last_gen = current;
+            return true;
+        }
+        false
+    }
+
+    /// Signal a change on the underlying watcher.
+    pub fn signal_change(&self) {
+        self.watcher.signal_change();
     }
 }
 
@@ -118,25 +141,26 @@ mod tests {
     }
 
     #[test]
-    fn has_changes_returns_false_initially() {
+    fn handle_returns_false_initially() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".git")).unwrap();
         fs::write(dir.path().join(".git/index"), "").unwrap();
-        let watcher = GitWatcher::new(dir.path()).unwrap();
-        // No changes yet
-        assert!(!watcher.has_changes());
+        let watcher = Arc::new(GitWatcher::new(dir.path()).unwrap());
+        let mut handle = WatchHandle::new(watcher);
+        assert!(!handle.has_changes());
     }
 
     #[test]
-    fn signal_change_sets_flag() {
+    fn signal_change_detected_by_handle() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".git")).unwrap();
         fs::write(dir.path().join(".git/index"), "").unwrap();
-        let watcher = GitWatcher::new(dir.path()).unwrap();
+        let watcher = Arc::new(GitWatcher::new(dir.path()).unwrap());
+        let mut handle = WatchHandle::new(watcher.clone());
         watcher.signal_change();
-        assert!(watcher.has_changes());
-        // Second call should be false (flag reset)
-        assert!(!watcher.has_changes());
+        assert!(handle.has_changes());
+        // Second call should be false (no new changes)
+        assert!(!handle.has_changes());
     }
 
     #[test]
@@ -145,15 +169,29 @@ mod tests {
         fs::create_dir(dir.path().join(".git")).unwrap();
         fs::write(dir.path().join(".git/index"), "").unwrap();
         fs::write(dir.path().join("test.txt"), "hello").unwrap();
-        let watcher = GitWatcher::new(dir.path()).unwrap();
+        let watcher = Arc::new(GitWatcher::new(dir.path()).unwrap());
+        let mut handle = WatchHandle::new(watcher);
         // Clear any initial events
         std::thread::sleep(std::time::Duration::from_millis(50));
-        let _ = watcher.has_changes();
+        let _ = handle.has_changes();
 
         // Modify a file
         fs::write(dir.path().join("test.txt"), "world").unwrap();
         std::thread::sleep(std::time::Duration::from_millis(100));
 
-        assert!(watcher.has_changes());
+        assert!(handle.has_changes());
+    }
+
+    #[test]
+    fn multiple_handles_see_same_change() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join(".git")).unwrap();
+        fs::write(dir.path().join(".git/index"), "").unwrap();
+        let watcher = Arc::new(GitWatcher::new(dir.path()).unwrap());
+        let mut h1 = WatchHandle::new(watcher.clone());
+        let mut h2 = WatchHandle::new(watcher.clone());
+        watcher.signal_change();
+        assert!(h1.has_changes());
+        assert!(h2.has_changes());
     }
 }

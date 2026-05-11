@@ -9,19 +9,18 @@ use txv_widgets::{FileTreeData, TreeView};
 
 use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_SAVE};
 use crate::git_status::{collect_git_status, FileStatus};
-use crate::git_watcher::GitWatcher;
+use crate::git_watcher::WatchHandle;
 
 pub struct FileTreeView {
     inner: TreeView<FileTreeData>,
     last_key_was_right: bool,
-    watcher: Option<GitWatcher>,
+    watcher: Option<WatchHandle>,
     root: PathBuf,
 }
 
 impl FileTreeView {
-    pub fn new(root: PathBuf) -> Self {
+    pub fn new(root: PathBuf, watcher: Option<WatchHandle>) -> Self {
         let data = FileTreeData::new(root.clone());
-        let watcher = GitWatcher::new(&root);
         let mut view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
@@ -92,7 +91,7 @@ impl View for FileTreeView {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
-            if self.watcher.as_ref().is_some_and(|w| w.has_changes()) {
+            if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
                 self.update_colors();
                 self.inner.data.refresh();
             }
@@ -146,7 +145,7 @@ mod tests {
         std::fs::create_dir(&sub).unwrap();
         std::fs::write(sub.join("file.txt"), "hello").unwrap();
 
-        let mut view = FileTreeView::new(tmp.path().to_path_buf());
+        let mut view = FileTreeView::new(tmp.path().to_path_buf(), None);
         view.set_bounds(Rect::new(0, 0, 40, 10));
 
         let mut queue = EventQueue::new();
