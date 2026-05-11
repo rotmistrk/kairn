@@ -272,3 +272,76 @@ macro_rules! __dvs_maybe {
         $($body)*
     };
 }
+
+/// Delegates View trait methods to an inner View field (wrapper pattern).
+///
+/// Use when a view wraps another View and forwards most methods.
+/// Override `title` and any other methods you need custom behavior for.
+///
+/// # Usage
+/// ```rust,ignore
+/// impl View for MyWrapper {
+///     delegate_view!(inner, override { title });
+///     fn title(&self) -> &str { "Custom" }
+///     fn draw(&self, s: &mut Surface) { self.inner.draw(s) }
+///     fn handle(&mut self, e: &Event, q: &mut EventQueue) -> HandleResult { ... }
+/// }
+/// ```
+#[macro_export]
+macro_rules! delegate_view {
+    ($field:ident, override { $($skip:ident),* $(,)? }) => {
+        $crate::__dv_maybe!(bounds, [$($skip),*], {
+            fn bounds(&self) -> $crate::geometry::Rect { self.$field.bounds() }
+        });
+        $crate::__dv_maybe!(set_bounds, [$($skip),*], {
+            fn set_bounds(&mut self, r: $crate::geometry::Rect) { self.$field.set_bounds(r); }
+        });
+        $crate::__dv_maybe!(options, [$($skip),*], {
+            fn options(&self) -> $crate::view::ViewOptions { self.$field.options() }
+        });
+        $crate::__dv_maybe!(title, [$($skip),*], {
+            fn title(&self) -> &str { self.$field.title() }
+        });
+        $crate::__dv_maybe!(needs_redraw, [$($skip),*], {
+            fn needs_redraw(&self) -> bool { self.$field.needs_redraw() }
+        });
+        $crate::__dv_maybe!(mark_redrawn, [$($skip),*], {
+            fn mark_redrawn(&mut self) { self.$field.mark_redrawn(); }
+        });
+        $crate::__dv_maybe!(select, [$($skip),*], {
+            fn select(&mut self) { self.$field.select(); }
+        });
+        $crate::__dv_maybe!(unselect, [$($skip),*], {
+            fn unselect(&mut self) { self.$field.unselect(); }
+        });
+        $crate::__dv_maybe!(draw, [$($skip),*], {
+            fn draw(&self, surface: &mut $crate::surface::Surface) { self.$field.draw(surface); }
+        });
+        $crate::__dv_maybe!(handle, [$($skip),*], {
+            fn handle(&mut self, event: &$crate::event::Event, queue: &mut $crate::view::EventQueue) -> $crate::view::HandleResult {
+                self.$field.handle(event, queue)
+            }
+        });
+    };
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __dv_maybe {
+    (bounds, [bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (set_bounds, [set_bounds $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (options, [options $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (title, [title $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (needs_redraw, [needs_redraw $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (mark_redrawn, [mark_redrawn $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (select, [select $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (unselect, [unselect $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (draw, [draw $(, $rest:ident)*], { $($body:tt)* }) => {};
+    (handle, [handle $(, $rest:ident)*], { $($body:tt)* }) => {};
+    ($method:ident, [$head:ident $(, $rest:ident)*], { $($body:tt)* }) => {
+        $crate::__dv_maybe!($method, [$($rest),*], { $($body)* });
+    };
+    ($method:ident, [], { $($body:tt)* }) => {
+        $($body)*
+    };
+}

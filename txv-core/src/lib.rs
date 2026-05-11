@@ -85,5 +85,5 @@ pub mod prelude {
     pub use crate::window::{FrameStyle, WindowState};
 
     // Re-export macros (they are already at crate root via #[macro_export])
-    pub use crate::{delegate_dialog_state, delegate_group_state, delegate_view_state, delegate_window_state};
+    pub use crate::{delegate_dialog_state, delegate_group_state, delegate_view, delegate_view_state, delegate_window_state};
 }
