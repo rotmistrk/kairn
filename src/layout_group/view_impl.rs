@@ -8,6 +8,10 @@ use super::{LayoutGroup, SlotId};
 impl View for LayoutGroup {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
+
     fn set_bounds(&mut self, r: Rect) {
         self.group.view.bounds = r;
         self.group.view.dirty = true;

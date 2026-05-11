@@ -228,9 +228,7 @@ fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Downcast the desktop View to LayoutGroup.
 pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut LayoutGroup> {
-    let ptr = view as *mut dyn View;
-    // SAFETY: we know the desktop is a LayoutGroup (we created it).
-    unsafe { (ptr as *mut LayoutGroup).as_mut() }
+    view.as_any_mut()?.downcast_mut::<LayoutGroup>()
 }
 
 fn handle_shell_output(ctx: &mut CommandContext) {
