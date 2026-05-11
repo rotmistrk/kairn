@@ -9,6 +9,7 @@ use crate::layout_group::SlotId;
 use crate::settings::GitKeys;
 use crate::views::git_changes::GitChangesView;
 use crate::views::terminal::new_shell_terminal;
+use crate::views::todo_tree::TodoTreeView;
 use crate::views::tree::FileTreeView;
 use crate::views::welcome::WelcomeView;
 
@@ -26,6 +27,9 @@ pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> LayoutGroup {
 
     let git_panel = GitChangesView::new(root_dir.to_path_buf(), git_handle, git_keys);
     desktop.insert_tab(SlotId::Left, "Git", Box::new(git_panel));
+
+    let todo_panel = TodoTreeView::new(root_dir);
+    desktop.insert_tab(SlotId::Left, "Todo", Box::new(todo_panel));
 
     // Keep "Files" as the initially active tab
     desktop.set_active_tab(SlotId::Left, 0);

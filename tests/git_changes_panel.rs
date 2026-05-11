@@ -64,10 +64,10 @@ fn git_changes_view_is_non_closeable() {
     }
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    // The left slot chrome shows "Files" with a count badge of 2 (Files + Git)
+    // The left slot chrome shows "Files" with a count badge of 3 (Files + Git + Todo)
     let top_row = h.row(0);
     assert!(
-        top_row.contains("Files") && top_row.contains("2"),
-        "Left slot should show Files tab with count 2, got: {top_row}"
+        top_row.contains("Files") && top_row.contains("3"),
+        "Left slot should show Files tab with count 3, got: {top_row}"
     );
 }
