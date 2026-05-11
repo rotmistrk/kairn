@@ -22,6 +22,10 @@ pub struct TermBuf {
     scroll_bottom: u16,
     parser: vte::Parser,
     responses: Vec<Vec<u8>>,
+    /// When true, swallow all output until ESC \ (string terminator).
+    swallow_until_st: bool,
+    /// Saw ESC while in swallow mode (next byte might be \).
+    swallow_saw_esc: bool,
 }
 
 #[derive(Clone)]
@@ -58,12 +62,31 @@ impl TermBuf {
             scroll_bottom: rows.saturating_sub(1),
             parser: vte::Parser::new(),
             responses: Vec::new(),
+            swallow_until_st: false,
+            swallow_saw_esc: false,
         }
     }
 
     /// Feed bytes into the terminal emulator.
     pub fn process(&mut self, bytes: &[u8]) {
         for &byte in bytes {
+            // Swallow content of ESC k ... ESC \ (tmux title sequence)
+            if self.swallow_until_st {
+                if self.swallow_saw_esc {
+                    self.swallow_saw_esc = false;
+                    if byte == b'\\' {
+                        self.swallow_until_st = false;
+                    }
+                    // ESC followed by non-backslash: still swallowing
+                } else if byte == 0x1b {
+                    self.swallow_saw_esc = true;
+                }
+                // BEL also terminates string commands
+                if byte == 0x07 {
+                    self.swallow_until_st = false;
+                }
+                continue;
+            }
             let mut performer = Performer {
                 cols: self.cols,
                 rows: self.rows,
@@ -76,6 +99,7 @@ impl TermBuf {
                 scroll_top: &mut self.scroll_top,
                 scroll_bottom: &mut self.scroll_bottom,
                 responses: &mut self.responses,
+                swallow_flag: &mut self.swallow_until_st,
             };
             self.parser.advance(&mut performer, byte);
         }

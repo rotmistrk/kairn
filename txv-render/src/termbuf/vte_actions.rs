@@ -234,6 +234,10 @@ impl vte::Perform for Performer<'_> {
                     *self.cursor_y -= 1;
                 }
             }
+            // ESC k — tmux/screen title sequence; swallow until ST
+            (b'k', []) => {
+                *self.swallow_flag = true;
+            }
             _ => {}
         }
     }
