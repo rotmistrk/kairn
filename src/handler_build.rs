@@ -41,3 +41,32 @@ fn detect_build_command(root: &std::path::Path) -> String {
         "make".to_string()
     }
 }
+
+/// Handle M-x run: run the project in a shell tab.
+pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
+    let cmd = state
+        .settings
+        .run_command
+        .clone()
+        .unwrap_or_else(|| detect_run_command(&state.root_dir));
+
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        desktop.close_tab_by_title(SlotId::Right, "Run");
+        let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
+        desktop.insert_tab(SlotId::Right, "Run", term);
+        desktop.focus_slot(SlotId::Right);
+    }
+}
+
+/// Detect run command from project files.
+fn detect_run_command(root: &std::path::Path) -> String {
+    if root.join("Cargo.toml").exists() {
+        "cargo run".to_string()
+    } else if root.join("go.mod").exists() {
+        "go run .".to_string()
+    } else if root.join("package.json").exists() {
+        "npm start".to_string()
+    } else {
+        "make run".to_string()
+    }
+}

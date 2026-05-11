@@ -64,6 +64,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             ctx.queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
         }
         "build" => ctx.queue.put_command(CM_BUILD, None),
+        "run" => ctx.queue.put_command(CM_RUN, None),
         "paste" => {
             if let Some(text) = crate::clipboard::paste_from_clipboard() {
                 ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));

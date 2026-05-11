@@ -17,6 +17,20 @@ pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
     }
 }
 
+/// Create a shell terminal that runs a specific command.
+pub fn new_shell_with_command(cmd: &str, cwd: &std::path::Path) -> Box<dyn txv_core::view::View> {
+    if std::env::var("KAIRN_TEST").is_ok() {
+        return Box::new(FallbackTerminal::new("Run"));
+    }
+    match txv_widgets::PtyTerminal::spawn_command("sh", &["-c", cmd], cwd, 80, 24) {
+        Ok(term) => Box::new(term),
+        Err(e) => {
+            log::error!("Failed to run command '{}': {}", cmd, e);
+            Box::new(FallbackTerminal::with_error("Run (failed)", format!("{e}")))
+        }
+    }
+}
+
 /// Create a kiro-cli chat terminal, optionally with a specific agent.
 pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
     if std::env::var("KAIRN_TEST").is_ok() {
