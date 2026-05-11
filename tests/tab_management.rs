@@ -75,7 +75,7 @@ fn rename_changes_tool_tab_title() {
     h.inject_key(KeyCode::F(4), KeyMod::default());
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('≈'), KeyMod::default());
-    h.inject_str("rename myserver\n");
+    h.inject_str("tab-rename myserver\n");
     h.run_cycles(1);
     assert!(h.contains("Shell:myserver"));
 }

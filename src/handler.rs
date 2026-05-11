@@ -82,8 +82,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SHOW_MESSAGES => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let messages = MessagesView::new();
-                desktop.insert_tab(SlotId::Bottom, "Messages", Box::new(messages));
-                desktop.focus_slot(SlotId::Bottom);
+                desktop.insert_tab(SlotId::Right, "Messages", Box::new(messages));
+                desktop.focus_slot(SlotId::Right);
             }
         }
         CM_NEW_SHELL => {

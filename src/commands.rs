@@ -60,3 +60,6 @@ pub const CM_PANEL_GROW_V: CommandId = 162;
 pub const CM_PANEL_SHRINK_V: CommandId = 163;
 pub const CM_SUSPEND: CommandId = 164;
 pub const CM_PEEK: CommandId = 165;
+
+pub const CM_LSP_RENAME: CommandId = 170;
+pub const CM_CODE_ACTION: CommandId = 171;
