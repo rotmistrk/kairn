@@ -31,9 +31,14 @@ impl GitWatcher {
         })
         .ok()?;
 
+        // Only watch git internals (cheap, few FDs)
         let _ = watcher.watch(&git_dir.join("index"), RecursiveMode::NonRecursive);
-        let _ = watcher.watch(&git_dir.join("refs"), RecursiveMode::Recursive);
-        let _ = watcher.watch(root, RecursiveMode::Recursive);
+        let _ = watcher.watch(&git_dir.join("refs"), RecursiveMode::NonRecursive);
+        // Watch .gitignore for rule changes
+        let gitignore = root.join(".gitignore");
+        if gitignore.exists() {
+            let _ = watcher.watch(&gitignore, RecursiveMode::NonRecursive);
+        }
 
         Some(Self {
             generation,
@@ -164,24 +169,6 @@ mod tests {
     }
 
     #[test]
-    fn detects_file_change() {
-        let dir = tempfile::tempdir().unwrap();
-        fs::create_dir(dir.path().join(".git")).unwrap();
-        fs::write(dir.path().join(".git/index"), "").unwrap();
-        fs::write(dir.path().join("test.txt"), "hello").unwrap();
-        let watcher = Arc::new(GitWatcher::new(dir.path()).unwrap());
-        let mut handle = WatchHandle::new(watcher);
-        // Clear any initial events
-        std::thread::sleep(std::time::Duration::from_millis(50));
-        let _ = handle.has_changes();
-
-        // Modify a file
-        fs::write(dir.path().join("test.txt"), "world").unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
-        assert!(handle.has_changes());
-    }
-
     #[test]
     fn multiple_handles_see_same_change() {
         let dir = tempfile::tempdir().unwrap();

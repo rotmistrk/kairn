@@ -16,6 +16,7 @@ pub struct FileTreeView {
     last_key_was_right: bool,
     watcher: Option<WatchHandle>,
     root: PathBuf,
+    refresh_counter: u16,
 }
 
 impl FileTreeView {
@@ -26,6 +27,7 @@ impl FileTreeView {
             last_key_was_right: false,
             watcher,
             root,
+            refresh_counter: 0,
         };
         view.update_colors();
         view
@@ -91,9 +93,17 @@ impl View for FileTreeView {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
+            self.refresh_counter += 1;
+            // Immediate on watcher signal (git index/refs changed)
             if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
                 self.update_colors();
                 self.inner.data.refresh();
+                self.refresh_counter = 0;
+            }
+            // Periodic git2 status check (catches working tree file changes)
+            if self.refresh_counter >= 60 {
+                self.refresh_counter = 0;
+                self.update_colors();
             }
             return HandleResult::Ignored;
         }
