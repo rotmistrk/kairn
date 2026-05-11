@@ -59,5 +59,4 @@ This is IDE-specific behavior (not LSP). Consider:
 
 1 → 3 → 5 → 4 → 2 → 6
 
-Steps 1, 3, 5 are the most impactful for daily use.
-Step 6 is optional/deferred.
+All items 1-5 implemented. Step 6 is deferred (low priority, exploratory).
