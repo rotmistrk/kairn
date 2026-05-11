@@ -51,10 +51,16 @@ impl View for MessagesView {
         for row in 0..rows {
             let y = b.y + row as u16;
             if let Some(msg) = entries.get(start + row) {
-                let elapsed = msg.timestamp.elapsed().as_secs();
-                let mins = (elapsed / 60) % 60;
-                let secs = elapsed % 60;
-                let hrs = (elapsed / 3600) % 24;
+                // Wall clock time of the event
+                let age = msg.timestamp.elapsed();
+                let now_secs = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let event_secs = now_secs - age.as_secs();
+                let hrs = (event_secs / 3600) % 24;
+                let mins = (event_secs / 60) % 60;
+                let secs = event_secs % 60;
                 let suffix = if msg.count > 1 {
                     format!(" (×{})", msg.count)
                 } else {

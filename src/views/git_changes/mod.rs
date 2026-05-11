@@ -64,8 +64,7 @@ impl View for GitChangesView {
         if let Event::Tick = event {
             self.tick_counter = self.tick_counter.wrapping_add(1);
             let poll = self.tick_counter.is_multiple_of(60);
-            let changed =
-                self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
+            let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
             if changed {
                 self.needs_rebuild = false;
                 self.inner.data.rebuild(&self.root);
