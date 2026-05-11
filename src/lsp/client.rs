@@ -86,14 +86,9 @@ impl LspClient {
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
-            loop {
-                match read_message(&mut reader) {
-                    Some(msg) => {
-                        if tx.send(msg).is_err() {
-                            break;
-                        }
-                    }
-                    None => break,
+            while let Some(msg) = read_message(&mut reader) {
+                if tx.send(msg).is_err() {
+                    break;
                 }
             }
         });

@@ -14,6 +14,12 @@ pub struct CompletionPopup {
     pub anchor_y: u16,
 }
 
+impl Default for CompletionPopup {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompletionPopup {
     pub fn new() -> Self {
         Self {

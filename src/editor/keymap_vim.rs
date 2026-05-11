@@ -78,6 +78,7 @@ impl VimKeymap {
                 }
             }
             KeyCode::Char('%') => Command::MatchBracket,
+            KeyCode::Char('K') => Command::Hover,
             KeyCode::PageUp => Command::PageUp,
             KeyCode::PageDown => Command::PageDown,
 
