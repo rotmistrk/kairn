@@ -1,6 +1,7 @@
 //! EditorView — View wrapper around the Editor core.
 
 mod draw;
+mod draw_diagnostics;
 mod handle;
 
 use std::path::{Path, PathBuf};
@@ -26,6 +27,7 @@ pub struct EditorView {
     tick_counter: u64,
     close_prompt: bool,
     display_title: String,
+    diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
 }
 
 impl EditorView {
@@ -50,6 +52,7 @@ impl EditorView {
             tick_counter: 0,
             close_prompt: false,
             display_title,
+            diagnostics: None,
         };
         view.apply_settings();
         Ok(view)
@@ -76,6 +79,7 @@ impl EditorView {
             tick_counter: 0,
             close_prompt: false,
             display_title,
+            diagnostics: None,
         };
         view.apply_settings();
         view
@@ -95,6 +99,7 @@ impl EditorView {
             tick_counter: 0,
             close_prompt: false,
             display_title: "[cmd output]".to_string(),
+            diagnostics: None,
         }
     }
 
@@ -140,6 +145,7 @@ impl View for EditorView {
 
     fn draw(&self, surface: &mut Surface) {
         self.draw_editor(surface);
+        self.draw_diagnostics(surface);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {

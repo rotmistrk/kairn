@@ -134,6 +134,11 @@ impl EditorView {
             };
             queue.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
         }
+        // Emit diagnostic message if cursor is on a diagnostic line
+        if self.editor.cursor_line != old_line {
+            let msg = self.diagnostic_at_cursor().map(|s| s.to_string()).unwrap_or_default();
+            queue.put_command(crate::commands::CM_DIAGNOSTIC, Some(Box::new(msg)));
+        }
     }
 
     /// Update display_title based on dirty state.
