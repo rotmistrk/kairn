@@ -14,7 +14,9 @@ pub struct PtyTerminal {
     state: ViewState,
     termbuf: TermBuf,
     session: Option<PtySession>,
+    base_title: String,
     title: String,
+    osc_suffix: String,
     prev_cols: u16,
     prev_rows: u16,
     exited: bool,
@@ -30,7 +32,9 @@ impl PtyTerminal {
             state: ViewState::default(),
             termbuf: TermBuf::new(cols, rows),
             session: Some(session),
+            base_title: "Shell".into(),
             title: "Shell".into(),
+            osc_suffix: String::new(),
             prev_cols: cols,
             prev_rows: rows,
             exited: false,
@@ -44,7 +48,9 @@ impl PtyTerminal {
             state: ViewState::default(),
             termbuf: TermBuf::new(cols, rows),
             session: Some(session),
+            base_title: cmd.into(),
             title: cmd.into(),
+            osc_suffix: String::new(),
             prev_cols: cols,
             prev_rows: rows,
             exited: false,
@@ -64,7 +70,7 @@ impl PtyTerminal {
             self.state.dirty = true;
         } else if !session.is_alive() {
             self.exited = true;
-            self.title = format!("{} [exited]", self.title);
+            self.title = format!("{} [exited]", self.base_title);
             self.session = None;
             self.state.dirty = true;
             return;
@@ -74,14 +80,27 @@ impl PtyTerminal {
                 session.write(&resp);
             }
         }
+        if let Some(osc_title) = self.termbuf.take_title() {
+            let clipped = if osc_title.len() > 20 {
+                format!("{}...", &osc_title[..17])
+            } else {
+                osc_title
+            };
+            self.osc_suffix = clipped;
+            self.state.dirty = true;
+        }
     }
 }
 
 impl View for PtyTerminal {
-    delegate_view_state!(state, override { title, set_bounds, needs_redraw });
+    delegate_view_state!(state, override { title, subtitle, set_bounds, needs_redraw });
 
     fn title(&self) -> &str {
         &self.title
+    }
+
+    fn subtitle(&self) -> &str {
+        &self.osc_suffix
     }
 
     fn needs_redraw(&self) -> bool {

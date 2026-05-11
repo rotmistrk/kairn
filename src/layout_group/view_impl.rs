@@ -58,7 +58,14 @@ impl View for LayoutGroup {
                 return r;
             }
         }
-        // Delegate to focused child via GroupState 3-phase dispatch
+        // Tick goes to ALL slots (background tabs need it for PTY poll, git refresh)
+        if matches!(event, Event::Tick) {
+            for child in &mut self.group.children {
+                child.handle(event, queue);
+            }
+            return HandleResult::Ignored;
+        }
+        // All other events: delegate to focused child via GroupState 3-phase dispatch
         self.group.dispatch(event, queue)
     }
 }

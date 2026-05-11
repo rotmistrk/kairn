@@ -73,6 +73,28 @@ impl View for TabGroup {
             for child in &mut self.group.children {
                 child.handle(event, queue);
             }
+            // Sync active tab title: append view's subtitle (e.g. OSC title)
+            if let Some(child) = self.group.children.get(self.group.focused) {
+                let sub = child.subtitle();
+                if let Some(stored) = self.titles.get_mut(self.group.focused) {
+                    // Strip any previous subtitle (after first space following ':')
+                    let base = stored
+                        .find(':')
+                        .and_then(|c| stored[c..].find(' ').map(|s| c + s))
+                        .map(|pos| &stored[..pos])
+                        .unwrap_or(stored.as_str())
+                        .to_string();
+                    let new_title = if sub.is_empty() {
+                        base
+                    } else {
+                        format!("{base} {sub}")
+                    };
+                    if *stored != new_title {
+                        *stored = new_title;
+                        self.group.view.dirty = true;
+                    }
+                }
+            }
             return HandleResult::Ignored;
         }
         // Dropdown intercepts all keys when open

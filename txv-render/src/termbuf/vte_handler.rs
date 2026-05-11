@@ -19,6 +19,7 @@ pub(super) struct Performer<'a> {
     pub scroll_bottom: &'a mut u16,
     pub responses: &'a mut Vec<Vec<u8>>,
     pub swallow_flag: &'a mut bool,
+    pub osc_title: &'a mut Option<String>,
 }
 
 impl Performer<'_> {

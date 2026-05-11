@@ -81,6 +81,10 @@ pub trait View: Send {
     fn title(&self) -> &str {
         ""
     }
+    /// Dynamic subtitle (e.g. OSC window title from PTY). Appended to tab name.
+    fn subtitle(&self) -> &str {
+        ""
+    }
     fn needs_redraw(&self) -> bool {
         true
     }

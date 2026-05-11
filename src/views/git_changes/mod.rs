@@ -20,6 +20,8 @@ pub struct GitChangesView {
     root: PathBuf,
     last_key_was_right: bool,
     keys: GitKeys,
+    needs_rebuild: bool,
+    tick_counter: u16,
 }
 
 impl GitChangesView {
@@ -31,6 +33,8 @@ impl GitChangesView {
             root,
             last_key_was_right: false,
             keys,
+            needs_rebuild: true,
+            tick_counter: 0,
         }
     }
 
@@ -58,7 +62,12 @@ impl View for GitChangesView {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
-            if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
+            self.tick_counter = self.tick_counter.wrapping_add(1);
+            let poll = self.tick_counter.is_multiple_of(60);
+            let changed =
+                self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
+            if changed {
+                self.needs_rebuild = false;
                 self.inner.data.rebuild(&self.root);
                 self.inner.state.dirty = true;
             }

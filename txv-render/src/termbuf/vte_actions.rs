@@ -26,7 +26,16 @@ impl vte::Perform for Performer<'_> {
     fn hook(&mut self, _params: &vte::Params, _intermediates: &[u8], _ignore: bool, _action: char) {}
     fn put(&mut self, _byte: u8) {}
     fn unhook(&mut self) {}
-    fn osc_dispatch(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
+    fn osc_dispatch(&mut self, params: &[&[u8]], _bell_terminated: bool) {
+        // OSC 0 (icon+title) or OSC 2 (title) — capture window title
+        if let Some(&cmd) = params.first() {
+            if cmd == b"0" || cmd == b"2" {
+                if let Some(text) = params.get(1) {
+                    *self.osc_title = Some(String::from_utf8_lossy(text).into_owned());
+                }
+            }
+        }
+    }
 
     fn csi_dispatch(&mut self, params: &vte::Params, intermediates: &[u8], _ignore: bool, action: char) {
         let ps: Vec<u16> = params.iter().map(|p| p[0]).collect();

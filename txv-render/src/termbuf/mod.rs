@@ -22,6 +22,8 @@ pub struct TermBuf {
     scroll_bottom: u16,
     parser: vte::Parser,
     responses: Vec<Vec<u8>>,
+    /// Window title set by OSC 0/2.
+    osc_title: Option<String>,
     /// When true, swallow all output until ESC \ (string terminator).
     swallow_until_st: bool,
     /// Saw ESC while in swallow mode (next byte might be \).
@@ -62,6 +64,7 @@ impl TermBuf {
             scroll_bottom: rows.saturating_sub(1),
             parser: vte::Parser::new(),
             responses: Vec::new(),
+            osc_title: None,
             swallow_until_st: false,
             swallow_saw_esc: false,
         }
@@ -98,6 +101,7 @@ impl TermBuf {
                 scroll_bottom: &mut self.scroll_bottom,
                 responses: &mut self.responses,
                 swallow_flag: &mut self.swallow_until_st,
+                osc_title: &mut self.osc_title,
             };
             self.parser.advance(&mut performer, byte);
         }
@@ -106,6 +110,11 @@ impl TermBuf {
     /// Drain any pending response bytes (DA1, CPR replies).
     pub fn drain_responses(&mut self) -> Vec<Vec<u8>> {
         std::mem::take(&mut self.responses)
+    }
+
+    /// Take the window title if set by OSC 0/2.
+    pub fn take_title(&mut self) -> Option<String> {
+        self.osc_title.take()
     }
 
     /// Resize the terminal buffer.
