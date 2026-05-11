@@ -24,6 +24,7 @@ pub mod handler_exec;
 pub mod handler_git;
 pub mod help;
 pub mod highlight;
+pub mod layout_group;
 pub mod lsp;
 pub mod settings;
 pub mod status;
