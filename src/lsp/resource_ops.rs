@@ -37,7 +37,35 @@ fn rename_file(old: &str, new: &str) -> bool {
     if let Some(parent) = std::path::Path::new(new).parent() {
         let _ = std::fs::create_dir_all(parent);
     }
+    // Try git mv first if file is in a git repo
+    if is_in_git_repo(old) && git_mv(old, new) {
+        return true;
+    }
     std::fs::rename(old, new).is_ok()
+}
+
+/// Check if a path is inside a git repository.
+fn is_in_git_repo(path: &str) -> bool {
+    let mut dir = std::path::Path::new(path).to_path_buf();
+    loop {
+        if dir.join(".git").exists() {
+            return true;
+        }
+        if !dir.pop() {
+            return false;
+        }
+    }
+}
+
+/// Attempt to rename using `git mv`. Returns true on success.
+fn git_mv(old: &str, new: &str) -> bool {
+    std::process::Command::new("git")
+        .args(["mv", old, new])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn create_file(path: &str) -> bool {
@@ -102,5 +130,49 @@ mod tests {
     #[test]
     fn unknown_kind_returns_false() {
         assert!(!apply_resource_op("unknown", &json!({})));
+    }
+
+    #[test]
+    fn rename_uses_git_mv_in_repo() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // Initialize a git repo
+        let status = std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(dir.path())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+        if status.map(|s| s.success()).unwrap_or(false) {
+            let old = dir.path().join("Tracked.java");
+            std::fs::write(&old, "class Tracked {}").expect("write");
+            // Stage the file
+            let _ = std::process::Command::new("git")
+                .args(["add", "Tracked.java"])
+                .current_dir(dir.path())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+            let new = dir.path().join("Renamed.java");
+            let op = json!({
+                "kind": "rename",
+                "oldUri": format!("file://{}", old.display()),
+                "newUri": format!("file://{}", new.display())
+            });
+            assert!(apply_resource_op("rename", &op));
+            assert!(!old.exists());
+            assert!(new.exists());
+            // Verify git knows about the rename
+            let output = std::process::Command::new("git")
+                .args(["status", "--porcelain"])
+                .current_dir(dir.path())
+                .output()
+                .expect("git status");
+            let status_text = String::from_utf8_lossy(&output.stdout);
+            assert!(
+                status_text.contains("R") || status_text.contains("renamed"),
+                "git should track rename: {}",
+                status_text
+            );
+        }
     }
 }
