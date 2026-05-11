@@ -100,8 +100,14 @@ impl Backend for CrosstermBackend {
                 let cell = surface.cell(x, y);
                 let prev = self.previous.cell(x, y);
 
-                // Skip unchanged cells (including continuation cells)
-                if !self.force_full && cell.ch == prev.ch && cell.style == prev.style && cell.width == prev.width {
+                // Skip unchanged cells — but NEVER skip if previous frame had
+                // a wide char or placeholder here (terminal state may differ)
+                if !self.force_full
+                    && cell.ch == prev.ch
+                    && cell.style == prev.style
+                    && cell.width == prev.width
+                    && prev.width == 1
+                {
                     x += 1;
                     cursor_x = None;
                     continue;
