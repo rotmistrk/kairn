@@ -12,5 +12,5 @@ pub mod text;
 
 pub use backend::CrosstermBackend;
 pub use color::{detect_color_mode, downgrade, ColorMode};
-pub use termbuf::TermBuf;
+pub use termbuf::{TCell, TermBuf};
 pub use text::{byte_to_col, col_to_byte, display_width, truncate, wrap};

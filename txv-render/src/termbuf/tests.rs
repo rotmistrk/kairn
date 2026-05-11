@@ -166,3 +166,33 @@ fn rprompt_spills_when_columns_exceeds_actual_width() {
     assert!(row0.ends_with('m'), "Only 'm' should fit: {:?}", row0.trim_end());
     assert!(row1.starts_with("aster"), "Rest spills: {:?}", row1.trim_end());
 }
+
+#[test]
+fn scrollback_captures_lines_on_scroll() {
+    let mut tb = TermBuf::new(80, 3);
+    tb.process(b"A\r\nB\r\nC\r\nD");
+    // Line "A" was pushed off the top
+    assert_eq!(tb.scrollback_len(), 1);
+    let line = tb.scrollback_line(0).map(|l| l[0].ch);
+    assert_eq!(line, Some('A'));
+}
+
+#[test]
+fn scrollback_accumulates_multiple_lines() {
+    let mut tb = TermBuf::new(80, 3);
+    tb.process(b"1\r\n2\r\n3\r\n4\r\n5\r\n6");
+    // Lines 1, 2, 3 were pushed off (3 scrolls happened)
+    assert_eq!(tb.scrollback_len(), 3);
+    assert_eq!(tb.scrollback_line(0).map(|l| l[0].ch), Some('3'));
+    assert_eq!(tb.scrollback_line(2).map(|l| l[0].ch), Some('1'));
+}
+
+#[test]
+fn scrollback_respects_limit() {
+    let mut tb = TermBuf::with_scrollback(80, 3, 2);
+    tb.process(b"A\r\nB\r\nC\r\nD\r\nE\r\nF");
+    // Only 2 lines kept (limit=2)
+    assert_eq!(tb.scrollback_len(), 2);
+    assert_eq!(tb.scrollback_line(0).map(|l| l[0].ch), Some('C'));
+    assert_eq!(tb.scrollback_line(1).map(|l| l[0].ch), Some('B'));
+}

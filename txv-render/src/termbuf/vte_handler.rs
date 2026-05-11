@@ -3,6 +3,7 @@
 use txv_core::cell::{Color, Style};
 use unicode_width::UnicodeWidthChar;
 
+use super::scrollback::Scrollback;
 use super::TCell;
 
 /// VTE Performer that mutates TermBuf state.
@@ -20,6 +21,7 @@ pub(super) struct Performer<'a> {
     pub responses: &'a mut Vec<Vec<u8>>,
     pub swallow_flag: &'a mut bool,
     pub osc_title: &'a mut Option<String>,
+    pub scrollback: &'a mut Scrollback,
 }
 
 impl Performer<'_> {
@@ -65,6 +67,10 @@ impl Performer<'_> {
         let top = *self.scroll_top as usize;
         let bot = *self.scroll_bottom as usize;
         if top < bot && bot < self.cells.len() {
+            // Save the line being pushed off (only when scrolling the full screen)
+            if top == 0 {
+                self.scrollback.push(self.cells[0].clone());
+            }
             self.cells[top..=bot].rotate_left(1);
             self.cells[bot] = vec![TCell::default(); self.cols as usize];
         }

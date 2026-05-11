@@ -1,11 +1,13 @@
 //! TermBuf — VTE-driven virtual terminal emulator that renders to a Surface.
 
+mod scrollback;
 mod vte_actions;
 mod vte_handler;
 
 use txv_core::cell::Style;
 use txv_core::surface::Surface;
 
+use scrollback::Scrollback;
 use vte_handler::Performer;
 
 /// Virtual terminal buffer backed by VTE parser.
@@ -28,10 +30,11 @@ pub struct TermBuf {
     swallow_until_st: bool,
     /// Saw ESC while in swallow mode (next byte might be \).
     swallow_saw_esc: bool,
+    scrollback: Scrollback,
 }
 
 #[derive(Clone)]
-pub(super) struct TCell {
+pub struct TCell {
     pub ch: char,
     pub style: Style,
     #[allow(dead_code)]
@@ -50,6 +53,10 @@ impl Default for TCell {
 
 impl TermBuf {
     pub fn new(cols: u16, rows: u16) -> Self {
+        Self::with_scrollback(cols, rows, 2000)
+    }
+
+    pub fn with_scrollback(cols: u16, rows: u16, scrollback_limit: usize) -> Self {
         let cells = vec![vec![TCell::default(); cols as usize]; rows as usize];
         Self {
             cols,
@@ -67,6 +74,7 @@ impl TermBuf {
             osc_title: None,
             swallow_until_st: false,
             swallow_saw_esc: false,
+            scrollback: Scrollback::new(scrollback_limit),
         }
     }
 
@@ -102,6 +110,7 @@ impl TermBuf {
                 responses: &mut self.responses,
                 swallow_flag: &mut self.swallow_until_st,
                 osc_title: &mut self.osc_title,
+                scrollback: &mut self.scrollback,
             };
             self.parser.advance(&mut performer, byte);
         }
@@ -164,6 +173,26 @@ impl TermBuf {
     }
     pub fn cursor_visible(&self) -> bool {
         self.cursor_visible
+    }
+
+    /// Number of lines in the scrollback buffer.
+    pub fn scrollback_len(&self) -> usize {
+        self.scrollback.len()
+    }
+
+    /// Get a scrollback line by offset from bottom (0 = most recent).
+    pub fn scrollback_line(&self, offset: usize) -> Option<&Vec<TCell>> {
+        self.scrollback.line_from_bottom(offset)
+    }
+
+    /// Get a visible grid line by row index.
+    pub fn grid_line(&self, row: usize) -> Option<&Vec<TCell>> {
+        self.cells.get(row)
+    }
+
+    /// Number of visible rows.
+    pub fn grid_rows(&self) -> u16 {
+        self.rows
     }
 }
 

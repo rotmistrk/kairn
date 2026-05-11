@@ -4,11 +4,16 @@ pub use txv_widgets::PtyTerminal as TerminalView;
 
 /// Create a shell terminal, falling back to a placeholder on failure.
 pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
+    new_shell_terminal_with_scrollback(2000)
+}
+
+/// Create a shell terminal with custom scrollback, falling back to a placeholder on failure.
+pub fn new_shell_terminal_with_scrollback(scrollback_lines: u16) -> Box<dyn txv_core::view::View> {
     // In test environments, don't spawn a real PTY
     if std::env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Shell"));
     }
-    match txv_widgets::PtyTerminal::spawn_shell(80, 24) {
+    match txv_widgets::PtyTerminal::spawn_shell_with_scrollback(80, 24, scrollback_lines as usize) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn shell: {}", e);

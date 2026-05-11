@@ -10,6 +10,7 @@ pub mod clipboard;
 pub mod commands;
 pub mod completer;
 pub mod config;
+pub mod config_keys;
 pub mod diff;
 pub mod editor;
 pub mod git_ops;

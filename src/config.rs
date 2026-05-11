@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use rusticle::interpreter::Interpreter;
-use txv_core::prelude::*;
 
+use crate::config_keys::parse_key_var;
 use crate::settings::AppSettings;
 
 /// Load configuration from `$XDG_CONFIG_HOME/kairn/init.tcl` (or `~/.config/kairn/init.tcl`).
@@ -82,6 +82,11 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.clock_interval = n as u16;
         }
     }
+    if let Some(val) = interp.get_var("terminal.scrollback") {
+        if let Ok(n) = val.as_int() {
+            settings.scrollback_lines = n as u16;
+        }
+    }
     if let Some(val) = interp.get_var("git.stage") {
         if let Some(k) = parse_key_var(&val.as_str()) {
             settings.git_keys.stage = k;
@@ -141,50 +146,6 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
     }
 
     settings
-}
-
-/// Parse a simple key variable value into a KeyEvent.
-/// Supports: single chars ("s"), modifier combos ("Ctrl-s"), function keys ("F1").
-fn parse_key_var(spec: &str) -> Option<KeyEvent> {
-    let spec = spec.trim();
-    if spec.is_empty() {
-        return None;
-    }
-    let parts: Vec<&str> = spec.split('-').collect();
-    let mut modifiers = KeyMod::default();
-    let key_part = parts.last()?;
-    for &part in &parts[..parts.len().saturating_sub(1)] {
-        match part {
-            "Ctrl" | "ctrl" => modifiers.ctrl = true,
-            "Alt" | "alt" => modifiers.alt = true,
-            "Shift" | "shift" => modifiers.shift = true,
-            _ => {}
-        }
-    }
-    let code = parse_key_code(key_part)?;
-    Some(KeyEvent { code, modifiers })
-}
-
-fn parse_key_code(s: &str) -> Option<KeyCode> {
-    if s.len() == 1 {
-        return Some(KeyCode::Char(s.chars().next()?));
-    }
-    // Function keys: F1..F12
-    if let Some(n) = s.strip_prefix('F').or_else(|| s.strip_prefix('f')) {
-        if let Ok(num) = n.parse::<u8>() {
-            return Some(KeyCode::F(num));
-        }
-    }
-    match s {
-        "Esc" | "esc" => Some(KeyCode::Esc),
-        "Enter" | "enter" => Some(KeyCode::Enter),
-        "Tab" | "tab" => Some(KeyCode::Tab),
-        "Left" | "left" => Some(KeyCode::Left),
-        "Right" | "right" => Some(KeyCode::Right),
-        "Up" | "up" => Some(KeyCode::Up),
-        "Down" | "down" => Some(KeyCode::Down),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
