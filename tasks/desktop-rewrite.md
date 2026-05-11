@@ -187,3 +187,53 @@ src/desktop/tabs.rs
 3. Group dispatch handles event routing — no manual if/else chains
 4. Resize/zoom = change constraint + call set_bounds. Period.
 5. No "dirty" flag manipulation outside of set_bounds and handle
+
+## FULL AUDIT — Code That Violates TXV Ideology
+
+ALL of the following MUST be eliminated in the rewrite:
+
+### src/desktop/ (ENTIRE DIRECTORY — DELETE AND REWRITE)
+
+**Manual dirty flag (20+ occurrences):**
+- `self.group.view.dirty = true` scattered everywhere
+- Should ONLY be set inside `set_bounds` and by the framework
+
+**Manual select/unselect (10 occurrences):**
+- `v.unselect()` / `v.select()` called manually
+- Group handles this automatically on focus change
+
+**Manual event dispatch:**
+- `v.handle(event, queue)` called directly
+- Group's 3-phase dispatch (preprocess → focused → postprocess) should handle this
+
+**Manual bounds propagation:**
+- `v.set_bounds(rect)` called in insert_tab, sync_active_bounds
+- ONLY set_bounds should propagate bounds to children
+
+**Manual layout recomputation:**
+- `self.layout(bounds)` called in multiple places
+- Layout should be computed ONCE in set_bounds
+
+### src/views/editor/mod.rs
+
+- Tick handling for autosave is fine (view-local state)
+- But `self.state.dirty = true` after every key is suspicious — should only be dirty when content changes
+
+### Summary: What TXV Provides (USE IT)
+
+| TXV provides | Desktop does manually instead |
+|---|---|
+| Group.dispatch() 3-phase | Manual if/else event routing |
+| Group.focus_next/prev | Manual cycle_focus with Vec |
+| set_bounds propagation | Manual v.set_bounds in 5 places |
+| select/unselect on focus | Manual v.select()/v.unselect() |
+| dirty tracking | Manual self.group.view.dirty = true everywhere |
+| needs_redraw aggregation | Manual any() check |
+
+### After Rewrite: ZERO of the above patterns should exist
+
+The new code should have:
+- `delegate_group_state!` or `delegate_view_state!` in every View impl
+- `set_bounds` as the ONLY layout method
+- Group dispatch for ALL event routing
+- NO manual dirty/select/unselect/bounds manipulation
