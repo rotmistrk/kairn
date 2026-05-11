@@ -96,8 +96,14 @@ impl ActiveItem for CommandItem {
             KeyCode::Tab => self.try_complete(),
             KeyCode::Backspace => {
                 if self.cursor > 0 {
-                    self.cursor -= 1;
-                    self.text.remove(self.cursor);
+                    // Find previous char boundary
+                    let prev = self.text[..self.cursor]
+                        .char_indices()
+                        .next_back()
+                        .map(|(i, _)| i)
+                        .unwrap_or(0);
+                    self.text.remove(prev);
+                    self.cursor = prev;
                     self.update_label();
                 } else {
                     self.deactivate();
@@ -105,17 +111,25 @@ impl ActiveItem for CommandItem {
             }
             KeyCode::Left => {
                 if self.cursor > 0 {
-                    self.cursor -= 1;
+                    self.cursor = self.text[..self.cursor]
+                        .char_indices()
+                        .next_back()
+                        .map(|(i, _)| i)
+                        .unwrap_or(0);
                 }
             }
             KeyCode::Right => {
                 if self.cursor < self.text.len() {
-                    self.cursor += 1;
+                    self.cursor = self.text[self.cursor..]
+                        .char_indices()
+                        .nth(1)
+                        .map(|(i, _)| self.cursor + i)
+                        .unwrap_or(self.text.len());
                 }
             }
             KeyCode::Char(ch) => {
                 self.text.insert(self.cursor, *ch);
-                self.cursor += 1;
+                self.cursor += ch.len_utf8();
                 self.update_label();
             }
             _ => {}
