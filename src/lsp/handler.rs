@@ -25,6 +25,7 @@ pub(crate) enum PendingKind {
     GotoDefinition,
     FindReferences,
     Hover,
+    Completion,
 }
 
 impl PendingRequests {
@@ -44,6 +45,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_LSP_GOTO_DEF => send_goto_def(ctx, state),
         CM_LSP_FIND_REFS => send_find_refs(ctx, state),
         CM_LSP_HOVER => send_hover(ctx, state),
+        CM_LSP_COMPLETION => send_completion(ctx, state),
         _ => {}
     }
 }
@@ -94,6 +96,13 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         PendingKind::Hover => {
             if let Some(text) = requests::parse_hover(result) {
                 queue.put_command(CM_DIAGNOSTIC, Some(Box::new(("hover".to_string(), text))));
+            }
+        }
+        PendingKind::Completion => {
+            let items = requests::parse_completion(result);
+            if !items.is_empty() {
+                let labels: Vec<String> = items.iter().map(|i| i.label.clone()).collect();
+                queue.put_command(CM_LSP_COMPLETION, Some(Box::new(labels)));
             }
         }
     }
@@ -170,6 +179,24 @@ fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
 
     let id = requests::hover(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::Hover);
+}
+
+fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let id = requests::completion(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::Completion);
 }
 
 fn current_file_info(state: &AppState) -> (String, String) {

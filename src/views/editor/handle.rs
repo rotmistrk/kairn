@@ -200,4 +200,30 @@ impl EditorView {
             self.editor.command_buf = format!("{prefix}{}", matches[0]);
         }
     }
+
+    /// Handle tick event: autosave + completion trigger.
+    pub(super) fn handle_tick(&mut self, queue: &mut EventQueue) {
+        self.tick_counter += 1;
+        // Completion trigger: 5 ticks after last edit in insert mode
+        if self.editor.mode == crate::editor::keymap::EditorMode::Insert
+            && self.last_edit_tick > 0
+            && self.tick_counter - self.last_edit_tick == 5
+        {
+            let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+            queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
+        }
+        if self.settings.autosave
+            && self.last_edit_tick > 0
+            && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
+        {
+            self.last_edit_tick = 0;
+            if self.editor.buffer.is_dirty() {
+                let content = self.editor.buffer.content();
+                if crate::editor::save::save_file(&self.path, &content).is_ok() {
+                    self.editor.buffer.mark_saved();
+                    self.sync_title();
+                }
+            }
+        }
+    }
 }

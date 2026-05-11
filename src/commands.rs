@@ -41,6 +41,7 @@ pub const CM_DIAGNOSTIC: CommandId = 143;
 pub const CM_LSP_GOTO_DEF: CommandId = 144;
 pub const CM_LSP_FIND_REFS: CommandId = 145;
 pub const CM_LSP_HOVER: CommandId = 146;
+pub const CM_LSP_COMPLETION: CommandId = 147;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;

@@ -149,22 +149,9 @@ impl View for EditorView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        // Tick: autosave check
+        // Tick: autosave check + completion trigger
         if let Event::Tick = event {
-            self.tick_counter += 1;
-            if self.settings.autosave
-                && self.last_edit_tick > 0
-                && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
-            {
-                self.last_edit_tick = 0;
-                if self.editor.buffer.is_dirty() {
-                    let content = self.editor.buffer.content();
-                    if crate::editor::save::save_file(&self.path, &content).is_ok() {
-                        self.editor.buffer.mark_saved();
-                        self.sync_title();
-                    }
-                }
-            }
+            self.handle_tick(queue);
             return HandleResult::Ignored;
         }
 
