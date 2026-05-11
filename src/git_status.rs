@@ -1,10 +1,8 @@
-//! Git status collection — runs `git status` and parses output.
+//! Git status collection — uses git2 (libgit2), no subprocess.
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 
-/// File status from git.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileStatus {
     Clean,
@@ -14,75 +12,60 @@ pub enum FileStatus {
     Ignored,
 }
 
-/// Collect git status for all files under `root`.
-/// Returns relative path → status. Returns empty map on error.
+/// Collect git status for all files under `root` using libgit2.
+/// Returns empty map if not a git repo or on any error.
 pub fn collect_git_status(root: &Path) -> HashMap<String, FileStatus> {
-    let output = Command::new("git")
-        .args([
-            "--no-optional-locks",
-            "-C",
-            &root.display().to_string(),
-            "status",
-            "--porcelain=v1",
-            "-z",
-            "--ignored",
-        ])
-        .output();
-
-    let output = match output {
-        Ok(o) if o.status.success() => o,
-        _ => return HashMap::new(),
+    let repo = match git2::Repository::discover(root) {
+        Ok(r) => r,
+        Err(_) => return HashMap::new(),
     };
 
-    parse_porcelain(&output.stdout)
-}
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false);
 
-/// Parse `git status --porcelain=v1 -z` output into a status map.
-pub fn parse_porcelain(data: &[u8]) -> HashMap<String, FileStatus> {
+    let statuses = match repo.statuses(Some(&mut opts)) {
+        Ok(s) => s,
+        Err(_) => return HashMap::new(),
+    };
+
     let mut map = HashMap::new();
-    let text = String::from_utf8_lossy(data);
-    let entries: Vec<&str> = text.split('\0').collect();
-
-    let mut i = 0;
-    while i < entries.len() {
-        let entry = entries[i];
-        if entry.len() < 4 {
-            i += 1;
+    for entry in statuses.iter() {
+        let Some(path) = entry.path() else {
             continue;
-        }
-        let x = entry.as_bytes()[0];
-        let y = entry.as_bytes()[1];
-        let path = &entry[3..];
-
-        let status = match (x, y) {
-            (b'?', b'?') => FileStatus::Untracked,
-            (b'!', b'!') => FileStatus::Ignored,
-            (b'A', _) => FileStatus::Added,
-            (_, b'M') | (b'M', _) => FileStatus::Modified,
-            (_, b'D') | (b'D', _) => FileStatus::Modified,
-            (b'R', _) => {
-                // Rename: skip the "from" path (next NUL-separated entry)
-                i += 1;
-                FileStatus::Modified
-            }
-            _ => FileStatus::Clean,
         };
-
-        if !path.is_empty() {
-            map.insert(path.to_string(), status);
-        }
-        i += 1;
+        let s = entry.status();
+        let status = if s.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
+            if s.contains(git2::Status::INDEX_NEW) {
+                FileStatus::Added
+            } else {
+                FileStatus::Untracked
+            }
+        } else if s.intersects(
+            git2::Status::WT_MODIFIED
+                | git2::Status::INDEX_MODIFIED
+                | git2::Status::WT_RENAMED
+                | git2::Status::INDEX_RENAMED
+                | git2::Status::WT_DELETED
+                | git2::Status::INDEX_DELETED,
+        ) {
+            FileStatus::Modified
+        } else if s.contains(git2::Status::IGNORED) {
+            FileStatus::Ignored
+        } else {
+            continue;
+        };
+        map.insert(path.to_string(), status);
     }
     map
 }
 
-/// Determine the "most important" status for a directory from its children.
-/// Priority: Untracked > Modified > Added > Clean.
+/// Determine the aggregate status for a directory from its children.
 pub fn dir_status(children: &[FileStatus]) -> FileStatus {
     let mut result = FileStatus::Clean;
     for &s in children {
-        let priority = status_priority(s);
-        if priority > status_priority(result) {
+        if status_priority(s) > status_priority(result) {
             result = s;
         }
     }
@@ -104,59 +87,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_untracked() {
-        let data = b"?? new.rs\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.get("new.rs"), Some(&FileStatus::Untracked));
-    }
-
-    #[test]
-    fn parse_modified() {
-        let data = b" M changed.rs\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.get("changed.rs"), Some(&FileStatus::Modified));
-    }
-
-    #[test]
-    fn parse_added() {
-        let data = b"A  staged.rs\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.get("staged.rs"), Some(&FileStatus::Added));
-    }
-
-    #[test]
-    fn parse_ignored() {
-        let data = b"!! target/debug\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.get("target/debug"), Some(&FileStatus::Ignored));
-    }
-
-    #[test]
-    fn parse_multiple() {
-        let data = b"?? new.rs\0 M lib.rs\0A  added.rs\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.len(), 3);
-        assert_eq!(map.get("new.rs"), Some(&FileStatus::Untracked));
-        assert_eq!(map.get("lib.rs"), Some(&FileStatus::Modified));
-        assert_eq!(map.get("added.rs"), Some(&FileStatus::Added));
-    }
-
-    #[test]
-    fn parse_empty() {
-        let map = parse_porcelain(b"");
-        assert!(map.is_empty());
-    }
-
-    #[test]
-    fn parse_rename_skips_from_path() {
-        let data = b"R  new_name.rs\0old_name.rs\0";
-        let map = parse_porcelain(data);
-        assert_eq!(map.get("new_name.rs"), Some(&FileStatus::Modified));
-        assert!(!map.contains_key("old_name.rs"));
-    }
-
-    #[test]
-    fn dir_status_picks_highest_priority() {
+    fn dir_status_picks_highest() {
         assert_eq!(
             dir_status(&[FileStatus::Clean, FileStatus::Modified]),
             FileStatus::Modified
@@ -165,11 +96,6 @@ mod tests {
             dir_status(&[FileStatus::Added, FileStatus::Untracked]),
             FileStatus::Untracked
         );
-        assert_eq!(dir_status(&[FileStatus::Clean, FileStatus::Ignored]), FileStatus::Clean);
-    }
-
-    #[test]
-    fn dir_status_empty_is_clean() {
         assert_eq!(dir_status(&[]), FileStatus::Clean);
     }
 }

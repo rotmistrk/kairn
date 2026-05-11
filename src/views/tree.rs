@@ -86,7 +86,6 @@ impl View for FileTreeView {
             if self.refresh_counter >= 60 {
                 self.refresh_counter = 0;
                 self.inner.data.refresh();
-                self.update_colors();
             }
             return HandleResult::Ignored;
         }
