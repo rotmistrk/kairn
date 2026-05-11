@@ -71,14 +71,28 @@ impl LspRegistry {
     /// Get or start the LSP client for a language. Returns None if disabled or spawn fails.
     pub fn get_or_start(&mut self, language_id: &str, root_dir: &Path) -> Option<&mut LspClient> {
         if self.disabled.contains(&language_id.to_string()) {
+            log::debug!("LSP disabled for {language_id}");
             return None;
         }
         if self.active.contains_key(language_id) {
             return self.active.get_mut(language_id);
         }
-        let config = self.configs.get(language_id)?.clone();
+        let config = match self.configs.get(language_id) {
+            Some(c) => c.clone(),
+            None => {
+                log::warn!("No LSP server configured for {language_id}");
+                return None;
+            }
+        };
         let args: Vec<&str> = config.args.iter().map(|s| s.as_str()).collect();
-        let mut client = LspClient::spawn(&config.command, &args)?;
+        let mut client = match LspClient::spawn(&config.command, &args) {
+            Some(c) => c,
+            None => {
+                log::error!("Failed to spawn LSP: {} (is it installed?)", config.command);
+                return None;
+            }
+        };
+        log::info!("LSP started: {} for {language_id}", config.command);
         let root_uri = protocol::path_to_uri(root_dir);
         protocol::initialize(&mut client, &root_uri);
         self.active.insert(language_id.to_string(), client);
