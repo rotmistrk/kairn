@@ -38,6 +38,9 @@ pub const CM_SET_GLOBAL: CommandId = 133;
 pub const CM_MODE_CHANGED: CommandId = 141;
 pub const CM_CURSOR_MOVED: CommandId = 142;
 pub const CM_DIAGNOSTIC: CommandId = 143;
+pub const CM_LSP_GOTO_DEF: CommandId = 144;
+pub const CM_LSP_FIND_REFS: CommandId = 145;
+pub const CM_LSP_HOVER: CommandId = 146;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;

@@ -200,6 +200,8 @@ impl VimKeymap {
                     Command::MoveFileStart
                 }
             }
+            ('g', 'd') => Command::GotoDefinition,
+            ('g', 'r') => Command::FindReferences,
             ('>', '>') => Command::Indent,
             ('<', '<') => Command::Unindent,
             ('r', _) => Command::ReplaceChar(ch),

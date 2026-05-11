@@ -115,6 +115,9 @@ impl Editor {
             Command::ExCommand(ref input) => self.execute_ex(input.clone()),
             Command::Save => EditorAction::SaveRequested,
             Command::CloseBuffer => EditorAction::CloseRequested,
+            Command::GotoDefinition => EditorAction::LspGotoDefinition,
+            Command::FindReferences => EditorAction::LspFindReferences,
+            Command::Hover => EditorAction::LspHover,
             Command::DotRepeat => {
                 if let Some(last) = self.last_command.clone() {
                     self.dispatch(last)

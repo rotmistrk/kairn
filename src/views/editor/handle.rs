@@ -90,6 +90,18 @@ impl EditorView {
             EditorAction::SetGlobal(opt) => {
                 queue.put_command(CM_SET_GLOBAL, Some(Box::new(opt)));
             }
+            EditorAction::LspGotoDefinition => {
+                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(pos)));
+            }
+            EditorAction::LspFindReferences => {
+                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                queue.put_command(crate::commands::CM_LSP_FIND_REFS, Some(Box::new(pos)));
+            }
+            EditorAction::LspHover => {
+                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                queue.put_command(crate::commands::CM_LSP_HOVER, Some(Box::new(pos)));
+            }
             _ => {}
         }
     }

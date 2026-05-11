@@ -37,6 +37,9 @@ pub enum EditorAction {
     OpenFile(String),
     ShellOutput(String),
     SetGlobal(String),
+    LspGotoDefinition,
+    LspFindReferences,
+    LspHover,
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.

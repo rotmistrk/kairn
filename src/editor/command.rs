@@ -106,6 +106,11 @@ pub enum Command {
     Save,
     CloseBuffer,
 
+    // LSP
+    GotoDefinition,
+    FindReferences,
+    Hover,
+
     // Repeat
     DotRepeat,
 
