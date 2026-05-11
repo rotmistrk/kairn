@@ -4,19 +4,21 @@ pub mod schema;
 
 use std::path::Path;
 
+use crate::kiro_registry::KiroTabRegistry;
 use crate::layout_group::{LayoutGroup, LayoutMode, SlotId};
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;
+use crate::views::terminal::new_kiro_terminal_with_resume;
 use crate::views::tree::FileTreeView;
 
-use schema::{EditorTabState, SessionState, SESSION_VERSION};
+use schema::{EditorTabState, KiroSessionState, SessionState, SESSION_VERSION};
 
 const STATE_FILE: &str = ".kairn.state";
 
 /// Collect current state from the desktop and save to `.kairn.state`.
-pub fn save_session(desktop: &mut LayoutGroup, root_dir: &Path) {
-    let state = collect_state(desktop, root_dir);
-    if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() {
+pub fn save_session(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
+    let state = collect_state(desktop, root_dir, kiro_registry);
+    if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() && state.kiro_sessions.is_empty() {
         return;
     }
     let path = root_dir.join(STATE_FILE);
@@ -101,7 +103,22 @@ pub fn restore_tabs(
     }
 }
 
-fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path) -> SessionState {
+/// Restore kiro tabs from saved session state.
+pub fn restore_kiro_tabs(
+    desktop: &mut LayoutGroup,
+    sessions: &[KiroSessionState],
+    root_dir: &Path,
+    registry: &mut KiroTabRegistry,
+) {
+    for session in sessions {
+        let resume_id = session.session_id.as_deref();
+        let term = new_kiro_terminal_with_resume(Some("kairn"), resume_id, root_dir);
+        desktop.insert_tab(SlotId::Right, &session.name, term);
+        registry.register_with_id(&session.name, session.session_id.clone());
+    }
+}
+
+fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &KiroTabRegistry) -> SessionState {
     let layout = match desktop.layout_mode {
         LayoutMode::Auto => "auto",
         LayoutMode::Wide => "wide",
@@ -110,6 +127,7 @@ fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path) -> SessionState {
     let editor_tabs = collect_editor_tabs(desktop, root_dir);
     let active_tab = desktop.panel(SlotId::Center).active_index();
     let unfolded_dirs = collect_unfolded_dirs(desktop, root_dir);
+    let kiro_sessions = kiro_registry.to_state();
 
     SessionState {
         version: SESSION_VERSION,
@@ -119,6 +137,7 @@ fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path) -> SessionState {
         active_tab,
         editor_tabs,
         unfolded_dirs,
+        kiro_sessions,
     }
 }
 

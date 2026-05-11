@@ -1,5 +1,6 @@
 //! Tests for session persistence (save/restore).
 
+use kairn::kiro_registry::KiroTabRegistry;
 use kairn::layout_group::{LayoutMode, SlotId};
 use kairn::session;
 use kairn::session::schema::{EditorTabState, SessionState, SESSION_VERSION};
@@ -25,7 +26,7 @@ fn save_and_load_session_roundtrip() {
     desktop.layout_mode = LayoutMode::Wide;
 
     // Save
-    session::save_session(&mut desktop, &root);
+    session::save_session(&mut desktop, &root, &KiroTabRegistry::default());
 
     // Verify file exists
     let state_path = root.join(".kairn.state");
@@ -84,6 +85,7 @@ fn restore_tabs_opens_editors() {
             col: 4,
         }],
         unfolded_dirs: Vec::new(),
+        kiro_sessions: Vec::new(),
     };
 
     let mut desktop = kairn::layout_group::LayoutGroup::new();
@@ -111,6 +113,7 @@ fn restore_skips_missing_files() {
             col: 0,
         }],
         unfolded_dirs: Vec::new(),
+        kiro_sessions: Vec::new(),
     };
 
     let mut desktop = kairn::layout_group::LayoutGroup::new();

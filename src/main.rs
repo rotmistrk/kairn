@@ -80,6 +80,7 @@ fn main() -> anyhow::Result<()> {
     let mcp_socket = kairn::mcp::listener::start_mcp_listener(std::sync::Arc::clone(&mcp_snapshot), &socket_path);
     if let Ok(ref sock) = mcp_socket {
         kairn::mcp::agent_file::write_agent_file(&root_dir, sock);
+        std::env::set_var("KAIRN_MCP_SOCKET", sock.to_string_lossy().as_ref());
     }
 
     // Init logging to file
@@ -96,34 +97,39 @@ fn main() -> anyhow::Result<()> {
     let saved_session = session::load_session(&root_dir);
 
     // Build desktop
-    let mut desktop = build_desktop(&root_dir, settings.git_keys.clone());
+    let git_keys = settings.git_keys.clone();
+    let mut app_state = AppState::with_settings(root_dir.clone(), settings);
+    let mut desktop = build_desktop(&root_dir, git_keys);
 
-    // Restore session state (layout, editor tabs, unfolded dirs)
-    if let Some(ref state) = saved_session {
-        session::restore_session(&mut desktop, state);
-        session::restore_tabs(&mut desktop, state, &root_dir, &settings.editor_defaults);
+    // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
+    if let Some(ref sess) = saved_session {
+        session::restore_session(&mut desktop, sess);
+        session::restore_tabs(&mut desktop, sess, &root_dir, &app_state.settings.editor_defaults);
+        session::restore_kiro_tabs(
+            &mut desktop,
+            &sess.kiro_sessions,
+            &root_dir,
+            &mut app_state.kiro_registry,
+        );
     }
 
     // Build status bar
     let status = build_status_bar(
         Box::new(AppCompleter::new(root_dir.clone())),
-        settings.clock_interval,
+        app_state.settings.clock_interval,
         root_dir.clone(),
-        &settings.status_keys,
+        &app_state.settings.status_keys,
     );
 
     // Build program
     let mut program = Program::new(Box::new(status), Box::new(desktop));
-
-    // App state
-    let mut state = AppState::with_settings(root_dir.clone(), settings);
 
     // Run
     let color_mode = detect_color_mode();
     let mut backend = CrosstermBackend::new(color_mode);
 
     program.run(&mut backend, |ctx| {
-        handle_command(ctx, &mut state);
+        handle_command(ctx, &mut app_state);
     });
 
     // Save session on quit
@@ -132,7 +138,7 @@ fn main() -> anyhow::Result<()> {
         .as_any_mut()
         .and_then(|a| a.downcast_mut::<kairn::layout_group::LayoutGroup>())
     {
-        session::save_session(desktop, &root_dir);
+        session::save_session(desktop, &root_dir, &app_state.kiro_registry);
     }
 
     // Clean up MCP socket

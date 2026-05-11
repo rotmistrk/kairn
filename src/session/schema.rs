@@ -15,6 +15,8 @@ pub struct SessionState {
     pub active_tab: usize,
     pub editor_tabs: Vec<EditorTabState>,
     pub unfolded_dirs: Vec<String>,
+    #[serde(default)]
+    pub kiro_sessions: Vec<KiroSessionState>,
 }
 
 /// One editor tab's persisted state.
@@ -23,6 +25,13 @@ pub struct EditorTabState {
     pub path: String,
     pub line: u32,
     pub col: u32,
+}
+
+/// Persisted kiro tab session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KiroSessionState {
+    pub name: String,
+    pub session_id: Option<String>,
 }
 
 impl Default for SessionState {
@@ -35,6 +44,7 @@ impl Default for SessionState {
             active_tab: 0,
             editor_tabs: Vec::new(),
             unfolded_dirs: Vec::new(),
+            kiro_sessions: Vec::new(),
         }
     }
 }

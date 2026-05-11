@@ -46,8 +46,12 @@ impl LayoutGroup {
             }
             CM_TAB_CLOSE => {
                 let slot = self.focused_slot();
+                let title = self.panel(slot).active_title().map(String::from);
                 self.panel_mut(slot).close_active();
-                queue.put_command(CM_FILE_CLOSED, None);
+                queue.put_command(
+                    CM_FILE_CLOSED,
+                    title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
+                );
                 HandleResult::Consumed
             }
             CM_TAB_DROPDOWN => {

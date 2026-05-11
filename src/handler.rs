@@ -11,8 +11,9 @@ use std::sync::{Arc, Mutex};
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
-use crate::broker::{FileBroker, OpenResult};
+use crate::broker::FileBroker;
 use crate::commands::*;
+use crate::kiro_registry::KiroTabRegistry;
 use crate::layout_group::LayoutGroup;
 use crate::layout_group::SlotId;
 use crate::lsp::registry::LspRegistry;
@@ -36,6 +37,8 @@ pub struct AppState {
     pub cursor_pos: (u32, u32),
     /// Shared message ring buffer.
     pub messages: Arc<Mutex<MessageRing>>,
+    /// Registry of active kiro tabs for session persistence.
+    pub kiro_registry: KiroTabRegistry,
 }
 
 impl AppState {
@@ -50,6 +53,7 @@ impl AppState {
             build_error_idx: 0,
             cursor_pos: (0, 0),
             messages: Arc::new(Mutex::new(MessageRing::new())),
+            kiro_registry: KiroTabRegistry::default(),
         }
     }
 
@@ -64,6 +68,7 @@ impl AppState {
             build_error_idx: 0,
             cursor_pos: (0, 0),
             messages: Arc::new(Mutex::new(MessageRing::new())),
+            kiro_registry: KiroTabRegistry::default(),
         }
     }
 }
@@ -89,8 +94,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::lsp::handler::poll_lsp(state, ctx.queue);
 
     match ctx.command {
-        CM_OPEN_FILE => handle_open_file(ctx, state, false),
-        CM_OPEN_FILE_FOCUS => handle_open_file(ctx, state, true),
+        CM_OPEN_FILE => crate::handler_open::handle_open_file(ctx, state, false),
+        CM_OPEN_FILE_FOCUS => crate::handler_open::handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),
         CM_SHOW_HELP => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -126,6 +131,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(path) = boxed.downcast_ref::<String>() {
                     state.broker.close(path);
+                    state.kiro_registry.remove(path);
                 }
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -160,80 +166,6 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         _ => {}
-    }
-}
-
-fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
-        return;
-    };
-    let path = &req.path;
-    let path_str = path.to_string_lossy().to_string();
-
-    match state.broker.open(&path_str, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => {
-            if focus_center {
-                if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                    desktop.focus_slot(SlotId::Center);
-                }
-            }
-            if req.diff {
-                ctx.queue.put_command(CM_DIFF, Some(Box::new(String::new())));
-            }
-        }
-        OpenResult::Opened => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.close_tab_by_title(SlotId::Center, "Welcome");
-                let defaults = &state.settings.editor_defaults;
-                let mut editor =
-                    EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
-                editor.set_root_dir(state.root_dir.clone());
-                if let (Some(line), Some(col)) = (req.line, req.col) {
-                    editor.goto(line, col);
-                }
-                if req.diff {
-                    editor.toggle_diff("");
-                }
-                let title = path
-                    .strip_prefix(&state.root_dir)
-                    .unwrap_or(path)
-                    .to_string_lossy()
-                    .to_string();
-                desktop.insert_tab(SlotId::Center, &title, Box::new(editor));
-                if focus_center {
-                    desktop.focus_slot(SlotId::Center);
-                }
-                ctx.queue.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
-                );
-            }
-        }
-    }
-}
-
-pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
-    let path = state.root_dir.join(arg);
-    let path_str = path.to_string_lossy().to_string();
-    match state.broker.open(&path_str, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => {}
-        OpenResult::Opened => {
-            let defaults = &state.settings.editor_defaults;
-            let mut editor =
-                EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
-            editor.set_root_dir(state.root_dir.clone());
-            let title = path
-                .strip_prefix(&state.root_dir)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .to_string();
-            if let Some(d) = downcast_desktop(desktop) {
-                d.insert_tab(SlotId::Center, title, Box::new(editor));
-            }
-        }
     }
 }
 

@@ -32,12 +32,22 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         "quit" => ctx.queue.put_command(CM_QUIT, None),
-        "edit" | "e" if !arg.is_empty() => crate::handler::handle_edit_file(ctx.desktop, state, arg),
+        "edit" | "e" if !arg.is_empty() => crate::handler_open::handle_edit_file(ctx.desktop, state, arg),
         "save" => ctx.queue.put_command(CM_SAVE, None),
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
         "tab-rename" if !arg.is_empty() => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let slot = desktop.focused_slot();
+                let old_title = desktop.active_tab_title(slot).map(String::from);
                 desktop.rename_focused_tab(arg);
+                if let Some(old) = old_title {
+                    if state.kiro_registry.contains(&old) {
+                        let new_title = desktop.active_tab_title(slot).map(String::from);
+                        if let Some(new) = new_title {
+                            state.kiro_registry.rename(&old, &new);
+                        }
+                    }
+                }
             }
         }
         "lsp-rename" if !arg.is_empty() => {
@@ -64,10 +74,11 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 } else if !arg.is_empty() {
                     Some(arg)
                 } else {
-                    None
+                    Some("kairn")
                 };
                 let term = new_kiro_terminal(agent_arg, &state.root_dir);
                 desktop.insert_tab(SlotId::Right, &name, term);
+                state.kiro_registry.register(&name);
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(txv_core::message::Message::info(
