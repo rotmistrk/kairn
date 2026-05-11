@@ -185,25 +185,12 @@ impl LayoutGroup {
     }
 
     pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
-        let panel = self.panel(slot);
-        for n in 0..10 {
-            let candidate = format!("{prefix}:{n}");
-            if !panel.has_tab_starting_with(&candidate) {
-                return candidate;
-            }
-        }
-        format!("{prefix}:0")
+        self.panel(slot).next_tab_name(prefix)
     }
 
     pub fn rename_focused_tab(&mut self, new_user_part: &str) {
         let focused = self.group.focused;
-        let panel = self.panel_mut(Self::slot_from(focused));
-        if let Some(title) = panel.active_title().map(|s| s.to_string()) {
-            if let Some(colon) = title.find(':') {
-                let prefix = &title[..=colon];
-                panel.rename_active(format!("{prefix}{new_user_part}"));
-            }
-        }
+        self.panel_mut(Self::slot_from(focused)).rename_user_part(new_user_part);
     }
 
     fn recompute_bounds(&mut self) {

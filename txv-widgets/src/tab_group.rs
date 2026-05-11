@@ -156,6 +156,27 @@ impl TabGroup {
         }
     }
 
+    /// Generate next available name like "Shell:0", "Shell:1", etc.
+    pub fn next_tab_name(&self, prefix: &str) -> String {
+        for n in 0..10 {
+            let candidate = format!("{prefix}:{n}");
+            if !self.has_tab_starting_with(&candidate) {
+                return candidate;
+            }
+        }
+        format!("{prefix}:0")
+    }
+
+    /// Rename active tab, keeping the "prefix:" part and replacing the user part.
+    pub fn rename_user_part(&mut self, new_user_part: &str) {
+        if let Some(title) = self.titles.get(self.group.focused).cloned() {
+            if let Some(colon) = title.find(':') {
+                let prefix = &title[..=colon];
+                self.rename_active(format!("{prefix}{new_user_part}"));
+            }
+        }
+    }
+
     fn touch_lru(&mut self) {
         self.lru_counter += 1;
         if let Some(v) = self.lru.get_mut(self.group.focused) {
