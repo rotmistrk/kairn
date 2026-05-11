@@ -8,12 +8,12 @@ impl LayoutGroup {
     /// Compute and apply layout to all panels.
     pub(super) fn apply_layout(&mut self, bounds: Rect) {
         if let Some(z) = self.zoomed {
-            // Zoomed panel gets full bounds; others keep their existing bounds
             self.group.children[z].set_bounds(bounds);
             return;
         }
         let rects = self.compute_rects(bounds);
         let tall = self.is_tall();
+        self.was_tall = tall;
         for i in 0..PANEL_COUNT {
             let r = if tall && i == SlotId::Right as usize {
                 rects[SlotId::Bottom as usize]
@@ -61,6 +61,8 @@ impl LayoutGroup {
 
     fn fill_top(&self, rects: &mut [Rect; PANEL_COUNT], bounds: Rect, h: u16, tall: bool) {
         let left_has = self.panel(SlotId::Left).tab_count() > 0;
+        let right_has = self.panel(SlotId::Right).tab_count() > 0;
+
         let left_w = if left_has {
             self.left_width.min(bounds.w / 3)
         } else {
@@ -68,12 +70,10 @@ impl LayoutGroup {
         };
         let left_div = u16::from(left_w > 0);
 
-        let right_has = self.panel(SlotId::Right).tab_count() > 0;
         let (right_w, right_div) = if tall || !right_has {
             (0u16, 0u16)
         } else {
-            let rw = self.right_width.min(bounds.w / 3);
-            (rw, 1u16)
+            (self.right_width.min(bounds.w / 2), 1u16)
         };
 
         let center_w = bounds.w.saturating_sub(left_w + left_div + right_w + right_div);

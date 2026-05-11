@@ -58,7 +58,7 @@ impl LayoutGroup {
                 if self.dropdown.is_some() {
                     self.dropdown = None;
                 } else if self.panel(self.focused_slot()).tab_count() > 1 {
-                    self.dropdown_cursor = 0;
+                    self.dropdown_cursor = self.panel(self.focused_slot()).active_index();
                     self.dropdown = Some(self.group.focused);
                 }
                 self.group.view.dirty = true;

@@ -70,6 +70,11 @@ impl TabGroup {
         self.titles.get(self.group.focused).map(|t| t.as_str())
     }
 
+    /// Index of the currently active tab.
+    pub fn active_index(&self) -> usize {
+        self.group.focused
+    }
+
     pub fn tab_title(&self, index: usize) -> Option<&str> {
         self.titles.get(index).map(|t| t.as_str())
     }

@@ -26,7 +26,9 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
     match cmd {
         "help" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Center, "Help", Box::new(HelpView::new()));
+                if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
+                    desktop.insert_tab(SlotId::Center, "Help", Box::new(HelpView::new()));
+                }
             }
         }
         "quit" => ctx.queue.put_command(CM_QUIT, None),

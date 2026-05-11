@@ -6,6 +6,7 @@
 use txv_core::prelude::*;
 use txv_widgets::TabGroup;
 
+mod chrome;
 mod dispatch;
 mod layout;
 mod view_impl;
@@ -20,6 +21,7 @@ pub enum SlotId {
 }
 
 pub(crate) const WIDE_THRESHOLD: u16 = 200;
+pub(crate) const TALL_THRESHOLD: u16 = 176;
 pub(crate) const PANEL_COUNT: usize = 4;
 
 /// Layout mode for the desktop.
@@ -41,6 +43,8 @@ pub struct LayoutGroup {
     pub bottom_height: u16,
     pub dropdown: Option<usize>,
     pub dropdown_cursor: usize,
+    /// Hysteresis: last known tall/wide state for Auto mode.
+    was_tall: bool,
 }
 
 impl LayoutGroup {
@@ -59,11 +63,12 @@ impl LayoutGroup {
             zoomed: None,
             layout_mode: LayoutMode::Auto,
             left_width: 24,
-            right_width: 40,
+            right_width: 60,
             right_height: 10,
             bottom_height: 10,
             dropdown: None,
             dropdown_cursor: 0,
+            was_tall: true,
         }
     }
 
@@ -166,7 +171,16 @@ impl LayoutGroup {
         match self.layout_mode {
             LayoutMode::Wide => false,
             LayoutMode::Tall => true,
-            LayoutMode::Auto => self.group.view.bounds.w < WIDE_THRESHOLD,
+            LayoutMode::Auto => {
+                let w = self.group.view.bounds.w;
+                if w >= WIDE_THRESHOLD {
+                    false
+                } else if w <= TALL_THRESHOLD {
+                    true
+                } else {
+                    self.was_tall // hysteresis: stay in current state
+                }
+            }
         }
     }
 

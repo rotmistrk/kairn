@@ -76,8 +76,10 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),
         CM_SHOW_HELP => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let help = HelpView::new();
-                desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
+                    let help = HelpView::new();
+                    desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                }
             }
         }
         CM_SHOW_MESSAGES => {
