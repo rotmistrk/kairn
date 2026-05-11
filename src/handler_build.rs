@@ -70,3 +70,63 @@ fn detect_run_command(root: &std::path::Path) -> String {
         "make run".to_string()
     }
 }
+
+/// Handle M-x test: run full test suite, show in Compile tab.
+pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
+    let cmd = state
+        .settings
+        .test_command
+        .clone()
+        .unwrap_or_else(|| detect_test_command(&state.root_dir));
+    run_test_command(ctx, state, &cmd);
+}
+
+/// Handle M-x test-file: run tests for current file.
+pub fn handle_test_file(ctx: &mut CommandContext, state: &mut AppState) {
+    let file = state.broker.last_opened().unwrap_or("").to_string();
+    let cmd = if state.root_dir.join("Cargo.toml").exists() {
+        format!("cargo test --lib {file}")
+    } else if state.root_dir.join("go.mod").exists() {
+        format!("go test ./{file}")
+    } else {
+        detect_test_command(&state.root_dir)
+    };
+    run_test_command(ctx, state, &cmd);
+}
+
+/// Handle M-x test-at-cursor: run test under cursor.
+pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
+    // Try to detect test function name from cursor context
+    let cmd = if state.root_dir.join("Cargo.toml").exists() {
+        "cargo test".to_string()
+    } else {
+        detect_test_command(&state.root_dir)
+    };
+    run_test_command(ctx, state, &cmd);
+}
+
+fn run_test_command(ctx: &mut CommandContext, state: &mut AppState, cmd: &str) {
+    let output = build::run_command(cmd, &state.root_dir).unwrap_or_else(|| "Test failed to start".into());
+    let errors = build::parse_errors(&output);
+    state.build_errors = errors;
+    state.build_error_idx = 0;
+
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        desktop.close_tab_by_title(SlotId::Bottom, "Compile");
+        let view = EditorView::from_text(&output);
+        desktop.insert_tab(SlotId::Bottom, "Compile", Box::new(view));
+        desktop.focus_slot(SlotId::Bottom);
+    }
+}
+
+fn detect_test_command(root: &std::path::Path) -> String {
+    if root.join("Cargo.toml").exists() {
+        "cargo test".to_string()
+    } else if root.join("go.mod").exists() {
+        "go test ./...".to_string()
+    } else if root.join("package.json").exists() {
+        "npm test".to_string()
+    } else {
+        "make test".to_string()
+    }
+}
