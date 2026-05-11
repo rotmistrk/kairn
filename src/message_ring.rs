@@ -28,6 +28,13 @@ impl MessageRing {
     }
 
     pub fn push(&mut self, msg: Message) {
+        if let Some(last) = self.entries.back_mut() {
+            if last.level == msg.level && last.origin == msg.origin && last.text == msg.text {
+                last.count += 1;
+                self.generation += 1;
+                return;
+            }
+        }
         if self.entries.len() >= RING_CAPACITY {
             self.entries.pop_front();
         }
@@ -83,5 +90,26 @@ mod tests {
         assert_eq!(ring.generation(), 1);
         ring.push(Message::error("x", "b"));
         assert_eq!(ring.generation(), 2);
+    }
+
+    #[test]
+    fn coalesces_repeated_messages() {
+        let mut ring = MessageRing::new();
+        ring.push(Message::info("git", "Staged: foo.rs"));
+        ring.push(Message::info("git", "Staged: foo.rs"));
+        ring.push(Message::info("git", "Staged: foo.rs"));
+        assert_eq!(ring.len(), 1);
+        assert_eq!(ring.entries()[0].count, 3);
+        assert_eq!(ring.generation(), 3);
+    }
+
+    #[test]
+    fn different_messages_not_coalesced() {
+        let mut ring = MessageRing::new();
+        ring.push(Message::info("git", "Staged: foo.rs"));
+        ring.push(Message::info("git", "Staged: bar.rs"));
+        assert_eq!(ring.len(), 2);
+        assert_eq!(ring.entries()[0].count, 1);
+        assert_eq!(ring.entries()[1].count, 1);
     }
 }

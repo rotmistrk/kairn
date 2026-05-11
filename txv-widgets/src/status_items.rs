@@ -150,7 +150,11 @@ impl ActiveItem for MessageItem {
                 if let Some(boxed) = data.as_ref() {
                     if let Some(msg) = boxed.downcast_ref::<Message>() {
                         if msg.level != MsgLevel::Debug {
-                            self.display = format!("[{}] {}", msg.origin, msg.text);
+                            self.display = if msg.count > 1 {
+                                format!("[{}] {} (×{})", msg.origin, msg.text, msg.count)
+                            } else {
+                                format!("[{}] {}", msg.origin, msg.text)
+                            };
                             self.style = Style {
                                 fg: match msg.level {
                                     MsgLevel::Error => Color::Ansi(9),

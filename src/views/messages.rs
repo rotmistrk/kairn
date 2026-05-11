@@ -55,11 +55,17 @@ impl View for MessagesView {
                 let mins = (elapsed / 60) % 60;
                 let secs = elapsed % 60;
                 let hrs = (elapsed / 3600) % 24;
+                let suffix = if msg.count > 1 {
+                    format!(" (×{})", msg.count)
+                } else {
+                    String::new()
+                };
                 let line = format!(
-                    "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}",
+                    "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
                     msg.level.label(),
                     msg.origin,
                     msg.text,
+                    suffix,
                 );
                 let style = match msg.level {
                     MsgLevel::Error => Style {

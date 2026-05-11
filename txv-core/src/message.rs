@@ -29,6 +29,7 @@ pub struct Message {
     pub origin: &'static str,
     pub text: String,
     pub timestamp: Instant,
+    pub count: u32,
 }
 
 impl Message {
@@ -38,6 +39,7 @@ impl Message {
             origin,
             text: text.into(),
             timestamp: Instant::now(),
+            count: 1,
         }
     }
 
