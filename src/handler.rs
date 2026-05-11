@@ -180,6 +180,9 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
                     desktop.focus_slot(SlotId::Center);
                 }
             }
+            if req.diff {
+                ctx.queue.put_command(CM_DIFF, Some(Box::new(String::new())));
+            }
         }
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -190,6 +193,9 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
                 editor.set_root_dir(state.root_dir.clone());
                 if let (Some(line), Some(col)) = (req.line, req.col) {
                     editor.goto(line, col);
+                }
+                if req.diff {
+                    editor.toggle_diff("");
                 }
                 let title = path
                     .strip_prefix(&state.root_dir)

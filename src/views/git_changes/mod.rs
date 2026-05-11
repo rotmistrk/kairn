@@ -104,7 +104,7 @@ impl View for GitChangesView {
                                 } else {
                                     CM_OPEN_FILE
                                 };
-                                let req = OpenFileRequest::new(path.to_path_buf());
+                                let req = OpenFileRequest::with_diff(path.to_path_buf());
                                 queue.put_command(cmd, Some(Box::new(req)));
                                 continue;
                             }

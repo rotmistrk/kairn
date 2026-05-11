@@ -49,6 +49,7 @@ impl PtySession {
         let mut cmd_builder = CommandBuilder::new(cmd);
         cmd_builder.args(args);
         cmd_builder.cwd(cwd);
+        cmd_builder.env("TERM", "xterm-256color");
         pair.slave
             .spawn_command(cmd_builder)
             .map_err(|e| std::io::Error::other(e.to_string()))?;
@@ -161,5 +162,28 @@ mod tests {
         let session = PtySession::spawn("cat", &[], &cwd, 80, 24).expect("spawn failed");
         session.resize(120, 40);
         session.resize(40, 10);
+    }
+
+    #[test]
+    fn term_is_xterm_256color() {
+        let cwd = std::env::current_dir().unwrap_or_else(|_| "/tmp".into());
+        let session = PtySession::spawn("sh", &["-c", "echo TERM=$TERM"], &cwd, 80, 24).expect("spawn failed");
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut output = Vec::new();
+        while Instant::now() < deadline {
+            if let Some(data) = session.poll() {
+                output.extend(data);
+                if String::from_utf8_lossy(&output).contains("TERM=") {
+                    break;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let text = String::from_utf8_lossy(&output);
+        assert!(
+            text.contains("TERM=xterm-256color"),
+            "expected TERM=xterm-256color in output: {:?}",
+            text
+        );
     }
 }

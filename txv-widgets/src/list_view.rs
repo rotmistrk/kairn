@@ -47,12 +47,20 @@ impl<D: ListData> View for ListView<D> {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let selected = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
+        let selected = if self.state.focused {
+            Style {
+                bg: Color::Ansi(4),
+                attrs: Attrs {
+                    underline: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            }
+        } else {
+            Style {
+                bg: Color::Ansi(8),
+                ..Style::default()
+            }
         };
         for row in 0..b.h as usize {
             let idx = self.scroll.offset + row;

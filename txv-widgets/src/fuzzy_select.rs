@@ -86,8 +86,9 @@ impl View for FuzzySelect {
         }
         let normal = Style::default();
         let selected_style = Style {
+            bg: Color::Ansi(4),
             attrs: Attrs {
-                reverse: true,
+                underline: true,
                 ..Attrs::default()
             },
             ..Style::default()

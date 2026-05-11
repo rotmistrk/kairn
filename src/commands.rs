@@ -13,6 +13,8 @@ pub struct OpenFileRequest {
     pub line: Option<u32>,
     /// 0-indexed column to jump to after opening.
     pub col: Option<u32>,
+    /// Open in diff mode (vs HEAD).
+    pub diff: bool,
 }
 
 impl OpenFileRequest {
@@ -21,6 +23,7 @@ impl OpenFileRequest {
             path,
             line: None,
             col: None,
+            diff: false,
         }
     }
 
@@ -29,6 +32,16 @@ impl OpenFileRequest {
             path,
             line: Some(line),
             col: Some(col),
+            diff: false,
+        }
+    }
+
+    pub fn with_diff(path: PathBuf) -> Self {
+        Self {
+            path,
+            line: None,
+            col: None,
+            diff: true,
         }
     }
 }

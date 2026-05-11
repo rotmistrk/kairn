@@ -1400,6 +1400,7 @@ name = "txv-render"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "log",
  "txv-core",
  "unicode-width",
  "vte",

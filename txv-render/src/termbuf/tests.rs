@@ -109,3 +109,60 @@ fn swallow_real_prompt_esc_k() {
     let row: String = tb.cells[0].iter().take(10).map(|c| c.ch).collect();
     assert_eq!(row.trim(), "core:");
 }
+
+#[test]
+fn rprompt_no_spill_with_tmux_sequences() {
+    let mut tb = TermBuf::new(60, 24);
+
+    // precmd: window title (OSC 0)
+    tb.process(b"\x1b]0;user@host [OK]~/kairn/f4>\x07");
+    // precmd: mux title (ESC k ... ESC \)
+    tb.process(b"\x1bkkairn/f4\x1b\\");
+    // precmd: pane title (OSC 2 ... ST)
+    tb.process(b"\x1b]2;OK kairn/f4>\x1b\\");
+
+    // Cursor should not have moved
+    assert_eq!(tb.cursor(), (0, 0));
+
+    // PS1 rendering: zero-width (SGR + tmux title) then visible text
+    tb.process(b"\r\x1b[00;32m\x1bkkairn/f4\x1b\\");
+    assert_eq!(tb.cursor(), (0, 0), "zero-width sequences should not move cursor");
+
+    // Visible prompt: "core:OK ~/k/f4> " = 16 chars
+    tb.process(b"core\x1b[01;34m:\x1b[00;32mOK\x1b[01;34m ~/k/f4>\x1b[0m\x1b[1m ");
+    assert_eq!(tb.cursor().0, 16);
+
+    // RPROMPT at column 54 (60 - 6): save, move, print, restore
+    tb.process(b"\x1b7\x1b[55G");
+    assert_eq!(tb.cursor().0, 54);
+    tb.process(b"master");
+    // Should end at column 60 (= cols), no wrap
+    assert_eq!(tb.cursor(), (60, 0));
+    // Row 1 should be empty
+    let row1: String = tb.cells[1].iter().take(10).map(|c| c.ch).collect();
+    assert_eq!(row1.trim(), "");
+}
+
+#[test]
+fn rprompt_spills_when_columns_exceeds_actual_width() {
+    // Simulates: shell thinks COLUMNS=80 (initial PTY size)
+    // but terminal was resized to 60 columns.
+    // Shell positions RPROMPT at col 74 (80-6), but terminal only has 60 cols.
+    let mut tb = TermBuf::new(60, 24);
+
+    // Shell renders prompt thinking COLUMNS=80
+    tb.process(b"\rcore:OK ~/k/f4> ");
+    assert_eq!(tb.cursor().0, 16);
+
+    // RPROMPT at column 74 (80 - 6): save, move to col 75 (1-indexed)
+    tb.process(b"\x1b7\x1b[75G");
+    // TermBuf clamps to cols-1 = 59
+    assert_eq!(tb.cursor().0, 59);
+    tb.process(b"master");
+    // "m" at col 59, then wraps: "aster" on next line
+    // This demonstrates the bug!
+    let row0: String = tb.cells[0].iter().map(|c| c.ch).collect();
+    let row1: String = tb.cells[1].iter().take(10).map(|c| c.ch).collect();
+    assert!(row0.ends_with('m'), "Only 'm' should fit: {:?}", row0.trim_end());
+    assert!(row1.starts_with("aster"), "Rest spills: {:?}", row1.trim_end());
+}

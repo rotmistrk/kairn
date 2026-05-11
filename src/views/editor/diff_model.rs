@@ -32,7 +32,7 @@ pub struct DiffOpts {
 
 pub fn parse_diff_args(args: &str) -> DiffOpts {
     let mut base = "HEAD".to_string();
-    let mut context = usize::MAX;
+    let mut context = 2;
     let mut ignore_ws = false;
     for arg in args.split_whitespace() {
         if arg == "-w" {

@@ -59,6 +59,7 @@ impl PtyTerminal {
             return;
         };
         if let Some(data) = session.poll() {
+            log::info!("PTY data: {} bytes", data.len());
             self.termbuf.process(&data);
             self.state.dirty = true;
         } else if !session.is_alive() {

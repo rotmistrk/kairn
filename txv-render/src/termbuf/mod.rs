@@ -77,11 +77,9 @@ impl TermBuf {
                     if byte == b'\\' {
                         self.swallow_until_st = false;
                     }
-                    // ESC followed by non-backslash: still swallowing
                 } else if byte == 0x1b {
                     self.swallow_saw_esc = true;
                 }
-                // BEL also terminates string commands
                 if byte == 0x07 {
                     self.swallow_until_st = false;
                 }

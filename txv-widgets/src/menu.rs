@@ -48,8 +48,9 @@ impl View for Menu {
         }
         let normal = Style::default();
         let selected = Style {
+            bg: Color::Ansi(4),
             attrs: Attrs {
-                reverse: true,
+                underline: true,
                 ..Attrs::default()
             },
             ..Style::default()

@@ -33,20 +33,25 @@ impl EditorView {
             fg: Color::Ansi(1),
             ..Style::default()
         };
-        let context_style = Style {
+        let context_style = Style::default();
+        let fold_style = Style {
             fg: Color::Ansi(8),
             ..Style::default()
         };
-        let fold_style = Style {
-            fg: Color::Ansi(5),
-            ..Style::default()
-        };
-        let cursor_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
+        let cursor_style = if self.state.focused {
+            Style {
+                bg: Color::Ansi(4),
+                attrs: Attrs {
+                    underline: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            }
+        } else {
+            Style {
+                bg: Color::Ansi(8),
+                ..Style::default()
+            }
         };
 
         let height = b.h as usize;

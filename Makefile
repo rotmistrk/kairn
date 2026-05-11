@@ -3,8 +3,14 @@ LOCAL_PREFIX ?= $(HOME)/.local
 DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle/examples
 TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 
+# ── IMPORTANT ───────────────────────────────────────────
+# NEVER use `cargo install`. Use `make install-local` only.
+# All binaries go to ~/.local/bin. The purge-cargo-bin target
+# removes any stale copies from ~/.cargo/bin on every install.
+# ─────────────────────────────────────────────────────────
+
 .PHONY: all check lint clippy test fmt clean build release \
-        install-local uninstall-local \
+        install-local uninstall-local purge-cargo-bin \
         install-rusticle install-rusticle-tk install-kairn \
         install-demos verify
 
@@ -18,13 +24,19 @@ verify: fmt clippy test
 
 # ── Build ───────────────────────────────────────────────
 
+BINARY := target/release/kairn
+SOURCES := $(shell find src txv-core/src txv-render/src txv-widgets/src -name '*.rs') \
+           Cargo.toml txv-core/Cargo.toml txv-render/Cargo.toml txv-widgets/Cargo.toml
+
 check:
 	cargo check --workspace
 
 build:
 	cargo build --workspace
 
-release:
+release: $(BINARY)
+
+$(BINARY): $(SOURCES)
 	cargo build --workspace --release
 
 # ── Quality ─────────────────────────────────────────────
@@ -42,22 +54,27 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: install-rusticle install-rusticle-tk install-kairn install-demos
+install-local: purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
 	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
 
-install-rusticle: release
+# Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
+purge-cargo-bin:
+	@rm -f $(HOME)/.cargo/bin/kairn $(HOME)/.cargo/bin/rusticle $(HOME)/.cargo/bin/rusticle-tk
+	@echo "  🧹 Removed stale binaries from ~/.cargo/bin (if any)"
+
+install-rusticle: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
 	install -m 755 target/release/rusticle $(LOCAL_PREFIX)/bin/rusticle
 	@echo "  ✅ rusticle → $(LOCAL_PREFIX)/bin/rusticle"
 
-install-rusticle-tk: release
+install-rusticle-tk: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
 	install -m 755 target/release/rusticle-tk $(LOCAL_PREFIX)/bin/rusticle-tk
 	@echo "  ✅ rusticle-tk → $(LOCAL_PREFIX)/bin/rusticle-tk"
 
-install-kairn: release
+install-kairn: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
-	install -m 755 target/release/kairn $(LOCAL_PREFIX)/bin/kairn
+	install -m 755 $(BINARY) $(LOCAL_PREFIX)/bin/kairn
 	@echo "  ✅ kairn → $(LOCAL_PREFIX)/bin/kairn"
 
 install-demos:

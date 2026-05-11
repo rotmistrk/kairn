@@ -6,7 +6,7 @@ use crate::views::editor::EditorView;
 
 impl EditorView {
     /// Toggle diff mode. If already in diff, exit. Otherwise compute and enter.
-    pub(super) fn toggle_diff(&mut self, args: &str) {
+    pub fn toggle_diff(&mut self, args: &str) {
         if self.diff_state.is_some() && args.is_empty() {
             self.exit_diff();
             return;

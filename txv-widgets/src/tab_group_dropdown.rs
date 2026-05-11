@@ -83,10 +83,10 @@ impl TabGroup {
             ..Style::default()
         };
         let cursor_style = Style {
-            fg: Color::Ansi(14),
-            bg: Color::Ansi(0),
+            fg: Color::Ansi(15),
+            bg: Color::Ansi(4),
             attrs: Attrs {
-                bold: true,
+                underline: true,
                 ..Attrs::default()
             },
         };
