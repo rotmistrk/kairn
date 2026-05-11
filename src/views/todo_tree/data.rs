@@ -91,6 +91,19 @@ impl TodoTreeData {
             .iter()
             .position(|&nid| self.nodes.get(nid).is_some_and(|n| n.path == *path))
     }
+
+    /// Update the title of the item at the given visible row.
+    pub fn update_title(&mut self, row: usize, title: String) {
+        let id = self.visible_id(row);
+        if let Some(node) = self.nodes.get(id) {
+            let path = node.path.clone();
+            if let Some(item) = model::get_item_mut(&mut self.file, &path) {
+                item.title = title;
+            }
+        }
+        self.save();
+        self.rebuild_flat();
+    }
 }
 
 impl TreeData for TodoTreeData {
