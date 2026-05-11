@@ -7,8 +7,9 @@ use txv_core::event::{KeyCode, KeyMod};
 use txv_core::program::Program;
 use txv_core::run::MockBackend;
 
+use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
-use kairn::handler::{build_desktop, handle_command, AppState};
+use kairn::handler::{handle_command, AppState};
 use kairn::status::build_status_bar;
 
 /// Test harness that mirrors the real app exactly.

@@ -5,7 +5,7 @@
 //! When the App already knows what to do, it does it immediately.
 //! Same pattern as TXV's Program::handle.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
@@ -13,18 +13,19 @@ use txv_core::program::CommandContext;
 use crate::broker::{FileBroker, OpenResult};
 use crate::commands::*;
 use crate::desktop::{SlotId, SlottedDesktop};
+use crate::lsp::registry::LspRegistry;
 use crate::settings::AppSettings;
 use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
-use crate::views::tree::FileTreeView;
 
 /// Application state shared across command handler invocations.
 pub struct AppState {
     pub broker: FileBroker,
     pub root_dir: PathBuf,
     pub settings: AppSettings,
+    pub lsp: LspRegistry,
 }
 
 impl AppState {
@@ -33,6 +34,7 @@ impl AppState {
             broker: FileBroker::new(),
             root_dir,
             settings: AppSettings::default(),
+            lsp: LspRegistry::new(),
         }
     }
 
@@ -41,6 +43,7 @@ impl AppState {
             broker: FileBroker::new(),
             root_dir,
             settings,
+            lsp: LspRegistry::new(),
         }
     }
 }
@@ -48,6 +51,11 @@ impl AppState {
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
 pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
+    // LSP: send didOpen on file open
+    crate::lsp::handler::handle_lsp_command(ctx, state);
+    // LSP: poll servers for notifications
+    crate::lsp::handler::poll_lsp(state, ctx.queue);
+
     match ctx.command {
         CM_OPEN_FILE => handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => handle_open_file(ctx, state, true),
@@ -253,15 +261,3 @@ fn handle_shell_output(ctx: &mut CommandContext) {
 }
 
 use crate::views::welcome::WelcomeView;
-
-/// Build the standard kairn desktop with tree and terminal.
-pub fn build_desktop(root_dir: &Path) -> SlottedDesktop {
-    let mut desktop = SlottedDesktop::new();
-    let tree = FileTreeView::new(root_dir.to_path_buf());
-    desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
-    let welcome = WelcomeView::new();
-    desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
-    let term = new_shell_terminal();
-    desktop.insert_tab(SlotId::Right, "Shell:0", term);
-    desktop
-}

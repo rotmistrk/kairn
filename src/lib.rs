@@ -4,6 +4,7 @@
 
 pub mod broker;
 pub mod buffer;
+pub mod build_desktop;
 pub mod clipboard;
 pub mod commands;
 pub mod completer;

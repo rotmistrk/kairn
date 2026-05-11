@@ -7,9 +7,10 @@ use txv_core::program::Program;
 use txv_render::backend::CrosstermBackend;
 use txv_render::color::detect_color_mode;
 
+use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
-use kairn::handler::{build_desktop, handle_command, AppState};
+use kairn::handler::{handle_command, AppState};
 use kairn::status::build_status_bar;
 
 #[derive(Parser)]
