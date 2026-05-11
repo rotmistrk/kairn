@@ -17,6 +17,7 @@ A TUI IDE oriented around [Kiro](https://kiro.dev) AI. Named after *cairn* — s
 - **Main panel modes**: File → Diff → Log → Blame (sticky, cycle with `Ctrl-Shift-↑/↓`)
 - **Vim-style selection**: `v` stream, `V` line, `Ctrl-V` block → send to kiro/shell
 - **Git integration**: diff, commit log, blame, file status colors, commit graph
+- **Git panel**: stage/unstage/untrack/commit from the "Git" tab (`s`/`u`/`x`/`c`)
 - **Fuzzy file search** (`Ctrl-P`) via nucleo
 - **Template macros**: `@file`, `@name`, `@dir`, `@line` expand in terminal input
 - **Two-chord key sequences**: Emacs-style `Ctrl-X` prefix bindings (status bar shows pending chord)
@@ -78,6 +79,7 @@ Some bindings use a two-chord sequence: press the prefix (e.g. `Ctrl-X`), then t
 | `Ctrl-Enter` | Expand @macros in terminal |
 | `/` | Search in main panel |
 | `n`/`N` | Next/prev search match |
+| `Ctrl-.` | Toggle hidden (dot) files in tree |
 | `v`/`V`/`Ctrl-V` | Visual select (stream/line/block) |
 | `Enter` | Send selection to terminal |
 | `PgUp`/`PgDn` | Scroll back in terminal |

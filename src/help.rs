@@ -32,6 +32,10 @@ pub fn help_text() -> String {
   save            Save current file
   close           Close current tab
   shell           New shell tab
+  git-stage <p>   Stage file at path
+  git-unstage <p> Unstage file at path
+  git-untrack <p> Untrack file at path
+  git-commit <m>  Commit with message
   Tab             Complete command / file path
 
 ─── File Tree (left slot) ────────────────────────────
@@ -39,6 +43,22 @@ pub fn help_text() -> String {
   k / Up          Move cursor up
   Enter           Open file / expand directory
   h / Left        Collapse directory
+  Ctrl-.          Toggle hidden (dot) files
+
+─── Git Panel (left slot, \"Git\" tab) ─────────────────
+  j / Down        Move cursor down
+  k / Up          Move cursor up
+  Enter           Open file (keep focus in tree)
+  Right           Open file (focus editor)
+  s               Stage file
+  u               Unstage file
+  x               Untrack file
+  c               Commit (opens prompt: type message, Enter)
+
+─── Help / TextArea ──────────────────────────────────
+  /               Search (type query, Enter to confirm)
+  n / N           Next / previous match
+  Esc             Cancel search input
 
 ─── Editor (center slot) — Normal Mode ───────────────
   h/j/k/l         Move left/down/up/right
