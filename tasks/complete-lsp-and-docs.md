@@ -95,3 +95,35 @@ Brief overview of features, installation, key bindings reference.
 - No unwrap/expect/panic
 - ALL existing tests must pass
 - Add tests for completion popup and Ctrl+key handling
+
+## MANDATORY: Scenario Tests for LSP
+
+Every LSP feature MUST have a scenario test using a mock LSP server.
+No feature is "done" without a passing test.
+
+### Required Tests
+
+1. **Server start**: open .rs file → verify rust-analyzer spawns (or mock)
+2. **Server fail**: configure nonexistent server → verify error in messages
+3. **gd (goto def)**: mock response with location → verify file opens at line
+4. **gr (find refs)**: mock response with locations → verify results shown
+5. **K (hover)**: mock response with text → verify displayed
+6. **Ctrl-N (completion)**: mock response with items → verify popup
+7. **didChange**: edit file → verify didChange sent to mock server
+8. **Diagnostics**: mock publishDiagnostics → verify underline rendered
+9. **Server crash**: kill mock server → verify graceful degradation, error in messages
+10. **Disabled after fail**: spawn fails → verify no retry on next file open
+
+### Mock Server Pattern
+
+Create a simple mock LSP server (a script or binary) that:
+- Reads JSON-RPC from stdin
+- Responds with canned responses
+- Can be configured per test
+
+Or: use the existing `cat` trick from client.rs tests but with proper JSON-RPC framing.
+
+### Exit Criteria
+
+ALL 10 tests above MUST pass. If any LSP feature cannot be tested,
+it is NOT done.
