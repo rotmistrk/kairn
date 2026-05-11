@@ -117,47 +117,6 @@ pub struct ServerCapabilities {
     pub references: bool,
 }
 
-/// Send `textDocument/definition` request. Returns request id.
-pub fn goto_definition(client: &mut LspClient, uri: &str, line: u32, character: u32) -> u64 {
-    let params = json!({
-        "textDocument": { "uri": uri },
-        "position": { "line": line, "character": character }
-    });
-    client.send_request("textDocument/definition", params)
-}
-
-/// A location result from definition/references responses.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Location {
-    pub uri: String,
-    pub line: u32,
-    pub character: u32,
-}
-
-/// Parse a definition/references response into locations.
-pub fn parse_locations(result: &Value) -> Vec<Location> {
-    if let Some(obj) = result.as_object() {
-        // Single Location object
-        if let Some(loc) = parse_one_location(result) {
-            return vec![loc];
-        }
-        let _ = obj;
-    }
-    if let Some(arr) = result.as_array() {
-        return arr.iter().filter_map(parse_one_location).collect();
-    }
-    Vec::new()
-}
-
-fn parse_one_location(val: &Value) -> Option<Location> {
-    let uri = val.get("uri")?.as_str()?.to_string();
-    let range = val.get("range")?;
-    let start = range.get("start")?;
-    let line = start.get("line")?.as_u64()? as u32;
-    let character = start.get("character")?.as_u64()? as u32;
-    Some(Location { uri, line, character })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,35 +160,5 @@ mod tests {
         let caps = parse_capabilities(&json!({}));
         assert!(!caps.completion);
         assert!(!caps.hover);
-    }
-
-    #[test]
-    fn parse_single_location() {
-        let result = json!({
-            "uri": "file:///src/lib.rs",
-            "range": {"start": {"line": 10, "character": 4}, "end": {"line": 10, "character": 8}}
-        });
-        let locs = parse_locations(&result);
-        assert_eq!(locs.len(), 1);
-        assert_eq!(locs[0].uri, "file:///src/lib.rs");
-        assert_eq!(locs[0].line, 10);
-        assert_eq!(locs[0].character, 4);
-    }
-
-    #[test]
-    fn parse_location_array() {
-        let result = json!([
-            {"uri": "file:///a.rs", "range": {"start": {"line": 1, "character": 0}, "end": {"line": 1, "character": 5}}},
-            {"uri": "file:///b.rs", "range": {"start": {"line": 2, "character": 3}, "end": {"line": 2, "character": 7}}}
-        ]);
-        let locs = parse_locations(&result);
-        assert_eq!(locs.len(), 2);
-        assert_eq!(locs[1].uri, "file:///b.rs");
-    }
-
-    #[test]
-    fn parse_null_result() {
-        let locs = parse_locations(&json!(null));
-        assert!(locs.is_empty());
     }
 }
