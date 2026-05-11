@@ -26,6 +26,7 @@ pub struct AppState {
     pub root_dir: PathBuf,
     pub settings: AppSettings,
     pub lsp: LspRegistry,
+    pub(crate) lsp_pending: crate::lsp::handler::PendingRequests,
 }
 
 impl AppState {
@@ -35,6 +36,7 @@ impl AppState {
             root_dir,
             settings: AppSettings::default(),
             lsp: LspRegistry::new(),
+            lsp_pending: Default::default(),
         }
     }
 
@@ -44,6 +46,7 @@ impl AppState {
             root_dir,
             settings,
             lsp: LspRegistry::new(),
+            lsp_pending: Default::default(),
         }
     }
 }
