@@ -85,6 +85,13 @@ impl MockBackend {
         self.inject(Event::Paste(text.to_string()));
     }
 
+    /// Resize the mock terminal and inject a Resize event.
+    pub fn set_size(&mut self, width: u16, height: u16) {
+        self.width = width;
+        self.height = height;
+        self.inject(Event::Resize(width, height));
+    }
+
     pub fn surface(&self) -> Option<&Surface> {
         self.last_surface.as_ref()
     }
