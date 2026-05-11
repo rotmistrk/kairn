@@ -43,9 +43,17 @@ impl EditorView {
         self.state.dirty = true;
     }
 
-    /// Handle tick event: autosave + completion trigger.
+    /// Handle tick event: autosave + completion trigger + LSP didChange.
     pub(super) fn handle_tick(&mut self, queue: &mut EventQueue) {
         self.tick_counter += 1;
+        // LSP didChange: 3 ticks after last edit (debounced)
+        if self.last_edit_tick > 0 && self.tick_counter - self.last_edit_tick == 3 {
+            let changed = crate::commands::ContentChanged {
+                path: self.path.clone(),
+                content: self.editor.buffer.content(),
+            };
+            queue.put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
+        }
         // Completion trigger: 5 ticks after last edit in insert mode
         if self.editor.mode == crate::editor::keymap::EditorMode::Insert
             && self.last_edit_tick > 0

@@ -27,6 +27,27 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     protocol::did_open(client, &uri, lang, &text);
 }
 
+pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(changed) = boxed.downcast_ref::<crate::commands::ContentChanged>() else {
+        return;
+    };
+
+    let lang = protocol::language_id(&changed.path);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+        return;
+    };
+
+    let uri = protocol::path_to_uri(&changed.path);
+    let key = changed.path.to_string_lossy().to_string();
+    let version = state.doc_versions.entry(key).or_insert(1);
+    *version += 1;
+    protocol::did_change(client, &uri, *version, &changed.content);
+}
+
 pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;

@@ -53,6 +53,7 @@ pub(crate) struct JdtRequest {
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
     match ctx.command {
         CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
+        CM_CONTENT_CHANGED => send::send_did_change(ctx, state),
         CM_LSP_GOTO_DEF => {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(jdt) = boxed.downcast_ref::<JdtRequest>() {

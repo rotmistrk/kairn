@@ -39,6 +39,8 @@ pub struct AppState {
     pub messages: Arc<Mutex<MessageRing>>,
     /// Registry of active kiro tabs for session persistence.
     pub kiro_registry: KiroTabRegistry,
+    /// LSP document version counters (keyed by file path string).
+    pub doc_versions: std::collections::HashMap<String, i64>,
 }
 
 impl AppState {
@@ -54,6 +56,7 @@ impl AppState {
             cursor_pos: (0, 0),
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
+            doc_versions: std::collections::HashMap::new(),
         }
     }
 
@@ -69,6 +72,7 @@ impl AppState {
             cursor_pos: (0, 0),
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
+            doc_versions: std::collections::HashMap::new(),
         }
     }
 }

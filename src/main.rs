@@ -132,6 +132,9 @@ fn main() -> anyhow::Result<()> {
         handle_command(ctx, &mut app_state);
     });
 
+    // Shutdown all LSP servers gracefully
+    app_state.lsp.shutdown_all();
+
     // Save session on quit
     if let Some(desktop) = program
         .desktop_mut()
