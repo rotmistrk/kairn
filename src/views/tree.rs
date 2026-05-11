@@ -7,7 +7,7 @@ use txv_core::cell::Color;
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
-use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
+use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
 use crate::git_status::{collect_git_status, FileStatus};
 
 pub struct FileTreeView {
@@ -106,7 +106,7 @@ impl View for FileTreeView {
                                 } else {
                                     CM_OPEN_FILE
                                 };
-                                queue.put_command(cmd, Some(Box::new(path)));
+                                queue.put_command(cmd, Some(Box::new(OpenFileRequest::new(path))));
                             }
                             continue;
                         }

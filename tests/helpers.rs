@@ -77,6 +77,36 @@ impl TestHarness {
         );
     }
 
+    /// Directly dispatch a command through the handler (bypasses event loop).
+    pub fn dispatch_command(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
+        use txv_core::program::CommandContext;
+        use txv_core::view::EventQueue;
+        let mut queue = EventQueue::new();
+        let desktop = self.program.desktop_mut();
+        let mut ctx = CommandContext {
+            command: id,
+            data: &data,
+            queue: &mut queue,
+            desktop,
+        };
+        handle_command(&mut ctx, &mut self.state);
+        // Process any follow-up commands
+        let events = queue.drain();
+        for ev in events {
+            if let txv_core::event::Event::Command { id, data } = ev {
+                let desktop = self.program.desktop_mut();
+                let mut q2 = EventQueue::new();
+                let mut ctx2 = CommandContext {
+                    command: id,
+                    data: &data,
+                    queue: &mut q2,
+                    desktop,
+                };
+                handle_command(&mut ctx2, &mut self.state);
+            }
+        }
+    }
+
     pub fn screen_text(&self) -> String {
         self.backend.screen_text()
     }

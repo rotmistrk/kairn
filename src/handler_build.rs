@@ -156,6 +156,7 @@ pub fn handle_prev_error(ctx: &mut CommandContext, state: &mut AppState) {
 fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
     let err = &state.build_errors[state.build_error_idx];
     let path = state.root_dir.join(&err.file);
+    let req = crate::commands::OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
     ctx.queue
-        .put_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(path)));
+        .put_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }

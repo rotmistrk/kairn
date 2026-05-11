@@ -1,7 +1,37 @@
 //! Kairn-specific command identifiers.
 //! Core commands (CM_QUIT, CM_CLOSE, etc.) live in txv_core::commands.
 
+use std::path::PathBuf;
+
 use txv_core::event::CommandId;
+
+/// Data payload for CM_OPEN_FILE / CM_OPEN_FILE_FOCUS commands.
+#[derive(Debug, Clone)]
+pub struct OpenFileRequest {
+    pub path: PathBuf,
+    /// 0-indexed line to jump to after opening.
+    pub line: Option<u32>,
+    /// 0-indexed column to jump to after opening.
+    pub col: Option<u32>,
+}
+
+impl OpenFileRequest {
+    pub fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            line: None,
+            col: None,
+        }
+    }
+
+    pub fn at(path: PathBuf, line: u32, col: u32) -> Self {
+        Self {
+            path,
+            line: Some(line),
+            col: Some(col),
+        }
+    }
+}
 
 // File operations
 pub const CM_OPEN_FILE: CommandId = 100;
@@ -42,6 +72,8 @@ pub const CM_LSP_GOTO_DEF: CommandId = 144;
 pub const CM_LSP_FIND_REFS: CommandId = 145;
 pub const CM_LSP_HOVER: CommandId = 146;
 pub const CM_LSP_COMPLETION: CommandId = 147;
+pub const CM_LSP_RENAME: CommandId = 148;
+pub const CM_CODE_ACTION: CommandId = 149;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;
@@ -60,6 +92,3 @@ pub const CM_PANEL_GROW_V: CommandId = 162;
 pub const CM_PANEL_SHRINK_V: CommandId = 163;
 pub const CM_SUSPEND: CommandId = 164;
 pub const CM_PEEK: CommandId = 165;
-
-pub const CM_LSP_RENAME: CommandId = 170;
-pub const CM_CODE_ACTION: CommandId = 171;

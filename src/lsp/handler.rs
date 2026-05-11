@@ -82,8 +82,8 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
             let locs = requests::parse_locations(result);
             if let Some(loc) = locs.into_iter().next() {
                 let path = uri_to_path(&loc.uri);
-                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(PathBuf::from(&path))));
-                // TODO: jump to line/col after open
+                let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
+                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
             }
         }
         PendingKind::FindReferences => {
@@ -128,9 +128,10 @@ fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(path) = boxed.downcast_ref::<PathBuf>() else {
+    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
         return;
     };
+    let path = &req.path;
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();

@@ -135,9 +135,10 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(path) = boxed.downcast_ref::<PathBuf>() else {
+    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
         return;
     };
+    let path = &req.path;
     let path_str = path.to_string_lossy().to_string();
 
     match state.broker.open(&path_str, SlotId::Center, 0) {
@@ -155,6 +156,11 @@ fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center
                 let mut editor =
                     EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
                 editor.set_root_dir(state.root_dir.clone());
+                if let (Some(line), Some(col)) = (req.line, req.col) {
+                    let max_line = editor.editor.buffer.line_count().saturating_sub(1);
+                    editor.editor.cursor_line = (line as usize).min(max_line);
+                    editor.editor.cursor_col = col as usize;
+                }
                 let title = path
                     .strip_prefix(&state.root_dir)
                     .unwrap_or(path)
