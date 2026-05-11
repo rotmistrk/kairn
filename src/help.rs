@@ -108,6 +108,10 @@ pub fn help_text() -> String {
   :%s/pat/rep/g   Substitute (% = all lines)
   :d              Delete line(s)
   :y              Yank line(s)
+  :diff            Diff vs HEAD (unified, 3 context lines)
+  :diff -U5        Diff with 5 context lines
+  :diff -w         Diff ignoring whitespace
+  :diff --base <r> Diff vs branch/commit/remote
 
 ─── Editor — Insert Mode ─────────────────────────────
   Esc             Return to normal mode

@@ -101,3 +101,4 @@ pub const CM_GIT_COMMIT: CommandId = 173;
 pub const CM_GIT_COMMIT_PROMPT: CommandId = 174;
 /// Activates the command input with pre-filled text.
 pub const CM_COMMAND_PREFILL: CommandId = 175;
+pub const CM_DIFF: CommandId = 176;

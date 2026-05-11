@@ -78,6 +78,7 @@ pub fn build_status_bar(completer: Box<dyn Completer>, clock_interval: u16, root
     // Suspend and peek
     bar.add_active_only(KeyLabelItem::hidden(ctrl('z'), CM_SUSPEND));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('o'), CM_PEEK));
+    bar.add_active_only(KeyLabelItem::hidden(ctrl('d'), CM_DIFF));
     // Command input (exclusive on activation)
     bar.add(
         CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)

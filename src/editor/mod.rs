@@ -37,6 +37,7 @@ pub enum EditorAction {
     OpenFile(String),
     ShellOutput(String),
     SetGlobal(String),
+    Diff(String),
     LspGotoDefinition,
     LspFindReferences,
     LspHover,

@@ -90,6 +90,9 @@ impl EditorView {
             EditorAction::SetGlobal(opt) => {
                 queue.put_command(CM_SET_GLOBAL, Some(Box::new(opt)));
             }
+            EditorAction::Diff(args) => {
+                queue.put_command(crate::commands::CM_DIFF, Some(Box::new(args)));
+            }
             EditorAction::LspGotoDefinition => {
                 let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
                 queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(pos)));

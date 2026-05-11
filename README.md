@@ -67,7 +67,7 @@ Some bindings use a two-chord sequence: press the prefix (e.g. `Ctrl-X`), then t
 | `Ctrl-X N` | New Kiro tab |
 | `Ctrl-X K` | Close tab |
 | `Ctrl-R` | Rename tab |
-| `Ctrl-D` | Diff vs HEAD |
+| `Ctrl-D` | Diff vs HEAD (`:diff` for options) |
 | `Ctrl-G` | Git commit log |
 | `Ctrl-E` | Open in $EDITOR |
 | `Ctrl-L` | Rotate layout |

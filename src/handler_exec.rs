@@ -95,6 +95,9 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "git-commit" if !arg.is_empty() => {
             ctx.queue.put_command(CM_GIT_COMMIT, Some(Box::new(arg.to_string())));
         }
+        "diff" => {
+            ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
+        }
         _ => {
             let msg = format!("Unknown command: {cmd}");
             ctx.queue

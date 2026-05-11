@@ -12,6 +12,8 @@ pub struct TextArea {
     pub search_query: String,
     pub search_matches: Vec<usize>,
     pub current_match: usize,
+    /// Per-line foreground colors (optional, indexed by line number).
+    pub line_colors: Vec<Color>,
     searching: bool,
     search_input: String,
 }
@@ -26,6 +28,7 @@ impl TextArea {
             search_query: String::new(),
             search_matches: Vec::new(),
             current_match: 0,
+            line_colors: Vec::new(),
             searching: false,
             search_input: String::new(),
         }
@@ -141,6 +144,11 @@ impl View for TextArea {
             let is_match = self.search_matches.contains(&line_idx);
             let style = if is_match {
                 highlight
+            } else if let Some(&color) = self.line_colors.get(line_idx) {
+                Style {
+                    fg: color,
+                    ..Style::default()
+                }
             } else {
                 normal
             };

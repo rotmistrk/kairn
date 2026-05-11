@@ -96,6 +96,11 @@ impl Editor {
             }
         }
 
+        if trimmed == "diff" || trimmed.starts_with("diff ") {
+            let args = trimmed.strip_prefix("diff").unwrap_or("").trim().to_string();
+            return EditorAction::Diff(args);
+        }
+
         self.status = format!("Unknown: {trimmed}");
         EditorAction::None
     }
