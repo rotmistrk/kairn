@@ -2,9 +2,12 @@
 
 mod build;
 mod diff;
+pub mod diff_model;
 mod draw;
+mod draw_diff;
 mod draw_diagnostics;
 mod handle;
+mod handle_diff;
 
 use std::path::PathBuf;
 
@@ -18,13 +21,6 @@ use crate::highlight::Highlighter;
 use crate::settings::EditorSettings;
 
 /// Per-line diff tag for inline diff rendering.
-#[derive(Clone, Copy, PartialEq)]
-pub(super) enum DiffTag {
-    Context,
-    Added,
-    Removed,
-}
-
 pub struct EditorView {
     state: ViewState,
     pub editor: Editor,
@@ -38,9 +34,8 @@ pub struct EditorView {
     close_prompt: bool,
     display_title: String,
     diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
-    /// Diff mode: per-line tag ('+' added, '-' removed, ' ' context). None = normal mode.
-    diff_lines: Option<Vec<DiffTag>>,
-    diff_base: String,
+    /// Diff mode state. None = normal mode.
+    pub(super) diff_state: Option<diff_model::DiffState>,
 }
 
 impl EditorView {
@@ -116,6 +111,11 @@ impl View for EditorView {
                             Some(Box::new(self.editor.status.clone())),
                         );
                     }
+                    let mode = if self.in_diff_mode() { "DIFF" } else { "NOR" };
+                    queue.put_command(
+                        crate::commands::CM_MODE_CHANGED,
+                        Some(Box::new(mode.to_string())),
+                    );
                     return HandleResult::Consumed;
                 }
                 if *id == CM_CLIPBOARD_PASTE {
@@ -136,6 +136,11 @@ impl View for EditorView {
             }
             return HandleResult::Ignored;
         };
+
+        // Diff mode: intercept keys for navigation
+        if self.in_diff_mode() {
+            return self.handle_diff_key(key, queue);
+        }
 
         // Close prompt: y/n/c
         if self.close_prompt {

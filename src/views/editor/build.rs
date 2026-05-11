@@ -37,8 +37,7 @@ impl EditorView {
             close_prompt: false,
             display_title: "[cmd output]".to_string(),
             diagnostics: None,
-            diff_lines: None,
-            diff_base: "HEAD".to_string(),
+            diff_state: None,
         }
     }
 
@@ -63,8 +62,7 @@ impl EditorView {
             close_prompt: false,
             display_title,
             diagnostics: None,
-            diff_lines: None,
-            diff_base: "HEAD".to_string(),
+            diff_state: None,
         }
     }
 
