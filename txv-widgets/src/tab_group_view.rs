@@ -67,7 +67,14 @@ impl View for TabGroup {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        // Dispatch to focused child (active tab) via GroupState 3-phase dispatch
+        // Tick goes to ALL tabs (background tabs need it for refresh/polling)
+        if matches!(event, Event::Tick) {
+            for child in &mut self.group.children {
+                child.handle(event, queue);
+            }
+            return HandleResult::Ignored;
+        }
+        // All other events go to active tab only
         self.group.dispatch(event, queue)
     }
 }
