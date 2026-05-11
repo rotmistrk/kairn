@@ -64,14 +64,19 @@ impl SlottedDesktop {
         self.set_bounds(self.group.view.bounds);
     }
 
-    /// Resize the bottom panel vertically (grows/shrinks its height).
+    /// Resize vertically — adjusts the tool panel height.
+    /// In tall mode: adjusts Bottom (where Right lives).
+    /// In wide mode: adjusts Right slot height (panel_h in layout).
     pub(super) fn resize_vertical(&mut self, delta: i16) {
+        // Both modes use Bottom slot's size for vertical panel height
         let s = &mut self.slots[SlotId::Bottom as usize];
         if delta > 0 {
             s.size += delta as u16;
         } else {
             s.size = s.size.saturating_sub((-delta) as u16);
         }
+        // Ensure it's visible
+        s.visible = true;
         self.set_bounds(self.group.view.bounds);
     }
 }
