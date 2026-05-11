@@ -659,6 +659,7 @@ dependencies = [
  "crossterm",
  "env_logger",
  "git2",
+ "libc",
  "log",
  "notify",
  "regex",

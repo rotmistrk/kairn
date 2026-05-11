@@ -1,6 +1,6 @@
 //! Message — structured application message with severity and origin.
 
-use std::time::Instant;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Severity level for messages.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,7 +28,7 @@ pub struct Message {
     pub level: MsgLevel,
     pub origin: &'static str,
     pub text: String,
-    pub timestamp: Instant,
+    pub timestamp: u64,
     pub count: u32,
 }
 
@@ -38,7 +38,10 @@ impl Message {
             level,
             origin,
             text: text.into(),
-            timestamp: Instant::now(),
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
             count: 1,
         }
     }

@@ -51,16 +51,9 @@ impl View for MessagesView {
         for row in 0..rows {
             let y = b.y + row as u16;
             if let Some(msg) = entries.get(start + row) {
-                // Wall clock time of the event
-                let age = msg.timestamp.elapsed();
-                let now_secs = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                let event_secs = now_secs - age.as_secs();
-                let hrs = (event_secs / 3600) % 24;
-                let mins = (event_secs / 60) % 60;
-                let secs = event_secs % 60;
+                // Local time from epoch via libc
+                let t = msg.timestamp as i64;
+                let (hrs, mins, secs) = epoch_to_local_hms(t);
                 let suffix = if msg.count > 1 {
                     format!(" (×{})", msg.count)
                 } else {
@@ -136,5 +129,21 @@ impl View for MessagesView {
             }
             _ => HandleResult::Ignored,
         }
+    }
+}
+
+fn epoch_to_local_hms(epoch: i64) -> (u64, u64, u64) {
+    #[cfg(unix)]
+    {
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        unsafe { libc::localtime_r(&epoch, &mut tm) };
+        (tm.tm_hour as u64, tm.tm_min as u64, tm.tm_sec as u64)
+    }
+    #[cfg(not(unix))]
+    {
+        let hrs = ((epoch / 3600) % 24) as u64;
+        let mins = ((epoch / 60) % 60) as u64;
+        let secs = (epoch % 60) as u64;
+        (hrs, mins, secs)
     }
 }
