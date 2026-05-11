@@ -7,6 +7,7 @@ mod draw;
 mod draw_diagnostics;
 mod draw_diff;
 mod handle;
+mod handle_completion;
 mod handle_diff;
 
 use std::path::PathBuf;
@@ -18,6 +19,7 @@ use crate::commands::CM_TAB_CLOSE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
 use crate::highlight::Highlighter;
+use crate::lsp::completion::CompletionPopup;
 use crate::settings::EditorSettings;
 
 /// Per-line diff tag for inline diff rendering.
@@ -36,6 +38,8 @@ pub struct EditorView {
     diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
     /// Diff mode state. None = normal mode.
     pub(super) diff_state: Option<diff_model::DiffState>,
+    /// Completion popup overlay.
+    pub(super) completion_popup: CompletionPopup,
 }
 
 impl EditorView {
@@ -83,6 +87,7 @@ impl View for EditorView {
     fn draw(&self, surface: &mut Surface) {
         self.draw_editor(surface);
         self.draw_diagnostics(surface);
+        self.completion_popup.draw(surface);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
@@ -141,9 +146,47 @@ impl View for EditorView {
                         }
                     }
                 }
+                if *id == crate::commands::CM_LSP_COMPLETION {
+                    if let Some(boxed) = data.as_ref() {
+                        if let Some(labels) = boxed.downcast_ref::<Vec<String>>() {
+                            self.show_completion(labels);
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
             }
             return HandleResult::Ignored;
         };
+
+        // Completion popup key handling
+        if self.completion_popup.visible {
+            use txv_core::event::KeyCode;
+            match &key.code {
+                KeyCode::Down => {
+                    self.completion_popup.next();
+                    self.state.dirty = true;
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Up => {
+                    self.completion_popup.prev();
+                    self.state.dirty = true;
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Enter | KeyCode::Tab => {
+                    self.accept_completion();
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Esc => {
+                    self.completion_popup.hide();
+                    self.state.dirty = true;
+                    return HandleResult::Consumed;
+                }
+                _ => {
+                    self.completion_popup.hide();
+                    // fall through to normal handling
+                }
+            }
+        }
 
         // Diff mode: intercept keys for navigation
         if self.in_diff_mode() {

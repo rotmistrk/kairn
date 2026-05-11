@@ -38,6 +38,7 @@ impl EditorView {
             display_title: "[cmd output]".to_string(),
             diagnostics: None,
             diff_state: None,
+            completion_popup: crate::lsp::completion::CompletionPopup::new(),
         }
     }
 
@@ -63,6 +64,7 @@ impl EditorView {
             display_title,
             diagnostics: None,
             diff_state: None,
+            completion_popup: crate::lsp::completion::CompletionPopup::new(),
         }
     }
 

@@ -15,6 +15,16 @@ impl EditorView {
         queue: &mut EventQueue,
     ) -> HandleResult {
         use txv_core::event::KeyCode;
+        // Ctrl+C cancels command/search mode; other Ctrl+keys pass through
+        if key.modifiers.ctrl {
+            if key.code == KeyCode::Char('c') {
+                self.editor.mode = crate::editor::keymap::EditorMode::Normal;
+                self.editor.command_buf.clear();
+                self.state.dirty = true;
+                return HandleResult::Consumed;
+            }
+            return HandleResult::Ignored;
+        }
         match &key.code {
             KeyCode::Esc => {
                 self.editor.mode = crate::editor::keymap::EditorMode::Normal;
@@ -221,39 +231,6 @@ impl EditorView {
                 "e "
             };
             self.editor.command_buf = format!("{prefix}{}", matches[0]);
-        }
-    }
-
-    /// Handle tick event: autosave + completion trigger.
-    pub(super) fn handle_tick(&mut self, queue: &mut EventQueue) {
-        self.tick_counter += 1;
-        // Completion trigger: 5 ticks after last edit in insert mode
-        if self.editor.mode == crate::editor::keymap::EditorMode::Insert
-            && self.last_edit_tick > 0
-            && self.tick_counter - self.last_edit_tick == 5
-        {
-            let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
-            queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
-        }
-        if self.settings.autosave
-            && self.last_edit_tick > 0
-            && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
-        {
-            self.last_edit_tick = 0;
-            if self.editor.buffer.is_dirty() && self.save_buffer() {
-                self.sync_title();
-            }
-        }
-    }
-
-    /// Save buffer to disk. Returns true on success.
-    fn save_buffer(&mut self) -> bool {
-        let content = self.editor.buffer.content();
-        if crate::editor::save::save_file(&self.path, &content).is_ok() {
-            self.editor.buffer.mark_saved();
-            true
-        } else {
-            false
         }
     }
 }
