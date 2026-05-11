@@ -11,8 +11,8 @@ use crate::handler::AppState;
 
 use super::diagnostics;
 use super::messages::LspMessage;
-use super::protocol;
 use super::requests;
+use super::send;
 
 /// Tracks pending LSP requests so responses can be routed.
 #[derive(Default)]
@@ -28,6 +28,7 @@ pub(crate) enum PendingKind {
     Completion,
     Rename,
     CodeAction,
+    JdtClassContents { line: u32, character: u32 },
 }
 
 impl PendingRequests {
@@ -40,16 +41,32 @@ impl PendingRequests {
     }
 }
 
+/// Request for jdt:// class file contents from jdtls.
+#[derive(Debug, Clone)]
+pub(crate) struct JdtRequest {
+    pub uri: String,
+    pub line: u32,
+    pub character: u32,
+}
+
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
     match ctx.command {
-        CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send_did_open(ctx, state),
-        CM_LSP_GOTO_DEF => send_goto_def(ctx, state),
-        CM_LSP_FIND_REFS => send_find_refs(ctx, state),
-        CM_LSP_HOVER => send_hover(ctx, state),
-        CM_LSP_COMPLETION => send_completion(ctx, state),
-        CM_LSP_RENAME => send_rename(ctx, state),
-        CM_CODE_ACTION => send_code_action(ctx, state),
+        CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
+        CM_LSP_GOTO_DEF => {
+            if let Some(boxed) = ctx.data.as_ref() {
+                if let Some(jdt) = boxed.downcast_ref::<JdtRequest>() {
+                    send::send_jdt_class_contents(jdt, state);
+                    return;
+                }
+            }
+            send::send_goto_def(ctx, state);
+        }
+        CM_LSP_FIND_REFS => send::send_find_refs(ctx, state),
+        CM_LSP_HOVER => send::send_hover(ctx, state),
+        CM_LSP_COMPLETION => send::send_completion(ctx, state),
+        CM_LSP_RENAME => send::send_rename(ctx, state),
+        CM_CODE_ACTION => send::send_code_action(ctx, state),
         _ => {}
     }
 }
@@ -81,9 +98,20 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         PendingKind::GotoDefinition => {
             let locs = requests::parse_locations(result);
             if let Some(loc) = locs.into_iter().next() {
-                let path = uri_to_path(&loc.uri);
-                let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
-                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+                if loc.uri.starts_with("jdt://") {
+                    queue.put_command(
+                        CM_LSP_GOTO_DEF,
+                        Some(Box::new(JdtRequest {
+                            uri: loc.uri,
+                            line: loc.line,
+                            character: loc.character,
+                        })),
+                    );
+                } else {
+                    let path = uri_to_path(&loc.uri);
+                    let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
+                    queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+                }
             }
         }
         PendingKind::FindReferences => {
@@ -121,142 +149,15 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
                 queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(text)));
             }
         }
-    }
-}
-
-fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
-        return;
-    };
-    let path = &req.path;
-
-    let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
-        return;
-    };
-
-    let uri = protocol::path_to_uri(path);
-    let text = std::fs::read_to_string(path).unwrap_or_default();
-    protocol::did_open(client, &uri, lang, &text);
-}
-
-fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
-        return;
-    };
-
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let id = requests::goto_definition(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::GotoDefinition);
-}
-
-fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
-        return;
-    };
-
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let id = requests::find_references(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::FindReferences);
-}
-
-fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
-        return;
-    };
-
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let id = requests::hover(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::Hover);
-}
-
-fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
-        return;
-    };
-
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let id = requests::completion(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::Completion);
-}
-
-fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(new_name) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let (line, col) = state.cursor_pos;
-    let id = requests::rename(client, &uri, line, col, new_name);
-    state.lsp_pending.insert(id, PendingKind::Rename);
-}
-
-fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
-    let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
-        return;
-    };
-
-    let (line, col) = state.cursor_pos;
-    let id = requests::code_action(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::CodeAction);
-    let _ = ctx;
-}
-
-fn current_file_info(state: &AppState) -> (String, String) {
-    // Use the last opened file from broker as current context
-    if let Some(path) = state.broker.last_opened() {
-        let p = std::path::Path::new(path);
-        let uri = protocol::path_to_uri(p);
-        let lang = protocol::language_id(p).to_string();
-        (uri, lang)
-    } else {
-        (String::new(), String::new())
+        PendingKind::JdtClassContents { line, character } => {
+            if let Some(content) = result.as_str() {
+                let msg = format!("[decompiled]:{}:{}\n{}", line + 1, character + 1, content);
+                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
+            } else {
+                let msg = "[Source not available]".to_string();
+                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
+            }
+        }
     }
 }
 

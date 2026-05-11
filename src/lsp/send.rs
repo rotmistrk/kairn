@@ -1,0 +1,159 @@
+//! LSP request senders — dispatch commands to language servers.
+
+use txv_core::program::CommandContext;
+
+use crate::handler::AppState;
+
+use super::handler::{JdtRequest, PendingKind};
+use super::{protocol, requests};
+
+pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
+        return;
+    };
+    let path = &req.path;
+
+    let lang = protocol::language_id(path);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+        return;
+    };
+
+    let uri = protocol::path_to_uri(path);
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    protocol::did_open(client, &uri, lang, &text);
+}
+
+pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let id = requests::goto_definition(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::GotoDefinition);
+}
+
+pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let id = requests::find_references(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::FindReferences);
+}
+
+pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let id = requests::hover(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::Hover);
+}
+
+pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let id = requests::completion(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::Completion);
+}
+
+pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(new_name) = boxed.downcast_ref::<String>() else {
+        return;
+    };
+
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let (line, col) = state.cursor_pos;
+    let id = requests::rename(client, &uri, line, col, new_name);
+    state.lsp_pending.insert(id, PendingKind::Rename);
+}
+
+pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
+    let (uri, lang) = current_file_info(state);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        return;
+    };
+
+    let (line, col) = state.cursor_pos;
+    let id = requests::code_action(client, &uri, line, col);
+    state.lsp_pending.insert(id, PendingKind::CodeAction);
+    let _ = ctx;
+}
+
+pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start("java", &root) else {
+        return;
+    };
+    let params = serde_json::json!({ "uri": jdt.uri });
+    let id = client.send_request("java/classFileContents", params);
+    state.lsp_pending.insert(
+        id,
+        PendingKind::JdtClassContents {
+            line: jdt.line,
+            character: jdt.character,
+        },
+    );
+}
+
+fn current_file_info(state: &AppState) -> (String, String) {
+    if let Some(path) = state.broker.last_opened() {
+        let p = std::path::Path::new(path);
+        let uri = protocol::path_to_uri(p);
+        let lang = protocol::language_id(p).to_string();
+        (uri, lang)
+    } else {
+        (String::new(), String::new())
+    }
+}
