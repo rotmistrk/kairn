@@ -51,11 +51,12 @@ impl LayoutGroup {
                 HandleResult::Consumed
             }
             CM_TAB_DROPDOWN => {
-                if self.dropdown.is_some() {
-                    self.dropdown = None;
-                } else if self.panel(self.focused_slot()).tab_count() > 1 {
-                    self.dropdown_cursor = self.panel(self.focused_slot()).active_index();
-                    self.dropdown = Some(self.group.focused);
+                let slot = self.focused_slot();
+                let panel = self.panel_mut(slot);
+                if panel.dropdown_open() {
+                    panel.dropdown_cursor = None;
+                } else if panel.tab_count() > 1 {
+                    panel.open_dropdown();
                 }
                 self.group.view.dirty = true;
                 HandleResult::Consumed

@@ -12,6 +12,8 @@ pub struct TabGroup {
     pub(crate) titles: Vec<String>,
     pub(crate) lru: Vec<u64>,
     pub(crate) lru_counter: u64,
+    /// Dropdown menu state: Some(cursor_index) when open.
+    pub dropdown_cursor: Option<usize>,
 }
 
 impl TabGroup {
@@ -24,6 +26,7 @@ impl TabGroup {
             titles: Vec::new(),
             lru: Vec::new(),
             lru_counter: 0,
+            dropdown_cursor: None,
         }
     }
 

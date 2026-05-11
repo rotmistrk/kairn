@@ -41,8 +41,6 @@ pub struct LayoutGroup {
     pub right_width: u16,
     pub right_height: u16,
     pub bottom_height: u16,
-    pub dropdown: Option<usize>,
-    pub dropdown_cursor: usize,
     /// Hysteresis: last known tall/wide state for Auto mode.
     was_tall: bool,
 }
@@ -66,8 +64,6 @@ impl LayoutGroup {
             right_width: 60,
             right_height: 10,
             bottom_height: 10,
-            dropdown: None,
-            dropdown_cursor: 0,
             was_tall: true,
         }
     }

@@ -148,7 +148,7 @@ impl LayoutGroup {
         surface.print(x, y, &label, ts);
         x += lw;
 
-        if count > 1 && self.dropdown.is_none() {
+        if count > 1 && !panel.dropdown_open() {
             // Arrow
             surface.put(x, y, g.dropdown_arrow.chars().next().unwrap_or('v'), _as);
             x += 1;

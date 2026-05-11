@@ -64,6 +64,7 @@ impl View for TabGroup {
         if let Some(child) = self.group.children.get(self.group.focused) {
             child.draw(surface);
         }
+        self.draw_dropdown(surface);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
@@ -73,6 +74,12 @@ impl View for TabGroup {
                 child.handle(event, queue);
             }
             return HandleResult::Ignored;
+        }
+        // Dropdown intercepts all keys when open
+        if self.dropdown_open() {
+            if let Event::Key(key) = event {
+                return self.handle_dropdown_key(key);
+            }
         }
         // All other events go to active tab only
         self.group.dispatch(event, queue)
