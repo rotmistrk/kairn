@@ -28,6 +28,10 @@ struct Cli {
     /// Log level (error, warn, info, debug, trace)
     #[arg(short = 'L', long = "log-level", default_value = "info")]
     log_level: String,
+
+    /// Run as MCP bridge (stdin↔socket proxy) and exit
+    #[arg(long = "mcp-connect")]
+    mcp_connect: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -51,6 +55,11 @@ fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
+    // MCP bridge mode: proxy stdin↔socket and exit
+    if cli.mcp_connect {
+        return kairn::mcp::bridge::run_mcp_bridge().map_err(|e| anyhow::anyhow!("MCP bridge failed: {e}"));
+    }
+
     // Nesting guard: prevent running inside a suspended kairn session
     if std::env::var("KAIRN_SUSPENDED").is_ok() {
         eprintln!("kairn is already running (suspended). Use 'exit' to return.");
@@ -58,6 +67,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     let root_dir = std::fs::canonicalize(&cli.path)?;
+
+    // Compute socket path and check instance lock
+    let socket_path = kairn::mcp::socket_path::socket_path(&root_dir);
+    if std::os::unix::net::UnixStream::connect(&socket_path).is_ok() {
+        eprintln!("kairn is already running for this project.");
+        std::process::exit(1);
+    }
+
+    // Start MCP listener
+    let mcp_snapshot = std::sync::Arc::new(std::sync::Mutex::new(kairn::mcp::snapshot::McpSnapshot::default()));
+    let mcp_socket = kairn::mcp::listener::start_mcp_listener(std::sync::Arc::clone(&mcp_snapshot), &socket_path);
+    if let Ok(ref sock) = mcp_socket {
+        kairn::mcp::agent_file::write_agent_file(&root_dir, sock);
+    }
 
     // Init logging to file
     let log_file = std::fs::File::create(&cli.log_file)?;
@@ -110,6 +133,11 @@ fn main() -> anyhow::Result<()> {
         .and_then(|a| a.downcast_mut::<kairn::layout_group::LayoutGroup>())
     {
         session::save_session(desktop, &root_dir);
+    }
+
+    // Clean up MCP socket
+    if mcp_socket.is_ok() {
+        let _ = std::fs::remove_file(&socket_path);
     }
 
     Ok(())

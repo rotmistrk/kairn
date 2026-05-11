@@ -25,6 +25,7 @@ pub mod help;
 pub mod highlight;
 pub mod layout_group;
 pub mod lsp;
+pub mod mcp;
 pub mod message_ring;
 pub mod session;
 pub mod settings;
