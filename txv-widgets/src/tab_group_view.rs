@@ -81,6 +81,19 @@ impl View for TabGroup {
                 return self.handle_dropdown_key(key);
             }
         }
+        // Alt+digit selects tab by index
+        if let Event::Key(key) = event {
+            if key.modifiers.alt && !key.modifiers.ctrl {
+                if let KeyCode::Char(ch) = key.code {
+                    if let Some(n) = ch.to_digit(10) {
+                        if (n as usize) < self.group.children.len() {
+                            self.set_active(n as usize);
+                        }
+                        return HandleResult::Consumed;
+                    }
+                }
+            }
+        }
         // All other events go to active tab only
         self.group.dispatch(event, queue)
     }

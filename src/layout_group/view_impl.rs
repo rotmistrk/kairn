@@ -1,6 +1,5 @@
 //! View trait implementation for LayoutGroup.
 
-use txv_core::event::KeyCode;
 use txv_core::prelude::*;
 
 use super::{LayoutGroup, SlotId};
@@ -52,20 +51,6 @@ impl View for LayoutGroup {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        // Alt-digit for tab selection
-        if let Event::Key(key) = event {
-            if key.modifiers.alt && !key.modifiers.ctrl {
-                if let KeyCode::Char(ch) = key.code {
-                    if let Some(n) = ch.to_digit(10) {
-                        let slot = self.focused_slot();
-                        if (n as usize) < self.panel(slot).tab_count() {
-                            self.panel_mut(slot).set_active(n as usize);
-                        }
-                        return HandleResult::Consumed;
-                    }
-                }
-            }
-        }
         // Commands handled by LayoutGroup itself
         if let Event::Command { id, .. } = event {
             let r = self.handle_command(*id, queue);
