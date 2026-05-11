@@ -6,6 +6,9 @@ use txv_core::event::{KeyCode, KeyEvent};
 
 impl VimKeymap {
     pub(super) fn insert_key(&self, key: &KeyEvent) -> Command {
+        if key.modifiers.ctrl {
+            return Command::Noop;
+        }
         match &key.code {
             KeyCode::Esc => Command::ExitInsertMode,
             KeyCode::Char(ch) => Command::InsertChar(*ch),
