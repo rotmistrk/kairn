@@ -188,6 +188,30 @@ M-x save-workspace
 15. Add `M-x save-workspace`
 16. Update help text with all new commands
 
+## Part 6: Messages Window Integration
+
+The Messages view already exists (`src/views/messages.rs`, F6 to show).
+Wire it into all discovery/lifecycle events:
+
+- LSP server started: `[info] rust-analyzer started for /path/to/project`
+- LSP server failed to start: `[error] clangd not found — install with: brew install llvm`
+- LSP server crashed: `[error] rust-analyzer exited unexpectedly`
+- Build started: `[info] Running: cargo build`
+- Build succeeded: `[info] Build succeeded (0 errors, 2 warnings)`
+- Build failed: `[error] Build failed (3 errors)`
+- Tool discovery: `[info] Found rust-analyzer at /usr/local/bin/rust-analyzer`
+- Tool not found: `[warn] gopls not found — Go LSP disabled`
+
+Use `CM_STATUS_MESSAGE` to push messages, or add a `CM_LOG_MESSAGE` command
+that the handler routes to the Messages view.
+
+### Discovery on Startup
+
+On first file open for a language, before spawning:
+1. Check if the server command exists (`which <cmd>`)
+2. If found: log info + start
+3. If not found: log warning with install hint, disable LSP for that language
+
 ## Constraints
 
 - Pre-commit hook MUST pass at every step
