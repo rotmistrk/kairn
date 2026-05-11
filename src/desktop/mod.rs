@@ -185,6 +185,16 @@ impl SlottedDesktop {
         }
     }
 
+    /// Focus an existing tab by title. Returns true if found.
+    pub fn focus_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
+        let s = &self.slots[slot as usize];
+        if let Some(idx) = s.tabs.iter().position(|(t, _)| t == title) {
+            self.focus_tab(slot, idx);
+            return true;
+        }
+        false
+    }
+
     pub fn close_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
         let s = &mut self.slots[slot as usize];
         if let Some(idx) = s.tabs.iter().position(|(t, _)| t == title) {
