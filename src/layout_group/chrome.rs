@@ -189,15 +189,15 @@ impl LayoutGroup {
         if bottom_r.h == 0 && !(tall && self.panel(SlotId::Right).tab_count() > 0) {
             return;
         }
-        // In tall mode, right panel is below — find its y
+        // In tall mode, right panel is below — its bounds start at the divider row
         let div_y = if tall {
             let right_bounds = self.group.children[SlotId::Right as usize].bounds();
             if right_bounds.h == 0 {
                 return;
             }
-            right_bounds.y.saturating_sub(1)
+            right_bounds.y
         } else if bottom_r.h > 0 {
-            bottom_r.y.saturating_sub(1)
+            bottom_r.y
         } else {
             return;
         };

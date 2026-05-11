@@ -39,8 +39,8 @@ impl LayoutGroup {
         self.fill_top(&mut rects, bounds, top_h, tall);
 
         if bottom_h > 0 {
-            let y = bounds.y + top_h + div_h;
-            rects[SlotId::Bottom as usize] = Rect::new(bounds.x, y, bounds.w, bottom_h);
+            let y = bounds.y + top_h;
+            rects[SlotId::Bottom as usize] = Rect::new(bounds.x, y, bounds.w, bottom_h + div_h);
         }
         rects
     }

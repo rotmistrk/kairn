@@ -8,7 +8,7 @@ pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
     if std::env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Shell"));
     }
-    match txv_widgets::PtyTerminal::spawn_shell(80, 24) {
+    match txv_widgets::PtyTerminal::spawn_shell(1, 1) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn shell: {}", e);
@@ -22,7 +22,7 @@ pub fn new_shell_with_command(cmd: &str, cwd: &std::path::Path) -> Box<dyn txv_c
     if std::env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Run"));
     }
-    match txv_widgets::PtyTerminal::spawn_command("sh", &["-c", cmd], cwd, 80, 24) {
+    match txv_widgets::PtyTerminal::spawn_command("sh", &["-c", cmd], cwd, 1, 1) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to run command '{}': {}", cmd, e);
@@ -42,13 +42,8 @@ pub fn new_kiro_terminal(agent: Option<&str>) -> Box<dyn txv_core::view::View> {
         agent_flag = format!("--agent={name}");
         args.push(&agent_flag);
     }
-    match txv_widgets::PtyTerminal::spawn_command(
-        "kiro-cli",
-        &args,
-        &std::env::current_dir().unwrap_or_default(),
-        80,
-        24,
-    ) {
+    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, &std::env::current_dir().unwrap_or_default(), 1, 1)
+    {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);
