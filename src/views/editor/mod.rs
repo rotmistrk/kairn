@@ -77,7 +77,7 @@ impl View for EditorView {
     }
 
     fn needs_redraw(&self) -> bool {
-        true
+        self.state.dirty
     }
 
     fn draw(&self, surface: &mut Surface) {
