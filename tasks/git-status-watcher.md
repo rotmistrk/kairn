@@ -111,3 +111,52 @@ On startup:
 - `src/git_watcher.rs` — NEW: file watcher wrapper
 - `src/views/tree.rs` — integrate watcher, reactive refresh
 - `Cargo.toml` — add `notify = "6"`
+
+## Part 2: Git Changes Panel (Left slot tab)
+
+### Description
+
+A non-closeable tab in the Left slot (alongside "Files") called "Git".
+Shows changed files grouped by status, like IntelliJ's Git tool window.
+
+### Layout
+
+```
+Git ──────────────────────
+▾ Modified (3)
+    src/main.rs
+    src/handler.rs
+    Cargo.toml
+▾ Untracked (2)
+    notes.txt
+    tmp/scratch.rs
+▾ Conflicts (1)
+    src/merge_target.rs
+```
+
+### Behavior
+
+- **Non-closeable** — `can_close()` returns `Denied`
+- **Grouped by status** — collapsible sections (Modified, Untracked, Conflicts)
+- **Per git root** — if multiple repos, show repo name as top-level group
+- **Enter** — opens file in center editor (same as file tree)
+- **Reactive** — updates when file watcher detects changes (same mechanism as tree colors)
+- **File count** in section headers
+
+### Switching between Files and Git
+
+- F2 focuses Left slot (already works)
+- Tab key (or a binding) cycles between Files and Git tabs in the Left slot
+- Or: always show both as tabs in Left slot, use M-0/M-1 to switch
+
+### Implementation
+
+- New view: `src/views/git_changes.rs`
+- Uses data from `git_status::collect_git_status()` (same git2 call)
+- Shares the `GitWatcher` with the file tree (both react to same events)
+- Registered in `build_desktop()` as second tab in Left slot
+- `can_close()` returns `Denied("permanent tab")`
+
+### Colors in the panel
+
+Same as tree: Modified=blue, Untracked=red, Conflict=magenta, Added=green.
