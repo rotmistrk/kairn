@@ -110,6 +110,12 @@ impl View for EditorView {
                         .map(|s| s.as_str())
                         .unwrap_or("");
                     self.toggle_diff(args);
+                    if !self.editor.status.is_empty() {
+                        queue.put_command(
+                            txv_widgets::CM_STATUS_MESSAGE,
+                            Some(Box::new(self.editor.status.clone())),
+                        );
+                    }
                     return HandleResult::Consumed;
                 }
                 if *id == CM_CLIPBOARD_PASTE {

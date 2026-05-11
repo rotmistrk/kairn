@@ -1,6 +1,6 @@
 //! Editor diff mode — inline diff rendering toggled by :diff / :nodiff / Ctrl-D.
 
-use crate::diff::{git_file_content, DiffOptions};
+use crate::diff::git_file_content;
 use crate::views::editor::{DiffTag, EditorView};
 
 impl EditorView {
@@ -74,24 +74,33 @@ impl EditorView {
     }
 }
 
-/// Compute per-line diff tags between base and current content.
+/// Compute per-line diff tags for the CURRENT buffer lines only.
+/// Equal = unchanged, Insert = added, Delete lines are skipped (not in buffer).
 fn compute_line_tags(base: &str, current: &str, ignore_ws: bool) -> Vec<DiffTag> {
     use similar::{ChangeTag, TextDiff};
 
-    let opts = DiffOptions {
-        context: usize::MAX,
-        ignore_whitespace: ignore_ws,
+    let (base_norm, current_norm) = if ignore_ws {
+        (normalize_ws(base), normalize_ws(current))
+    } else {
+        (base.to_string(), current.to_string())
     };
-    let _ = opts; // DiffOptions used for unified_diff, here we use similar directly
 
-    let diff = TextDiff::from_lines(base, current);
+    let diff = TextDiff::from_lines(&base_norm, &current_norm);
     let mut tags = Vec::new();
     for change in diff.iter_all_changes() {
         match change.tag() {
             ChangeTag::Equal => tags.push(DiffTag::Context),
             ChangeTag::Insert => tags.push(DiffTag::Added),
-            ChangeTag::Delete => tags.push(DiffTag::Removed),
+            ChangeTag::Delete => {} // not in current buffer — skip
         }
     }
     tags
+}
+
+fn normalize_ws(text: &str) -> String {
+    text.lines()
+        .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + if text.ends_with('\n') { "\n" } else { "" }
 }

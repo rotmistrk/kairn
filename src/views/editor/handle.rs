@@ -100,6 +100,12 @@ impl EditorView {
             }
             EditorAction::Diff(args) => {
                 self.toggle_diff(&args);
+                if !self.editor.status.is_empty() {
+                    queue.put_command(
+                        txv_widgets::CM_STATUS_MESSAGE,
+                        Some(Box::new(self.editor.status.clone())),
+                    );
+                }
             }
             EditorAction::NoDiff => {
                 self.exit_diff();
