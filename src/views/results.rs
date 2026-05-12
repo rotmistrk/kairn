@@ -1,9 +1,10 @@
 //! ResultsView — quickfix-style list for LSP refs, grep, build errors.
 //!
 //! Opens in the center panel. Enter navigates to the selected location.
-//! n/p cycle through results. Reusable for any file:line:col results.
+//! n/p cycle through results. Supports async streaming of results.
 
 use std::path::PathBuf;
+use std::sync::mpsc;
 
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
@@ -19,6 +20,13 @@ pub struct ResultEntry {
     pub text: String,
 }
 
+/// Search state for progress display.
+enum SearchState {
+    Searching(mpsc::Receiver<Vec<ResultEntry>>),
+    Done,
+    NoMatches,
+}
+
 /// Quickfix-style results list view.
 pub struct ResultsView {
     state: ViewState,
@@ -26,25 +34,43 @@ pub struct ResultsView {
     cursor: usize,
     scroll: usize,
     title: String,
+    search: SearchState,
 }
 
 impl ResultsView {
+    /// Create with pre-populated entries (LSP refs, build errors).
     pub fn new(title: &str, entries: Vec<ResultEntry>) -> Self {
+        let search = if entries.is_empty() {
+            SearchState::NoMatches
+        } else {
+            SearchState::Done
+        };
         Self {
             state: ViewState::default(),
             entries,
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
+            search,
         }
     }
 
-    /// Current entry (for next-error/prev-error navigation).
+    /// Create with a streaming receiver (grep).
+    pub fn streaming(title: &str, rx: mpsc::Receiver<Vec<ResultEntry>>) -> Self {
+        Self {
+            state: ViewState::default(),
+            entries: Vec::new(),
+            cursor: 0,
+            scroll: 0,
+            title: title.to_string(),
+            search: SearchState::Searching(rx),
+        }
+    }
+
     pub fn current_entry(&self) -> Option<&ResultEntry> {
         self.entries.get(self.cursor)
     }
 
-    /// Move to next entry, wrapping around.
     pub fn next(&mut self) {
         if !self.entries.is_empty() {
             self.cursor = (self.cursor + 1) % self.entries.len();
@@ -53,7 +79,6 @@ impl ResultsView {
         }
     }
 
-    /// Move to previous entry, wrapping around.
     pub fn prev(&mut self) {
         if !self.entries.is_empty() {
             self.cursor = (self.cursor + self.entries.len() - 1) % self.entries.len();
@@ -80,6 +105,46 @@ impl ResultsView {
             queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
         }
     }
+
+    fn poll_results(&mut self) {
+        let SearchState::Searching(rx) = &self.search else {
+            return;
+        };
+        let mut got = false;
+        loop {
+            match rx.try_recv() {
+                Ok(batch) => {
+                    self.entries.extend(batch);
+                    got = true;
+                }
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.search = if self.entries.is_empty() {
+                        SearchState::NoMatches
+                    } else {
+                        SearchState::Done
+                    };
+                    got = true;
+                    break;
+                }
+            }
+        }
+        if got {
+            self.state.mark_dirty();
+        }
+    }
+
+    fn status_line(&self) -> String {
+        match &self.search {
+            SearchState::Searching(_) => {
+                format!("⟳ Searching... ({} found)", self.entries.len())
+            }
+            SearchState::Done => {
+                format!("✓ {} results", self.entries.len())
+            }
+            SearchState::NoMatches => "✗ No matches".to_string(),
+        }
+    }
 }
 
 impl View for ResultsView {
@@ -97,12 +162,19 @@ impl View for ResultsView {
         let dim = Style { fg: Color::Ansi(8), ..Style::default() };
         let normal = Style::default();
         let cursor_style = if self.state.is_focused() {
-            Style { bg: Color::Ansi(4), attrs: Attrs { underline: true, ..Attrs::default() }, ..Style::default() }
+            Style {
+                bg: Color::Ansi(4),
+                attrs: Attrs { underline: true, ..Attrs::default() },
+                ..Style::default()
+            }
         } else {
             Style { bg: Color::Ansi(8), ..Style::default() }
         };
 
-        for row in 0..b.h as usize {
+        // Reserve last row for status
+        let content_h = b.h.saturating_sub(1) as usize;
+
+        for row in 0..content_h {
             let idx = self.scroll + row;
             let y = b.y + row as u16;
             if idx >= self.entries.len() {
@@ -113,7 +185,6 @@ impl View for ResultsView {
             let style = if idx == self.cursor { cursor_style } else { normal };
             surface.hline(b.x, y, b.w, ' ', style);
 
-            // Format: path:line: text
             let path_str = entry.path.to_string_lossy();
             let loc = format!("{}:{}:", path_str, entry.line + 1);
             surface.print(b.x, y, &loc, if idx == self.cursor { style } else { dim });
@@ -122,9 +193,24 @@ impl View for ResultsView {
                 surface.print(text_x, y, &entry.text, style);
             }
         }
+
+        // Status line at bottom
+        let status_y = b.y + b.h - 1;
+        let status = self.status_line();
+        let status_style = match &self.search {
+            SearchState::Searching(_) => Style { fg: Color::Ansi(11), ..Style::default() },
+            SearchState::Done => Style { fg: Color::Ansi(10), ..Style::default() },
+            SearchState::NoMatches => Style { fg: Color::Ansi(9), ..Style::default() },
+        };
+        surface.hline(b.x, status_y, b.w, ' ', status_style);
+        surface.print(b.x, status_y, &status, status_style);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        if let Event::Tick = event {
+            self.poll_results();
+            return HandleResult::Ignored;
+        }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
