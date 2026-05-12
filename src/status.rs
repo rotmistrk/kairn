@@ -95,7 +95,7 @@ pub fn build_status_bar(
     // Right side
     bar.add(PositionItem::new(CM_CURSOR_MOVED));
     bar.add(ModeItem::new(CM_MODE_CHANGED));
-    bar.add_visible_only(MessageItem::new(5));
+    bar.add(MessageItem::new(5));
     bar.add_visible_only(BranchItem::new(root_dir));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar

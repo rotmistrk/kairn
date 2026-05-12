@@ -103,8 +103,12 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             state.pending_grep = Some((format!("grep: {arg}"), rx, Vec::new()));
             ctx.queue.put_command(
                 txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(txv_core::message::Message::info("grep", "Searching..."))),
+                Some(Box::new(txv_core::message::Message::info("grep", format!("Searching: {arg}")))),
             );
+        }
+        "grep" => {
+            let msg = txv_core::message::Message::warn("grep", "Usage: :grep <pattern>");
+            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         "test-file" => ctx.queue.put_command(CM_TEST_FILE, None),
         "test-at-cursor" => ctx.queue.put_command(CM_TEST_AT_CURSOR, None),
