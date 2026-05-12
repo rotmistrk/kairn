@@ -143,7 +143,6 @@ pub(crate) fn convert_container(doc: &mut JsonDoc, id: NodeId) {
     match kind {
         NodeKind::Dict => {
             doc.nodes[id.0].kind = NodeKind::Array;
-            // Strip keys from children
             let children: Vec<NodeId> = doc.nodes[id.0].children.clone();
             for child in children {
                 doc.nodes[child.0].key = None;
@@ -151,7 +150,6 @@ pub(crate) fn convert_container(doc: &mut JsonDoc, id: NodeId) {
         }
         NodeKind::Array => {
             doc.nodes[id.0].kind = NodeKind::Dict;
-            // Add index-based keys to children
             let children: Vec<NodeId> = doc.nodes[id.0].children.clone();
             for (i, child) in children.iter().enumerate() {
                 doc.nodes[child.0].key = Some(format!("key{i}"));
@@ -160,4 +158,94 @@ pub(crate) fn convert_container(doc: &mut JsonDoc, id: NodeId) {
         NodeKind::Scalar => return,
     }
     doc.update_container_display(id);
+}
+
+pub(crate) fn sort_children(doc: &mut JsonDoc, id: NodeId, ascending: bool) {
+    let kind = doc.node(id).kind;
+    if kind == NodeKind::Scalar {
+        return;
+    }
+    let mut children: Vec<NodeId> = doc.nodes[id.0].children.clone();
+    match kind {
+        NodeKind::Dict => {
+            children.sort_by(|a, b| {
+                let ka = doc.nodes[a.0].key.as_deref().unwrap_or("");
+                let kb = doc.nodes[b.0].key.as_deref().unwrap_or("");
+                if ascending {
+                    ka.cmp(kb)
+                } else {
+                    kb.cmp(ka)
+                }
+            });
+        }
+        NodeKind::Array => {
+            let all_numeric = children.iter().all(|c| doc.nodes[c.0].value.parse::<f64>().is_ok());
+            if all_numeric {
+                children.sort_by(|a, b| {
+                    let va = doc.nodes[a.0].value.parse::<f64>().unwrap_or(0.0);
+                    let vb = doc.nodes[b.0].value.parse::<f64>().unwrap_or(0.0);
+                    let cmp = va.partial_cmp(&vb).unwrap_or(std::cmp::Ordering::Equal);
+                    if ascending {
+                        cmp
+                    } else {
+                        cmp.reverse()
+                    }
+                });
+            } else {
+                children.sort_by(|a, b| {
+                    let va = &doc.nodes[a.0].value;
+                    let vb = &doc.nodes[b.0].value;
+                    if ascending {
+                        va.cmp(vb)
+                    } else {
+                        vb.cmp(va)
+                    }
+                });
+            }
+        }
+        _ => {}
+    }
+    doc.nodes[id.0].children = children;
+}
+
+pub(crate) fn sort_children_by_path(doc: &mut JsonDoc, id: NodeId, path: &str, ascending: bool) {
+    if doc.node(id).kind != NodeKind::Array {
+        return;
+    }
+    let segments: Vec<&str> = path
+        .trim_start_matches('.')
+        .split('.')
+        .filter(|s| !s.is_empty())
+        .collect();
+    let mut children: Vec<NodeId> = doc.nodes[id.0].children.clone();
+    children.sort_by(|a, b| {
+        let va = resolve_path(doc, *a, &segments);
+        let vb = resolve_path(doc, *b, &segments);
+        let cmp = if let (Some(fa), Some(fb)) = (
+            va.as_deref().and_then(|s| s.parse::<f64>().ok()),
+            vb.as_deref().and_then(|s| s.parse::<f64>().ok()),
+        ) {
+            fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
+        } else {
+            let sa = va.as_deref().unwrap_or("");
+            let sb = vb.as_deref().unwrap_or("");
+            sa.cmp(sb)
+        };
+        if ascending {
+            cmp
+        } else {
+            cmp.reverse()
+        }
+    });
+    doc.nodes[id.0].children = children;
+}
+
+fn resolve_path(doc: &JsonDoc, id: NodeId, segments: &[&str]) -> Option<String> {
+    let mut current = id;
+    for &seg in segments {
+        let children = &doc.nodes[current.0].children;
+        let found = children.iter().find(|c| doc.nodes[c.0].key.as_deref() == Some(seg));
+        current = *found?;
+    }
+    Some(doc.nodes[current.0].value.clone())
 }

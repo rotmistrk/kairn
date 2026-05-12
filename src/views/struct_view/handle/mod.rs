@@ -9,6 +9,26 @@ use crate::structured::NodeKind;
 
 use super::{ColFocus, EditTarget, StructuredView};
 
+/// Handle CM_SAVE command for the structured view.
+pub fn handle_save_command(view: &mut StructuredView, queue: &mut EventQueue) -> HandleResult {
+    match view.save() {
+        Ok(()) => {
+            let name = view
+                .path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let msg = txv_core::message::Message::info("struct", format!("Saved: {name}"));
+            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+        Err(e) => {
+            let msg = txv_core::message::Message::error("struct", format!("Save failed: {e}"));
+            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+    }
+    HandleResult::Consumed
+}
+
 /// Handle a key event for the structured view.
 pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut EventQueue) -> HandleResult {
     // Route to inline editor first when active
@@ -16,10 +36,31 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
         match editor.handle_key(key) {
             InlineEditResult::Continue => {}
             InlineEditResult::Commit(_) => {
-                view.save_undo_point();
-                view.commit_edit();
+                if view.filtering {
+                    let text = view.editing.take().map(|e| e.buffer).unwrap_or_default();
+                    view.filter_text = text;
+                    view.filtering = false;
+                    view.rebuild_visible();
+                    view.clamp_cursor();
+                    view.sync_scroll();
+                    view.sync_title();
+                } else if let Some(sort_target) = view.sort_path_target.take() {
+                    let text = view.editing.take().map(|e| e.buffer).unwrap_or_default();
+                    view.save_undo_point();
+                    view.doc.sort_children_by_path(sort_target, &text, true);
+                    view.dirty = true;
+                    view.sync_title();
+                    view.rebuild_visible();
+                } else {
+                    view.save_undo_point();
+                    view.commit_edit();
+                }
             }
-            InlineEditResult::Cancel => view.cancel_edit(),
+            InlineEditResult::Cancel => {
+                view.filtering = false;
+                view.sort_path_target = None;
+                view.cancel_edit();
+            }
         }
         view.state.mark_dirty();
         return HandleResult::Consumed;
@@ -139,6 +180,22 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
         }
         KeyCode::Char('!') => {
             ops::handle_toggle_inline(view);
+            HandleResult::Consumed
+        }
+        KeyCode::Char('s') => {
+            ops::handle_sort(view);
+            HandleResult::Consumed
+        }
+        KeyCode::Char('S') => {
+            ops::handle_sort_by_path_start(view);
+            HandleResult::Consumed
+        }
+        KeyCode::Char('f') => {
+            ops::handle_filter_start(view);
+            HandleResult::Consumed
+        }
+        KeyCode::Char('F') => {
+            ops::handle_filter_clear(view);
             HandleResult::Consumed
         }
         KeyCode::Char('u') => {

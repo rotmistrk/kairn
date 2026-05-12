@@ -210,6 +210,12 @@ impl StructuredDoc for JsonDoc {
     fn convert_container(&mut self, id: NodeId) {
         ops::convert_container(self, id);
     }
+    fn sort_children(&mut self, id: NodeId, ascending: bool) {
+        ops::sort_children(self, id, ascending);
+    }
+    fn sort_children_by_path(&mut self, id: NodeId, path: &str, ascending: bool) {
+        ops::sort_children_by_path(self, id, path, ascending);
+    }
     fn serialize(&self) -> String {
         serialize::serialize(self)
     }

@@ -51,6 +51,10 @@ pub trait StructuredDoc: Send {
     fn serialize(&self) -> String;
     fn parent(&self, id: NodeId) -> Option<NodeId>;
     fn scalar_type(&self, id: NodeId) -> ScalarType;
+    /// Stable sort children of a container by key (dict) or value (array).
+    fn sort_children(&mut self, id: NodeId, ascending: bool);
+    /// Sort array elements by a nested field path (e.g., ".name").
+    fn sort_children_by_path(&mut self, id: NodeId, path: &str, ascending: bool);
     /// Snapshot the document state as a string (for undo).
     fn snapshot(&self) -> String;
     /// Restore document state from a snapshot string.

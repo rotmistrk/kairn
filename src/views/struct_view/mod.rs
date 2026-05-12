@@ -1,6 +1,7 @@
 //! StructuredView — tree-table view for structured data (JSON, YAML, etc.).
 
 mod draw;
+mod filter;
 mod handle;
 pub(crate) mod undo;
 
@@ -43,6 +44,11 @@ pub struct StructuredView {
     pub(crate) edit_target: EditTarget,
     pub(crate) dirty: bool,
     pub(crate) undo_stack: UndoStack,
+    pub(crate) filter_text: String,
+    pub(crate) filtering: bool,
+    pub(crate) last_sort_node: Option<NodeId>,
+    pub(crate) last_sort_asc: bool,
+    pub(crate) sort_path_target: Option<NodeId>,
 }
 
 impl StructuredView {
@@ -64,6 +70,11 @@ impl StructuredView {
             edit_target: EditTarget::Value,
             dirty: false,
             undo_stack: UndoStack::new(),
+            filter_text: String::new(),
+            filtering: false,
+            last_sort_node: None,
+            last_sort_asc: true,
+            sort_path_target: None,
         };
         view.rebuild_visible();
         view
@@ -73,7 +84,11 @@ impl StructuredView {
     pub(crate) fn rebuild_visible(&mut self) {
         self.visible_nodes.clear();
         let root = self.doc.root();
-        self.dfs_collect(root);
+        if self.filter_text.is_empty() {
+            self.dfs_collect(root);
+        } else {
+            self.dfs_collect_filtered(root);
+        }
     }
 
     fn dfs_collect(&mut self, id: NodeId) {
@@ -84,6 +99,15 @@ impl StructuredView {
                 self.dfs_collect(child);
             }
         }
+    }
+
+    /// Save the document to disk.
+    pub fn save(&mut self) -> Result<(), String> {
+        let content = self.doc.serialize();
+        std::fs::write(&self.path, &content).map_err(|e| e.to_string())?;
+        self.dirty = false;
+        self.sync_title();
+        Ok(())
     }
 
     /// Depth of a node (number of ancestors).
@@ -170,18 +194,24 @@ impl StructuredView {
         }
     }
 
-    /// Update display_title based on dirty state.
+    /// Update display_title based on dirty state and filter.
     pub(crate) fn sync_title(&mut self) {
         let name = self
             .path
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "structured".to_string());
-        if self.dirty {
-            self.display_title = format!("{name} *");
+        let dirty_mark = if self.dirty {
+            " *"
         } else {
-            self.display_title = name;
-        }
+            ""
+        };
+        let filter_mark = if self.filter_text.is_empty() {
+            String::new()
+        } else {
+            format!(" [filter: {}]", self.filter_text)
+        };
+        self.display_title = format!("{name}{dirty_mark}{filter_mark}");
     }
 
     /// Save current document state as an undo point.
@@ -232,6 +262,12 @@ impl View for StructuredView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+        if let Event::Command { id, .. } = event {
+            if *id == crate::commands::CM_SAVE {
+                return handle::handle_save_command(self, queue);
+            }
+            return HandleResult::Ignored;
+        }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
