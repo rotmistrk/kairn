@@ -129,3 +129,4 @@ pub struct ContentChanged {
     pub path: PathBuf,
     pub content: String,
 }
+pub const CM_GOTO_LINE: CommandId = 182;

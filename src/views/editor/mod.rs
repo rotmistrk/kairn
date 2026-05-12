@@ -131,6 +131,14 @@ impl View for EditorView {
                     queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
                     return HandleResult::Consumed;
                 }
+                if *id == crate::commands::CM_GOTO_LINE {
+                    if let Some(boxed) = data.as_ref() {
+                        if let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() {
+                            self.goto(line, col);
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
                 if *id == CM_CLIPBOARD_PASTE {
                     if let Some(boxed) = data.as_ref() {
                         if let Some(text) = boxed.downcast_ref::<String>() {

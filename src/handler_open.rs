@@ -31,6 +31,12 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     desktop.focus_slot(SlotId::Center);
                 }
             }
+            if let (Some(line), Some(col)) = (req.line, req.col) {
+                ctx.queue.put_command(
+                    crate::commands::CM_GOTO_LINE,
+                    Some(Box::new((line, col))),
+                );
+            }
             if req.diff {
                 ctx.queue.put_command(CM_DIFF, Some(Box::new(String::new())));
             }
