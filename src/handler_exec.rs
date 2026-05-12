@@ -122,8 +122,14 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "grow-v" => ctx.queue.put_command(CM_PANEL_GROW_V, None),
         "shrink-v" => ctx.queue.put_command(CM_PANEL_SHRINK_V, None),
         "paste" => {
-            if let Some(text) = crate::clipboard::paste_from_clipboard() {
-                ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+            match crate::clipboard::paste_from_clipboard() {
+                Ok(text) => {
+                    ctx.queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+                }
+                Err(e) => {
+                    let msg = txv_core::message::Message::error("clipboard", e);
+                    ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                }
             }
         }
         "git-stage" if !arg.is_empty() => {

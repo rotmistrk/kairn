@@ -55,7 +55,13 @@ pub fn run_command(cmd: &str, cwd: &Path) -> Option<String> {
     if parts.is_empty() {
         return None;
     }
-    let output = Command::new("sh").arg("-c").arg(cmd).current_dir(cwd).output().ok()?;
+    let output = match Command::new("sh").arg("-c").arg(cmd).current_dir(cwd).output() {
+        Ok(o) => o,
+        Err(e) => {
+            log::error!("build: failed to spawn '{cmd}': {e}");
+            return Some(format!("Build failed: {e}"));
+        }
+    };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);

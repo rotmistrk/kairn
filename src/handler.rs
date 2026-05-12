@@ -19,7 +19,6 @@ use crate::layout_group::SlotId;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
 use crate::settings::AppSettings;
-use crate::views::editor::EditorView;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
@@ -96,6 +95,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(msg) = boxed.downcast_ref::<Message>() {
                 if let Ok(mut ring) = state.messages.lock() {
                     ring.push(msg.clone());
+                } else {
+                    log::error!("Message ring mutex poisoned");
                 }
             }
         }
@@ -141,6 +142,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 if let Some(ref arc) = state.mcp_snapshot {
                     if let Ok(mut locked) = arc.lock() {
                         *locked = snap;
+                    } else {
+                        log::error!("MCP snapshot mutex poisoned");
                     }
                 }
             }
@@ -194,8 +197,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 }
             }
         }
-        CM_SHELL_OUTPUT => handle_shell_output(ctx),
-        CM_SHOW_RESULTS => handle_show_results(ctx),
+        CM_SHELL_OUTPUT => crate::handler_open::handle_shell_output(ctx),
+        CM_SHOW_RESULTS => crate::handler_open::handle_show_results(ctx),
         CM_BUILD => crate::handler_build::handle_build(ctx, state),
         CM_RUN => crate::handler_build::handle_run(ctx, state),
         CM_TEST => crate::handler_build::handle_test(ctx, state),
@@ -246,33 +249,6 @@ fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
 /// Downcast the desktop View to LayoutGroup.
 pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut LayoutGroup> {
     view.as_any_mut()?.downcast_mut::<LayoutGroup>()
-}
-
-fn handle_shell_output(ctx: &mut CommandContext) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(output) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let view = EditorView::from_text(output);
-        desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));
-    }
-}
-
-fn handle_show_results(ctx: &mut CommandContext) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some((title, entries)) = boxed.downcast_ref::<(String, Vec<crate::views::results::ResultEntry>)>() else {
-        return;
-    };
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let view = crate::views::results::ResultsView::new(title, entries.clone());
-        desktop.insert_tab(SlotId::Right, title, Box::new(view));
-        desktop.focus_slot(SlotId::Right);
-    }
 }
 
 use crate::views::welcome::WelcomeView;

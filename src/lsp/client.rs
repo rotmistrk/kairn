@@ -48,14 +48,18 @@ impl LspClient {
         let id = self.next_id;
         self.next_id += 1;
         let data = messages::encode_request(id, method, params);
-        let _ = self.write_tx.send(data);
+        if self.write_tx.send(data).is_err() {
+            log::error!("LSP send_request failed: server connection lost");
+        }
         id
     }
 
     /// Send a notification (no response expected).
     pub fn send_notification(&mut self, method: &str, params: Value) {
         let data = messages::encode_notification(method, params);
-        let _ = self.write_tx.send(data);
+        if self.write_tx.send(data).is_err() {
+            log::error!("LSP send_notification failed: server connection lost");
+        }
     }
 
     /// Poll for incoming messages (non-blocking). Returns all available.
@@ -101,23 +105,43 @@ fn read_message(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Lsp
     let mut content_length: usize = 0;
     loop {
         let mut line = String::new();
-        if reader.read_line(&mut line).ok()? == 0 {
-            return None;
+        match reader.read_line(&mut line) {
+            Ok(0) => return None,
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("LSP read header: {e}");
+                return None;
+            }
         }
         let line = line.trim();
         if line.is_empty() {
             break;
         }
         if let Some(len_str) = line.strip_prefix("Content-Length: ") {
-            content_length = len_str.parse().ok()?;
+            content_length = match len_str.parse() {
+                Ok(n) => n,
+                Err(e) => {
+                    log::warn!("LSP bad Content-Length '{len_str}': {e}");
+                    return None;
+                }
+            };
         }
     }
     if content_length == 0 {
         return None;
     }
     let mut body = vec![0u8; content_length];
-    std::io::Read::read_exact(reader, &mut body).ok()?;
-    let json: Value = serde_json::from_slice(&body).ok()?;
+    if let Err(e) = std::io::Read::read_exact(reader, &mut body) {
+        log::warn!("LSP read body ({content_length} bytes): {e}");
+        return None;
+    }
+    let json: Value = match serde_json::from_slice(&body) {
+        Ok(v) => v,
+        Err(e) => {
+            log::warn!("LSP parse JSON: {e}");
+            return None;
+        }
+    };
     messages::parse_message(&json)
 }
 

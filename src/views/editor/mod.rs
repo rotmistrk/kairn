@@ -7,6 +7,7 @@ mod draw;
 mod draw_diagnostics;
 mod draw_diff;
 mod handle;
+mod handle_close;
 mod handle_completion;
 mod handle_diff;
 
@@ -15,7 +16,6 @@ use std::path::PathBuf;
 use txv_core::prelude::*;
 
 use crate::commands::CM_CLIPBOARD_PASTE;
-use crate::commands::CM_TAB_CLOSE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
 use crate::highlight::Highlighter;
@@ -203,35 +203,7 @@ impl View for EditorView {
 
         // Close prompt: y/n/c
         if self.close_prompt {
-            use txv_core::event::KeyCode;
-            match &key.code {
-                KeyCode::Char('y') => {
-                    self.close_prompt = false;
-                    let content = self.editor.buffer.content();
-                    let _ = crate::editor::save::save_file(&self.path, &content);
-                    self.editor.buffer.mark_saved();
-                    queue.put_command(
-                        crate::commands::CM_FILE_CLOSED,
-                        Some(Box::new(self.path.to_string_lossy().to_string())),
-                    );
-                    queue.put_command(CM_TAB_CLOSE, None);
-                }
-                KeyCode::Char('n') => {
-                    self.close_prompt = false;
-                    self.editor.buffer.mark_saved(); // discard
-                    queue.put_command(
-                        crate::commands::CM_FILE_CLOSED,
-                        Some(Box::new(self.path.to_string_lossy().to_string())),
-                    );
-                    queue.put_command(CM_TAB_CLOSE, None);
-                }
-                _ => {
-                    self.close_prompt = false;
-                    self.editor.status = String::new();
-                }
-            }
-            self.state.mark_dirty();
-            return HandleResult::Consumed;
+            return self.handle_close_prompt(key, queue);
         }
 
         let old_mode = self.editor.mode;

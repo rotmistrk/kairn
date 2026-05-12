@@ -25,7 +25,13 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let uri = protocol::path_to_uri(path);
-    let text = std::fs::read_to_string(path).unwrap_or_default();
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) => {
+            log::warn!("LSP didOpen: cannot read {}: {e}", path.display());
+            String::new()
+        }
+    };
     protocol::did_open(client, &uri, lang, &text);
 }
 

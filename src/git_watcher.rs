@@ -32,12 +32,18 @@ impl GitWatcher {
         .ok()?;
 
         // Only watch git internals (cheap, few FDs)
-        let _ = watcher.watch(&git_dir.join("index"), RecursiveMode::NonRecursive);
-        let _ = watcher.watch(&git_dir.join("refs"), RecursiveMode::NonRecursive);
+        if let Err(e) = watcher.watch(&git_dir.join("index"), RecursiveMode::NonRecursive) {
+            log::warn!("git watcher: cannot watch index: {e}");
+        }
+        if let Err(e) = watcher.watch(&git_dir.join("refs"), RecursiveMode::NonRecursive) {
+            log::warn!("git watcher: cannot watch refs: {e}");
+        }
         // Watch .gitignore for rule changes
         let gitignore = root.join(".gitignore");
         if gitignore.exists() {
-            let _ = watcher.watch(&gitignore, RecursiveMode::NonRecursive);
+            if let Err(e) = watcher.watch(&gitignore, RecursiveMode::NonRecursive) {
+                log::warn!("git watcher: cannot watch .gitignore: {e}");
+            }
         }
 
         Some(Self {

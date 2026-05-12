@@ -35,13 +35,19 @@ pub fn apply_resource_op(kind: &str, op: &Value) -> bool {
 
 fn rename_file(old: &str, new: &str) -> bool {
     if let Some(parent) = std::path::Path::new(new).parent() {
-        let _ = std::fs::create_dir_all(parent);
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            log::error!("LSP resource: create_dir_all {}: {e}", parent.display());
+        }
     }
     // Try git mv first if file is in a git repo
     if is_in_git_repo(old) && git_mv(old, new) {
         return true;
     }
-    std::fs::rename(old, new).is_ok()
+    if let Err(e) = std::fs::rename(old, new) {
+        log::error!("LSP resource: rename {old} → {new}: {e}");
+        return false;
+    }
+    true
 }
 
 /// Check if a path is inside a git repository.
@@ -70,18 +76,30 @@ fn git_mv(old: &str, new: &str) -> bool {
 
 fn create_file(path: &str) -> bool {
     if let Some(parent) = std::path::Path::new(path).parent() {
-        let _ = std::fs::create_dir_all(parent);
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            log::error!("LSP resource: create_dir_all {}: {e}", parent.display());
+            return false;
+        }
     }
-    std::fs::File::create(path).is_ok()
+    if let Err(e) = std::fs::File::create(path) {
+        log::error!("LSP resource: create file {path}: {e}");
+        return false;
+    }
+    true
 }
 
 fn delete_file(path: &str) -> bool {
     let p = std::path::Path::new(path);
-    if p.is_dir() {
-        std::fs::remove_dir_all(p).is_ok()
+    let result = if p.is_dir() {
+        std::fs::remove_dir_all(p)
     } else {
-        std::fs::remove_file(p).is_ok()
+        std::fs::remove_file(p)
+    };
+    if let Err(e) = result {
+        log::error!("LSP resource: delete {path}: {e}");
+        return false;
     }
+    true
 }
 
 fn uri_to_path(uri: &str) -> String {

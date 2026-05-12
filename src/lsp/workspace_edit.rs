@@ -76,7 +76,11 @@ fn apply_text_edits(path: &str, edits_val: &Value) -> bool {
             result.replace_range(start_byte..end_byte, new_text);
         }
     }
-    std::fs::write(path, &result).is_ok()
+    if let Err(e) = std::fs::write(path, &result) {
+        log::error!("LSP rename: failed to write {path}: {e}");
+        return false;
+    }
+    true
 }
 
 /// Convert line/col (0-indexed) to byte offset.

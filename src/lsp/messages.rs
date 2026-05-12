@@ -44,7 +44,13 @@ pub fn encode_notification(method: &str, params: Value) -> Vec<u8> {
 }
 
 fn encode_body(body: &Value) -> Vec<u8> {
-    let json = serde_json::to_string(body).unwrap_or_default();
+    let json = match serde_json::to_string(body) {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("LSP serialize bug: {e}");
+            return Vec::new();
+        }
+    };
     format!("Content-Length: {}\r\n\r\n{}", json.len(), json).into_bytes()
 }
 

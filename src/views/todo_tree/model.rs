@@ -17,31 +17,39 @@ pub fn get_item_mut<'a>(file: &'a mut TodoFile, path: &TreePath) -> Option<&'a m
 }
 
 pub fn add_sibling(file: &mut TodoFile, path: &TreePath, item: TodoItem) -> bool {
-    tree_ops::add_sibling(file, path, item).is_ok()
+    if let Err(e) = tree_ops::add_sibling(file, path, item) {
+        log::warn!("todo add_sibling: {e}");
+        return false;
+    }
+    true
 }
 
 pub fn add_child(file: &mut TodoFile, path: &TreePath, item: TodoItem) -> bool {
-    tree_ops::add_child(file, path, item).is_ok()
+    if let Err(e) = tree_ops::add_child(file, path, item) {
+        log::warn!("todo add_child: {e}");
+        return false;
+    }
+    true
 }
 
 pub fn remove_item(file: &mut TodoFile, path: &TreePath) -> Option<TodoItem> {
-    tree_ops::remove_item(file, path).ok()
+    tree_ops::remove_item(file, path).map_err(|e| log::warn!("todo remove: {e}")).ok()
 }
 
 pub fn swap_up(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::swap_up(file, path).ok()
+    tree_ops::swap_up(file, path).map_err(|e| log::warn!("todo swap_up: {e}")).ok()
 }
 
 pub fn swap_down(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::swap_down(file, path).ok()
+    tree_ops::swap_down(file, path).map_err(|e| log::warn!("todo swap_down: {e}")).ok()
 }
 
 pub fn promote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::promote(file, path).ok()
+    tree_ops::promote(file, path).map_err(|e| log::warn!("todo promote: {e}")).ok()
 }
 
 pub fn demote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::demote(file, path).ok()
+    tree_ops::demote(file, path).map_err(|e| log::warn!("todo demote: {e}")).ok()
 }
 
 /// Load a TodoFile from path, creating empty if absent.
@@ -57,7 +65,12 @@ pub fn load_todo_file(path: &Path) -> TodoFile {
 /// Save a TodoFile to path.
 pub fn save_todo_file(path: &Path, file: &TodoFile) -> bool {
     let Ok(content) = serde_json::to_string_pretty(file) else {
+        log::error!("todo: failed to serialize TodoFile");
         return false;
     };
-    fs::write(path, content).is_ok()
+    if let Err(e) = fs::write(path, content) {
+        log::error!("todo: failed to save {}: {e}", path.display());
+        return false;
+    }
+    true
 }

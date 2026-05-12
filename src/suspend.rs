@@ -15,7 +15,9 @@ pub(crate) fn suspend_to_shell() {
     );
     // Spawn shell with guard env var
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-    let _ = std::process::Command::new(&shell).env("KAIRN_SUSPENDED", "1").status();
+    if let Err(e) = std::process::Command::new(&shell).env("KAIRN_SUSPENDED", "1").status() {
+        log::error!("suspend: failed to spawn shell {shell}: {e}");
+    }
     // Re-enter TUI
     let _ = crossterm::execute!(
         std::io::stdout(),

@@ -96,3 +96,32 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg
         }
     }
 }
+
+pub(crate) fn handle_shell_output(ctx: &mut CommandContext) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(output) = boxed.downcast_ref::<String>() else {
+        return;
+    };
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        let view = EditorView::from_text(output);
+        desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));
+    }
+}
+
+pub(crate) fn handle_show_results(ctx: &mut CommandContext) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((title, entries)) =
+        boxed.downcast_ref::<(String, Vec<crate::views::results::ResultEntry>)>()
+    else {
+        return;
+    };
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        let view = crate::views::results::ResultsView::new(title, entries.clone());
+        desktop.insert_tab(SlotId::Right, title, Box::new(view));
+        desktop.focus_slot(SlotId::Right);
+    }
+}
