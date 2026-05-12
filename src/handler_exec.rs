@@ -103,8 +103,8 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             let title = format!("grep: {arg}");
             let view = crate::views::results::ResultsView::streaming(&title, rx);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Center, &title, Box::new(view));
-                desktop.focus_slot(SlotId::Center);
+                desktop.insert_tab(SlotId::Right, &title, Box::new(view));
+                desktop.focus_slot(SlotId::Right);
             }
         }
         "grep" => {

@@ -243,8 +243,8 @@ fn handle_show_results(ctx: &mut CommandContext) {
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = crate::views::results::ResultsView::new(title, entries.clone());
-        desktop.insert_tab(SlotId::Center, title, Box::new(view));
-        desktop.focus_slot(SlotId::Center);
+        desktop.insert_tab(SlotId::Right, title, Box::new(view));
+        desktop.focus_slot(SlotId::Right);
     }
 }
 
