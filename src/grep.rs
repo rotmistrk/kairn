@@ -1,72 +1,54 @@
-//! Grep — search project files for a pattern, stream results via shared buffer.
+//! Grep — search project files for a pattern.
 
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
 
-use crate::views::results::{ResultEntry, SharedResults};
+use crate::views::results::ResultEntry;
 
-/// Spawn grep in background, push results into shared buffer.
-pub fn grep_stream(pattern: &str, root: &Path) -> Arc<SharedResults> {
-    let shared = SharedResults::new();
-    let shared_clone = Arc::clone(&shared);
-    let pattern = pattern.to_string();
-    let root = root.to_path_buf();
+/// Run grep synchronously. Returns results (max 1000).
+/// Uses `rg` (respects .gitignore) or falls back to `grep -rn`.
+pub fn grep_project(pattern: &str, root: &Path) -> Vec<ResultEntry> {
+    let child = Command::new("rg")
+        .args([
+            "--line-number",
+            "--no-heading",
+            "--color=never",
+            "--max-count=10",
+            "--max-columns=200",
+            pattern,
+        ])
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .or_else(|_| {
+            Command::new("grep")
+                .args(["-rn", "--include=*", pattern, "."])
+                .current_dir(root)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .spawn()
+        });
 
-    std::thread::spawn(move || {
-        let child = Command::new("rg")
-            .args([
-                "--line-number",
-                "--no-heading",
-                "--color=never",
-                "--max-count=10",
-                "--max-columns=200",
-                &pattern,
-            ])
-            .current_dir(&root)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .or_else(|_| {
-                Command::new("grep")
-                    .args(["-rn", "--include=*", &pattern, "."])
-                    .current_dir(&root)
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::null())
-                    .spawn()
-            });
+    let Ok(mut child) = child else {
+        return Vec::new();
+    };
 
-        let Ok(mut child) = child else {
-            shared_clone.mark_done();
-            return;
-        };
+    let stdout = child.stdout.take().unwrap();
+    let reader = BufReader::new(stdout);
+    let mut entries = Vec::new();
 
-        let stdout = child.stdout.take().unwrap();
-        let reader = BufReader::new(stdout);
-        let mut batch = Vec::with_capacity(16);
-        let mut count = 0;
-
-        for line in reader.lines().map_while(Result::ok) {
-            if let Some(entry) = parse_grep_line(&line, &root) {
-                batch.push(entry);
-                count += 1;
-                if batch.len() >= 16 {
-                    shared_clone.push_batch(std::mem::take(&mut batch));
-                }
-            }
-            if count >= 1000 {
-                break;
-            }
+    for line in reader.lines().map_while(Result::ok) {
+        if let Some(entry) = parse_grep_line(&line, root) {
+            entries.push(entry);
         }
-        if !batch.is_empty() {
-            shared_clone.push_batch(batch);
+        if entries.len() >= 1000 {
+            break;
         }
-        let _ = child.wait();
-        shared_clone.mark_done();
-    });
-
-    shared
+    }
+    let _ = child.wait();
+    entries
 }
 
 fn parse_grep_line(line: &str, root: &Path) -> Option<ResultEntry> {
@@ -85,6 +67,7 @@ fn parse_grep_line(line: &str, root: &Path) -> Option<ResultEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn parse_rg_output() {

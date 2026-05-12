@@ -99,9 +99,11 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "grep" if !arg.is_empty() => {
             let pattern = arg.to_string();
             let root = state.root_dir.clone();
-            let shared = crate::grep::grep_stream(&pattern, &root);
+            // TODO: make async once Tick dispatch to tool panel is fixed
+            let entries = crate::grep::grep_project(&pattern, &root);
             let title = format!("grep:{arg}");
-            state.grep_shared = Some(shared.clone()); let view = crate::views::results::ResultsView::streaming(&title, shared, &root);
+            let view = crate::views::results::ResultsView::new(&title, entries)
+                .with_root(&root);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.insert_tab(SlotId::Right, &title, Box::new(view));
                 desktop.focus_slot(SlotId::Right);

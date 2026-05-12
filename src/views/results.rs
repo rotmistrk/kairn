@@ -1,10 +1,8 @@
 //! ResultsView — quickfix-style list for LSP refs, grep, build errors.
 //!
 //! Opens in the tool panel. Enter opens file (keeps focus), Right opens + moves focus.
-//! Supports async streaming of results via shared buffer.
 
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
@@ -20,33 +18,6 @@ pub struct ResultEntry {
     pub text: String,
 }
 
-/// Shared state between grep thread and view.
-pub struct SharedResults {
-    pub entries: Mutex<Vec<ResultEntry>>,
-    pub done: Mutex<bool>,
-}
-
-impl SharedResults {
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self {
-            entries: Mutex::new(Vec::new()),
-            done: Mutex::new(false),
-        })
-    }
-
-    pub fn push_batch(&self, batch: Vec<ResultEntry>) {
-        if let Ok(mut v) = self.entries.lock() {
-            v.extend(batch);
-        }
-    }
-
-    pub fn mark_done(&self) {
-        if let Ok(mut d) = self.done.lock() {
-            *d = true;
-        }
-    }
-}
-
 /// Quickfix-style results list view.
 pub struct ResultsView {
     state: ViewState,
@@ -54,39 +25,24 @@ pub struct ResultsView {
     cursor: usize,
     scroll: usize,
     title: String,
-    shared: Option<Arc<SharedResults>>,
-    done: bool,
     root: PathBuf,
 }
 
 impl ResultsView {
-    /// Create with pre-populated entries (LSP refs, build errors).
     pub fn new(title: &str, entries: Vec<ResultEntry>) -> Self {
-        let done = entries.is_empty();
         Self {
             state: ViewState::default(),
             entries,
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
-            shared: None,
-            done: true,
             root: PathBuf::new(),
         }
     }
 
-    /// Create with shared buffer for streaming results.
-    pub fn streaming(title: &str, shared: Arc<SharedResults>, root: &Path) -> Self {
-        Self {
-            state: ViewState::default(),
-            entries: Vec::new(),
-            cursor: 0,
-            scroll: 0,
-            title: title.to_string(),
-            shared: Some(shared),
-            done: false,
-            root: root.to_path_buf(),
-        }
+    pub fn with_root(mut self, root: &Path) -> Self {
+        self.root = root.to_path_buf();
+        self
     }
 
     pub fn current_entry(&self) -> Option<&ResultEntry> {
@@ -125,36 +81,6 @@ impl ResultsView {
         if let Some(entry) = self.entries.get(self.cursor) {
             let req = OpenFileRequest::at(entry.path.clone(), entry.line, entry.col);
             queue.put_command(CM_OPEN_FILE, Some(Box::new(req)));
-        }
-    }
-
-    fn poll_shared(&mut self) {
-        let Some(shared) = &self.shared else { return };
-        let mut got = false;
-        if let Ok(mut v) = shared.entries.lock() {
-            if !v.is_empty() {
-                self.entries.append(&mut *v);
-                got = true;
-            }
-        }
-        let is_done = shared.done.lock().map(|d| *d).unwrap_or(false);
-        if is_done {
-            self.done = true;
-            self.shared = None;
-            got = true;
-        }
-        if got {
-            self.state.mark_dirty();
-        }
-    }
-
-    fn status_line(&self) -> String {
-        if !self.done {
-            format!("⟳ Searching... ({} found)", self.entries.len())
-        } else if self.entries.is_empty() {
-            "✗ No matches".to_string()
-        } else {
-            format!("✓ {} results", self.entries.len())
         }
     }
 }
@@ -209,10 +135,12 @@ impl View for ResultsView {
 
         // Status line at bottom
         let status_y = b.y + b.h - 1;
-        let status = self.status_line();
-        let status_style = if !self.done {
-            Style { fg: Color::Ansi(11), ..Style::default() }
-        } else if self.entries.is_empty() {
+        let status = if self.entries.is_empty() {
+            "✗ No matches".to_string()
+        } else {
+            format!("✓ {} results", self.entries.len())
+        };
+        let status_style = if self.entries.is_empty() {
             Style { fg: Color::Ansi(9), ..Style::default() }
         } else {
             Style { fg: Color::Ansi(10), ..Style::default() }
@@ -222,27 +150,7 @@ impl View for ResultsView {
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        if let Event::Tick = event {
-            self.poll_shared();
-            return HandleResult::Ignored;
-        }
-        if let Event::Command { id, data } = event {
-            if *id == crate::commands::CM_GREP_RESULTS {
-                if let Some(boxed) = data.as_ref() {
-                    if let Some(batch) = boxed.downcast_ref::<Vec<ResultEntry>>() {
-                        self.entries.extend(batch.iter().cloned());
-                        self.state.mark_dirty();
-                    } else if boxed.downcast_ref::<()>().is_some() {
-                        // () signals done
-                        self.done = true;
-                        self.shared = None;
-                        self.state.mark_dirty();
-                    }
-                }
-                return HandleResult::Consumed;
-            }
-            return HandleResult::Ignored;
-        }
+        log::error!("RESULTS_HANDLE event={:?}", std::mem::discriminant(event));
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
