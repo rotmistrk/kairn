@@ -1,10 +1,10 @@
 //! ResultsView — quickfix-style list for LSP refs, grep, build errors.
 //!
-//! Opens in the center panel. Enter navigates to the selected location.
-//! n/p cycle through results. Supports async streaming of results.
+//! Opens in the tool panel. Enter opens file (keeps focus), Right opens + moves focus.
+//! Supports async streaming of results via shared buffer.
 
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
@@ -20,11 +20,31 @@ pub struct ResultEntry {
     pub text: String,
 }
 
-/// Search state for progress display.
-enum SearchState {
-    Searching(mpsc::Receiver<Vec<ResultEntry>>),
-    Done,
-    NoMatches,
+/// Shared state between grep thread and view.
+pub struct SharedResults {
+    entries: Mutex<Vec<ResultEntry>>,
+    done: Mutex<bool>,
+}
+
+impl SharedResults {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            entries: Mutex::new(Vec::new()),
+            done: Mutex::new(false),
+        })
+    }
+
+    pub fn push_batch(&self, batch: Vec<ResultEntry>) {
+        if let Ok(mut v) = self.entries.lock() {
+            v.extend(batch);
+        }
+    }
+
+    pub fn mark_done(&self) {
+        if let Ok(mut d) = self.done.lock() {
+            *d = true;
+        }
+    }
 }
 
 /// Quickfix-style results list view.
@@ -34,38 +54,37 @@ pub struct ResultsView {
     cursor: usize,
     scroll: usize,
     title: String,
-    search: SearchState,
+    shared: Option<Arc<SharedResults>>,
+    done: bool,
     root: PathBuf,
 }
 
 impl ResultsView {
     /// Create with pre-populated entries (LSP refs, build errors).
     pub fn new(title: &str, entries: Vec<ResultEntry>) -> Self {
-        let search = if entries.is_empty() {
-            SearchState::NoMatches
-        } else {
-            SearchState::Done
-        };
+        let done = entries.is_empty();
         Self {
             state: ViewState::default(),
             entries,
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
-            search,
+            shared: None,
+            done: true,
             root: PathBuf::new(),
         }
     }
 
-    /// Create with a streaming receiver (grep).
-    pub fn streaming(title: &str, rx: mpsc::Receiver<Vec<ResultEntry>>, root: &Path) -> Self {
+    /// Create with shared buffer for streaming results.
+    pub fn streaming(title: &str, shared: Arc<SharedResults>, root: &Path) -> Self {
         Self {
             state: ViewState::default(),
             entries: Vec::new(),
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
-            search: SearchState::Searching(rx),
+            shared: Some(shared),
+            done: false,
             root: root.to_path_buf(),
         }
     }
@@ -91,7 +110,7 @@ impl ResultsView {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h.saturating_sub(1) as usize;
         if h == 0 {
             return;
         }
@@ -109,28 +128,20 @@ impl ResultsView {
         }
     }
 
-    fn poll_results(&mut self) {
-        let SearchState::Searching(rx) = &self.search else {
-            return;
-        };
+    fn poll_shared(&mut self) {
+        let Some(shared) = &self.shared else { return };
         let mut got = false;
-        loop {
-            match rx.try_recv() {
-                Ok(batch) => {
-                    self.entries.extend(batch);
-                    got = true;
-                }
-                Err(mpsc::TryRecvError::Empty) => break,
-                Err(mpsc::TryRecvError::Disconnected) => {
-                    self.search = if self.entries.is_empty() {
-                        SearchState::NoMatches
-                    } else {
-                        SearchState::Done
-                    };
-                    got = true;
-                    break;
-                }
+        if let Ok(mut v) = shared.entries.lock() {
+            if !v.is_empty() {
+                self.entries.append(&mut *v);
+                got = true;
             }
+        }
+        let is_done = shared.done.lock().map(|d| *d).unwrap_or(false);
+        if is_done {
+            self.done = true;
+            self.shared = None;
+            got = true;
         }
         if got {
             self.state.mark_dirty();
@@ -138,14 +149,12 @@ impl ResultsView {
     }
 
     fn status_line(&self) -> String {
-        match &self.search {
-            SearchState::Searching(_) => {
-                format!("⟳ Searching... ({} found)", self.entries.len())
-            }
-            SearchState::Done => {
-                format!("✓ {} results", self.entries.len())
-            }
-            SearchState::NoMatches => "✗ No matches".to_string(),
+        if !self.done {
+            format!("⟳ Searching... ({} found)", self.entries.len())
+        } else if self.entries.is_empty() {
+            "✗ No matches".to_string()
+        } else {
+            format!("✓ {} results", self.entries.len())
         }
     }
 }
@@ -174,7 +183,6 @@ impl View for ResultsView {
             Style { bg: Color::Ansi(8), ..Style::default() }
         };
 
-        // Reserve last row for status
         let content_h = b.h.saturating_sub(1) as usize;
 
         for row in 0..content_h {
@@ -202,10 +210,12 @@ impl View for ResultsView {
         // Status line at bottom
         let status_y = b.y + b.h - 1;
         let status = self.status_line();
-        let status_style = match &self.search {
-            SearchState::Searching(_) => Style { fg: Color::Ansi(11), ..Style::default() },
-            SearchState::Done => Style { fg: Color::Ansi(10), ..Style::default() },
-            SearchState::NoMatches => Style { fg: Color::Ansi(9), ..Style::default() },
+        let status_style = if !self.done {
+            Style { fg: Color::Ansi(11), ..Style::default() }
+        } else if self.entries.is_empty() {
+            Style { fg: Color::Ansi(9), ..Style::default() }
+        } else {
+            Style { fg: Color::Ansi(10), ..Style::default() }
         };
         surface.hline(b.x, status_y, b.w, ' ', status_style);
         surface.print(b.x, status_y, &status, status_style);
@@ -213,7 +223,7 @@ impl View for ResultsView {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
-            self.poll_results();
+            self.poll_shared();
             return HandleResult::Ignored;
         }
         let Event::Key(key) = event else {

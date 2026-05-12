@@ -1,19 +1,16 @@
-//! Grep — search project files for a pattern, stream results incrementally.
+//! Grep — search project files for a pattern, stream results via shared buffer.
 
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::mpsc;
+use std::sync::Arc;
 
-use crate::views::results::ResultEntry;
+use crate::views::results::{ResultEntry, SharedResults};
 
-/// Spawn grep in background, return receiver that yields batches of results.
-/// Uses `rg` (respects .gitignore) or falls back to `grep -rn`.
-pub fn grep_stream(
-    pattern: &str,
-    root: &Path,
-) -> mpsc::Receiver<Vec<ResultEntry>> {
-    let (tx, rx) = mpsc::channel();
+/// Spawn grep in background, push results into shared buffer.
+pub fn grep_stream(pattern: &str, root: &Path) -> Arc<SharedResults> {
+    let shared = SharedResults::new();
+    let shared_clone = Arc::clone(&shared);
     let pattern = pattern.to_string();
     let root = root.to_path_buf();
 
@@ -41,6 +38,7 @@ pub fn grep_stream(
             });
 
         let Ok(mut child) = child else {
+            shared_clone.mark_done();
             return;
         };
 
@@ -54,9 +52,7 @@ pub fn grep_stream(
                 batch.push(entry);
                 count += 1;
                 if batch.len() >= 16 {
-                    if tx.send(std::mem::take(&mut batch)).is_err() {
-                        break;
-                    }
+                    shared_clone.push_batch(std::mem::take(&mut batch));
                 }
             }
             if count >= 1000 {
@@ -64,12 +60,13 @@ pub fn grep_stream(
             }
         }
         if !batch.is_empty() {
-            let _ = tx.send(batch);
+            shared_clone.push_batch(batch);
         }
         let _ = child.wait();
+        shared_clone.mark_done();
     });
 
-    rx
+    shared
 }
 
 fn parse_grep_line(line: &str, root: &Path) -> Option<ResultEntry> {
@@ -88,7 +85,6 @@ fn parse_grep_line(line: &str, root: &Path) -> Option<ResultEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn parse_rg_output() {
