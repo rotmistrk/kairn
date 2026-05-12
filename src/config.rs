@@ -87,6 +87,11 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.scrollback_lines = n as u16;
         }
     }
+    if let Some(val) = interp.get_var("tabs.max") {
+        if let Ok(n) = val.as_int() {
+            settings.max_tabs = n as u16;
+        }
+    }
     if let Some(val) = interp.get_var("git.stage") {
         if let Some(k) = parse_key_var(&val.as_str()) {
             settings.git_keys.stage = k;

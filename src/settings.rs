@@ -63,6 +63,7 @@ impl Default for GitKeys {
 pub struct AppSettings {
     pub clock_interval: u16,
     pub scrollback_lines: u16,
+    pub max_tabs: u16,
     pub editor_defaults: EditorSettings,
     pub build_command: Option<String>,
     pub run_command: Option<String>,
@@ -127,6 +128,7 @@ impl Default for AppSettings {
         Self {
             clock_interval: 60,
             scrollback_lines: 2000,
+            max_tabs: 10,
             editor_defaults: EditorSettings::default(),
             build_command: None,
             run_command: None,

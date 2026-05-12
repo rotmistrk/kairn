@@ -45,6 +45,12 @@ pub struct AppState {
     mcp_tick: u16,
     pub waker: Option<txv_core::run::Waker>,
     pub grep_pending: Option<(String, std::sync::Arc<crate::grep::GrepState>, std::path::PathBuf)>,
+    pub build_pending: Option<(
+        String,
+        std::sync::Arc<crate::task_output::TaskOutput>,
+        std::path::PathBuf,
+    )>,
+    pub pending_tab: Option<crate::eviction::PendingTab>,
 }
 
 impl AppState {
@@ -65,6 +71,8 @@ impl AppState {
             mcp_tick: 0,
             waker: None,
             grep_pending: None,
+            build_pending: None,
+            pending_tab: None,
         }
     }
 
@@ -85,6 +93,8 @@ impl AppState {
             mcp_tick: 0,
             waker: None,
             grep_pending: None,
+            build_pending: None,
+            pending_tab: None,
         }
     }
 }
@@ -111,31 +121,9 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // LSP: poll servers for notifications
     crate::lsp::handler::poll_lsp(state, ctx.queue);
 
-    // Grep: drain results from background thread into the results view
-    if let Some((title, gs, root)) = state.grep_pending.take() {
-        if let Some(err) = gs.take_error() {
-            let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "grep", err);
-            ctx.queue
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-        let entries = gs.take_entries();
-        let done = gs.is_done();
-        if !entries.is_empty() || done {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if let Some(view) = desktop.active_view_mut(SlotId::Right) {
-                    if let Some(rv) = view
-                        .as_any_mut()
-                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
-                    {
-                        rv.append(entries, done);
-                    }
-                }
-            }
-        }
-        if !done {
-            state.grep_pending = Some((title, gs, root));
-        }
-    }
+    // Drain background tasks (grep, build)
+    crate::handler_drain::drain_grep(ctx, state);
+    crate::handler_drain::drain_build(ctx, state);
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     if state.mcp_snapshot.is_some() {
@@ -163,7 +151,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
                     let help = HelpView::new();
-                    desktop.insert_tab(SlotId::Center, "Help", Box::new(help));
+                    crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, "Help".into(), Box::new(help));
                 }
             }
         }
@@ -173,7 +161,13 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     desktop.focus_slot(SlotId::Right);
                 } else {
                     let messages = MessagesView::new(state.messages.clone());
-                    desktop.insert_tab(SlotId::Right, "Messages", Box::new(messages));
+                    crate::handler_evict::try_insert_tab(
+                        desktop,
+                        state,
+                        SlotId::Right,
+                        "Messages".into(),
+                        Box::new(messages),
+                    );
                     desktop.focus_slot(SlotId::Right);
                 }
             }
@@ -182,7 +176,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                desktop.insert_tab(SlotId::Right, &name, term);
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), term);
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("shell", format!("Started: {name}")))),
@@ -197,13 +191,14 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 }
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                crate::handler_evict::complete_pending_insert(desktop, state);
                 if desktop.tab_count(SlotId::Center) == 0 {
                     desktop.insert_tab(SlotId::Center, "Welcome", Box::new(WelcomeView::new()));
                 }
             }
         }
-        CM_SHELL_OUTPUT => crate::handler_open::handle_shell_output(ctx),
-        CM_SHOW_RESULTS => crate::handler_open::handle_show_results(ctx),
+        CM_SHELL_OUTPUT => crate::handler_open::handle_shell_output(ctx, state),
+        CM_SHOW_RESULTS => crate::handler_open::handle_show_results(ctx, state),
         CM_BUILD => crate::handler_build::handle_build(ctx, state),
         CM_RUN => crate::handler_build::handle_run(ctx, state),
         CM_TEST => crate::handler_build::handle_test(ctx, state),

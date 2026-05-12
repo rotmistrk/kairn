@@ -100,12 +100,15 @@ impl TestHarness {
             desktop,
         };
         handle_command(&mut ctx, &mut self.state);
-        // Process any follow-up commands
+        // Process any follow-up commands through the group (status bar) first
         let events = queue.drain();
         for ev in events {
+            let mut q2 = EventQueue::new();
+            if self.program.group_dispatch(&ev, &mut q2) == txv_core::view::HandleResult::Consumed {
+                continue;
+            }
             if let txv_core::event::Event::Command { id, data } = ev {
                 let desktop = self.program.desktop_mut();
-                let mut q2 = EventQueue::new();
                 let mut ctx2 = CommandContext {
                     command: id,
                     data: &data,

@@ -27,7 +27,13 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "help" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
-                    desktop.insert_tab(SlotId::Center, "Help", Box::new(HelpView::new()));
+                    crate::handler_evict::try_insert_tab(
+                        desktop,
+                        state,
+                        SlotId::Center,
+                        "Help".into(),
+                        Box::new(HelpView::new()),
+                    );
                 }
             }
         }
@@ -56,7 +62,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                desktop.insert_tab(SlotId::Right, &name, new_shell_terminal());
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), new_shell_terminal());
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(txv_core::message::Message::info(
@@ -77,7 +83,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                     Some("kairn")
                 };
                 let term = new_kiro_terminal(agent_arg, &state.root_dir);
-                desktop.insert_tab(SlotId::Right, &name, term);
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), term);
                 state.kiro_registry.register(&name);
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
@@ -104,7 +110,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             let title = format!("grep:{arg}");
             let view = crate::views::results::ResultsView::searching(&title, &root);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.insert_tab(SlotId::Right, &title, Box::new(view));
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title, Box::new(view));
                 desktop.focus_slot(SlotId::Right);
             }
         }

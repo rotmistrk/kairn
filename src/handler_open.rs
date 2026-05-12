@@ -64,7 +64,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
-                desktop.insert_tab(SlotId::Center, &title, Box::new(editor));
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, title.clone(), Box::new(editor));
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
@@ -93,13 +93,13 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg
                 .to_string_lossy()
                 .to_string();
             if let Some(d) = downcast_desktop(desktop) {
-                d.insert_tab(SlotId::Center, title, Box::new(editor));
+                crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, Box::new(editor));
             }
         }
     }
 }
 
-pub(crate) fn handle_shell_output(ctx: &mut CommandContext) {
+pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
@@ -108,11 +108,11 @@ pub(crate) fn handle_shell_output(ctx: &mut CommandContext) {
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = EditorView::from_text(output);
-        desktop.insert_tab(SlotId::Center, "[cmd output]", Box::new(view));
+        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, "[cmd output]".into(), Box::new(view));
     }
 }
 
-pub(crate) fn handle_show_results(ctx: &mut CommandContext) {
+pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
@@ -121,7 +121,7 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext) {
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = crate::views::results::ResultsView::new(title, entries.clone());
-        desktop.insert_tab(SlotId::Right, title, Box::new(view));
+        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }
 }

@@ -34,6 +34,7 @@ pub struct EditorView {
     last_edit_tick: u64,
     tick_counter: u64,
     close_prompt: bool,
+    eviction_close: bool,
     display_title: String,
     diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
     /// Diff mode state. None = normal mode.
@@ -48,6 +49,25 @@ impl EditorView {
         self.editor.options.list = self.settings.list;
         self.editor.options.tab_width = self.settings.tabstop as usize;
         self.editor.options.number = self.settings.number;
+    }
+
+    /// Save the file to disk. Returns Ok on success.
+    pub fn save(&mut self) -> Result<(), String> {
+        let content = self.editor.buffer.content();
+        crate::editor::save::save_file(&self.path, &content).map_err(|e| e.to_string())?;
+        self.editor.buffer.mark_saved();
+        Ok(())
+    }
+
+    /// Trigger the close prompt for eviction (same as `:q` on dirty buffer).
+    /// Sets eviction_close so the prompt skips CM_TAB_CLOSE on resolution.
+    pub fn request_close(&mut self) {
+        if self.editor.buffer.is_dirty() && !self.settings.autosave {
+            self.close_prompt = true;
+            self.eviction_close = true;
+            self.editor.status = "Save changes? [y]es [n]o [Esc]cancel".to_string();
+            self.state.mark_dirty();
+        }
     }
 
     /// Position cursor at (line, col), clamping to buffer bounds.
