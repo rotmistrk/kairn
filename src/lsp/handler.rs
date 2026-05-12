@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
@@ -17,7 +18,7 @@ use super::send;
 /// Tracks pending LSP requests so responses can be routed.
 #[derive(Default)]
 pub struct PendingRequests {
-    map: HashMap<u64, PendingKind>,
+    map: HashMap<u64, (PendingKind, Instant)>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,11 +34,24 @@ pub(crate) enum PendingKind {
 
 impl PendingRequests {
     pub(crate) fn insert(&mut self, id: u64, kind: PendingKind) {
-        self.map.insert(id, kind);
+        self.map.insert(id, (kind, Instant::now()));
     }
 
     pub(crate) fn take(&mut self, id: u64) -> Option<PendingKind> {
-        self.map.remove(&id)
+        self.map.remove(&id).map(|(k, _)| k)
+    }
+
+    pub(crate) fn remove_timed_out(&mut self) {
+        let timeout = std::time::Duration::from_secs(10);
+        let expired: Vec<u64> = self.map.iter()
+            .filter(|(_, (_, t))| t.elapsed() > timeout)
+            .map(|(&id, _)| id)
+            .collect();
+        for id in expired {
+            if let Some((kind, _)) = self.map.remove(&id) {
+                log::warn!("LSP timeout: {kind:?} request (id={id}) got no response after 10s");
+            }
+        }
     }
 }
 
@@ -51,7 +65,7 @@ pub(crate) struct JdtRequest {
 
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
-    match ctx.command {
+    log::debug!("LSP handler: cmd={}", ctx.command); match ctx.command {
         CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
         CM_CONTENT_CHANGED => send::send_did_change(ctx, state),
         CM_LSP_GOTO_DEF => {
@@ -74,7 +88,8 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Poll all LSP servers and dispatch notifications/responses.
 pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
-    for (_lang, msg) in state.lsp.poll_all() {
+    state.lsp_pending.remove_timed_out();
+    for (_lang, msg) in state.lsp.poll_all() { log::trace!("LSP poll: {:?}", &msg);
         match msg {
             LspMessage::Notification { method, params } => {
                 if method == "textDocument/publishDiagnostics" {
@@ -85,9 +100,12 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
             }
             LspMessage::Response { id, result, .. } => {
                 if let Some(kind) = state.lsp_pending.take(id) {
+                    log::info!("LSP response: {kind:?} (id={id})");
                     if let Some(result) = result {
                         handle_response(kind, &result, queue);
                     }
+                } else {
+                    log::warn!("LSP response id={id} doesn't match any pending request");
                 }
             }
         }
@@ -99,6 +117,7 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         PendingKind::GotoDefinition => {
             let locs = requests::parse_locations(result);
             if let Some(loc) = locs.into_iter().next() {
+                log::info!("LSP: definition -> {}:{}", &loc.uri, loc.line);
                 if loc.uri.starts_with("jdt://") {
                     queue.put_command(
                         CM_LSP_GOTO_DEF,
@@ -117,6 +136,7 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         }
         PendingKind::FindReferences { symbol } => {
             let locs = requests::parse_locations(result);
+            log::info!("LSP: references -> {} locations", locs.len());
             if !locs.is_empty() {
                 let entries: Vec<crate::views::results::ResultEntry> = locs
                     .iter()
@@ -137,11 +157,13 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         }
         PendingKind::Hover => {
             if let Some(text) = requests::parse_hover(result) {
+                log::info!("LSP: hover -> {} chars", text.len());
                 queue.put_command(CM_DIAGNOSTIC, Some(Box::new(("hover".to_string(), text))));
             }
         }
         PendingKind::Completion => {
             let items = requests::parse_completion(result);
+            log::info!("LSP: completion -> {} items", items.len());
             if !items.is_empty() {
                 let labels: Vec<String> = items.iter().map(|i| i.label.clone()).collect();
                 queue.put_command(CM_LSP_COMPLETION, Some(Box::new(labels)));

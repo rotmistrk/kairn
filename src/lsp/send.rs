@@ -49,6 +49,7 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
+    log::debug!("send_goto_def called, data={:?}", ctx.data.is_some());
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
@@ -62,6 +63,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
+    log::info!("LSP: textDocument/definition at {uri}:{line}:{col}");
     let id = requests::goto_definition(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::GotoDefinition);
 }
@@ -84,6 +86,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
+    log::info!("LSP: textDocument/references at {uri}:{line}:{col}");
     let id = requests::find_references(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::FindReferences { symbol });
 }
@@ -102,6 +105,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
+    log::info!("LSP: textDocument/hover at {uri}:{line}:{col}");
     let id = requests::hover(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::Hover);
 }
@@ -120,6 +124,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
+    log::info!("LSP: textDocument/completion at {uri}:{line}:{col}");
     let id = requests::completion(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::Completion);
 }
