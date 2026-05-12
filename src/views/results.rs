@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
 
-use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, OpenFileRequest};
+use crate::commands::{CM_OPEN_FILE, OpenFileRequest};
 
 /// A single result entry (file + location + context text).
 #[derive(Debug, Clone)]

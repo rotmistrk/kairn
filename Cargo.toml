@@ -1,5 +1,5 @@
 [workspace]
-members = ["rusticle", "txv-core", "txv-render", "txv-widgets", "rusticle-tk"]
+members = ["rusticle", "rusticle-tk"]
 
 [package]
 name = "kairn"
@@ -11,9 +11,9 @@ name = "mock_lsp"
 path = "tests/mock_lsp/main.rs"
 
 [dependencies]
-txv-core = { path = "txv-core" }
-txv-render = { path = "txv-render" }
-txv-widgets = { path = "txv-widgets" }
+txv-core = { git = "https://github.com/rotmistrk/txv.git" }
+txv-render = { git = "https://github.com/rotmistrk/txv.git" }
+txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
 rusticle = { path = "rusticle" }
 anyhow = "1.0"
 base64 = "0.22"

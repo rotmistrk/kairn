@@ -1,8 +1,0 @@
-[package]
-name = "txv-core"
-version = "0.1.0"
-edition = "2021"
-description = "Pure Rust TUI framework core — View trait, Group dispatch, Surface, EventQueue"
-
-[dependencies]
-log = "0.4"
