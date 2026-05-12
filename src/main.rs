@@ -99,6 +99,7 @@ fn main() -> anyhow::Result<()> {
     // Build desktop
     let git_keys = settings.git_keys.clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
+    app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
     let mut desktop = build_desktop(&root_dir, git_keys);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)

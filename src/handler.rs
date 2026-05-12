@@ -41,6 +41,9 @@ pub struct AppState {
     pub kiro_registry: KiroTabRegistry,
     /// LSP document version counters (keyed by file path string).
     pub doc_versions: std::collections::HashMap<String, i64>,
+    /// MCP snapshot (updated periodically for MCP server reads).
+    pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
+    mcp_tick: u16,
 }
 
 impl AppState {
@@ -57,6 +60,8 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            mcp_snapshot: None,
+            mcp_tick: 0,
         }
     }
 
@@ -73,6 +78,8 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            mcp_snapshot: None,
+            mcp_tick: 0,
         }
     }
 }
@@ -96,6 +103,22 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
     crate::lsp::handler::poll_lsp(state, ctx.queue);
+
+    // MCP: update snapshot every 20 commands (~1s at 50ms tick)
+    if state.mcp_snapshot.is_some() {
+        state.mcp_tick = state.mcp_tick.wrapping_add(1);
+        if state.mcp_tick.is_multiple_of(20) {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let mut snap = crate::mcp::collect::collect_snapshot(desktop);
+                snap.terminals = crate::mcp::collect::collect_terminal_content(desktop);
+                if let Some(ref arc) = state.mcp_snapshot {
+                    if let Ok(mut locked) = arc.lock() {
+                        *locked = snap;
+                    }
+                }
+            }
+        }
+    }
 
     match ctx.command {
         CM_OPEN_FILE => crate::handler_open::handle_open_file(ctx, state, false),
