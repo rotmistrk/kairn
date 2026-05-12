@@ -1,5 +1,7 @@
 # Task: Complete LSP, Fix Quality Issues, Update Docs
 
+**STATUS: DONE** — All parts verified implemented and tested (2026-05-12).
+
 ## Part 1: Wire Completion Popup
 
 The CompletionPopup exists (`src/lsp/completion.rs`) with a `draw()` method
