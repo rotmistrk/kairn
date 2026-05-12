@@ -7,7 +7,7 @@ use super::tab_group::TabGroup;
 impl TabGroup {
     /// Open the dropdown menu.
     pub fn open_dropdown(&mut self) {
-        self.dropdown_cursor = Some(self.group.focused);
+        self.dropdown_cursor = Some(self.group.focused_index());
         self.group.view.mark_dirty();
     }
 
@@ -28,7 +28,7 @@ impl TabGroup {
             }
             KeyCode::Char(c) if c.is_ascii_digit() => {
                 let idx = (c as u8 - b'0') as usize;
-                if idx < self.group.children.len() {
+                if idx < self.group.child_count() {
                     self.set_active(idx);
                 }
                 self.dropdown_cursor = None;
@@ -40,14 +40,14 @@ impl TabGroup {
                 self.group.view.mark_dirty();
             }
             KeyCode::Down => {
-                let count = self.group.children.len();
+                let count = self.group.child_count();
                 if count > 0 {
                     self.dropdown_cursor = Some((cursor + 1) % count);
                     self.group.view.mark_dirty();
                 }
             }
             KeyCode::Up => {
-                let count = self.group.children.len();
+                let count = self.group.child_count();
                 if count > 0 {
                     let prev = if cursor == 0 {
                         count - 1

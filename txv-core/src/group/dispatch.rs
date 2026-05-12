@@ -58,15 +58,17 @@ macro_rules! delegate_group_state {
         fn needs_redraw(&self) -> bool { self.$field.any_dirty() }
         fn mark_redrawn(&mut self) {
             self.$field.view.mark_redrawn();
-            for child in &mut self.$field.children { child.mark_redrawn(); }
+            for i in 0..self.$field.child_count() {
+                if let Some(child) = self.$field.child_mut(i) { child.mark_redrawn(); }
+            }
         }
         fn select(&mut self) {
             self.$field.view.set_focused(true); self.$field.view.mark_dirty();
-            if let Some(child) = self.$field.children.get_mut(self.$field.focused) { child.select(); }
+            if let Some(child) = self.$field.focused_child_mut() { child.select(); }
         }
         fn unselect(&mut self) {
             self.$field.view.set_focused(false); self.$field.view.mark_dirty();
-            if let Some(child) = self.$field.children.get_mut(self.$field.focused) { child.unselect(); }
+            if let Some(child) = self.$field.focused_child_mut() { child.unselect(); }
         }
     };
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
@@ -78,19 +80,21 @@ macro_rules! delegate_group_state {
         $crate::__dvs_maybe!(mark_redrawn, [$($skip),*], {
             fn mark_redrawn(&mut self) {
                 self.$field.view.mark_redrawn();
-                for child in &mut self.$field.children { child.mark_redrawn(); }
+                for i in 0..self.$field.child_count() {
+                    if let Some(child) = self.$field.child_mut(i) { child.mark_redrawn(); }
+                }
             }
         });
         $crate::__dvs_maybe!(select, [$($skip),*], {
             fn select(&mut self) {
                 self.$field.view.set_focused(true); self.$field.view.mark_dirty();
-                if let Some(child) = self.$field.children.get_mut(self.$field.focused) { child.select(); }
+                if let Some(child) = self.$field.focused_child_mut() { child.select(); }
             }
         });
         $crate::__dvs_maybe!(unselect, [$($skip),*], {
             fn unselect(&mut self) {
                 self.$field.view.set_focused(false); self.$field.view.mark_dirty();
-                if let Some(child) = self.$field.children.get_mut(self.$field.focused) { child.unselect(); }
+                if let Some(child) = self.$field.focused_child_mut() { child.unselect(); }
             }
         });
     };

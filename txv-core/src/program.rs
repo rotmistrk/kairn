@@ -70,7 +70,7 @@ impl Program {
         group.insert(status_bar);
         // Child 1: desktop (focused — gets normal events)
         group.insert(desktop);
-        group.focused = 1;
+        group.set_focused_index(1);
 
         Self { group }
     }

@@ -24,7 +24,7 @@ impl TabGroup {
         surface.hline(b.x, b.y, b.w, '─', dim);
         let mut x = b.x;
         for (i, title) in self.titles.iter().enumerate() {
-            let style = if i == self.group.focused {
+            let style = if i == self.group.focused_index() {
                 bright
             } else {
                 dim
@@ -54,14 +54,14 @@ impl View for TabGroup {
         self.group.view.set_bounds(r);
         self.group.view.mark_dirty();
         let content = self.content_rect();
-        if let Some(child) = self.group.children.get_mut(self.group.focused) {
+        if let Some(child) = self.group.focused_child_mut() {
             child.set_bounds(content);
         }
     }
 
     fn draw(&self, surface: &mut Surface) {
         self.draw_chrome(surface);
-        if let Some(child) = self.group.children.get(self.group.focused) {
+        if let Some(child) = self.group.child(self.group.focused_index()) {
             child.draw(surface);
         }
         self.draw_dropdown(surface);
@@ -70,13 +70,15 @@ impl View for TabGroup {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         // Tick goes to ALL tabs (background tabs need it for refresh/polling)
         if matches!(event, Event::Tick) {
-            for child in &mut self.group.children {
-                child.handle(event, queue);
+            for i in 0..self.group.child_count() {
+                if let Some(child) = self.group.child_mut(i) {
+                    child.handle(event, queue);
+                }
             }
             // Sync active tab title: append view's subtitle (e.g. OSC title)
-            if let Some(child) = self.group.children.get(self.group.focused) {
+            if let Some(child) = self.group.child(self.group.focused_index()) {
                 let sub = child.subtitle();
-                if let Some(stored) = self.titles.get_mut(self.group.focused) {
+                if let Some(stored) = self.titles.get_mut(self.group.focused_index()) {
                     // Strip any previous subtitle (after first space following ':')
                     let base = stored
                         .find(':')
@@ -108,7 +110,7 @@ impl View for TabGroup {
             if key.modifiers.alt && !key.modifiers.ctrl {
                 if let KeyCode::Char(ch) = key.code {
                     if let Some(n) = ch.to_digit(10) {
-                        if (n as usize) < self.group.children.len() {
+                        if (n as usize) < self.group.child_count() {
                             self.set_active(n as usize);
                         }
                         return HandleResult::Consumed;

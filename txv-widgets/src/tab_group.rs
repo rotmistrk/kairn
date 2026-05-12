@@ -34,16 +34,16 @@ impl TabGroup {
         let content_rect = self.content_rect();
         view.set_bounds(content_rect);
         // Unselect previous active child
-        if let Some(child) = self.group.children.get_mut(self.group.focused) {
+        if let Some(child) = self.group.focused_child_mut() {
             child.unselect();
         }
-        self.group.children.push(view);
+        self.group.insert(view);
         self.titles.push(title.into());
         self.lru.push(0);
-        self.group.focused = self.group.children.len() - 1;
+        self.group.set_focused_index(self.group.child_count() - 1);
         self.touch_lru();
         if self.group.view.is_focused() {
-            if let Some(child) = self.group.children.get_mut(self.group.focused) {
+            if let Some(child) = self.group.focused_child_mut() {
                 child.select();
             }
         }
@@ -51,7 +51,7 @@ impl TabGroup {
     }
 
     pub fn tab_count(&self) -> usize {
-        self.group.children.len()
+        self.group.child_count()
     }
 
     pub fn set_active(&mut self, index: usize) {

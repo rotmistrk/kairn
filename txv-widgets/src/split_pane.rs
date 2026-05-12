@@ -67,8 +67,8 @@ impl SplitPane {
                 )
             }
         };
-        self.group.children[0].set_bounds(r1);
-        self.group.children[1].set_bounds(r2);
+        self.group.set_child_bounds(0, r1);
+        self.group.set_child_bounds(1, r2);
     }
 }
 
@@ -86,7 +86,7 @@ impl View for SplitPane {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        for child in &self.group.children {
+        for child in self.group.children_iter() {
             child.draw(surface);
         }
         let dim = Style {
