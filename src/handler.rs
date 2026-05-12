@@ -44,6 +44,8 @@ pub struct AppState {
     /// MCP snapshot (updated periodically for MCP server reads).
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     mcp_tick: u16,
+    /// Background grep result.
+    pub pending_grep: Option<(String, std::thread::JoinHandle<Vec<crate::views::results::ResultEntry>>)>,
 }
 
 impl AppState {
@@ -62,6 +64,7 @@ impl AppState {
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
             mcp_tick: 0,
+            pending_grep: None,
         }
     }
 
@@ -80,6 +83,7 @@ impl AppState {
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
             mcp_tick: 0,
+            pending_grep: None,
         }
     }
 }
@@ -103,6 +107,22 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
     crate::lsp::handler::poll_lsp(state, ctx.queue);
+
+    // Check background grep
+    if let Some((_, handle)) = state.pending_grep.as_ref() {
+        if handle.is_finished() {
+            let (title, handle) = state.pending_grep.take().unwrap();
+            let entries = handle.join().unwrap_or_default();
+            if entries.is_empty() {
+                ctx.queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(txv_core::message::Message::info("grep", "No matches"))),
+                );
+            } else {
+                ctx.queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
+            }
+        }
+    }
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     if state.mcp_snapshot.is_some() {

@@ -97,16 +97,16 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "run" => ctx.queue.put_command(CM_RUN, None),
         "test" => ctx.queue.put_command(CM_TEST, None),
         "grep" if !arg.is_empty() => {
-            let entries = crate::grep::grep_project(arg, &state.root_dir);
-            if entries.is_empty() {
-                ctx.queue.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(txv_core::message::Message::info("grep", "No matches"))),
-                );
-            } else {
-                let title = format!("grep: {arg}");
-                ctx.queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
-            }
+            let pattern = arg.to_string();
+            let root = state.root_dir.clone();
+            let handle = std::thread::spawn(move || {
+                crate::grep::grep_project(&pattern, &root)
+            });
+            state.pending_grep = Some((format!("grep: {arg}"), handle));
+            ctx.queue.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(txv_core::message::Message::info("grep", "Searching..."))),
+            );
         }
         "test-file" => ctx.queue.put_command(CM_TEST_FILE, None),
         "test-at-cursor" => ctx.queue.put_command(CM_TEST_AT_CURSOR, None),
