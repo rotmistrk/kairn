@@ -53,6 +53,8 @@ Each column is classified as Numeric or Text:
 | F | Clear filter on current column |
 | Ctrl-F | Clear all filters |
 | / | Search within table |
+| u | Undo |
+| Ctrl-R | Redo |
 | :q | Close view |
 
 ## Sorting
@@ -83,6 +85,13 @@ Each column is classified as Numeric or Text:
 - Tab → confirm edit, advance cursor one column right (no-op on rightmost column)
 - Modified cells marked dirty (subtle color change)
 - `:w` saves back to file (re-serialize with original delimiter)
+
+## Undo/Redo
+
+- `u` → undo last edit (cell change, sort, row add/delete)
+- `Ctrl-R` → redo
+- Command-based: each mutation records an inverse operation
+- Undo stack cleared on save
 
 ## Implementation
 
