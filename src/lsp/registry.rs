@@ -36,7 +36,8 @@ impl LspRegistry {
         Self {
             configs,
             active: HashMap::new(),
-            disabled: Vec::new(), last_error: None,
+            disabled: Vec::new(),
+            last_error: None,
         }
     }
 
@@ -81,7 +82,9 @@ impl LspRegistry {
         let config = match self.configs.get(language_id) {
             Some(c) => c.clone(),
             None => {
-                let err = format!("No LSP server configured for {language_id}"); log::warn!("{}", err); self.last_error = Some(err);
+                let err = format!("No LSP server configured for {language_id}");
+                log::warn!("{}", err);
+                self.last_error = Some(err);
                 return None;
             }
         };
@@ -89,7 +92,9 @@ impl LspRegistry {
         let mut client = match LspClient::spawn(&config.command, &args) {
             Some(c) => c,
             None => {
-                let err = format!("LSP: {} not found (is it installed?)", config.command); log::error!("{}", err); self.last_error = Some(err);
+                let err = format!("LSP: {} not found (is it installed?)", config.command);
+                log::error!("{}", err);
+                self.last_error = Some(err);
                 self.disabled.push(language_id.to_string());
                 return None;
             }

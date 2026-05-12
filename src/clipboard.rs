@@ -26,9 +26,7 @@ pub fn paste_from_clipboard() -> Result<String, String> {
         .output();
 
     match result {
-        Ok(output) if output.status.success() => {
-            Ok(String::from_utf8_lossy(&output.stdout).to_string())
-        }
+        Ok(output) if output.status.success() => Ok(String::from_utf8_lossy(&output.stdout).to_string()),
         Ok(output) => Err(format!(
             "Clipboard command failed (exit {})",
             output.status.code().unwrap_or(-1)

@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use txv_core::program::Program;
+use txv_core::run::Backend;
 use txv_render::backend::CrosstermBackend;
 use txv_render::color::detect_color_mode;
-use txv_core::run::Backend;
 
 use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;

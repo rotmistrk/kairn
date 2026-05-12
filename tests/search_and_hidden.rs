@@ -125,7 +125,7 @@ fn text_area_search_esc_cancels() {
 // ─── Hidden files toggle ───────────────────────────────────────────
 
 #[test]
-fn hidden_files_toggle_shows_dotfiles() {
+fn hidden_files_always_visible() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("visible.txt"), "v").unwrap();
     std::fs::write(dir.path().join(".hidden"), "h").unwrap();
@@ -133,36 +133,6 @@ fn hidden_files_toggle_shows_dotfiles() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     let screen = h.screen_text();
-    // Should show visible file but not hidden
     assert!(screen.contains("visible.txt"), "visible file missing: {screen}");
-    assert!(!screen.contains(".hidden"), "hidden file should not show: {screen}");
-
-    // Press Ctrl-. to toggle
-    h.inject_key(
-        KeyCode::Char('.'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
-    h.run_cycles(1);
-    let screen = h.screen_text();
-    assert!(
-        screen.contains(".hidden"),
-        "hidden file should show after Ctrl-.: {screen}"
-    );
-
-    // Toggle back
-    h.inject_key(
-        KeyCode::Char('.'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
-    h.run_cycles(1);
-    let screen = h.screen_text();
-    assert!(!screen.contains(".hidden"), "hidden file should hide again: {screen}");
+    assert!(screen.contains(".hidden"), "hidden file should always show: {screen}");
 }

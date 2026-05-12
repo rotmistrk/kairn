@@ -22,14 +22,16 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let title = path.strip_prefix(&state.root_dir)
+                let title = path
+                    .strip_prefix(&state.root_dir)
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
                 desktop.focus_tab_by_title(SlotId::Center, &title);
                 if let (Some(line), Some(col)) = (req.line, req.col) {
                     if let Some(view) = desktop.active_view_mut(SlotId::Center) {
-                        if let Some(editor) = view.as_any_mut()
+                        if let Some(editor) = view
+                            .as_any_mut()
                             .and_then(|a| a.downcast_mut::<crate::views::editor::EditorView>())
                         {
                             editor.goto(line, col);
@@ -114,9 +116,7 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some((title, entries)) =
-        boxed.downcast_ref::<(String, Vec<crate::views::results::ResultEntry>)>()
-    else {
+    let Some((title, entries)) = boxed.downcast_ref::<(String, Vec<crate::views::results::ResultEntry>)>() else {
         return;
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {

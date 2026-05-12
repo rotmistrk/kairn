@@ -2,7 +2,7 @@
 
 mod helpers;
 
-use helpers::{TestHarness, temp_project};
+use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 /// Open a file in the editor and position cursor.
@@ -13,7 +13,11 @@ fn setup_editor(h: &mut TestHarness) {
 }
 
 fn ctrl() -> KeyMod {
-    KeyMod { ctrl: true, alt: false, shift: false }
+    KeyMod {
+        ctrl: true,
+        alt: false,
+        shift: false,
+    }
 }
 
 fn none() -> KeyMod {

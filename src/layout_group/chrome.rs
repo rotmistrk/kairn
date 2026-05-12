@@ -191,7 +191,11 @@ impl LayoutGroup {
         }
         // In tall mode, right panel is below — its bounds start at the divider row
         let div_y = if tall {
-            let right_bounds = self.group.child(SlotId::Right as usize).map(|c| c.bounds()).unwrap_or_default();
+            let right_bounds = self
+                .group
+                .child(SlotId::Right as usize)
+                .map(|c| c.bounds())
+                .unwrap_or_default();
             if right_bounds.h == 0 {
                 return;
             }

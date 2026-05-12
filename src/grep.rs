@@ -56,7 +56,12 @@ fn parse_grep_args(input: &str) -> Result<GrepOpts, String> {
     }
 
     let pattern = pattern_parts.join(" ");
-    Ok(GrepOpts { pattern, case_insensitive, fixed_string, word_boundary })
+    Ok(GrepOpts {
+        pattern,
+        case_insensitive,
+        fixed_string,
+        word_boundary,
+    })
 }
 
 /// Build a regex from parsed options.
@@ -86,7 +91,10 @@ pub struct GrepState {
 
 impl GrepState {
     pub fn take_entries(&self) -> Vec<ResultEntry> {
-        self.entries.lock().map(|mut v| std::mem::take(&mut *v)).unwrap_or_default()
+        self.entries
+            .lock()
+            .map(|mut v| std::mem::take(&mut *v))
+            .unwrap_or_default()
     }
 
     pub fn is_done(&self) -> bool {
@@ -114,8 +122,12 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
         let opts = match parse_grep_args(&input) {
             Ok(o) => o,
             Err(e) => {
-                if let Ok(mut err) = state_clone.error.lock() { *err = Some(e); }
-                if let Ok(mut d) = state_clone.done.lock() { *d = true; }
+                if let Ok(mut err) = state_clone.error.lock() {
+                    *err = Some(e);
+                }
+                if let Ok(mut d) = state_clone.done.lock() {
+                    *d = true;
+                }
                 waker.wake();
                 return;
             }
@@ -124,8 +136,12 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
         let re = match build_regex(&opts) {
             Ok(r) => r,
             Err(e) => {
-                if let Ok(mut err) = state_clone.error.lock() { *err = Some(e); }
-                if let Ok(mut d) = state_clone.done.lock() { *d = true; }
+                if let Ok(mut err) = state_clone.error.lock() {
+                    *err = Some(e);
+                }
+                if let Ok(mut d) = state_clone.done.lock() {
+                    *d = true;
+                }
                 waker.wake();
                 return;
             }
@@ -153,7 +169,9 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
             let mut file_matches = 0;
 
             for (line_idx, line) in reader.lines().enumerate() {
-                let Ok(line) = line else { break };
+                let Ok(line) = line else {
+                    break;
+                };
                 if re.is_match(&line) {
                     batch.push(ResultEntry {
                         path: path.to_path_buf(),
@@ -184,7 +202,9 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
                 v.append(&mut batch);
             }
         }
-        if let Ok(mut d) = state_clone.done.lock() { *d = true; }
+        if let Ok(mut d) = state_clone.done.lock() {
+            *d = true;
+        }
         waker.wake();
     });
 
@@ -194,4 +214,3 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
 #[cfg(test)]
 #[path = "grep_tests.rs"]
 mod tests;
-

@@ -50,7 +50,11 @@ fn e2e_lsp_initialize() {
     let id = client.send_request("initialize", params);
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             assert!(r["capabilities"]["definitionProvider"].as_bool().unwrap_or(false));
             assert!(r["capabilities"]["completionProvider"].is_object());
@@ -69,7 +73,11 @@ fn e2e_lsp_goto_definition() {
     let id = requests::goto_definition(&mut client, "file:///src/main.rs", 5, 10);
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             let locs = requests::parse_locations(&r);
             assert_eq!(locs.len(), 1);
@@ -90,7 +98,11 @@ fn e2e_lsp_find_references() {
     let id = requests::find_references(&mut client, "file:///src/main.rs", 5, 0);
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             let locs = requests::parse_locations(&r);
             assert_eq!(locs.len(), 2);
@@ -110,7 +122,11 @@ fn e2e_lsp_hover() {
     let id = requests::hover(&mut client, "file:///src/main.rs", 3, 5);
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             let text = requests::parse_hover(&r).expect("hover text");
             assert!(text.contains("fn hello()"));
@@ -128,7 +144,11 @@ fn e2e_lsp_completion() {
     let id = requests::completion(&mut client, "file:///src/main.rs", 8, 4);
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             let items = requests::parse_completion(&r);
             assert_eq!(items.len(), 2);
@@ -149,7 +169,11 @@ fn e2e_lsp_rename() {
     let id = requests::rename(&mut client, "file:///src/main.rs", 5, 0, "new_name");
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             // Rename returns workspace edit with changes
             assert!(r.get("changes").is_some());
@@ -204,7 +228,11 @@ fn e2e_lsp_shutdown() {
     let id = client.send_request("shutdown", serde_json::json!(null));
     let msg = poll_until_response(&client, 2000).expect("No response");
     match msg {
-        LspMessage::Response { id: rid, result: Some(r), .. } => {
+        LspMessage::Response {
+            id: rid,
+            result: Some(r),
+            ..
+        } => {
             assert_eq!(rid, id);
             assert!(r.is_null());
         }

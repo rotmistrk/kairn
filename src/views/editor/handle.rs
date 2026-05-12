@@ -124,16 +124,29 @@ impl EditorView {
                 queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
             }
             EditorAction::LspGotoDefinition => {
-                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                let data = (
+                    self.path.clone(),
+                    self.editor.cursor_line as u32,
+                    self.editor.cursor_col as u32,
+                );
                 queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(data)));
             }
             EditorAction::LspFindReferences => {
                 let word = self.editor.word_under_cursor().unwrap_or_default();
-                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32, word);
+                let data = (
+                    self.path.clone(),
+                    self.editor.cursor_line as u32,
+                    self.editor.cursor_col as u32,
+                    word,
+                );
                 queue.put_command(crate::commands::CM_LSP_FIND_REFS, Some(Box::new(data)));
             }
             EditorAction::LspHover => {
-                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                let data = (
+                    self.path.clone(),
+                    self.editor.cursor_line as u32,
+                    self.editor.cursor_col as u32,
+                );
                 queue.put_command(crate::commands::CM_LSP_HOVER, Some(Box::new(data)));
             }
             _ => {}
@@ -235,4 +248,3 @@ impl EditorView {
         }
     }
 }
-

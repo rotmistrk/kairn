@@ -6,7 +6,7 @@ use std::path::Path;
 
 pub use duir_core::model::{Completion, TodoFile, TodoItem};
 pub use duir_core::tree_ops::TreePath;
-pub use duir_core::{NodeId, tree_ops};
+pub use duir_core::{tree_ops, NodeId};
 
 pub fn get_item<'a>(file: &'a TodoFile, path: &TreePath) -> Option<&'a TodoItem> {
     tree_ops::get_item(file, path)
@@ -33,23 +33,33 @@ pub fn add_child(file: &mut TodoFile, path: &TreePath, item: TodoItem) -> bool {
 }
 
 pub fn remove_item(file: &mut TodoFile, path: &TreePath) -> Option<TodoItem> {
-    tree_ops::remove_item(file, path).map_err(|e| log::warn!("todo remove: {e}")).ok()
+    tree_ops::remove_item(file, path)
+        .map_err(|e| log::warn!("todo remove: {e}"))
+        .ok()
 }
 
 pub fn swap_up(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::swap_up(file, path).map_err(|e| log::warn!("todo swap_up: {e}")).ok()
+    tree_ops::swap_up(file, path)
+        .map_err(|e| log::warn!("todo swap_up: {e}"))
+        .ok()
 }
 
 pub fn swap_down(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::swap_down(file, path).map_err(|e| log::warn!("todo swap_down: {e}")).ok()
+    tree_ops::swap_down(file, path)
+        .map_err(|e| log::warn!("todo swap_down: {e}"))
+        .ok()
 }
 
 pub fn promote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::promote(file, path).map_err(|e| log::warn!("todo promote: {e}")).ok()
+    tree_ops::promote(file, path)
+        .map_err(|e| log::warn!("todo promote: {e}"))
+        .ok()
 }
 
 pub fn demote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
-    tree_ops::demote(file, path).map_err(|e| log::warn!("todo demote: {e}")).ok()
+    tree_ops::demote(file, path)
+        .map_err(|e| log::warn!("todo demote: {e}"))
+        .ok()
 }
 
 /// Load a TodoFile from path, creating empty if absent.

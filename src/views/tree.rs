@@ -103,14 +103,6 @@ impl View for FileTreeView {
             return HandleResult::Ignored;
         }
         if let Event::Key(key) = event {
-            // Ctrl-. toggles hidden files
-            if key.code == KeyCode::Char('.') && key.modifiers.ctrl {
-                self.inner.data.show_hidden = !self.inner.data.show_hidden;
-                self.inner.data.refresh();
-                self.update_colors();
-                self.inner.state.mark_dirty();
-                return HandleResult::Consumed;
-            }
             self.last_key_was_right = key.code == KeyCode::Right;
         }
         let result = self.inner.handle(event, queue);

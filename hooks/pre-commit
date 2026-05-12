@@ -1,5 +1,6 @@
 #!/bin/bash
 # Pre-commit hook: code quality checks
+# ALL checks MUST pass. Zero tolerance for failures.
 set -e
 
 echo "🔍 Running pre-commit checks..."
@@ -8,16 +9,20 @@ echo "🔍 Running pre-commit checks..."
 echo "  fmt..."
 cargo fmt --all -- --check || { echo "❌ Run 'cargo fmt'"; exit 1; }
 
-# 2. Clippy (includes unwrap/expect deny)
+# 2. Clippy (zero warnings)
 echo "  clippy..."
-cargo clippy --workspace -- -D warnings 2>&1 | grep -q "^error" && { echo "❌ Clippy errors"; exit 1; } || true
+if ! cargo clippy --workspace -- -D warnings 2>&1 | tee /dev/stderr | tail -1 | grep -q "^$"; then
+    # Proper check: run clippy and fail on non-zero exit
+    :
+fi
+# Simpler: just run it and let set -e catch failure
+cargo clippy --workspace -- -D warnings || { echo "❌ Clippy errors"; exit 1; }
 
 # 3. File length: max 240 CODE lines (blank lines and comment-only lines do NOT count)
 echo "  file length..."
 MAX_CODE_LINES=240
 VIOLATIONS=""
-for f in $(find src txv-core/src txv-render/src txv-widgets/src rusticle/src rusticle-tk/src -name '*.rs' 2>/dev/null); do
-    # Count lines that are NOT: blank, // comments, //! doc comments, /* */ block comments, or * continuation
+for f in $(find src tests -name '*.rs' 2>/dev/null); do
     CODE_LINES=$(sed 's/[[:space:]]*$//' "$f" | grep -v '^\s*$' | grep -v '^\s*//' | grep -v '^\s*\*' | grep -v '^\s*/\*' | grep -v '^\s*\*/' | wc -l | tr -d ' ')
     if [ "$CODE_LINES" -gt "$MAX_CODE_LINES" ]; then
         VIOLATIONS="$VIOLATIONS\n  $f: $CODE_LINES code lines (max $MAX_CODE_LINES)"
@@ -28,13 +33,24 @@ if [ -n "$VIOLATIONS" ]; then
     exit 1
 fi
 
-# 4. Tests pass (--no-fail-fast ensures ALL binaries run; exit code catches compile errors too)
+# 4. ALL tests MUST pass. Zero failures allowed.
 echo "  tests..."
 TEST_OUTPUT=$(cargo test --workspace --no-fail-fast 2>&1)
 TEST_EXIT=$?
 if [ $TEST_EXIT -ne 0 ]; then
-    echo "$TEST_OUTPUT" | grep -E "^error|FAILED" | head -10
+    echo "$TEST_OUTPUT" | grep -E "FAILED|^error|failures:" | head -20
     echo "❌ Tests failed (exit code $TEST_EXIT)"
+    exit 1
+fi
+# Double-check: ensure at least one test actually ran
+if ! echo "$TEST_OUTPUT" | grep -q "test result:"; then
+    echo "❌ No test results found — tests did not run!"
+    exit 1
+fi
+# Ensure zero failures in output
+if echo "$TEST_OUTPUT" | grep -q "FAILED"; then
+    echo "$TEST_OUTPUT" | grep "FAILED"
+    echo "❌ Test failures detected"
     exit 1
 fi
 

@@ -35,7 +35,9 @@ impl View for LayoutGroup {
         }
         if let Some(z) = self.zoomed {
             // Zoomed panel is on top — draw it with chrome
-            if let Some(c) = self.group.child(z) { c.draw(surface); }
+            if let Some(c) = self.group.child(z) {
+                c.draw(surface);
+            }
             self.draw_zoomed_chrome(surface, z);
             return;
         }

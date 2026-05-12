@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
 
-use crate::commands::{CM_OPEN_FILE, OpenFileRequest};
+use crate::commands::{OpenFileRequest, CM_OPEN_FILE};
 
 /// A single result entry (file + location + context text).
 #[derive(Debug, Clone)]
@@ -37,7 +37,8 @@ impl ResultsView {
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
-            root: PathBuf::new(), done: true,
+            root: PathBuf::new(),
+            done: true,
         }
     }
 
@@ -58,7 +59,6 @@ impl ResultsView {
         self.root = root.to_path_buf();
         self
     }
-
 
     /// Append entries from async grep. Mark done when search completes.
     pub fn append(&mut self, entries: Vec<ResultEntry>, done: bool) {
@@ -118,16 +118,25 @@ impl View for ResultsView {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let dim = Style { fg: Color::Ansi(8), ..Style::default() };
+        let dim = Style {
+            fg: Color::Ansi(8),
+            ..Style::default()
+        };
         let normal = Style::default();
         let cursor_style = if self.state.is_focused() {
             Style {
                 bg: Color::Ansi(4),
-                attrs: Attrs { underline: true, ..Attrs::default() },
+                attrs: Attrs {
+                    underline: true,
+                    ..Attrs::default()
+                },
                 ..Style::default()
             }
         } else {
-            Style { bg: Color::Ansi(8), ..Style::default() }
+            Style {
+                bg: Color::Ansi(8),
+                ..Style::default()
+            }
         };
 
         let content_h = b.h.saturating_sub(1) as usize;
@@ -140,14 +149,29 @@ impl View for ResultsView {
                 continue;
             }
             let entry = &self.entries[idx];
-            let style = if idx == self.cursor { cursor_style } else { normal };
+            let style = if idx == self.cursor {
+                cursor_style
+            } else {
+                normal
+            };
             surface.hline(b.x, y, b.w, ' ', style);
 
-            let path_str = entry.path.strip_prefix(&self.root)
+            let path_str = entry
+                .path
+                .strip_prefix(&self.root)
                 .unwrap_or(&entry.path)
                 .to_string_lossy();
             let loc = format!("{}:{}:", path_str, entry.line + 1);
-            surface.print(b.x, y, &loc, if idx == self.cursor { style } else { dim });
+            surface.print(
+                b.x,
+                y,
+                &loc,
+                if idx == self.cursor {
+                    style
+                } else {
+                    dim
+                },
+            );
             let text_x = b.x + loc.len().min(b.w as usize) as u16;
             if text_x < b.x + b.w {
                 surface.print(text_x, y, &entry.text, style);
@@ -164,11 +188,20 @@ impl View for ResultsView {
             format!("✓ {} results", self.entries.len())
         };
         let status_style = if !self.done {
-            Style { fg: Color::Ansi(11), ..Style::default() }
+            Style {
+                fg: Color::Ansi(11),
+                ..Style::default()
+            }
         } else if self.entries.is_empty() {
-            Style { fg: Color::Ansi(9), ..Style::default() }
+            Style {
+                fg: Color::Ansi(9),
+                ..Style::default()
+            }
         } else {
-            Style { fg: Color::Ansi(10), ..Style::default() }
+            Style {
+                fg: Color::Ansi(10),
+                ..Style::default()
+            }
         };
         surface.hline(b.x, status_y, b.w, ' ', status_style);
         surface.print(b.x, status_y, &status, status_style);

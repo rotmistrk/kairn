@@ -43,7 +43,9 @@ impl PendingRequests {
 
     pub(crate) fn remove_timed_out(&mut self) {
         let timeout = std::time::Duration::from_secs(10);
-        let expired: Vec<u64> = self.map.iter()
+        let expired: Vec<u64> = self
+            .map
+            .iter()
             .filter(|(_, (_, t))| t.elapsed() > timeout)
             .map(|(&id, _)| id)
             .collect();
@@ -65,7 +67,8 @@ pub(crate) struct JdtRequest {
 
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
-    log::debug!("LSP handler: cmd={}", ctx.command); match ctx.command {
+    log::debug!("LSP handler: cmd={}", ctx.command);
+    match ctx.command {
         CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
         CM_CONTENT_CHANGED => send::send_did_change(ctx, state),
         CM_LSP_GOTO_DEF => {
@@ -89,7 +92,8 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 /// Poll all LSP servers and dispatch notifications/responses.
 pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
     state.lsp_pending.remove_timed_out();
-    for (_lang, msg) in state.lsp.poll_all() { log::trace!("LSP poll: {:?}", &msg);
+    for (_lang, msg) in state.lsp.poll_all() {
+        log::trace!("LSP poll: {:?}", &msg);
         match msg {
             LspMessage::Notification { method, params } => {
                 if method == "textDocument/publishDiagnostics" {

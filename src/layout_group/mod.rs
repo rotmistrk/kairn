@@ -149,7 +149,10 @@ impl LayoutGroup {
         if visible.is_empty() {
             return;
         }
-        let cur = visible.iter().position(|&i| i == self.group.focused_index()).unwrap_or(0);
+        let cur = visible
+            .iter()
+            .position(|&i| i == self.group.focused_index())
+            .unwrap_or(0);
         let next = if dir > 0 {
             (cur + 1) % visible.len()
         } else {

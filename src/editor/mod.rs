@@ -3,6 +3,7 @@
 mod clipboard;
 pub mod command;
 mod dispatch_edit;
+mod dispatch_search;
 mod editing;
 pub mod ex;
 pub mod ex_commands;

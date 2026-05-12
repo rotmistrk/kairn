@@ -45,7 +45,6 @@ pub struct AppState {
     mcp_tick: u16,
     pub waker: Option<txv_core::run::Waker>,
     pub grep_pending: Option<(String, std::sync::Arc<crate::grep::GrepState>, std::path::PathBuf)>,
-
 }
 
 impl AppState {
@@ -63,7 +62,9 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
-            mcp_tick: 0, waker: None, grep_pending: None,
+            mcp_tick: 0,
+            waker: None,
+            grep_pending: None,
         }
     }
 
@@ -81,7 +82,9 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
-            mcp_tick: 0, waker: None, grep_pending: None,
+            mcp_tick: 0,
+            waker: None,
+            grep_pending: None,
         }
     }
 }
@@ -111,17 +114,19 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // Grep: drain results from background thread into the results view
     if let Some((title, gs, root)) = state.grep_pending.take() {
         if let Some(err) = gs.take_error() {
-            let msg = txv_core::message::Message::new(
-                txv_core::message::MsgLevel::Error, "grep", err);
-            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "grep", err);
+            ctx.queue
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         let entries = gs.take_entries();
         let done = gs.is_done();
         if !entries.is_empty() || done {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 if let Some(view) = desktop.active_view_mut(SlotId::Right) {
-                    if let Some(rv) = view.as_any_mut()
-                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>()) {
+                    if let Some(rv) = view
+                        .as_any_mut()
+                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
+                    {
                         rv.append(entries, done);
                     }
                 }

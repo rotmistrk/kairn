@@ -19,17 +19,11 @@ impl EditorView {
                 match crate::editor::save::save_file(&self.path, &content) {
                     Ok(()) => {
                         self.editor.buffer.mark_saved();
-                        queue.put_command(
-                            CM_FILE_CLOSED,
-                            Some(Box::new(self.path.to_string_lossy().to_string())),
-                        );
+                        queue.put_command(CM_FILE_CLOSED, Some(Box::new(self.path.to_string_lossy().to_string())));
                         queue.put_command(CM_TAB_CLOSE, None);
                     }
                     Err(e) => {
-                        let msg = txv_core::message::Message::error(
-                            "editor",
-                            format!("Save failed: {e}"),
-                        );
+                        let msg = txv_core::message::Message::error("editor", format!("Save failed: {e}"));
                         queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                     }
                 }
@@ -37,10 +31,7 @@ impl EditorView {
             KeyCode::Char('n') => {
                 self.close_prompt = false;
                 self.editor.buffer.mark_saved();
-                queue.put_command(
-                    CM_FILE_CLOSED,
-                    Some(Box::new(self.path.to_string_lossy().to_string())),
-                );
+                queue.put_command(CM_FILE_CLOSED, Some(Box::new(self.path.to_string_lossy().to_string())));
                 queue.put_command(CM_TAB_CLOSE, None);
             }
             _ => {

@@ -2,7 +2,7 @@
 
 mod helpers;
 
-use helpers::{TestHarness, temp_project};
+use helpers::{temp_project, TestHarness};
 use std::sync::{Arc, Mutex};
 
 use kairn::mcp::collect::collect_snapshot;
@@ -45,7 +45,9 @@ fn mcp_snapshot_handler_updates_arc() {
     // Open file to generate commands
     h.dispatch_command(
         kairn::commands::CM_OPEN_FILE,
-        Some(Box::new(kairn::commands::OpenFileRequest::new(dir.path().join("a.txt")))),
+        Some(Box::new(kairn::commands::OpenFileRequest::new(
+            dir.path().join("a.txt"),
+        ))),
     );
 
     // Run many cycles — each dispatch_command call increments mcp_tick
@@ -54,7 +56,10 @@ fn mcp_snapshot_handler_updates_arc() {
     }
 
     let locked = snap.lock().unwrap();
-    assert!(!locked.tabs.is_empty(), "Expected snapshot populated after 20+ commands");
+    assert!(
+        !locked.tabs.is_empty(),
+        "Expected snapshot populated after 20+ commands"
+    );
 }
 
 #[test]
@@ -64,4 +69,3 @@ fn mcp_snapshot_no_panic_without_arc() {
     // No mcp_snapshot set — should not panic
     h.run_cycles(25);
 }
-
