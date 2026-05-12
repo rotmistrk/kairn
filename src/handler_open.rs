@@ -1,5 +1,7 @@
 //! File-open command handlers — CM_OPEN_FILE, :edit.
 
+use std::path::Path;
+
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
@@ -7,7 +9,10 @@ use crate::broker::OpenResult;
 use crate::commands::*;
 use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
+use crate::settings::EditorSettings;
+use crate::structured::json_doc::JsonDoc;
 use crate::views::editor::EditorView;
+use crate::views::struct_view::StructuredView;
 
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
@@ -49,22 +54,14 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.close_tab_by_title(SlotId::Center, "Welcome");
-                let defaults = &state.settings.editor_defaults;
-                let mut editor =
-                    EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
-                editor.set_root_dir(state.root_dir.clone());
-                if let (Some(line), Some(col)) = (req.line, req.col) {
-                    editor.goto(line, col);
-                }
-                if req.diff {
-                    editor.toggle_diff("");
-                }
                 let title = path
                     .strip_prefix(&state.root_dir)
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, title.clone(), Box::new(editor));
+                let view: Box<dyn View> = try_open_structured(path)
+                    .unwrap_or_else(|| open_editor(path, &state.root_dir, &state.settings.editor_defaults, req));
+                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, title.clone(), view);
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
@@ -124,4 +121,28 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
         crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }
+}
+
+/// Try to open a file as a structured view (JSON). Returns None if not applicable or parse fails.
+fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
+    let ext = path.extension()?.to_str()?;
+    if ext != "json" {
+        return None;
+    }
+    let content = std::fs::read_to_string(path).ok()?;
+    let doc = JsonDoc::parse(&content).ok()?;
+    Some(Box::new(StructuredView::new(path, Box::new(doc))))
+}
+
+/// Open a file as an EditorView (fallback).
+fn open_editor(path: &Path, root_dir: &Path, defaults: &EditorSettings, req: &OpenFileRequest) -> Box<dyn View> {
+    let mut editor = EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
+    editor.set_root_dir(root_dir.to_path_buf());
+    if let (Some(line), Some(col)) = (req.line, req.col) {
+        editor.goto(line, col);
+    }
+    if req.diff {
+        editor.toggle_diff("");
+    }
+    Box::new(editor)
 }

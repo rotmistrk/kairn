@@ -24,7 +24,7 @@ pub enum ScalarType {
 }
 
 /// Format-agnostic trait for navigating and mutating a structured document.
-pub trait StructuredDoc {
+pub trait StructuredDoc: Send {
     fn root(&self) -> NodeId;
     fn children(&self, id: NodeId) -> &[NodeId];
     fn node_kind(&self, id: NodeId) -> NodeKind;
