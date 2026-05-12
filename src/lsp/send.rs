@@ -1,5 +1,7 @@
 //! LSP request senders — dispatch commands to language servers.
 
+use std::path::PathBuf;
+
 use txv_core::program::CommandContext;
 
 use crate::handler::AppState;
@@ -53,18 +55,19 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+    let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
         return;
     };
 
-    let (uri, lang) = current_file_info(state);
+    let uri = protocol::path_to_uri(path);
+    let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
         return;
     };
 
     log::info!("LSP: textDocument/definition at {uri}:{line}:{col}");
-    let id = requests::goto_definition(client, &uri, line, col);
+    let id = requests::goto_definition(client, &uri, *line, *col);
     state.lsp_pending.insert(id, PendingKind::GotoDefinition);
 }
 
@@ -72,41 +75,39 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let (line, col, symbol) = if let Some(&(l, c)) = boxed.downcast_ref::<(u32, u32)>() {
-        (l, c, String::new())
-    } else if let Some((l, c, s)) = boxed.downcast_ref::<(u32, u32, String)>() {
-        (*l, *c, s.clone())
-    } else {
+    let Some((path, line, col, symbol)) = boxed.downcast_ref::<(PathBuf, u32, u32, String)>() else {
         return;
     };
 
-    let (uri, lang) = current_file_info(state);
+    let uri = protocol::path_to_uri(path);
+    let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
         return;
     };
 
     log::info!("LSP: textDocument/references at {uri}:{line}:{col}");
-    let id = requests::find_references(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::FindReferences { symbol });
+    let id = requests::find_references(client, &uri, *line, *col);
+    state.lsp_pending.insert(id, PendingKind::FindReferences { symbol: symbol.clone() });
 }
 
 pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+    let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
         return;
     };
 
-    let (uri, lang) = current_file_info(state);
+    let uri = protocol::path_to_uri(path);
+    let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
         return;
     };
 
     log::info!("LSP: textDocument/hover at {uri}:{line}:{col}");
-    let id = requests::hover(client, &uri, line, col);
+    let id = requests::hover(client, &uri, *line, *col);
     state.lsp_pending.insert(id, PendingKind::Hover);
 }
 
@@ -114,18 +115,19 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+    let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
         return;
     };
 
-    let (uri, lang) = current_file_info(state);
+    let uri = protocol::path_to_uri(path);
+    let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
         return;
     };
 
     log::info!("LSP: textDocument/completion at {uri}:{line}:{col}");
-    let id = requests::completion(client, &uri, line, col);
+    let id = requests::completion(client, &uri, *line, *col);
     state.lsp_pending.insert(id, PendingKind::Completion);
 }
 

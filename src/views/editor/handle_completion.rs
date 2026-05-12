@@ -59,7 +59,7 @@ impl EditorView {
             && self.last_edit_tick > 0
             && self.tick_counter - self.last_edit_tick == 5
         {
-            let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+            let pos = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32);
             queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
         }
         if self.settings.autosave

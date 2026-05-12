@@ -124,20 +124,17 @@ impl EditorView {
                 queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
             }
             EditorAction::LspGotoDefinition => {
-                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
-                queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(pos)));
+                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(data)));
             }
             EditorAction::LspFindReferences => {
-                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
                 let word = self.editor.word_under_cursor().unwrap_or_default();
-                queue.put_command(
-                    crate::commands::CM_LSP_FIND_REFS,
-                    Some(Box::new((pos.0, pos.1, word))),
-                );
+                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32, word);
+                queue.put_command(crate::commands::CM_LSP_FIND_REFS, Some(Box::new(data)));
             }
             EditorAction::LspHover => {
-                let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
-                queue.put_command(crate::commands::CM_LSP_HOVER, Some(Box::new(pos)));
+                let data = (self.path.clone(), self.editor.cursor_line as u32, self.editor.cursor_col as u32);
+                queue.put_command(crate::commands::CM_LSP_HOVER, Some(Box::new(data)));
             }
             _ => {}
         }
