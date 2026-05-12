@@ -19,7 +19,14 @@ pub fn grep_stream(
 
     std::thread::spawn(move || {
         let child = Command::new("rg")
-            .args(["--line-number", "--no-heading", "--color=never", &pattern])
+            .args([
+                "--line-number",
+                "--no-heading",
+                "--color=never",
+                "--max-count=10",
+                "--max-columns=200",
+                &pattern,
+            ])
             .current_dir(&root)
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -39,17 +46,17 @@ pub fn grep_stream(
 
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
-        let mut batch = Vec::with_capacity(32);
+        let mut batch = Vec::with_capacity(16);
         let mut count = 0;
 
         for line in reader.lines().map_while(Result::ok) {
             if let Some(entry) = parse_grep_line(&line, &root) {
                 batch.push(entry);
                 count += 1;
-                if (batch.len() >= 32 || count <= 32)
-                    && tx.send(std::mem::take(&mut batch)).is_err()
-                {
-                    break;
+                if batch.len() >= 16 {
+                    if tx.send(std::mem::take(&mut batch)).is_err() {
+                        break;
+                    }
                 }
             }
             if count >= 1000 {
