@@ -27,15 +27,18 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .to_string_lossy()
                     .to_string();
                 desktop.focus_tab_by_title(SlotId::Center, &title);
+                if let (Some(line), Some(col)) = (req.line, req.col) {
+                    if let Some(view) = desktop.active_view_mut(SlotId::Center) {
+                        if let Some(editor) = view.as_any_mut()
+                            .and_then(|a| a.downcast_mut::<crate::views::editor::EditorView>())
+                        {
+                            editor.goto(line, col);
+                        }
+                    }
+                }
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
-            }
-            if let (Some(line), Some(col)) = (req.line, req.col) {
-                ctx.queue.put_command(
-                    crate::commands::CM_GOTO_LINE,
-                    Some(Box::new((line, col))),
-                );
             }
             if req.diff {
                 ctx.queue.put_command(CM_DIFF, Some(Box::new(String::new())));
