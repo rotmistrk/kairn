@@ -45,7 +45,8 @@ pub struct AppState {
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     mcp_tick: u16,
     /// Background grep result.
-    pub pending_grep: Option<(String, std::thread::JoinHandle<Vec<crate::views::results::ResultEntry>>)>,
+    /// Background grep result collector.
+    pub pending_grep: Option<(String, std::sync::mpsc::Receiver<Vec<crate::views::results::ResultEntry>>, Vec<crate::views::results::ResultEntry>)>,
 }
 
 impl AppState {
@@ -109,10 +110,19 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::lsp::handler::poll_lsp(state, ctx.queue);
 
     // Check background grep
-    if let Some((_, handle)) = state.pending_grep.as_ref() {
-        if handle.is_finished() {
-            let (title, handle) = state.pending_grep.take().unwrap();
-            let entries = handle.join().unwrap_or_default();
+    if let Some((title, rx, collected)) = state.pending_grep.as_mut() {
+        let mut done = false;
+        loop {
+            match rx.try_recv() {
+                Ok(batch) => collected.extend(batch),
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => { done = true; break; }
+            }
+        }
+        if done {
+            let title = title.clone();
+            let entries = std::mem::take(collected);
+            state.pending_grep = None;
             if entries.is_empty() {
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,

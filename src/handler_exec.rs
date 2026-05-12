@@ -99,10 +99,8 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "grep" if !arg.is_empty() => {
             let pattern = arg.to_string();
             let root = state.root_dir.clone();
-            let handle = std::thread::spawn(move || {
-                crate::grep::grep_project(&pattern, &root)
-            });
-            state.pending_grep = Some((format!("grep: {arg}"), handle));
+            let rx = crate::grep::grep_stream(&pattern, &root);
+            state.pending_grep = Some((format!("grep: {arg}"), rx, Vec::new()));
             ctx.queue.put_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(txv_core::message::Message::info("grep", "Searching..."))),
