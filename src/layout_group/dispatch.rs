@@ -54,11 +54,16 @@ impl LayoutGroup {
                 );
                 HandleResult::Consumed
             }
-            CM_TAB_DROPDOWN => {
+            CM_TAB_DROPDOWN | CM_TAB_DROPDOWN_UP | CM_TAB_DROPDOWN_DOWN => {
                 let slot = self.focused_slot();
                 let panel = self.panel_mut(slot);
                 if panel.dropdown_open() {
-                    panel.dropdown_cursor = None;
+                    match id {
+                        CM_TAB_DROPDOWN => panel.dropdown_cursor = None,
+                        CM_TAB_DROPDOWN_UP => panel.dropdown_move_up(),
+                        CM_TAB_DROPDOWN_DOWN => panel.dropdown_move_down(),
+                        _ => {}
+                    }
                 } else if panel.tab_count() > 1 {
                     panel.open_dropdown();
                 }

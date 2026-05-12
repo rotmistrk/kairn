@@ -66,6 +66,8 @@ pub const CM_TAB_PREV: CommandId = 116;
 pub const CM_TAB_CLOSE: CommandId = 117;
 pub const CM_FOCUS_TAB: CommandId = 118;
 pub const CM_TAB_DROPDOWN: CommandId = 119;
+pub const CM_TAB_DROPDOWN_UP: CommandId = 183;
+pub const CM_TAB_DROPDOWN_DOWN: CommandId = 184;
 
 // Display
 pub const CM_SHOW_HELP: CommandId = 120;

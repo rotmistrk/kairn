@@ -74,8 +74,8 @@ pub fn build_status_bar(
     // Hidden hotkeys
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Left), CM_FOCUS_PREV));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Right), CM_FOCUS_NEXT));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN));
+    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN_UP));
+    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN_DOWN));
     // Panel resize: ≠ (Alt+=) grow, – (Alt+-) shrink, ± (Alt+Shift+=) grow vertical, — (Alt+Shift+-) shrink vertical
     bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_PANEL_GROW));
     bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_PANEL_SHRINK));
