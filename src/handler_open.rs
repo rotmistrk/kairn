@@ -21,8 +21,13 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
 
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
-            if focus_center {
-                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let title = path.strip_prefix(&state.root_dir)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
+                desktop.focus_tab_by_title(SlotId::Center, &title);
+                if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
             }
