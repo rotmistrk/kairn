@@ -16,8 +16,8 @@ a valid cursor position which doesn't exist when empty.
 
 ### 1. Handle empty state
 In `src/views/todo_tree/handle.rs`:
-- `a` (add item) must work even when tree is empty — insert first item
-- Show placeholder text when empty: "Press 'a' to add first item"
+- `n` (new sibling) must work even when tree is empty — insert first item
+- Show placeholder text when empty: "Press 'n' to add first item"
 
 ### 2. Draw placeholder when empty
 In the draw method, if `visible_count() == 0`:
@@ -41,7 +41,7 @@ fn todo_tree_empty_shows_placeholder() {
 
 #[test]
 fn todo_tree_add_item_on_empty() {
-    // Create empty tree, simulate 'a' key → verify item added
+    // Create empty tree, simulate 'n' key → verify item added
 }
 
 #[test]
@@ -65,21 +65,24 @@ fn todo_tree_loads_existing_file() {
 }
 ```
 
-## Keybindings (verify all work)
+## Keybindings (duir standard — MUST match exactly)
 
 | Key | Action |
 |-----|--------|
-| a | Add sibling item |
-| A | Add child item |
-| Enter | Edit item text (inline) |
-| Space | Toggle completion |
-| d/x | Delete item |
-| J | Move item down |
-| K | Move item up |
-| > | Demote (indent) |
-| < | Promote (outdent) |
-| j/k | Navigate |
-| o | Expand/collapse |
+| ↑/↓ | Navigate |
+| ←/→ | Collapse/Expand |
+| Space | Toggle completed |
+| e | Edit item text (inline) |
+| n | New sibling |
+| b | New child (below) |
+| d | Delete item (y to confirm) |
+| ! | Toggle important |
+| K | Swap up |
+| J | Swap down |
+| H | Promote (outdent) |
+| L | Demote (indent) |
+| S | Sort children |
+| c | Clone subtree |
 
 ## Constraints
 
