@@ -97,13 +97,12 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "run" => ctx.queue.put_command(CM_RUN, None),
         "test" => ctx.queue.put_command(CM_TEST, None),
         "grep" if !arg.is_empty() => {
-            let pattern = arg.to_string();
             let root = state.root_dir.clone();
-            // TODO: make async once Tick dispatch to tool panel is fixed
-            let entries = crate::grep::grep_project(&pattern, &root);
+            let waker = state.waker.clone().unwrap_or_else(txv_core::run::Waker::noop);
+            let grep_state = crate::grep::grep_async(arg, &root, waker);
+            state.grep_pending = Some((format!("grep:{arg}"), grep_state, root.clone()));
             let title = format!("grep:{arg}");
-            let view = crate::views::results::ResultsView::new(&title, entries)
-                .with_root(&root);
+            let view = crate::views::results::ResultsView::searching(&title, &root);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.insert_tab(SlotId::Right, &title, Box::new(view));
                 desktop.focus_slot(SlotId::Right);

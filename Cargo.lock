@@ -1589,17 +1589,19 @@ dependencies = [
 [[package]]
 name = "txv-core"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#1d5b3b7a321335c206834cde615f84ada4fb6534"
+source = "git+https://github.com/rotmistrk/txv.git#2adb77cfcec63d66ad1a9fedce80301267d1b42f"
 dependencies = [
+ "libc",
  "log",
 ]
 
 [[package]]
 name = "txv-render"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#1d5b3b7a321335c206834cde615f84ada4fb6534"
+source = "git+https://github.com/rotmistrk/txv.git#2adb77cfcec63d66ad1a9fedce80301267d1b42f"
 dependencies = [
  "crossterm",
+ "libc",
  "log",
  "txv-core",
  "unicode-width",
@@ -1609,7 +1611,7 @@ dependencies = [
 [[package]]
 name = "txv-widgets"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#1d5b3b7a321335c206834cde615f84ada4fb6534"
+source = "git+https://github.com/rotmistrk/txv.git#2adb77cfcec63d66ad1a9fedce80301267d1b42f"
 dependencies = [
  "ignore",
  "libc",

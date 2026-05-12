@@ -26,6 +26,7 @@ pub struct ResultsView {
     scroll: usize,
     title: String,
     root: PathBuf,
+    done: bool,
 }
 
 impl ResultsView {
@@ -36,7 +37,20 @@ impl ResultsView {
             cursor: 0,
             scroll: 0,
             title: title.to_string(),
-            root: PathBuf::new(),
+            root: PathBuf::new(), done: true,
+        }
+    }
+
+    /// Create an empty view in searching state.
+    pub fn searching(title: &str, root: &Path) -> Self {
+        Self {
+            state: ViewState::default(),
+            entries: Vec::new(),
+            cursor: 0,
+            scroll: 0,
+            title: title.to_string(),
+            root: root.to_path_buf(),
+            done: false,
         }
     }
 
@@ -45,6 +59,13 @@ impl ResultsView {
         self
     }
 
+
+    /// Append entries from async grep. Mark done when search completes.
+    pub fn append(&mut self, entries: Vec<ResultEntry>, done: bool) {
+        self.entries.extend(entries);
+        self.done = done;
+        self.state.mark_dirty();
+    }
     pub fn current_entry(&self) -> Option<&ResultEntry> {
         self.entries.get(self.cursor)
     }
@@ -135,12 +156,16 @@ impl View for ResultsView {
 
         // Status line at bottom
         let status_y = b.y + b.h - 1;
-        let status = if self.entries.is_empty() {
+        let status = if !self.done {
+            format!("⟳ Searching... ({} found)", self.entries.len())
+        } else if self.entries.is_empty() {
             "✗ No matches".to_string()
         } else {
             format!("✓ {} results", self.entries.len())
         };
-        let status_style = if self.entries.is_empty() {
+        let status_style = if !self.done {
+            Style { fg: Color::Ansi(11), ..Style::default() }
+        } else if self.entries.is_empty() {
             Style { fg: Color::Ansi(9), ..Style::default() }
         } else {
             Style { fg: Color::Ansi(10), ..Style::default() }

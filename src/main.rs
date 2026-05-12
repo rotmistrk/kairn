@@ -6,6 +6,7 @@ use clap::Parser;
 use txv_core::program::Program;
 use txv_render::backend::CrosstermBackend;
 use txv_render::color::detect_color_mode;
+use txv_core::run::Backend;
 
 use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
@@ -128,6 +129,7 @@ fn main() -> anyhow::Result<()> {
     // Run
     let color_mode = detect_color_mode();
     let mut backend = CrosstermBackend::new(color_mode);
+    app_state.waker = Some(backend.waker());
 
     program.run(&mut backend, |ctx| {
         handle_command(ctx, &mut app_state);
