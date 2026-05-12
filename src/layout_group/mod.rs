@@ -55,7 +55,7 @@ impl LayoutGroup {
         for _ in 0..PANEL_COUNT {
             group.insert(Box::new(TabGroup::new()));
         }
-        group.focused = SlotId::Left as usize;
+        group.set_focused_index(SlotId::Left as usize);
         Self {
             group,
             zoomed: None,

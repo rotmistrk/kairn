@@ -55,27 +55,27 @@ impl TabGroup {
     }
 
     pub fn set_active(&mut self, index: usize) {
-        if index >= self.group.children.len() || index == self.group.focused {
+        if index >= self.group.child_count() || index == self.group.focused_index() {
             return;
         }
-        self.group.children[self.group.focused].unselect();
-        self.group.focused = index;
+        self.group.unselect_focused();
+        self.group.set_focused_index(index);
         self.touch_lru();
         let r = self.content_rect();
-        self.group.children[self.group.focused].set_bounds(r);
+        self.group.set_child_bounds(self.group.focused_index(), r);
         if self.group.view.is_focused() {
-            self.group.children[self.group.focused].select();
+            self.group.select_focused();
         }
         self.group.view.mark_dirty();
     }
 
     pub fn active_title(&self) -> Option<&str> {
-        self.titles.get(self.group.focused).map(|t| t.as_str())
+        self.titles.get(self.group.focused_index()).map(|t| t.as_str())
     }
 
     /// Index of the currently active tab.
     pub fn active_index(&self) -> usize {
-        self.group.focused
+        self.group.focused_index()
     }
 
     pub fn tab_title(&self, index: usize) -> Option<&str> {
@@ -83,46 +83,49 @@ impl TabGroup {
     }
 
     pub fn active_view_mut(&mut self) -> Option<&mut Box<dyn View>> {
-        self.group.children.get_mut(self.group.focused)
+        self.group.focused_child_mut()
     }
 
     /// Access a child view by index.
     pub fn view_at(&self, index: usize) -> Option<&dyn View> {
-        self.group.children.get(index).map(|v| &**v)
+        self.group.child(index)
     }
 
     /// Mutable access to a child view by index.
     pub fn view_at_mut(&mut self, index: usize) -> Option<&mut Box<dyn View>> {
-        self.group.children.get_mut(index)
+        self.group.child_mut(index)
     }
 
     pub fn tab_next(&mut self) {
-        if self.group.children.len() > 1 {
-            self.set_active((self.group.focused + 1) % self.group.children.len());
+        if self.group.child_count() > 1 {
+            self.set_active((self.group.focused_index() + 1) % self.group.child_count());
         }
     }
 
     pub fn tab_prev(&mut self) {
-        if self.group.children.len() > 1 {
-            let prev = if self.group.focused == 0 {
-                self.group.children.len() - 1
+        if self.group.child_count() > 1 {
+            let prev = if self.group.focused_index() == 0 {
+                self.group.child_count() - 1
             } else {
-                self.group.focused - 1
+                self.group.focused_index() - 1
             };
             self.set_active(prev);
         }
     }
 
     pub fn close_active(&mut self) -> bool {
-        if self.group.children.is_empty() {
+        if self.group.is_empty() {
             return false;
         }
-        if let CloseResult::Denied(_) = self.group.children[self.group.focused].can_close() {
-            return false;
+        let fi = self.group.focused_index();
+        if let Some(child) = self.group.child_mut(fi) {
+            if let CloseResult::Denied(_) = child.can_close() {
+                return false;
+            }
         }
-        self.group.children.remove(self.group.focused);
-        self.titles.remove(self.group.focused);
-        self.lru.remove(self.group.focused);
+        self.group.remove(fi);
+        self.titles.remove(fi);
+        self.lru.remove(fi);
         self.adjust_after_remove();
         true
     }
@@ -131,10 +134,12 @@ impl TabGroup {
         let Some(idx) = self.titles.iter().position(|t| t == title) else {
             return false;
         };
-        if let CloseResult::Denied(_) = self.group.children[idx].can_close() {
-            return false;
+        if let Some(child) = self.group.child_mut(idx) {
+            if let CloseResult::Denied(_) = child.can_close() {
+                return false;
+            }
         }
-        self.group.children.remove(idx);
+        self.group.remove(idx);
         self.titles.remove(idx);
         self.lru.remove(idx);
         self.adjust_after_remove();
@@ -160,7 +165,7 @@ impl TabGroup {
     }
 
     pub fn rename_active(&mut self, new_title: impl Into<String>) {
-        if let Some(title) = self.titles.get_mut(self.group.focused) {
+        if let Some(title) = self.titles.get_mut(self.group.focused_index()) {
             *title = new_title.into();
             self.group.view.mark_dirty();
         }
@@ -179,7 +184,7 @@ impl TabGroup {
 
     /// Rename active tab, keeping the "prefix:" part and replacing the user part.
     pub fn rename_user_part(&mut self, new_user_part: &str) {
-        if let Some(title) = self.titles.get(self.group.focused).cloned() {
+        if let Some(title) = self.titles.get(self.group.focused_index()).cloned() {
             if let Some(colon) = title.find(':') {
                 let prefix = &title[..=colon];
                 self.rename_active(format!("{prefix}{new_user_part}"));
@@ -189,14 +194,15 @@ impl TabGroup {
 
     fn touch_lru(&mut self) {
         self.lru_counter += 1;
-        if let Some(v) = self.lru.get_mut(self.group.focused) {
+        if let Some(v) = self.lru.get_mut(self.group.focused_index()) {
             *v = self.lru_counter;
         }
     }
 
     fn adjust_after_remove(&mut self) {
-        if self.group.focused >= self.group.children.len() && self.group.focused > 0 {
-            self.group.focused -= 1;
+        let fi = self.group.focused_index();
+        if fi >= self.group.child_count() && fi > 0 {
+            self.group.set_focused_index(fi - 1);
         }
         if !self.lru.is_empty() {
             let mru = self
@@ -206,13 +212,13 @@ impl TabGroup {
                 .max_by_key(|(_, &v)| v)
                 .map(|(i, _)| i)
                 .unwrap_or(0);
-            self.group.focused = mru;
+            self.group.set_focused_index(mru);
         }
-        if let Some(child) = self.group.children.get_mut(self.group.focused) {
-            let b = self.group.view.bounds();
-            let r = Rect::new(b.x, b.y + 1, b.w, b.h.saturating_sub(1));
+        let r = self.content_rect();
+        let is_focused = self.group.view.is_focused();
+        if let Some(child) = self.group.focused_child_mut() {
             child.set_bounds(r);
-            if self.group.view.is_focused() {
+            if is_focused {
                 child.select();
             }
         }

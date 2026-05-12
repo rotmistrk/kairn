@@ -60,7 +60,7 @@ impl View for LayoutGroup {
         }
         // Tick goes to ALL slots (background tabs need it for PTY poll, git refresh)
         if matches!(event, Event::Tick) {
-            for child in &mut self.group.children {
+            for child in self.group.children_iter_mut() {
                 child.handle(event, queue);
             }
             return HandleResult::Ignored;

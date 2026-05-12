@@ -12,10 +12,8 @@ use crate::view::{View, ViewOptions, ViewState};
 /// Common group state — embed in any view that owns children.
 pub struct GroupState {
     pub view: ViewState,
-    /// Framework-internal: use child(), child_mut(), focused_child_mut() in new code.
-    pub children: Vec<Box<dyn View>>,
-    /// Framework-internal: use focused_index(), set_focused_index(), switch_focus() in new code.
-    pub focused: usize,
+    pub(crate) children: Vec<Box<dyn View>>,
+    pub(crate) focused: usize,
 }
 
 impl GroupState {
@@ -110,6 +108,11 @@ impl GroupState {
     /// Iterate over children immutably.
     pub fn children_iter(&self) -> impl Iterator<Item = &dyn View> {
         self.children.iter().map(|c| c.as_ref())
+    }
+
+    /// Iterate over children mutably.
+    pub fn children_iter_mut(&mut self) -> impl Iterator<Item = &mut Box<dyn View>> {
+        self.children.iter_mut()
     }
 
     /// Check if empty.

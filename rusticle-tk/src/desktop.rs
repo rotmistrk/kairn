@@ -33,7 +33,7 @@ impl TkDesktop {
 
     /// Insert a widget with a name. Returns the child index.
     pub fn insert_widget(&mut self, name: String, widget: Box<dyn View>) -> usize {
-        let idx = self.group.children.len();
+        let idx = self.group.child_count();
         self.group.insert(widget);
         self.names.insert(name, idx);
         idx
@@ -42,24 +42,19 @@ impl TkDesktop {
     /// Get a child view by name (immutable).
     pub fn get(&self, name: &str) -> Option<&dyn View> {
         let idx = *self.names.get(name)?;
-        Some(&*self.group.children[idx])
+        self.group.child(idx)
     }
 
     /// Get a child view by name (mutable).
-    pub fn get_mut(&mut self, name: &str) -> Option<&mut dyn View> {
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Box<dyn View>> {
         let idx = *self.names.get(name)?;
-        Some(&mut *self.group.children[idx])
+        self.group.child_mut(idx)
     }
 
     /// Set focus to a named widget.
     pub fn focus(&mut self, name: &str) {
         if let Some(&idx) = self.names.get(name) {
-            if self.group.focused < self.group.children.len() {
-                self.group.children[self.group.focused].unselect();
-            }
-            self.group.focused = idx;
-            self.group.children[idx].select();
-            self.group.view.mark_dirty();
+            self.group.switch_focus(idx);
         }
     }
 
@@ -72,9 +67,7 @@ impl TkDesktop {
         let positions = self.layout.compute(b);
         for (name, rect) in &positions {
             if let Some(&idx) = self.names.get(name) {
-                if let Some(child) = self.group.children.get_mut(idx) {
-                    child.set_bounds(*rect);
-                }
+                self.group.set_child_bounds(idx, *rect);
             }
         }
     }
@@ -96,7 +89,7 @@ impl View for TkDesktop {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        for child in &self.group.children {
+        for child in self.group.children_iter() {
             child.draw(surface);
         }
     }

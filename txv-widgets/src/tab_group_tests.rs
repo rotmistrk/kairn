@@ -60,5 +60,5 @@ fn set_bounds_propagates() {
     let mut tg = TabGroup::new();
     tg.insert_tab("T", Box::new(Dummy::new()));
     tg.set_bounds(Rect::new(5, 10, 40, 20));
-    assert_eq!(tg.group.children[0].bounds(), Rect::new(5, 11, 40, 19));
+    assert_eq!(tg.group.child(0).unwrap().bounds(), Rect::new(5, 11, 40, 19));
 }
