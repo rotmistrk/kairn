@@ -6,6 +6,7 @@ mod handle;
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
+use txv_widgets::inline_edit::InlineEditor;
 
 use crate::structured::{NodeId, NodeKind, StructuredDoc};
 
@@ -17,16 +18,27 @@ pub enum ColFocus {
     Meta,
 }
 
+/// What the inline editor is targeting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditTarget {
+    Value,
+    Key,
+    Meta,
+}
+
 /// Tree-table view for structured documents.
 pub struct StructuredView {
-    state: ViewState,
-    doc: Box<dyn StructuredDoc>,
-    path: PathBuf,
-    cursor: usize,
-    scroll: usize,
-    col_focus: ColFocus,
-    visible_nodes: Vec<NodeId>,
-    display_title: String,
+    pub(crate) state: ViewState,
+    pub(crate) doc: Box<dyn StructuredDoc>,
+    pub(crate) path: PathBuf,
+    pub(crate) cursor: usize,
+    pub(crate) scroll: usize,
+    pub(crate) col_focus: ColFocus,
+    pub(crate) visible_nodes: Vec<NodeId>,
+    pub(crate) display_title: String,
+    pub(crate) editing: Option<InlineEditor>,
+    pub(crate) edit_target: EditTarget,
+    pub(crate) dirty: bool,
 }
 
 impl StructuredView {
@@ -44,6 +56,9 @@ impl StructuredView {
             col_focus: ColFocus::Key,
             visible_nodes: Vec::new(),
             display_title,
+            editing: None,
+            edit_target: EditTarget::Value,
+            dirty: false,
         };
         view.rebuild_visible();
         view
@@ -97,6 +112,70 @@ impl StructuredView {
             self.scroll = self.cursor;
         } else if self.cursor >= self.scroll + h {
             self.scroll = self.cursor - h + 1;
+        }
+    }
+
+    /// Start inline editing for the current cursor position and column focus.
+    pub(crate) fn start_edit(&mut self, target: EditTarget) {
+        let Some(&node_id) = self.visible_nodes.get(self.cursor) else {
+            return;
+        };
+        let text = match target {
+            EditTarget::Value => self.doc.value_display(node_id).to_owned(),
+            EditTarget::Key => self.doc.key(node_id).unwrap_or("").to_owned(),
+            EditTarget::Meta => self.doc.meta(node_id).to_owned(),
+        };
+        self.edit_target = target;
+        self.editing = Some(InlineEditor::new(self.cursor, &text));
+        self.state.mark_dirty();
+    }
+
+    /// Commit the current inline edit.
+    pub(crate) fn commit_edit(&mut self) {
+        let Some(editor) = self.editing.take() else {
+            return;
+        };
+        let Some(&node_id) = self.visible_nodes.get(editor.row) else {
+            return;
+        };
+        let text = editor.buffer;
+        let _ = match self.edit_target {
+            EditTarget::Value => self.doc.set_value(node_id, &text),
+            EditTarget::Key => self.doc.set_key(node_id, &text),
+            EditTarget::Meta => {
+                self.doc.set_meta(node_id, &text);
+                Ok(())
+            }
+        };
+        self.dirty = true;
+        self.sync_title();
+        self.state.mark_dirty();
+    }
+
+    /// Cancel the current inline edit.
+    pub(crate) fn cancel_edit(&mut self) {
+        self.editing = None;
+        self.state.mark_dirty();
+    }
+
+    /// Clamp cursor to valid range after structural changes.
+    pub(crate) fn clamp_cursor(&mut self) {
+        if self.cursor >= self.visible_nodes.len() {
+            self.cursor = self.visible_nodes.len().saturating_sub(1);
+        }
+    }
+
+    /// Update display_title based on dirty state.
+    pub(crate) fn sync_title(&mut self) {
+        let name = self
+            .path
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_else(|| "structured".to_string());
+        if self.dirty {
+            self.display_title = format!("{name} *");
+        } else {
+            self.display_title = name;
         }
     }
 }

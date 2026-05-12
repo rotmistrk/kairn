@@ -15,7 +15,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     let w = b.w as usize;
     let key_w = w * 40 / 100;
     let val_w = w * 40 / 100;
-    let meta_w = w.saturating_sub(key_w + val_w + 2); // 2 for separators
+    let meta_w = w.saturating_sub(key_w + val_w + 2);
 
     let normal = Style::default();
     let cursor_style = Style {
@@ -32,6 +32,11 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
             underline: true,
             ..Attrs::default()
         },
+        ..Style::default()
+    };
+    let edit_style = Style {
+        fg: Color::Ansi(0),
+        bg: Color::Ansi(3),
         ..Style::default()
     };
 
@@ -95,6 +100,18 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
             let truncated_meta = truncate(meta_text, meta_w);
             surface.print(meta_x, y, &truncated_meta, col_style);
         }
+
+        // Render InlineEditor overlay if editing this row
+        if let Some(ref editor) = view.editing {
+            if editor.row == idx {
+                let (col_x, col_w) = match view.col_focus {
+                    ColFocus::Key => (b.x, key_w as u16),
+                    ColFocus::Value => (val_x, val_w as u16),
+                    ColFocus::Meta => (meta_x, meta_w as u16),
+                };
+                editor.draw(surface, col_x, y, col_w, edit_style);
+            }
+        }
     }
 }
 
@@ -103,7 +120,6 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
     let depth = view.depth(node_id);
     let mut text = String::new();
 
-    // Indent with tree connectors
     if depth > 0 {
         for _ in 0..depth.saturating_sub(1) {
             text.push_str("  ");
@@ -115,7 +131,6 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
         }
     }
 
-    // Expand/collapse marker for containers
     let kind = view.doc.node_kind(node_id);
     if kind != NodeKind::Scalar {
         if view.doc.is_expanded(node_id) {
@@ -126,11 +141,9 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
         text.push(' ');
     }
 
-    // Key name or array index
     if let Some(key) = view.doc.key(node_id) {
         text.push_str(key);
     } else if depth > 0 {
-        // Array element — show index
         if let Some(parent) = view.doc.parent(node_id) {
             let siblings = view.doc.children(parent);
             if let Some(pos) = siblings.iter().position(|&c| c == node_id) {
