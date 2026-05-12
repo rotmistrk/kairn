@@ -8,6 +8,7 @@ pub fn handle_new_sibling(view: &mut StructuredView) {
         return;
     };
     let parent_kind = view.doc.parent(node_id).map(|p| view.doc.node_kind(p));
+    view.save_undo_point();
     if let Ok(new_id) = view.doc.add_sibling(node_id) {
         view.dirty = true;
         view.sync_title();
@@ -30,6 +31,7 @@ pub fn handle_new_child(view: &mut StructuredView) {
     if view.doc.node_kind(node_id) == NodeKind::Scalar {
         return;
     }
+    view.save_undo_point();
     if let Ok(new_id) = view.doc.add_child(node_id) {
         view.dirty = true;
         view.sync_title();
@@ -49,6 +51,7 @@ pub fn handle_delete(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     if view.doc.remove(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
@@ -64,6 +67,7 @@ pub fn handle_clone(view: &mut StructuredView) {
         return;
     };
     let parent_kind = view.doc.parent(node_id).map(|p| view.doc.node_kind(p));
+    view.save_undo_point();
     if let Ok(new_id) = view.doc.clone_node(node_id) {
         view.dirty = true;
         view.sync_title();
@@ -83,6 +87,7 @@ pub fn handle_cycle_type(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     view.doc.cycle_type(node_id);
     view.dirty = true;
     view.sync_title();
@@ -93,6 +98,7 @@ pub fn handle_convert_container(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     view.doc.convert_container(node_id);
     view.dirty = true;
     view.sync_title();
@@ -104,6 +110,7 @@ pub fn handle_swap_down(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     if view.doc.swap_down(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
@@ -120,6 +127,7 @@ pub fn handle_swap_up(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     if view.doc.swap_up(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
@@ -136,6 +144,7 @@ pub fn handle_promote(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     if view.doc.promote(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
@@ -152,6 +161,7 @@ pub fn handle_demote(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     if view.doc.demote(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
@@ -168,6 +178,7 @@ pub fn handle_toggle_inline(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
+    view.save_undo_point();
     view.doc.toggle_inline(node_id);
     view.dirty = true;
     view.sync_title();

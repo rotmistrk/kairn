@@ -51,4 +51,8 @@ pub trait StructuredDoc: Send {
     fn serialize(&self) -> String;
     fn parent(&self, id: NodeId) -> Option<NodeId>;
     fn scalar_type(&self, id: NodeId) -> ScalarType;
+    /// Snapshot the document state as a string (for undo).
+    fn snapshot(&self) -> String;
+    /// Restore document state from a snapshot string.
+    fn restore(&mut self, snapshot: &str) -> Result<(), String>;
 }

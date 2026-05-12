@@ -2,6 +2,7 @@
 
 mod draw;
 mod handle;
+pub(crate) mod undo;
 
 use std::path::{Path, PathBuf};
 
@@ -9,6 +10,8 @@ use txv_core::prelude::*;
 use txv_widgets::inline_edit::InlineEditor;
 
 use crate::structured::{NodeId, NodeKind, StructuredDoc};
+
+use undo::UndoStack;
 
 /// Which column currently has focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +42,7 @@ pub struct StructuredView {
     pub(crate) editing: Option<InlineEditor>,
     pub(crate) edit_target: EditTarget,
     pub(crate) dirty: bool,
+    pub(crate) undo_stack: UndoStack,
 }
 
 impl StructuredView {
@@ -59,6 +63,7 @@ impl StructuredView {
             editing: None,
             edit_target: EditTarget::Value,
             dirty: false,
+            undo_stack: UndoStack::new(),
         };
         view.rebuild_visible();
         view
@@ -176,6 +181,41 @@ impl StructuredView {
             self.display_title = format!("{name} *");
         } else {
             self.display_title = name;
+        }
+    }
+
+    /// Save current document state as an undo point.
+    pub(crate) fn save_undo_point(&mut self) {
+        let snapshot = self.doc.snapshot();
+        self.undo_stack.save_state(&snapshot);
+    }
+
+    /// Undo: restore previous document state.
+    pub(crate) fn apply_undo(&mut self) {
+        // Bookmark current state so redo can get back to it
+        let current = self.doc.snapshot();
+        self.undo_stack.bookmark_current(&current);
+        let Some(snapshot) = self.undo_stack.undo().map(|s| s.to_string()) else {
+            return;
+        };
+        if self.doc.restore(&snapshot).is_ok() {
+            self.rebuild_visible();
+            self.clamp_cursor();
+            self.sync_scroll();
+            self.state.mark_dirty();
+        }
+    }
+
+    /// Redo: restore next document state.
+    pub(crate) fn apply_redo(&mut self) {
+        let Some(snapshot) = self.undo_stack.redo().map(|s| s.to_string()) else {
+            return;
+        };
+        if self.doc.restore(&snapshot).is_ok() {
+            self.rebuild_visible();
+            self.clamp_cursor();
+            self.sync_scroll();
+            self.state.mark_dirty();
         }
     }
 }

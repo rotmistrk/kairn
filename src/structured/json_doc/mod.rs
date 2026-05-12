@@ -213,4 +213,12 @@ impl StructuredDoc for JsonDoc {
     fn serialize(&self) -> String {
         serialize::serialize(self)
     }
+    fn snapshot(&self) -> String {
+        serialize::serialize(self)
+    }
+    fn restore(&mut self, snapshot: &str) -> Result<(), String> {
+        let new_doc = JsonDoc::parse(snapshot)?;
+        self.nodes = new_doc.nodes;
+        Ok(())
+    }
 }

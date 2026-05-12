@@ -15,7 +15,10 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
     if let Some(ref mut editor) = view.editing {
         match editor.handle_key(key) {
             InlineEditResult::Continue => {}
-            InlineEditResult::Commit(_) => view.commit_edit(),
+            InlineEditResult::Commit(_) => {
+                view.save_undo_point();
+                view.commit_edit();
+            }
             InlineEditResult::Cancel => view.cancel_edit(),
         }
         view.state.mark_dirty();
@@ -136,6 +139,14 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
         }
         KeyCode::Char('!') => {
             ops::handle_toggle_inline(view);
+            HandleResult::Consumed
+        }
+        KeyCode::Char('u') => {
+            view.apply_undo();
+            HandleResult::Consumed
+        }
+        KeyCode::Char('r') if key.modifiers.ctrl => {
+            view.apply_redo();
             HandleResult::Consumed
         }
         _ => HandleResult::Ignored,
