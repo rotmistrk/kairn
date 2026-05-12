@@ -114,12 +114,16 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         let mut done = false;
         loop {
             match rx.try_recv() {
-                Ok(batch) => collected.extend(batch),
+                Ok(batch) => {
+                    log::debug!("grep: received batch of {} results", batch.len());
+                    collected.extend(batch);
+                }
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => { done = true; break; }
             }
         }
         if done {
+            log::info!("grep: done, {} total results", collected.len());
             let title = title.clone();
             let entries = std::mem::take(collected);
             state.pending_grep = None;
