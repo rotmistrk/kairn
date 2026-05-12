@@ -129,7 +129,11 @@ impl EditorView {
             }
             EditorAction::LspFindReferences => {
                 let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);
-                queue.put_command(crate::commands::CM_LSP_FIND_REFS, Some(Box::new(pos)));
+                let word = self.editor.word_under_cursor().unwrap_or_default();
+                queue.put_command(
+                    crate::commands::CM_LSP_FIND_REFS,
+                    Some(Box::new((pos.0, pos.1, word))),
+                );
             }
             EditorAction::LspHover => {
                 let pos = (self.editor.cursor_line as u32, self.editor.cursor_col as u32);

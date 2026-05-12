@@ -23,7 +23,7 @@ pub struct PendingRequests {
 #[derive(Debug, Clone)]
 pub(crate) enum PendingKind {
     GotoDefinition,
-    FindReferences,
+    FindReferences { symbol: String },
     Hover,
     Completion,
     Rename,
@@ -115,7 +115,7 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
                 }
             }
         }
-        PendingKind::FindReferences => {
+        PendingKind::FindReferences { symbol } => {
             let locs = requests::parse_locations(result);
             if !locs.is_empty() {
                 let entries: Vec<crate::views::results::ResultEntry> = locs
@@ -127,7 +127,12 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
                         text: String::new(),
                     })
                     .collect();
-                queue.put_command(CM_SHOW_RESULTS, Some(Box::new(("References".to_string(), entries))));
+                let title = if symbol.is_empty() {
+                    "References".to_string()
+                } else {
+                    format!("References: {symbol}")
+                };
+                queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
             }
         }
         PendingKind::Hover => {

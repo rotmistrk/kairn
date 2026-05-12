@@ -140,4 +140,22 @@ impl Editor {
         }
         self.clamp_col();
     }
+
+    /// Get the word under the cursor (alphanumeric + underscore).
+    pub fn word_under_cursor(&self) -> Option<String> {
+        let line = self.buffer.line(self.cursor_line)?;
+        let chars: Vec<char> = line.chars().collect();
+        let col = self.cursor_col;
+        if col >= chars.len() || !is_word_char(chars[col]) {
+            return None;
+        }
+        let start = (0..col).rev().take_while(|&i| is_word_char(chars[i])).count();
+        let begin = col - start;
+        let end = (col..chars.len()).take_while(|&i| is_word_char(chars[i])).count() + col;
+        Some(chars[begin..end].iter().collect())
+    }
+}
+
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
 }

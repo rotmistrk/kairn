@@ -70,7 +70,11 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() else {
+    let (line, col, symbol) = if let Some(&(l, c)) = boxed.downcast_ref::<(u32, u32)>() {
+        (l, c, String::new())
+    } else if let Some((l, c, s)) = boxed.downcast_ref::<(u32, u32, String)>() {
+        (*l, *c, s.clone())
+    } else {
         return;
     };
 
@@ -81,7 +85,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let id = requests::find_references(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::FindReferences);
+    state.lsp_pending.insert(id, PendingKind::FindReferences { symbol });
 }
 
 pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
