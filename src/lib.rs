@@ -40,6 +40,7 @@ pub mod message_ring;
 pub mod session;
 pub mod settings;
 pub mod status;
+pub mod structured;
 pub mod suspend;
 pub mod task_output;
 pub mod views;
