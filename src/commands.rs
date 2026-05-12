@@ -130,3 +130,4 @@ pub struct ContentChanged {
     pub content: String,
 }
 pub const CM_GOTO_LINE: CommandId = 182;
+pub const CM_GREP_RESULTS: CommandId = 183;

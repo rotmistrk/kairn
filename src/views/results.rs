@@ -22,8 +22,8 @@ pub struct ResultEntry {
 
 /// Shared state between grep thread and view.
 pub struct SharedResults {
-    entries: Mutex<Vec<ResultEntry>>,
-    done: Mutex<bool>,
+    pub entries: Mutex<Vec<ResultEntry>>,
+    pub done: Mutex<bool>,
 }
 
 impl SharedResults {
@@ -224,6 +224,23 @@ impl View for ResultsView {
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         if let Event::Tick = event {
             self.poll_shared();
+            return HandleResult::Ignored;
+        }
+        if let Event::Command { id, data } = event {
+            if *id == crate::commands::CM_GREP_RESULTS {
+                if let Some(boxed) = data.as_ref() {
+                    if let Some(batch) = boxed.downcast_ref::<Vec<ResultEntry>>() {
+                        self.entries.extend(batch.iter().cloned());
+                        self.state.mark_dirty();
+                    } else if boxed.downcast_ref::<()>().is_some() {
+                        // () signals done
+                        self.done = true;
+                        self.shared = None;
+                        self.state.mark_dirty();
+                    }
+                }
+                return HandleResult::Consumed;
+            }
             return HandleResult::Ignored;
         }
         let Event::Key(key) = event else {

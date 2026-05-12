@@ -44,6 +44,7 @@ pub struct AppState {
     /// MCP snapshot (updated periodically for MCP server reads).
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     mcp_tick: u16,
+    pub grep_shared: Option<std::sync::Arc<crate::views::results::SharedResults>>,
 }
 
 impl AppState {
@@ -61,7 +62,7 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
-            mcp_tick: 0,
+            mcp_tick: 0, grep_shared: None,
         }
     }
 
@@ -79,7 +80,7 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
-            mcp_tick: 0,
+            mcp_tick: 0, grep_shared: None,
         }
     }
 }
@@ -103,6 +104,18 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
     crate::lsp::handler::poll_lsp(state, ctx.queue);
+
+    if let Some(shared) = &state.grep_shared {
+        let batch: Vec<crate::views::results::ResultEntry> =
+            shared.entries.lock().map(|mut v| std::mem::take(&mut *v)).unwrap_or_default();
+        if !batch.is_empty() {
+            ctx.queue.put_command(crate::commands::CM_GREP_RESULTS, Some(Box::new(batch)));
+        }
+        if shared.done.lock().map(|d| *d).unwrap_or(false) {
+            ctx.queue.put_command(crate::commands::CM_GREP_RESULTS, Some(Box::new(())));
+            state.grep_shared = None;
+        }
+    }
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     if state.mcp_snapshot.is_some() {
