@@ -3,7 +3,7 @@
 //! Opens in the center panel. Enter navigates to the selected location.
 //! n/p cycle through results. Supports async streaming of results.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 use txv_core::cell::{Attrs, Color, Style};
@@ -35,6 +35,7 @@ pub struct ResultsView {
     scroll: usize,
     title: String,
     search: SearchState,
+    root: PathBuf,
 }
 
 impl ResultsView {
@@ -52,11 +53,12 @@ impl ResultsView {
             scroll: 0,
             title: title.to_string(),
             search,
+            root: PathBuf::new(),
         }
     }
 
     /// Create with a streaming receiver (grep).
-    pub fn streaming(title: &str, rx: mpsc::Receiver<Vec<ResultEntry>>) -> Self {
+    pub fn streaming(title: &str, rx: mpsc::Receiver<Vec<ResultEntry>>, root: &Path) -> Self {
         Self {
             state: ViewState::default(),
             entries: Vec::new(),
@@ -64,6 +66,7 @@ impl ResultsView {
             scroll: 0,
             title: title.to_string(),
             search: SearchState::Searching(rx),
+            root: root.to_path_buf(),
         }
     }
 
@@ -185,7 +188,9 @@ impl View for ResultsView {
             let style = if idx == self.cursor { cursor_style } else { normal };
             surface.hline(b.x, y, b.w, ' ', style);
 
-            let path_str = entry.path.to_string_lossy();
+            let path_str = entry.path.strip_prefix(&self.root)
+                .unwrap_or(&entry.path)
+                .to_string_lossy();
             let loc = format!("{}:{}:", path_str, entry.line + 1);
             surface.print(b.x, y, &loc, if idx == self.cursor { style } else { dim });
             let text_x = b.x + loc.len().min(b.w as usize) as u16;

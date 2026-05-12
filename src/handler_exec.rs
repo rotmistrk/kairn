@@ -101,7 +101,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             let root = state.root_dir.clone();
             let rx = crate::grep::grep_stream(&pattern, &root);
             let title = format!("grep:{arg}");
-            let view = crate::views::results::ResultsView::streaming(&title, rx);
+            let view = crate::views::results::ResultsView::streaming(&title, rx, &root);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.insert_tab(SlotId::Right, &title, Box::new(view));
                 desktop.focus_slot(SlotId::Right);
