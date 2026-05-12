@@ -6,6 +6,14 @@ use super::JsonDoc;
 
 pub(crate) fn serialize(doc: &JsonDoc) -> String {
     let mut out = String::new();
+    // Emit root-level comment if present
+    let root_meta = &doc.node(doc.root()).meta;
+    if !root_meta.is_empty() {
+        for line in root_meta.lines() {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
     write_node(doc, doc.root(), &mut out, 0);
     out.push('\n');
     out
@@ -45,6 +53,7 @@ fn write_dict(doc: &JsonDoc, id: NodeId, out: &mut String, indent: usize) {
     out.push_str("{\n");
     for (i, &child) in children.iter().enumerate() {
         let child_indent = indent + 2;
+        write_meta_comment(doc, child, out, child_indent);
         push_indent(out, child_indent);
         if let Some(k) = doc.node(child).key.as_deref() {
             out.push('"');
@@ -91,6 +100,7 @@ fn write_array(doc: &JsonDoc, id: NodeId, out: &mut String, indent: usize) {
     out.push_str("[\n");
     for (i, &child) in children.iter().enumerate() {
         let child_indent = indent + 2;
+        write_meta_comment(doc, child, out, child_indent);
         push_indent(out, child_indent);
         write_node(doc, child, out, child_indent);
         if i < children.len() - 1 {
@@ -143,4 +153,17 @@ fn escape_json_string(s: &str) -> String {
         }
     }
     out
+}
+
+/// Emit comment lines from node meta before the node itself.
+fn write_meta_comment(doc: &JsonDoc, id: NodeId, out: &mut String, indent: usize) {
+    let meta = &doc.node(id).meta;
+    if meta.is_empty() {
+        return;
+    }
+    for line in meta.lines() {
+        push_indent(out, indent);
+        out.push_str(line);
+        out.push('\n');
+    }
 }

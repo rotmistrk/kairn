@@ -1,6 +1,8 @@
 //! Structured document model — format-agnostic tree representation.
 
 pub mod json_doc;
+pub mod jsonc_parse;
+pub mod jsonl_doc;
 
 /// Unique identifier for a node in the document arena.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

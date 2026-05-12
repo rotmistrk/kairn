@@ -1,8 +1,10 @@
 //! JSON implementation of StructuredDoc.
 
+mod node_lines;
 mod ops;
 mod serialize;
 
+use crate::structured::jsonc_parse;
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
 /// A single node in the JSON document arena.
@@ -31,6 +33,40 @@ impl JsonDoc {
         let val: serde_json::Value = serde_json::from_str(input).map_err(|e| e.to_string())?;
         let mut doc = Self { nodes: Vec::new() };
         doc.build_node(&val, None);
+        Ok(doc)
+    }
+
+    /// Parse JSONC (JSON with comments) into a document tree, preserving comments in node meta.
+    pub fn parse_jsonc(input: &str) -> Result<Self, String> {
+        let (stripped, comments) = jsonc_parse::strip_comments(input);
+        let mut doc = Self::parse(&stripped)?;
+        if comments.is_empty() {
+            return Ok(doc);
+        }
+        // Assign comments to nodes by line proximity: each comment attaches to the
+        // first DFS-order node whose line >= comment line in the stripped source.
+        let node_lines = node_lines::compute_node_lines(&stripped, &doc);
+        for comment in &comments {
+            let prefix = match comment.kind {
+                jsonc_parse::CommentKind::Line => "//",
+                jsonc_parse::CommentKind::Block => "/*",
+            };
+            let text = format!("{prefix} {}", comment.text);
+            // Find first node at or after this comment's line
+            let target = node_lines
+                .iter()
+                .filter(|(_, line)| *line >= comment.line)
+                .min_by_key(|(_, line)| *line)
+                .map(|(id, _)| *id);
+            if let Some(id) = target {
+                let existing = &doc.nodes[id.0].meta;
+                if existing.is_empty() {
+                    doc.nodes[id.0].meta = text;
+                } else {
+                    doc.nodes[id.0].meta = format!("{existing}\n{text}");
+                }
+            }
+        }
         Ok(doc)
     }
 

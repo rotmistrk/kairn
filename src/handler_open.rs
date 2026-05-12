@@ -11,6 +11,7 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
 use crate::settings::EditorSettings;
 use crate::structured::json_doc::JsonDoc;
+use crate::structured::jsonl_doc::JsonlDoc;
 use crate::views::editor::EditorView;
 use crate::views::struct_view::StructuredView;
 
@@ -123,15 +124,25 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
     }
 }
 
-/// Try to open a file as a structured view (JSON). Returns None if not applicable or parse fails.
+/// Try to open a file as a structured view (JSON/JSONC/JSONL). Returns None if not applicable or parse fails.
 fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
     let ext = path.extension()?.to_str()?;
-    if ext != "json" {
-        return None;
-    }
     let content = std::fs::read_to_string(path).ok()?;
-    let doc = JsonDoc::parse(&content).ok()?;
-    Some(Box::new(StructuredView::new(path, Box::new(doc))))
+    match ext {
+        "json" => {
+            let doc = JsonDoc::parse(&content).ok()?;
+            Some(Box::new(StructuredView::new(path, Box::new(doc))))
+        }
+        "jsonc" => {
+            let doc = JsonDoc::parse_jsonc(&content).ok()?;
+            Some(Box::new(StructuredView::new(path, Box::new(doc))))
+        }
+        "jsonl" | "ndjson" => {
+            let doc = JsonlDoc::parse(&content).ok()?;
+            Some(Box::new(StructuredView::new(path, Box::new(doc))))
+        }
+        _ => None,
+    }
 }
 
 /// Open a file as an EditorView (fallback).
