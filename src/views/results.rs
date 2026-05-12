@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use txv_core::cell::{Attrs, Color, Style};
 use txv_core::prelude::*;
 
-use crate::commands::{CM_OPEN_FILE_FOCUS, OpenFileRequest};
+use crate::commands::{CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, OpenFileRequest};
 
 /// A single result entry (file + location + context text).
 #[derive(Debug, Clone)]
@@ -102,7 +102,7 @@ impl ResultsView {
     fn open_current(&self, queue: &mut EventQueue) {
         if let Some(entry) = self.entries.get(self.cursor) {
             let req = OpenFileRequest::at(entry.path.clone(), entry.line, entry.col);
-            queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+            queue.put_command(CM_OPEN_FILE, Some(Box::new(req)));
         }
     }
 
@@ -225,6 +225,11 @@ impl View for ResultsView {
             }
             KeyCode::Enter => {
                 self.open_current(queue);
+                HandleResult::Consumed
+            }
+            KeyCode::Right => {
+                self.open_current(queue);
+                queue.put_command(crate::commands::CM_FOCUS_CENTER, None);
                 HandleResult::Consumed
             }
             KeyCode::Char('n') => {
