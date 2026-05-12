@@ -20,7 +20,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
@@ -39,7 +39,7 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(&changed.path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
@@ -62,7 +62,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     let uri = protocol::path_to_uri(path);
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
@@ -82,7 +82,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let uri = protocol::path_to_uri(path);
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
@@ -102,7 +102,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
     let uri = protocol::path_to_uri(path);
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
@@ -122,7 +122,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
     let uri = protocol::path_to_uri(path);
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+    let Some(client) = state.lsp.get_or_start(lang, &root) else { if let Some(err) = state.lsp.last_error.take() { use txv_core::message::{Message, MsgLevel}; ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(Message::new(MsgLevel::Error, "lsp", err)))); }
         return;
     };
 
