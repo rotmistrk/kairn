@@ -1,137 +1,136 @@
-//! Build/run/test command handlers.
+//! Build/run/test command handlers — async execution with ResultsView output.
 
 use txv_core::program::CommandContext;
 
 use crate::build;
 use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
-use crate::views::editor::EditorView;
 
-/// Handle M-x build: run build command, show output in Compile tab.
+/// Handle :build — spawn async build, show results in right panel.
 pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
-    let cmd = state
-        .settings
-        .build_command
-        .clone()
-        .unwrap_or_else(|| detect_build_command(&state.root_dir));
-
-    let output = build::run_command(&cmd, &state.root_dir).unwrap_or_else(|| "Build failed to start".into());
-
-    let errors = build::parse_errors(&output);
-    state.build_errors = errors;
-    state.build_error_idx = 0;
-
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        desktop.close_tab_by_title(SlotId::Bottom, "Compile");
-        let view = EditorView::from_text(&output);
-        desktop.insert_tab(SlotId::Bottom, "Compile", Box::new(view));
-        desktop.focus_slot(SlotId::Bottom);
-    }
+    let Some(cmd) = build::resolve_build_cmd(&state.root_dir) else {
+        report_no_cmd(ctx, "build");
+        return;
+    };
+    spawn_task(ctx, state, &cmd, "Build");
 }
 
-/// Detect build command from project files.
-fn detect_build_command(root: &std::path::Path) -> String {
-    if root.join("Cargo.toml").exists() {
-        "cargo build".to_string()
-    } else if root.join("go.mod").exists() {
-        "go build ./...".to_string()
-    } else if root.join("package.json").exists() {
-        "npm run build".to_string()
-    } else {
-        "make".to_string()
-    }
-}
-
-/// Handle M-x run: run the project in a shell tab.
+/// Handle :run — run project in a shell tab.
 pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     let cmd = state
         .settings
         .run_command
         .clone()
         .unwrap_or_else(|| detect_run_command(&state.root_dir));
-
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         desktop.close_tab_by_title(SlotId::Right, "Run");
         let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
-        desktop.insert_tab(SlotId::Right, "Run", term);
+        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, "Run".into(), term);
         desktop.focus_slot(SlotId::Right);
     }
 }
 
-/// Detect run command from project files.
+/// Handle :test — spawn async test, show results.
+pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(cmd) = build::resolve_test_cmd(&state.root_dir) else {
+        report_no_cmd(ctx, "test");
+        return;
+    };
+    spawn_task(ctx, state, &cmd, "Test");
+}
+
+/// Handle :test-file — test current file.
+pub fn handle_test_file(ctx: &mut CommandContext, state: &mut AppState) {
+    let file = state.broker.last_opened().unwrap_or("").to_string();
+    let Some(cmd) = build::resolve_test_file_cmd(&state.root_dir, &file) else {
+        report_no_cmd(ctx, "test-file");
+        return;
+    };
+    spawn_task(ctx, state, &cmd, "Test");
+}
+
+/// Handle :test-at-cursor — test function at cursor.
+pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
+    let test_name = detect_test_name(ctx, state);
+    let Some(cmd) = build::resolve_test_at_cursor_cmd(&state.root_dir, &test_name) else {
+        report_no_cmd(ctx, "test-at-cursor");
+        return;
+    };
+    spawn_task(ctx, state, &cmd, "Test");
+}
+
+/// Spawn an async build/test task and open a ResultsView.
+fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: &str) {
+    let Some(waker) = state.waker.clone() else {
+        return;
+    };
+    let root = state.root_dir.clone();
+    let task = build::run_async(cmd, &root, waker);
+    state.build_pending = Some((title.to_string(), task, root));
+    state.build_errors.clear();
+    state.build_error_idx = 0;
+
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        desktop.close_tab_by_title(SlotId::Right, title);
+        let view = crate::views::results::ResultsView::searching(title, &state.root_dir);
+        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.to_string(), Box::new(view));
+        desktop.focus_slot(SlotId::Right);
+    }
+}
+
+fn report_no_cmd(ctx: &mut CommandContext, what: &str) {
+    use txv_core::message::Message;
+    let msg = Message::error("build", format!("No {what} command configured"));
+    ctx.queue
+        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+}
+
 fn detect_run_command(root: &std::path::Path) -> String {
     if root.join("Cargo.toml").exists() {
         "cargo run".to_string()
     } else if root.join("go.mod").exists() {
         "go run .".to_string()
-    } else if root.join("package.json").exists() {
-        "npm start".to_string()
     } else {
         "make run".to_string()
     }
 }
 
-/// Handle M-x test: run full test suite, show in Compile tab.
-pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
-    let cmd = state
-        .settings
-        .test_command
-        .clone()
-        .unwrap_or_else(|| detect_test_command(&state.root_dir));
-    run_test_command(ctx, state, &cmd);
-}
-
-/// Handle M-x test-file: run tests for current file.
-pub fn handle_test_file(ctx: &mut CommandContext, state: &mut AppState) {
-    let file = state.broker.last_opened().unwrap_or("").to_string();
-    let cmd = if state.root_dir.join("Cargo.toml").exists() {
-        format!("cargo test --lib {file}")
-    } else if state.root_dir.join("go.mod").exists() {
-        format!("go test ./{file}")
-    } else {
-        detect_test_command(&state.root_dir)
-    };
-    run_test_command(ctx, state, &cmd);
-}
-
-/// Handle M-x test-at-cursor: run test under cursor.
-pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
-    // Try to detect test function name from cursor context
-    let cmd = if state.root_dir.join("Cargo.toml").exists() {
-        "cargo test".to_string()
-    } else {
-        detect_test_command(&state.root_dir)
-    };
-    run_test_command(ctx, state, &cmd);
-}
-
-fn run_test_command(ctx: &mut CommandContext, state: &mut AppState, cmd: &str) {
-    let output = build::run_command(cmd, &state.root_dir).unwrap_or_else(|| "Test failed to start".into());
-    let errors = build::parse_errors(&output);
-    state.build_errors = errors;
-    state.build_error_idx = 0;
-
+/// Try to detect the test function name at the cursor position.
+fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        desktop.close_tab_by_title(SlotId::Bottom, "Compile");
-        let view = EditorView::from_text(&output);
-        desktop.insert_tab(SlotId::Bottom, "Compile", Box::new(view));
-        desktop.focus_slot(SlotId::Bottom);
+        if let Some(view) = desktop.active_view_mut(SlotId::Center) {
+            if let Some(any) = view.as_any_mut() {
+                if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
+                    let line = editor.editor.cursor_line;
+                    // Walk backwards from cursor to find fn name
+                    for i in (0..=line).rev() {
+                        let text = editor.editor.buffer.line(i).unwrap_or_default();
+                        if let Some(name) = extract_test_fn_name(&text) {
+                            return name;
+                        }
+                    }
+                }
+            }
+        }
     }
+    String::new()
 }
 
-fn detect_test_command(root: &std::path::Path) -> String {
-    if root.join("Cargo.toml").exists() {
-        "cargo test".to_string()
-    } else if root.join("go.mod").exists() {
-        "go test ./...".to_string()
-    } else if root.join("package.json").exists() {
-        "npm test".to_string()
-    } else {
-        "make test".to_string()
+/// Extract test function name from a line like `fn test_foo()` or `#[test]`.
+fn extract_test_fn_name(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    // Match "fn name(" or "pub fn name(" etc.
+    if let Some(idx) = trimmed.find("fn ") {
+        let rest = &trimmed[idx + 3..];
+        let name: String = rest.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
+        if !name.is_empty() {
+            return Some(name);
+        }
     }
+    None
 }
 
-/// Handle M-x next-error: jump to next error location.
+/// Handle :next-error — jump to next error location.
 pub fn handle_next_error(ctx: &mut CommandContext, state: &mut AppState) {
     if state.build_errors.is_empty() {
         return;
@@ -142,7 +141,7 @@ pub fn handle_next_error(ctx: &mut CommandContext, state: &mut AppState) {
     jump_to_error(ctx, state);
 }
 
-/// Handle M-x prev-error: jump to previous error location.
+/// Handle :prev-error — jump to previous error location.
 pub fn handle_prev_error(ctx: &mut CommandContext, state: &mut AppState) {
     if state.build_errors.is_empty() {
         return;

@@ -7,12 +7,13 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use ignore::WalkBuilder;
 use regex::RegexBuilder;
 use txv_core::run::Waker;
 
+use crate::task_output::TaskOutput;
 use crate::views::results::ResultEntry;
 
 /// Parsed grep options.
@@ -82,38 +83,13 @@ fn build_regex(opts: &GrepOpts) -> Result<regex::Regex, String> {
         .map_err(|e| format!("Invalid regex: {e}"))
 }
 
-/// Shared grep state between background thread and UI.
-pub struct GrepState {
-    pub entries: Mutex<Vec<ResultEntry>>,
-    pub done: Mutex<bool>,
-    pub error: Mutex<Option<String>>,
-}
-
-impl GrepState {
-    pub fn take_entries(&self) -> Vec<ResultEntry> {
-        self.entries
-            .lock()
-            .map(|mut v| std::mem::take(&mut *v))
-            .unwrap_or_default()
-    }
-
-    pub fn is_done(&self) -> bool {
-        self.done.lock().map(|d| *d).unwrap_or(false)
-    }
-
-    pub fn take_error(&self) -> Option<String> {
-        self.error.lock().ok().and_then(|mut e| e.take())
-    }
-}
+/// GrepState is now TaskOutput (shared with build).
+pub type GrepState = TaskOutput;
 
 /// Spawn async grep. Parses POSIX flags from the input string.
 /// Example inputs: `-i "hello world"`, `-iF fixed`, `-w MyStruct`
 pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
-    let state = Arc::new(GrepState {
-        entries: Mutex::new(Vec::new()),
-        done: Mutex::new(false),
-        error: Mutex::new(None),
-    });
+    let state = TaskOutput::new();
     let state_clone = state.clone();
     let input = input.to_string();
     let root = root.to_path_buf();
@@ -122,12 +98,8 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
         let opts = match parse_grep_args(&input) {
             Ok(o) => o,
             Err(e) => {
-                if let Ok(mut err) = state_clone.error.lock() {
-                    *err = Some(e);
-                }
-                if let Ok(mut d) = state_clone.done.lock() {
-                    *d = true;
-                }
+                state_clone.set_error(e);
+                state_clone.mark_done();
                 waker.wake();
                 return;
             }
@@ -136,12 +108,8 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
         let re = match build_regex(&opts) {
             Ok(r) => r,
             Err(e) => {
-                if let Ok(mut err) = state_clone.error.lock() {
-                    *err = Some(e);
-                }
-                if let Ok(mut d) = state_clone.done.lock() {
-                    *d = true;
-                }
+                state_clone.set_error(e);
+                state_clone.mark_done();
                 waker.wake();
                 return;
             }
@@ -185,9 +153,7 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
                         break;
                     }
                     if batch.len() >= 16 {
-                        if let Ok(mut v) = state_clone.entries.lock() {
-                            v.append(&mut batch);
-                        }
+                        state_clone.push_entries(&mut batch);
                         waker.wake();
                     }
                 }
@@ -198,13 +164,9 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
         }
 
         if !batch.is_empty() {
-            if let Ok(mut v) = state_clone.entries.lock() {
-                v.append(&mut batch);
-            }
+            state_clone.push_entries(&mut batch);
         }
-        if let Ok(mut d) = state_clone.done.lock() {
-            *d = true;
-        }
+        state_clone.mark_done();
         waker.wake();
     });
 

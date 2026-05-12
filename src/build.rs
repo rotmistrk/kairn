@@ -1,9 +1,16 @@
-//! Build/run/test command execution and error parsing.
+//! Build/test async runner — spawns shell command, parses errors into TaskOutput.
 
-use std::path::Path;
-use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::Arc;
 
-/// A parsed error location from build output.
+use txv_core::run::Waker;
+
+use crate::task_output::TaskOutput;
+use crate::views::results::ResultEntry;
+
+/// A parsed error location from build output (kept for backward compat).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ErrorLocation {
     pub file: String,
@@ -12,159 +19,190 @@ pub struct ErrorLocation {
     pub message: String,
 }
 
-/// Default build command for a language.
-pub fn default_build_command(lang: &str) -> &'static str {
-    match lang {
-        "rust" => "cargo build",
-        "go" => "go build ./...",
-        "typescript" | "javascript" => "npm run build",
-        "c" | "cpp" => "make",
-        "java" => "mvn compile",
-        "python" => "python -m py_compile",
-        _ => "make",
-    }
+/// Spawn an async build/test command. Parses output lines for errors.
+/// Returns immediately; results accumulate in the returned TaskOutput.
+pub fn run_async(cmd: &str, root: &Path, waker: Waker) -> Arc<TaskOutput> {
+    let state = TaskOutput::new();
+    let state_clone = state.clone();
+    let cmd = cmd.to_string();
+    let root = root.to_path_buf();
+
+    std::thread::spawn(move || {
+        run_inner(&cmd, &root, &state_clone, &waker);
+    });
+
+    state
 }
 
-/// Default run command for a language.
-pub fn default_run_command(lang: &str) -> &'static str {
-    match lang {
-        "rust" => "cargo run",
-        "go" => "go run .",
-        "typescript" | "javascript" => "npm start",
-        "java" => "mvn exec:java",
-        "python" => "python main.py",
-        _ => "make run",
-    }
-}
+fn run_inner(cmd: &str, root: &PathBuf, state: &Arc<TaskOutput>, waker: &Waker) {
+    let child = Command::new("sh")
+        .arg("-c")
+        .arg(cmd)
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn();
 
-/// Default test command for a language.
-pub fn default_test_command(lang: &str) -> &'static str {
-    match lang {
-        "rust" => "cargo test",
-        "go" => "go test ./...",
-        "typescript" | "javascript" => "npm test",
-        "java" => "mvn test",
-        "python" => "pytest",
-        _ => "make test",
-    }
-}
-
-/// Run a shell command and capture output. Non-blocking via thread.
-pub fn run_command(cmd: &str, cwd: &Path) -> Option<String> {
-    let parts: Vec<&str> = cmd.split_whitespace().collect();
-    if parts.is_empty() {
-        return None;
-    }
-    let output = match Command::new("sh").arg("-c").arg(cmd).current_dir(cwd).output() {
-        Ok(o) => o,
+    let mut child = match child {
+        Ok(c) => c,
         Err(e) => {
-            log::error!("build: failed to spawn '{cmd}': {e}");
-            return Some(format!("Build failed: {e}"));
+            state.set_error(format!("Failed to spawn: {e}"));
+            state.mark_done();
+            waker.wake();
+            return;
         }
     };
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let combined = if stderr.is_empty() {
-        stdout.to_string()
-    } else if stdout.is_empty() {
-        stderr.to_string()
-    } else {
-        format!("{stdout}\n{stderr}")
-    };
-    Some(combined)
+    // Merge stdout and stderr by reading both
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    // Read stderr in a separate thread
+    let state2 = state.clone();
+    let root2 = root.clone();
+    let waker2 = waker.clone();
+    let stderr_handle = stderr.map(|se| {
+        std::thread::spawn(move || {
+            read_lines(se, &root2, &state2, &waker2);
+        })
+    });
+
+    // Read stdout in this thread
+    if let Some(so) = stdout {
+        read_lines(so, root, state, waker);
+    }
+
+    if let Some(h) = stderr_handle {
+        let _ = h.join();
+    }
+
+    let exit_code = child.wait().map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
+    state.set_exit_code(exit_code);
+    state.mark_done();
+    waker.wake();
 }
 
-/// Parse error locations from build output (supports common formats).
-pub fn parse_errors(output: &str) -> Vec<ErrorLocation> {
-    let mut errors = Vec::new();
-    for line in output.lines() {
-        if let Some(loc) = parse_gcc_style(line) {
-            errors.push(loc);
-        } else if let Some(loc) = parse_rust_style(line) {
-            errors.push(loc);
+fn read_lines<R: std::io::Read>(reader: R, root: &Path, state: &TaskOutput, waker: &Waker) {
+    let reader = BufReader::new(reader);
+    let mut batch: Vec<ResultEntry> = Vec::with_capacity(16);
+
+    for line in reader.lines() {
+        let Ok(line) = line else {
+            break;
+        };
+        if let Some(entry) = crate::build_parse::parse_line(&line, root) {
+            batch.push(entry);
+        } else {
+            // Include non-error lines as context (no file location)
+            batch.push(ResultEntry {
+                path: PathBuf::new(),
+                line: 0,
+                col: 0,
+                text: line,
+            });
+        }
+        if batch.len() >= 16 {
+            state.push_entries(&mut batch);
+            waker.wake();
         }
     }
-    errors
+    if !batch.is_empty() {
+        state.push_entries(&mut batch);
+        waker.wake();
+    }
 }
 
-/// Parse "file:line:col: message" (gcc, clang, go, typescript)
-fn parse_gcc_style(line: &str) -> Option<ErrorLocation> {
-    let parts: Vec<&str> = line.splitn(4, ':').collect();
-    if parts.len() < 4 {
-        return None;
+/// Resolve the build command for the workspace.
+/// Priority: .kairn/init > auto-detect > None.
+pub fn resolve_build_cmd(root: &Path) -> Option<String> {
+    if let Some(cmd) = read_init_cmd(root, "build") {
+        return Some(cmd);
     }
-    let file = parts[0].trim();
-    let line_num: u32 = parts[1].trim().parse().ok()?;
-    let col: u32 = parts[2].trim().parse().ok()?;
-    let message = parts[3].trim().to_string();
-    // Skip if file doesn't look like a path
-    if file.is_empty() || file.starts_with(' ') {
-        return None;
-    }
-    Some(ErrorLocation {
-        file: file.to_string(),
-        line: line_num,
-        col,
-        message,
-    })
+    crate::build_detect::detect(root).map(|bs| bs.build.to_string())
 }
 
-/// Parse Rust-style "  --> file:line:col"
-fn parse_rust_style(line: &str) -> Option<ErrorLocation> {
-    let trimmed = line.trim();
-    let rest = trimmed.strip_prefix("-->")?;
-    let rest = rest.trim();
-    let parts: Vec<&str> = rest.splitn(3, ':').collect();
-    if parts.len() < 3 {
-        return None;
+/// Resolve the test command for the workspace.
+pub fn resolve_test_cmd(root: &Path) -> Option<String> {
+    if let Some(cmd) = read_init_cmd(root, "test") {
+        return Some(cmd);
     }
-    let file = parts[0].trim();
-    let line_num: u32 = parts[1].trim().parse().ok()?;
-    let col: u32 = parts[2].trim().parse().ok()?;
-    Some(ErrorLocation {
-        file: file.to_string(),
-        line: line_num,
-        col,
-        message: String::new(),
-    })
+    crate::build_detect::detect(root).map(|bs| bs.test.to_string())
+}
+
+/// Resolve the test-file command, substituting {file}.
+pub fn resolve_test_file_cmd(root: &Path, file: &str) -> Option<String> {
+    if let Some(cmd) = read_init_cmd(root, "test-file") {
+        return Some(cmd.replace("{file}", file));
+    }
+    crate::build_detect::detect(root)
+        .and_then(|bs| bs.test_file)
+        .map(|t| t.replace("{file}", file))
+}
+
+/// Resolve the test-at-cursor command, substituting {test_name}.
+pub fn resolve_test_at_cursor_cmd(root: &Path, test_name: &str) -> Option<String> {
+    if let Some(cmd) = read_init_cmd(root, "test-at-cursor") {
+        return Some(cmd.replace("{test_name}", test_name));
+    }
+    // Fallback: cargo test for Rust, go test -run for Go
+    if root.join("Cargo.toml").exists() {
+        return Some(format!("cargo test {test_name}"));
+    }
+    if root.join("go.mod").exists() {
+        return Some(format!("go test -run {test_name} ./..."));
+    }
+    None
+}
+
+/// Read a command from .kairn/init file.
+fn read_init_cmd(root: &Path, key: &str) -> Option<String> {
+    let init_path = root.join(".kairn").join("init");
+    let content = std::fs::read_to_string(init_path).ok()?;
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix(key) {
+            let rest = rest.trim_start();
+            if let Some(cmd) = rest.strip_prefix('=') {
+                return Some(cmd.trim().to_string());
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
-    fn parse_gcc_error() {
-        let line = "src/main.rs:10:5: error: unused variable";
-        let errors = parse_errors(line);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].file, "src/main.rs");
-        assert_eq!(errors[0].line, 10);
-        assert_eq!(errors[0].col, 5);
+    fn resolve_build_from_cargo() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "").unwrap();
+        assert_eq!(resolve_build_cmd(dir.path()), Some("cargo build".to_string()));
     }
 
     #[test]
-    fn parse_rust_error() {
-        let line = "  --> src/lib.rs:42:9";
-        let errors = parse_errors(line);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].file, "src/lib.rs");
-        assert_eq!(errors[0].line, 42);
-        assert_eq!(errors[0].col, 9);
+    fn resolve_from_init_file() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(".kairn")).unwrap();
+        std::fs::write(dir.path().join(".kairn/init"), "build = make -j8\ntest = make check\n").unwrap();
+        assert_eq!(resolve_build_cmd(dir.path()), Some("make -j8".to_string()));
+        assert_eq!(resolve_test_cmd(dir.path()), Some("make check".to_string()));
     }
 
     #[test]
-    fn parse_no_errors() {
-        let output = "Compiling kairn v0.1.0\nFinished dev";
-        let errors = parse_errors(output);
-        assert!(errors.is_empty());
+    fn resolve_test_file_substitution() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(".kairn")).unwrap();
+        std::fs::write(dir.path().join(".kairn/init"), "test-file = cargo test --lib {file}\n").unwrap();
+        let cmd = resolve_test_file_cmd(dir.path(), "src/main.rs").unwrap();
+        assert_eq!(cmd, "cargo test --lib src/main.rs");
     }
 
     #[test]
-    fn default_commands_exist() {
-        assert_eq!(default_build_command("rust"), "cargo build");
-        assert_eq!(default_run_command("go"), "go run .");
-        assert_eq!(default_test_command("python"), "pytest");
+    fn resolve_none_when_no_markers() {
+        let dir = TempDir::new().unwrap();
+        assert!(resolve_build_cmd(dir.path()).is_none());
     }
 }
