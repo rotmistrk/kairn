@@ -92,6 +92,14 @@ impl TodoTreeData {
             .position(|&nid| self.nodes.get(nid).is_some_and(|n| n.path == *path))
     }
 
+    /// Add the first item to an empty tree. Creates the file if needed.
+    pub fn add_first_item(&mut self) {
+        let item = model::TodoItem::new("New task");
+        self.file.items.push(item);
+        self.save();
+        self.rebuild_flat();
+    }
+
     /// Update the title of the item at the given visible row.
     pub fn update_title(&mut self, row: usize, title: String) {
         let id = self.visible_id(row);

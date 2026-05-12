@@ -89,6 +89,15 @@ impl View for TodoTreeView {
     }
 
     fn draw(&self, surface: &mut Surface) {
+        if self.inner.data.visible_count() == 0 {
+            let b = self.inner.state.bounds();
+            let dim = Style {
+                fg: Color::Ansi(8),
+                ..Style::default()
+            };
+            surface.print(b.x, b.y, "  (empty \u{2014} press 'n' to add)", dim);
+            return;
+        }
         self.inner.draw(surface);
         if let Some(ref editor) = self.editing {
             let b = self.inner.state.bounds();
@@ -114,6 +123,11 @@ impl View for TodoTreeView {
         };
         if self.editing.is_some() {
             return self.handle_editing_key(key);
+        }
+        // 'n' works even on empty tree — adds first item
+        if key.code == KeyCode::Char('n') && self.inner.data.visible_count() == 0 {
+            self.inner.data.add_first_item();
+            return HandleResult::Consumed;
         }
         if key.code == KeyCode::Char('e') && self.inner.data.visible_count() > 0 {
             self.start_edit();
