@@ -38,7 +38,7 @@ impl View for QuitView {
 #[test]
 fn run_quits_on_cm_quit() {
     let mut view = QuitView::new();
-    view.state.bounds = Rect::new(0, 0, 80, 24);
+    view.state.set_bounds(Rect::new(0, 0, 80, 24));
     let mut backend = MockBackend::new(80, 24);
     backend.inject(Event::Key(KeyEvent {
         code: KeyCode::Char('q'),

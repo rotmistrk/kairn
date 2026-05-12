@@ -103,7 +103,7 @@ impl txv_core::view::View for FallbackTerminal {
     }
 
     fn draw(&self, surface: &mut txv_core::surface::Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         let style = txv_core::cell::Style::default();
         let err_style = txv_core::cell::Style {
             fg: txv_core::cell::Color::Ansi(1),

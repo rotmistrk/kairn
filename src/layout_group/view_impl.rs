@@ -12,8 +12,8 @@ impl View for LayoutGroup {
     }
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.bounds = r;
-        self.group.view.dirty = true;
+        self.group.view.set_bounds(r);
+        self.group.view.mark_dirty();
         // Recompute proportional sizes on terminal resize
         // Wide: 1:2:2 by width. Tall: 1:2 width, 2:1 height.
         if r.w > 0 {
@@ -29,7 +29,7 @@ impl View for LayoutGroup {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

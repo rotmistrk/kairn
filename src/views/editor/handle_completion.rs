@@ -17,13 +17,13 @@ impl EditorView {
                 insert_text: None,
             })
             .collect();
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
         let x = b.x + gutter_w + self.editor.cursor_col as u16;
         let y = b.y + (self.editor.cursor_line - scroll) as u16;
         self.completion_popup.show(items, x, y);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Accept the currently selected completion item.
@@ -40,7 +40,7 @@ impl EditorView {
             self.editor.cursor_col += text.len();
             self.last_edit_tick = self.tick_counter;
         }
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Handle tick event: autosave + completion trigger + LSP didChange.

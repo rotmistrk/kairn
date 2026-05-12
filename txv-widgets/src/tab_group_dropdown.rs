@@ -8,7 +8,7 @@ impl TabGroup {
     /// Open the dropdown menu.
     pub fn open_dropdown(&mut self) {
         self.dropdown_cursor = Some(self.group.focused);
-        self.group.view.dirty = true;
+        self.group.view.mark_dirty();
     }
 
     /// Whether the dropdown is currently open.
@@ -24,7 +24,7 @@ impl TabGroup {
         match key.code {
             KeyCode::Esc => {
                 self.dropdown_cursor = None;
-                self.group.view.dirty = true;
+                self.group.view.mark_dirty();
             }
             KeyCode::Char(c) if c.is_ascii_digit() => {
                 let idx = (c as u8 - b'0') as usize;
@@ -32,18 +32,18 @@ impl TabGroup {
                     self.set_active(idx);
                 }
                 self.dropdown_cursor = None;
-                self.group.view.dirty = true;
+                self.group.view.mark_dirty();
             }
             KeyCode::Enter => {
                 self.set_active(cursor);
                 self.dropdown_cursor = None;
-                self.group.view.dirty = true;
+                self.group.view.mark_dirty();
             }
             KeyCode::Down => {
                 let count = self.group.children.len();
                 if count > 0 {
                     self.dropdown_cursor = Some((cursor + 1) % count);
-                    self.group.view.dirty = true;
+                    self.group.view.mark_dirty();
                 }
             }
             KeyCode::Up => {
@@ -55,7 +55,7 @@ impl TabGroup {
                         cursor - 1
                     };
                     self.dropdown_cursor = Some(prev);
-                    self.group.view.dirty = true;
+                    self.group.view.mark_dirty();
                 }
             }
             _ => {}
@@ -68,7 +68,7 @@ impl TabGroup {
         let Some(cursor) = self.dropdown_cursor else {
             return;
         };
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || self.titles.is_empty() {
             return;
         }

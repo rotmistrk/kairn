@@ -124,7 +124,7 @@ mod tests {
             }),
         );
         lg.zoomed = Some(1);
-        lg.group.view.bounds = bounds;
+        lg.group.view.set_bounds(bounds);
         lg.apply_layout(bounds);
         // Zoomed panel gets full bounds
         assert_eq!(lg.group.children[1].bounds(), bounds);
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn wide_layout_three_columns() {
         let mut lg = LayoutGroup::new();
-        lg.group.view.bounds = Rect::new(0, 0, 200, 50);
+        lg.group.view.set_bounds(Rect::new(0, 0, 200, 50));
         lg.layout_mode = LayoutMode::Wide;
         lg.panel_mut(SlotId::Left).insert_tab(
             "Files",

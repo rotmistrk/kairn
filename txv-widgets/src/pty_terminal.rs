@@ -88,12 +88,12 @@ impl PtyTerminal {
             log::info!("PTY data: {} bytes", data.len());
             self.termbuf.process(&data);
             self.scroll_offset = 0;
-            self.state.dirty = true;
+            self.state.mark_dirty();
         } else if !session.is_alive() {
             self.exited = true;
             self.title = format!("{} [exited]", self.base_title);
             self.session = None;
-            self.state.dirty = true;
+            self.state.mark_dirty();
             return;
         }
         if let Some(session) = self.session.as_mut() {
@@ -108,7 +108,7 @@ impl PtyTerminal {
                 osc_title
             };
             self.osc_suffix = clipped;
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 }
@@ -125,12 +125,12 @@ impl View for PtyTerminal {
     }
 
     fn needs_redraw(&self) -> bool {
-        self.state.dirty || self.session.is_some()
+        self.state.is_dirty() || self.session.is_some()
     }
 
     fn set_bounds(&mut self, r: Rect) {
-        self.state.bounds = r;
-        self.state.dirty = true;
+        self.state.set_bounds(r);
+        self.state.mark_dirty();
         let cols = r.w;
         let rows = r.h;
         if cols > 0 && rows > 0 && (cols != self.prev_cols || rows != self.prev_rows) {
@@ -145,7 +145,7 @@ impl View for PtyTerminal {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -195,19 +195,19 @@ impl View for PtyTerminal {
                     let max = self.termbuf.scrollback_len();
                     let page = (self.prev_rows as usize).saturating_sub(1).max(1);
                     self.scroll_offset = (self.scroll_offset + page).min(max);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
                 if key.code == KeyCode::PageDown {
                     let page = (self.prev_rows as usize).saturating_sub(1).max(1);
                     self.scroll_offset = self.scroll_offset.saturating_sub(page);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
                 // Any other key resets scroll position
                 if self.scroll_offset > 0 {
                     self.scroll_offset = 0;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 if let Some(bytes) = key_to_bytes(key) {
                     if let Some(session) = self.session.as_mut() {

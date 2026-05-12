@@ -50,11 +50,11 @@ impl FuzzySelect {
         self.selected = 0;
         self.scroll.set_total(self.filtered.len());
         self.scroll.scroll_to(0);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds.h.saturating_sub(1) as usize; // -1 for input line
+        let h = self.state.bounds().h.saturating_sub(1) as usize; // -1 for input line
         self.scroll.set_viewport(h);
         self.scroll.ensure_visible(self.selected);
     }
@@ -80,7 +80,7 @@ impl View for FuzzySelect {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -153,7 +153,7 @@ impl View for FuzzySelect {
                 if self.selected > 0 {
                     self.selected -= 1;
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
@@ -161,7 +161,7 @@ impl View for FuzzySelect {
                 if self.selected + 1 < self.filtered.len() {
                     self.selected += 1;
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }

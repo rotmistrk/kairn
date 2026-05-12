@@ -27,7 +27,7 @@ impl GroupState {
 
     pub fn insert(&mut self, child: Box<dyn View>) {
         self.children.push(child);
-        self.view.dirty = true;
+        self.view.mark_dirty();
     }
 
     pub fn remove(&mut self, index: usize) -> Box<dyn View> {
@@ -35,7 +35,7 @@ impl GroupState {
         if self.focused >= self.children.len() && self.focused > 0 {
             self.focused -= 1;
         }
-        self.view.dirty = true;
+        self.view.mark_dirty();
         child
     }
 
@@ -64,7 +64,7 @@ impl GroupState {
             self.children[old].unselect();
             self.focused = next;
             self.children[next].select();
-            self.view.dirty = true;
+            self.view.mark_dirty();
         }
     }
 
@@ -97,7 +97,7 @@ impl GroupState {
             self.children[old].unselect();
             self.focused = prev;
             self.children[prev].select();
-            self.view.dirty = true;
+            self.view.mark_dirty();
         }
     }
 }

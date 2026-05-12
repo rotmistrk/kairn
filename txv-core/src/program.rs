@@ -101,7 +101,7 @@ impl Program {
                 for child in &self.group.children {
                     child.draw(&mut surface);
                 }
-                self.group.view.dirty = false;
+                self.group.view.mark_redrawn();
                 for child in &mut self.group.children {
                     child.mark_redrawn();
                 }
@@ -227,7 +227,7 @@ impl Program {
             for child in &self.group.children {
                 child.draw(&mut surface);
             }
-            self.group.view.dirty = false;
+            self.group.view.mark_redrawn();
             for child in &mut self.group.children {
                 child.mark_redrawn();
             }
@@ -238,7 +238,7 @@ impl Program {
     /// Compute layout: desktop gets all but last row, status gets last row.
     fn layout(&mut self, w: u16, h: u16) {
         let full = Rect::new(0, 0, w, h);
-        self.group.view.bounds = full;
+        self.group.view.set_bounds(full);
 
         if h >= 2 {
             // Desktop: everything except last row

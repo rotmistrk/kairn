@@ -30,7 +30,7 @@ impl Dialog {
     pub fn set_buttons(&mut self, buttons: Vec<String>) {
         self.buttons = buttons;
         self.focused_button = 0;
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }
 
@@ -38,7 +38,7 @@ impl View for Dialog {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -124,14 +124,14 @@ impl View for Dialog {
             KeyCode::Left | KeyCode::Tab => {
                 if self.focused_button > 0 {
                     self.focused_button -= 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Right | KeyCode::BackTab => {
                 if self.focused_button + 1 < self.buttons.len() {
                     self.focused_button += 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }

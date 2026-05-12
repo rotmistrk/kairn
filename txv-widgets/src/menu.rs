@@ -42,7 +42,7 @@ impl View for Menu {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -100,14 +100,14 @@ impl View for Menu {
             KeyCode::Up => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Down => {
                 if self.cursor + 1 < self.items.len() {
                     self.cursor += 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }

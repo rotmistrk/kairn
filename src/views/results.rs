@@ -49,7 +49,7 @@ impl ResultsView {
         if !self.entries.is_empty() {
             self.cursor = (self.cursor + 1) % self.entries.len();
             self.sync_scroll();
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 
@@ -58,12 +58,12 @@ impl ResultsView {
         if !self.entries.is_empty() {
             self.cursor = (self.cursor + self.entries.len() - 1) % self.entries.len();
             self.sync_scroll();
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds.h as usize;
+        let h = self.state.bounds().h as usize;
         if h == 0 {
             return;
         }
@@ -90,13 +90,13 @@ impl View for ResultsView {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
         let dim = Style { fg: Color::Ansi(8), ..Style::default() };
         let normal = Style::default();
-        let cursor_style = if self.state.focused {
+        let cursor_style = if self.state.is_focused() {
             Style { bg: Color::Ansi(4), attrs: Attrs { underline: true, ..Attrs::default() }, ..Style::default() }
         } else {
             Style { bg: Color::Ansi(8), ..Style::default() }

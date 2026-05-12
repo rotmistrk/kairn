@@ -37,7 +37,7 @@ impl TodoTreeView {
             let id = self.inner.data.visible_id(row);
             let label = self.inner.data.label(id).to_owned();
             self.editing = Some(InlineEditor::new(row, &label));
-            self.inner.state.dirty = true;
+            self.inner.state.mark_dirty();
         }
     }
 
@@ -56,7 +56,7 @@ impl TodoTreeView {
                 self.editing = None;
             }
         }
-        self.inner.state.dirty = true;
+        self.inner.state.mark_dirty();
         HandleResult::Consumed
     }
 
@@ -73,7 +73,7 @@ impl TodoTreeView {
                 self.inner.cursor = row;
             }
         }
-        self.inner.state.dirty = true;
+        self.inner.state.mark_dirty();
     }
 }
 
@@ -91,7 +91,7 @@ impl View for TodoTreeView {
     fn draw(&self, surface: &mut Surface) {
         self.inner.draw(surface);
         if let Some(ref editor) = self.editing {
-            let b = self.inner.state.bounds;
+            let b = self.inner.state.bounds();
             let scroll_offset = self.inner.scroll.offset;
             if editor.row >= scroll_offset {
                 let screen_row = (editor.row - scroll_offset) as u16;

@@ -62,7 +62,7 @@ impl LayoutGroup {
                 } else if panel.tab_count() > 1 {
                     panel.open_dropdown();
                 }
-                self.group.view.dirty = true;
+                self.group.view.mark_dirty();
                 HandleResult::Consumed
             }
             CM_PANEL_GROW => {

@@ -13,7 +13,7 @@ impl EditorView {
             Some(diags) => diags,
             None => return,
         };
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
         let visible_lines = b.h as usize;
@@ -56,7 +56,7 @@ impl EditorView {
     /// Set diagnostics for this editor view.
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = Some(diagnostics);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Clear diagnostics.

@@ -108,7 +108,7 @@ impl View for FileTreeView {
                 self.inner.data.show_hidden = !self.inner.data.show_hidden;
                 self.inner.data.refresh();
                 self.update_colors();
-                self.inner.state.dirty = true;
+                self.inner.state.mark_dirty();
                 return HandleResult::Consumed;
             }
             self.last_key_was_right = key.code == KeyCode::Right;

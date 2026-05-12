@@ -31,7 +31,7 @@ impl View for Scrollbar {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

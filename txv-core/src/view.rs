@@ -101,10 +101,10 @@ pub trait View: Send {
 
 /// Common view state — embed in every view.
 pub struct ViewState {
-    pub bounds: Rect,
+    bounds: Rect,
     pub options: ViewOptions,
-    pub dirty: bool,
-    pub focused: bool,
+    dirty: bool,
+    focused: bool,
     pub title: String,
 }
 
@@ -117,6 +117,35 @@ impl ViewState {
             focused: false,
             title: String::new(),
         }
+    }
+
+    pub fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    pub fn mark_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    pub fn mark_redrawn(&mut self) {
+        self.dirty = false;
+    }
+
+    pub fn set_focused(&mut self, f: bool) {
+        self.focused = f;
+    }
+
+    pub fn set_bounds(&mut self, r: Rect) {
+        self.bounds = r;
+        self.dirty = true;
     }
 }
 
@@ -169,11 +198,10 @@ impl Default for ViewState {
 macro_rules! delegate_view_state {
     ($field:ident) => {
         fn bounds(&self) -> $crate::geometry::Rect {
-            self.$field.bounds
+            self.$field.bounds()
         }
         fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-            self.$field.bounds = r;
-            self.$field.dirty = true;
+            self.$field.set_bounds(r);
         }
         fn options(&self) -> $crate::view::ViewOptions {
             self.$field.options
@@ -182,18 +210,18 @@ macro_rules! delegate_view_state {
             &self.$field.title
         }
         fn needs_redraw(&self) -> bool {
-            self.$field.dirty
+            self.$field.is_dirty()
         }
         fn mark_redrawn(&mut self) {
-            self.$field.dirty = false;
+            self.$field.mark_redrawn();
         }
         fn select(&mut self) {
-            self.$field.focused = true;
-            self.$field.dirty = true;
+            self.$field.set_focused(true);
+            self.$field.mark_dirty();
         }
         fn unselect(&mut self) {
-            self.$field.focused = false;
-            self.$field.dirty = true;
+            self.$field.set_focused(false);
+            self.$field.mark_dirty();
         }
         fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
             Some(self)
@@ -202,13 +230,12 @@ macro_rules! delegate_view_state {
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
             fn bounds(&self) -> $crate::geometry::Rect {
-                self.$field.bounds
+                self.$field.bounds()
             }
         });
         $crate::__dvs_maybe!(set_bounds, [$($skip),*], {
             fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-                self.$field.bounds = r;
-                self.$field.dirty = true;
+                self.$field.set_bounds(r);
             }
         });
         $crate::__dvs_maybe!(options, [$($skip),*], {
@@ -223,24 +250,24 @@ macro_rules! delegate_view_state {
         });
         $crate::__dvs_maybe!(needs_redraw, [$($skip),*], {
             fn needs_redraw(&self) -> bool {
-                self.$field.dirty
+                self.$field.is_dirty()
             }
         });
         $crate::__dvs_maybe!(mark_redrawn, [$($skip),*], {
             fn mark_redrawn(&mut self) {
-                self.$field.dirty = false;
+                self.$field.mark_redrawn();
             }
         });
         $crate::__dvs_maybe!(select, [$($skip),*], {
             fn select(&mut self) {
-                self.$field.focused = true;
-                self.$field.dirty = true;
+                self.$field.set_focused(true);
+                self.$field.mark_dirty();
             }
         });
         $crate::__dvs_maybe!(unselect, [$($skip),*], {
             fn unselect(&mut self) {
-                self.$field.focused = false;
-                self.$field.dirty = true;
+                self.$field.set_focused(false);
+                self.$field.mark_dirty();
             }
         });
         $crate::__dvs_maybe!(as_any_mut, [$($skip),*], {

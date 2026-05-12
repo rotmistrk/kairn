@@ -32,7 +32,7 @@ impl<D: ListData> ListView<D> {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds.h as usize;
+        let h = self.state.bounds().h as usize;
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.data.len());
         self.scroll.ensure_visible(self.cursor);
@@ -43,11 +43,11 @@ impl<D: ListData> View for ListView<D> {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let selected = if self.state.focused {
+        let selected = if self.state.is_focused() {
             Style {
                 bg: Color::Ansi(4),
                 attrs: Attrs {
@@ -85,7 +85,7 @@ impl<D: ListData> View for ListView<D> {
                     if self.cursor > 0 {
                         self.cursor -= 1;
                         self.sync_scroll();
-                        self.state.dirty = true;
+                        self.state.mark_dirty();
                     }
                     HandleResult::Consumed
                 }
@@ -94,7 +94,7 @@ impl<D: ListData> View for ListView<D> {
                     if self.cursor < max {
                         self.cursor += 1;
                         self.sync_scroll();
-                        self.state.dirty = true;
+                        self.state.mark_dirty();
                     }
                     HandleResult::Consumed
                 }
@@ -105,28 +105,28 @@ impl<D: ListData> View for ListView<D> {
                 KeyCode::Home => {
                     self.cursor = 0;
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::End => {
                     self.cursor = self.data.len().saturating_sub(1);
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::PageDown => {
-                    let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
                     let max = self.data.len().saturating_sub(1);
                     self.cursor = (self.cursor + page).min(max);
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::PageUp => {
-                    let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                    let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
                     self.cursor = self.cursor.saturating_sub(page);
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 _ => HandleResult::Ignored,

@@ -73,7 +73,7 @@ fn active_count() -> Style {
 impl LayoutGroup {
     /// Draw the full chrome bar (top row) with Powerline glyphs.
     pub(super) fn draw_chrome(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -225,7 +225,7 @@ impl LayoutGroup {
 
     /// Draw chrome for a single zoomed panel (full-width Powerline tab bar).
     pub(super) fn draw_zoomed_chrome(&self, surface: &mut Surface, panel_idx: usize) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

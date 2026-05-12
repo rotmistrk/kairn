@@ -6,7 +6,7 @@ use super::tab_group::TabGroup;
 
 impl TabGroup {
     pub(crate) fn draw_chrome(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 || self.titles.is_empty() {
             return;
         }
@@ -51,8 +51,8 @@ impl View for TabGroup {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.bounds = r;
-        self.group.view.dirty = true;
+        self.group.view.set_bounds(r);
+        self.group.view.mark_dirty();
         let content = self.content_rect();
         if let Some(child) = self.group.children.get_mut(self.group.focused) {
             child.set_bounds(content);
@@ -91,7 +91,7 @@ impl View for TabGroup {
                     };
                     if *stored != new_title {
                         *stored = new_title;
-                        self.group.view.dirty = true;
+                        self.group.view.mark_dirty();
                     }
                 }
             }

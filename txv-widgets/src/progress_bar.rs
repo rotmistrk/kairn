@@ -30,12 +30,12 @@ impl ProgressBar {
 
     pub fn set_progress(&mut self, p: f32) {
         self.progress = p.clamp(0.0, 1.0);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn advance_tick(&mut self) {
         self.tick = self.tick.wrapping_add(1);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }
 
@@ -49,7 +49,7 @@ impl View for ProgressBar {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

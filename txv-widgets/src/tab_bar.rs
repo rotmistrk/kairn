@@ -27,7 +27,7 @@ impl TabBar {
             label: label.into(),
             command,
         });
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn remove_tab(&mut self, index: usize) {
@@ -36,14 +36,14 @@ impl TabBar {
             if self.active >= self.tabs.len() && self.active > 0 {
                 self.active -= 1;
             }
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 
     pub fn set_active(&mut self, index: usize) {
         if index < self.tabs.len() {
             self.active = index;
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 }
@@ -58,7 +58,7 @@ impl View for TabBar {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -97,7 +97,7 @@ impl View for TabBar {
             KeyCode::Left => {
                 if self.active > 0 {
                     self.active -= 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     queue.put_command(self.tabs[self.active].command, None);
                 }
                 HandleResult::Consumed
@@ -105,7 +105,7 @@ impl View for TabBar {
             KeyCode::Right => {
                 if self.active + 1 < self.tabs.len() {
                     self.active += 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     queue.put_command(self.tabs[self.active].command, None);
                 }
                 HandleResult::Consumed

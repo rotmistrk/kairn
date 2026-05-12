@@ -32,11 +32,11 @@ impl Table {
         self.rows = rows;
         self.scroll.set_total(self.rows.len());
         self.cursor = 0;
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds.h.saturating_sub(1) as usize; // -1 for header
+        let h = self.state.bounds().h.saturating_sub(1) as usize; // -1 for header
         self.scroll.set_viewport(h);
         self.scroll.set_total(self.rows.len());
         self.scroll.ensure_visible(self.cursor);
@@ -47,7 +47,7 @@ impl View for Table {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -60,7 +60,7 @@ impl View for Table {
             ..Style::default()
         };
         let normal = Style::default();
-        let selected = if self.state.focused {
+        let selected = if self.state.is_focused() {
             Style {
                 bg: Color::Ansi(4),
                 attrs: Attrs {
@@ -127,7 +127,7 @@ impl View for Table {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
@@ -136,7 +136,7 @@ impl View for Table {
                 if self.cursor < max {
                     self.cursor += 1;
                     self.sync_scroll();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
@@ -145,18 +145,18 @@ impl View for Table {
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {
-                let page = self.state.bounds.h.saturating_sub(2) as usize;
+                let page = self.state.bounds().h.saturating_sub(2) as usize;
                 let max = self.rows.len().saturating_sub(1);
                 self.cursor = (self.cursor + page).min(max);
                 self.sync_scroll();
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::PageUp => {
-                let page = self.state.bounds.h.saturating_sub(2) as usize;
+                let page = self.state.bounds().h.saturating_sub(2) as usize;
                 self.cursor = self.cursor.saturating_sub(page);
                 self.sync_scroll();
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

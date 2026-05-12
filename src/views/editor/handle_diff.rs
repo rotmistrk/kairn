@@ -11,7 +11,7 @@ impl EditorView {
         if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
             self.editor.mode = crate::editor::keymap::EditorMode::Command;
             self.editor.command_buf.clear();
-            self.state.dirty = true;
+            self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
@@ -20,7 +20,7 @@ impl EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let result = self.handle_command_input(key, queue);
-            self.state.dirty = true;
+            self.state.mark_dirty();
             return result;
         }
 
@@ -48,11 +48,11 @@ impl EditorView {
             KeyCode::Char('G') => self.diff_move_end(),
             KeyCode::Char('g') => self.diff_move_start(),
             KeyCode::PageDown | KeyCode::Char(' ') => {
-                let h = self.state.bounds.h as i32;
+                let h = self.state.bounds().h as i32;
                 self.diff_move(h - 1);
             }
             KeyCode::PageUp => {
-                let h = self.state.bounds.h as i32;
+                let h = self.state.bounds().h as i32;
                 self.diff_move(-(h - 1));
             }
             KeyCode::Char('/') => {
@@ -61,7 +61,7 @@ impl EditorView {
             }
             _ => {}
         }
-        self.state.dirty = true;
+        self.state.mark_dirty();
         HandleResult::Consumed
     }
 
@@ -69,7 +69,7 @@ impl EditorView {
         if let Some(ds) = &mut self.diff_state {
             if let Some(pos) = ds.next_hunk() {
                 ds.cursor = pos;
-                ds.ensure_visible(self.state.bounds.h as usize);
+                ds.ensure_visible(self.state.bounds().h as usize);
             }
         }
     }
@@ -78,7 +78,7 @@ impl EditorView {
         if let Some(ds) = &mut self.diff_state {
             if let Some(pos) = ds.prev_hunk() {
                 ds.cursor = pos;
-                ds.ensure_visible(self.state.bounds.h as usize);
+                ds.ensure_visible(self.state.bounds().h as usize);
             }
         }
     }
@@ -88,21 +88,21 @@ impl EditorView {
             let max = ds.lines.len().saturating_sub(1);
             let new = (ds.cursor as i32 + delta).clamp(0, max as i32) as usize;
             ds.cursor = new;
-            ds.ensure_visible(self.state.bounds.h as usize);
+            ds.ensure_visible(self.state.bounds().h as usize);
         }
     }
 
     fn diff_move_end(&mut self) {
         if let Some(ds) = &mut self.diff_state {
             ds.cursor = ds.lines.len().saturating_sub(1);
-            ds.ensure_visible(self.state.bounds.h as usize);
+            ds.ensure_visible(self.state.bounds().h as usize);
         }
     }
 
     fn diff_move_start(&mut self) {
         if let Some(ds) = &mut self.diff_state {
             ds.cursor = 0;
-            ds.ensure_visible(self.state.bounds.h as usize);
+            ds.ensure_visible(self.state.bounds().h as usize);
         }
     }
 }

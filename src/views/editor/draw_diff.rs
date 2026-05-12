@@ -7,7 +7,7 @@ use super::EditorView;
 
 impl EditorView {
     pub(super) fn draw_diff(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         let ds = match &self.diff_state {
             Some(ds) => ds,
             None => return,
@@ -38,7 +38,7 @@ impl EditorView {
             fg: Color::Ansi(8),
             ..Style::default()
         };
-        let cursor_style = if self.state.focused {
+        let cursor_style = if self.state.is_focused() {
             Style {
                 bg: Color::Ansi(4),
                 attrs: Attrs {
@@ -67,7 +67,7 @@ impl EditorView {
                 continue;
             }
 
-            let is_cursor = vi == ds.cursor && self.state.focused;
+            let is_cursor = vi == ds.cursor && self.state.is_focused();
             let line = &ds.lines[vi];
 
             match line {

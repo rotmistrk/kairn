@@ -68,7 +68,7 @@ impl View for GitChangesView {
             if changed {
                 self.needs_rebuild = false;
                 self.inner.data.rebuild(&self.root);
-                self.inner.state.dirty = true;
+                self.inner.state.mark_dirty();
             }
             return HandleResult::Ignored;
         }

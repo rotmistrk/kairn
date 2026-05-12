@@ -37,7 +37,7 @@ impl TextArea {
     pub fn set_content(&mut self, text: &str) {
         self.lines = text.lines().map(String::from).collect();
         self.scroll.set_total(self.lines.len());
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn search(&mut self, query: &str) {
@@ -54,7 +54,7 @@ impl TextArea {
         if let Some(&line) = self.search_matches.first() {
             self.scroll.ensure_visible(line);
         }
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn next_match(&mut self) {
@@ -64,7 +64,7 @@ impl TextArea {
         self.current_match = (self.current_match + 1) % self.search_matches.len();
         let line = self.search_matches[self.current_match];
         self.scroll.ensure_visible(line);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn prev_match(&mut self) {
@@ -78,7 +78,7 @@ impl TextArea {
         };
         let line = self.search_matches[self.current_match];
         self.scroll.ensure_visible(line);
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     fn gutter_width(&self) -> u16 {
@@ -104,7 +104,7 @@ impl View for TextArea {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -189,15 +189,15 @@ impl View for TextArea {
                 KeyCode::Esc => {
                     self.searching = false;
                     self.search_input.clear();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 KeyCode::Backspace => {
                     self.search_input.pop();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 KeyCode::Char(ch) => {
                     self.search_input.push(ch);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 _ => {}
             }
@@ -206,41 +206,41 @@ impl View for TextArea {
         match key.code {
             KeyCode::Up => {
                 self.scroll.scroll_up(1);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Down => {
                 self.scroll.scroll_down(1);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::PageUp => {
-                let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
                 self.scroll.scroll_up(page);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::PageDown => {
-                let page = (self.state.bounds.h as usize).saturating_sub(1).max(1);
+                let page = (self.state.bounds().h as usize).saturating_sub(1).max(1);
                 self.scroll.scroll_down(page);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.scroll.scroll_to(0);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::End => {
                 let max = self.scroll.max_offset();
                 self.scroll.scroll_to(max);
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Char('/') if !key.modifiers.ctrl => {
                 self.searching = true;
                 self.search_input.clear();
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Char('n') if !key.modifiers.ctrl => {

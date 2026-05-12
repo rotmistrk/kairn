@@ -18,7 +18,7 @@ impl EditorView {
     pub(super) fn exit_diff(&mut self) {
         self.diff_state = None;
         self.editor.status = String::new();
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Exit diff mode and jump cursor to the buffer line at current diff cursor.
@@ -49,7 +49,7 @@ impl EditorView {
             Ok(c) => c,
             Err(e) => {
                 self.editor.status = format!("diff: {e}");
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 return;
             }
         };
@@ -73,6 +73,6 @@ impl EditorView {
         } else {
             format!("[no changes vs {}]", base_ref)
         };
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }

@@ -32,7 +32,7 @@ impl View for MessagesView {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -96,25 +96,25 @@ impl View for MessagesView {
                     if self.scroll < total {
                         self.scroll += 1;
                     }
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     if self.scroll > 0 {
                         self.scroll -= 1;
                     }
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::Home | KeyCode::Char('g') => {
                     let total = self.ring.lock().map(|r| r.len()).unwrap_or(0);
                     self.scroll = total.saturating_sub(1);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 KeyCode::End | KeyCode::Char('G') => {
                     self.scroll = 0;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     HandleResult::Consumed
                 }
                 _ => HandleResult::Ignored,
@@ -123,7 +123,7 @@ impl View for MessagesView {
                 let gen = self.ring.lock().map(|r| r.generation()).unwrap_or(0);
                 if gen != self.last_gen {
                     self.last_gen = gen;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Ignored
             }

@@ -20,7 +20,7 @@ impl EditorView {
             if key.code == KeyCode::Char('c') {
                 self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                 self.editor.command_buf.clear();
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 return HandleResult::Consumed;
             }
             return HandleResult::Ignored;
@@ -59,7 +59,7 @@ impl EditorView {
             _ => {}
         }
         self.ensure_cursor_visible();
-        self.state.dirty = true;
+        self.state.mark_dirty();
         HandleResult::Consumed
     }
 
@@ -76,7 +76,7 @@ impl EditorView {
                 if self.editor.buffer.is_dirty() && !self.settings.autosave {
                     self.close_prompt = true;
                     self.editor.status = "Save changes? [y]es [n]o [Esc]cancel".to_string();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 } else {
                     if self.settings.autosave && self.editor.buffer.is_dirty() {
                         self.save_buffer();
@@ -144,7 +144,7 @@ impl EditorView {
     }
 
     pub(super) fn ensure_cursor_visible(&mut self) {
-        let h = self.state.bounds.h as usize;
+        let h = self.state.bounds().h as usize;
         if h == 0 {
             return;
         }

@@ -51,11 +51,10 @@ impl Default for WindowState {
 macro_rules! delegate_window_state {
     ($field:ident) => {
         fn bounds(&self) -> $crate::geometry::Rect {
-            self.$field.group.view.bounds
+            self.$field.group.view.bounds()
         }
         fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-            self.$field.group.view.bounds = r;
-            self.$field.group.view.dirty = true;
+            self.$field.group.view.set_bounds(r);
         }
         fn options(&self) -> $crate::view::ViewOptions {
             self.$field.group.view.options
@@ -67,14 +66,14 @@ macro_rules! delegate_window_state {
             self.$field.group.any_dirty()
         }
         fn mark_redrawn(&mut self) {
-            self.$field.group.view.dirty = false;
+            self.$field.group.view.mark_redrawn();
             for child in &mut self.$field.group.children {
                 child.mark_redrawn();
             }
         }
         fn select(&mut self) {
-            self.$field.group.view.focused = true;
-            self.$field.group.view.dirty = true;
+            self.$field.group.view.set_focused(true);
+            self.$field.group.view.mark_dirty();
             if let Some(child) =
                 self.$field.group.children.get_mut(self.$field.group.focused)
             {
@@ -82,8 +81,8 @@ macro_rules! delegate_window_state {
             }
         }
         fn unselect(&mut self) {
-            self.$field.group.view.focused = false;
-            self.$field.group.view.dirty = true;
+            self.$field.group.view.set_focused(false);
+            self.$field.group.view.mark_dirty();
             if let Some(child) =
                 self.$field.group.children.get_mut(self.$field.group.focused)
             {
@@ -94,13 +93,12 @@ macro_rules! delegate_window_state {
     ($field:ident, override { $($skip:ident),* $(,)? }) => {
         $crate::__dvs_maybe!(bounds, [$($skip),*], {
             fn bounds(&self) -> $crate::geometry::Rect {
-                self.$field.group.view.bounds
+                self.$field.group.view.bounds()
             }
         });
         $crate::__dvs_maybe!(set_bounds, [$($skip),*], {
             fn set_bounds(&mut self, r: $crate::geometry::Rect) {
-                self.$field.group.view.bounds = r;
-                self.$field.group.view.dirty = true;
+                self.$field.group.view.set_bounds(r);
             }
         });
         $crate::__dvs_maybe!(options, [$($skip),*], {
@@ -120,7 +118,7 @@ macro_rules! delegate_window_state {
         });
         $crate::__dvs_maybe!(mark_redrawn, [$($skip),*], {
             fn mark_redrawn(&mut self) {
-                self.$field.group.view.dirty = false;
+                self.$field.group.view.mark_redrawn();
                 for child in &mut self.$field.group.children {
                     child.mark_redrawn();
                 }
@@ -128,8 +126,8 @@ macro_rules! delegate_window_state {
         });
         $crate::__dvs_maybe!(select, [$($skip),*], {
             fn select(&mut self) {
-                self.$field.group.view.focused = true;
-                self.$field.group.view.dirty = true;
+                self.$field.group.view.set_focused(true);
+                self.$field.group.view.mark_dirty();
                 if let Some(child) =
                     self.$field.group.children.get_mut(self.$field.group.focused)
                 {
@@ -139,8 +137,8 @@ macro_rules! delegate_window_state {
         });
         $crate::__dvs_maybe!(unselect, [$($skip),*], {
             fn unselect(&mut self) {
-                self.$field.group.view.focused = false;
-                self.$field.group.view.dirty = true;
+                self.$field.group.view.set_focused(false);
+                self.$field.group.view.mark_dirty();
                 if let Some(child) =
                     self.$field.group.children.get_mut(self.$field.group.focused)
                 {

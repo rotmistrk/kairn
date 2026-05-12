@@ -74,7 +74,7 @@ impl StatusBar {
     /// Add an item that is both active and visible.
     pub fn add(&mut self, item: impl StatusBarItem + 'static) {
         self.items.push(ItemSlot::Full(Box::new(item)));
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Add an item that handles events but has no visible label.
@@ -85,21 +85,21 @@ impl StatusBar {
     /// Add an item that displays a label but does not handle events.
     pub fn add_visible_only(&mut self, item: impl VisibleItem + 'static) {
         self.items.push(ItemSlot::VisibleOnly(Box::new(item)));
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Put an item into exclusive mode (full-width rendering, sole event target).
     pub fn set_exclusive(&mut self, index: usize) {
         if index < self.items.len() {
             self.exclusive = Some(index);
-            self.state.dirty = true;
+            self.state.mark_dirty();
         }
     }
 
     /// Clear exclusive mode, returning to normal layout.
     pub fn clear_exclusive(&mut self) {
         self.exclusive = None;
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     /// Whether an item is currently in exclusive mode.
@@ -115,7 +115,7 @@ impl StatusBar {
                 ItemSlot::ActiveOnly(_) => {}
             }
         }
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }
 
@@ -127,11 +127,11 @@ impl Default for StatusBar {
 
 impl View for StatusBar {
     fn bounds(&self) -> Rect {
-        self.state.bounds
+        self.state.bounds()
     }
     fn set_bounds(&mut self, rect: Rect) {
-        self.state.bounds = rect;
-        self.state.dirty = true;
+        self.state.set_bounds(rect);
+        self.state.mark_dirty();
     }
     fn options(&self) -> ViewOptions {
         self.state.options
@@ -140,16 +140,16 @@ impl View for StatusBar {
         ""
     }
     fn needs_redraw(&self) -> bool {
-        self.state.dirty
+        self.state.is_dirty()
     }
     fn mark_redrawn(&mut self) {
-        self.state.dirty = false;
+        self.state.mark_redrawn();
     }
     fn select(&mut self) {}
     fn unselect(&mut self) {}
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -246,7 +246,7 @@ impl View for StatusBar {
             // Check if item released exclusive
             if !self.item_is_exclusive(idx) {
                 self.exclusive = None;
-                self.state.dirty = true;
+                self.state.mark_dirty();
             }
             return result;
         }
@@ -258,7 +258,7 @@ impl View for StatusBar {
                 // Check if item claimed exclusive
                 if self.item_is_exclusive(i) {
                     self.exclusive = Some(i);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 return HandleResult::Consumed;
             }

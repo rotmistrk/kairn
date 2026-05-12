@@ -34,12 +34,12 @@ impl StatusBar {
             command,
             label: label.into(),
         });
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn set_context(&mut self, ctx: impl Into<String>) {
         self.context = ctx.into();
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }
 
@@ -53,7 +53,7 @@ impl View for StatusBar {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

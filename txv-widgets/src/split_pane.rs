@@ -37,8 +37,8 @@ impl SplitPane {
 
     pub fn resize(&mut self, delta: i16) {
         let total = match self.direction {
-            SplitDirection::Horizontal => self.group.view.bounds.w,
-            SplitDirection::Vertical => self.group.view.bounds.h,
+            SplitDirection::Horizontal => self.group.view.bounds().w,
+            SplitDirection::Vertical => self.group.view.bounds().h,
         } as f32;
         if total > 0.0 {
             self.ratio = (self.ratio + delta as f32 / total).clamp(0.1, 0.9);
@@ -47,7 +47,7 @@ impl SplitPane {
     }
 
     fn apply_layout(&mut self) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -76,13 +76,13 @@ impl View for SplitPane {
     delegate_group_state!(group, override { set_bounds, draw, handle });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.bounds = r;
-        self.group.view.dirty = true;
+        self.group.view.set_bounds(r);
+        self.group.view.mark_dirty();
         self.apply_layout();
     }
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }

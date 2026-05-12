@@ -37,7 +37,7 @@ impl View for InputDialog {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -109,25 +109,25 @@ impl View for InputDialog {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.text.remove(self.cursor);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
             }
             KeyCode::Left => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
             }
             KeyCode::Right => {
                 if self.cursor < self.text.len() {
                     self.cursor += 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
             }
             KeyCode::Char(ch) => {
                 self.text.insert(self.cursor, *ch);
                 self.cursor += 1;
-                self.state.dirty = true;
+                self.state.mark_dirty();
             }
             _ => {}
         }

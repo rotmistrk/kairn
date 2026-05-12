@@ -34,7 +34,7 @@ impl PtyTerminal {
     }
 
     pub(crate) fn draw_scrollback(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         let h = b.h as usize;
         let w = b.w as usize;
         let grid_rows = self.termbuf.grid_rows() as usize;

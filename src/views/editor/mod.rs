@@ -56,7 +56,7 @@ impl EditorView {
         self.editor.cursor_line = (line as usize).min(max_line);
         self.editor.cursor_col = col as usize;
         self.ensure_cursor_visible();
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     fn gutter_width(&self) -> u16 {
@@ -81,7 +81,7 @@ impl View for EditorView {
     }
 
     fn needs_redraw(&self) -> bool {
-        self.state.dirty
+        self.state.is_dirty()
     }
 
     fn draw(&self, surface: &mut Surface) {
@@ -107,7 +107,7 @@ impl View for EditorView {
                     .unwrap_or(0);
                 self.editor.buffer.insert(offset, text);
                 self.last_edit_tick = self.tick_counter;
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 return HandleResult::Consumed;
             }
             // Handle clipboard paste command
@@ -141,7 +141,7 @@ impl View for EditorView {
                                 .unwrap_or(0);
                             self.editor.buffer.insert(offset, text);
                             self.last_edit_tick = self.tick_counter;
-                            self.state.dirty = true;
+                            self.state.mark_dirty();
                             return HandleResult::Consumed;
                         }
                     }
@@ -164,12 +164,12 @@ impl View for EditorView {
             match &key.code {
                 KeyCode::Down => {
                     self.completion_popup.next();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
                 KeyCode::Up => {
                     self.completion_popup.prev();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
                 KeyCode::Enter | KeyCode::Tab => {
@@ -178,7 +178,7 @@ impl View for EditorView {
                 }
                 KeyCode::Esc => {
                     self.completion_popup.hide();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
                 _ => {
@@ -222,7 +222,7 @@ impl View for EditorView {
                     self.editor.status = String::new();
                 }
             }
-            self.state.dirty = true;
+            self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
@@ -250,7 +250,7 @@ impl View for EditorView {
         }
         self.handle_action(action, queue);
         self.ensure_cursor_visible();
-        self.state.dirty = true;
+        self.state.mark_dirty();
         self.emit_status_changes(old_mode, old_line, old_col, queue);
         self.sync_title();
         HandleResult::Consumed

@@ -26,13 +26,13 @@ impl InputLine {
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
         self.cursor = self.text.len();
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     pub fn clear(&mut self) {
         self.text.clear();
         self.cursor = 0;
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 
     fn push_history(&mut self) {
@@ -53,7 +53,7 @@ impl View for InputLine {
     delegate_view_state!(state);
 
     fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -91,46 +91,46 @@ impl View for InputLine {
             KeyCode::Char(ch) => {
                 self.text.insert(self.cursor, *ch);
                 self.cursor += 1;
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Backspace => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.text.remove(self.cursor);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Delete => {
                 if self.cursor < self.text.len() {
                     self.text.remove(self.cursor);
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Left => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Right => {
                 if self.cursor < self.text.len() {
                     self.cursor += 1;
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
             KeyCode::Home => {
                 self.cursor = 0;
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::End => {
                 self.cursor = self.text.len();
-                self.state.dirty = true;
+                self.state.mark_dirty();
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
@@ -152,7 +152,7 @@ impl View for InputLine {
                     self.history_pos = Some(pos);
                     self.text = self.history[pos].clone();
                     self.cursor = self.text.len();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }
@@ -167,7 +167,7 @@ impl View for InputLine {
                         self.text.clear();
                     }
                     self.cursor = self.text.len();
-                    self.state.dirty = true;
+                    self.state.mark_dirty();
                 }
                 HandleResult::Consumed
             }

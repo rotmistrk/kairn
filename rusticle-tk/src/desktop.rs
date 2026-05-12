@@ -59,13 +59,13 @@ impl TkDesktop {
             }
             self.group.focused = idx;
             self.group.children[idx].select();
-            self.group.view.dirty = true;
+            self.group.view.mark_dirty();
         }
     }
 
     /// Recompute layout and set bounds on all children.
     fn apply_layout(&mut self) {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -90,8 +90,8 @@ impl View for TkDesktop {
     delegate_group_state!(group, override { set_bounds });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.bounds = r;
-        self.group.view.dirty = true;
+        self.group.view.set_bounds(r);
+        self.group.view.mark_dirty();
         self.apply_layout();
     }
 

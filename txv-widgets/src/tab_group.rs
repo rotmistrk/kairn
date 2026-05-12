@@ -42,12 +42,12 @@ impl TabGroup {
         self.lru.push(0);
         self.group.focused = self.group.children.len() - 1;
         self.touch_lru();
-        if self.group.view.focused {
+        if self.group.view.is_focused() {
             if let Some(child) = self.group.children.get_mut(self.group.focused) {
                 child.select();
             }
         }
-        self.group.view.dirty = true;
+        self.group.view.mark_dirty();
     }
 
     pub fn tab_count(&self) -> usize {
@@ -63,10 +63,10 @@ impl TabGroup {
         self.touch_lru();
         let r = self.content_rect();
         self.group.children[self.group.focused].set_bounds(r);
-        if self.group.view.focused {
+        if self.group.view.is_focused() {
             self.group.children[self.group.focused].select();
         }
-        self.group.view.dirty = true;
+        self.group.view.mark_dirty();
     }
 
     pub fn active_title(&self) -> Option<&str> {
@@ -151,7 +151,7 @@ impl TabGroup {
     }
 
     pub(crate) fn content_rect(&self) -> Rect {
-        let b = self.group.view.bounds;
+        let b = self.group.view.bounds();
         Rect::new(b.x, b.y + 1, b.w, b.h.saturating_sub(1))
     }
 
@@ -162,7 +162,7 @@ impl TabGroup {
     pub fn rename_active(&mut self, new_title: impl Into<String>) {
         if let Some(title) = self.titles.get_mut(self.group.focused) {
             *title = new_title.into();
-            self.group.view.dirty = true;
+            self.group.view.mark_dirty();
         }
     }
 
@@ -209,14 +209,14 @@ impl TabGroup {
             self.group.focused = mru;
         }
         if let Some(child) = self.group.children.get_mut(self.group.focused) {
-            let b = self.group.view.bounds;
+            let b = self.group.view.bounds();
             let r = Rect::new(b.x, b.y + 1, b.w, b.h.saturating_sub(1));
             child.set_bounds(r);
-            if self.group.view.focused {
+            if self.group.view.is_focused() {
                 child.select();
             }
         }
-        self.group.view.dirty = true;
+        self.group.view.mark_dirty();
     }
 }
 

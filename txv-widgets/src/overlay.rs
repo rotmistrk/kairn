@@ -34,7 +34,7 @@ impl Overlay {
         self.width = w;
         self.height = h;
         self.child.set_bounds(Rect::new(x, y, w, h));
-        self.state.dirty = true;
+        self.state.mark_dirty();
     }
 }
 

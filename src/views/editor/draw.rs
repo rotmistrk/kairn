@@ -6,7 +6,7 @@ use super::EditorView;
 
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
-        let b = self.state.bounds;
+        let b = self.state.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -193,7 +193,7 @@ impl EditorView {
             }
 
             // --- Cursor rendering (AFTER content, reverse style, tab-aware) ---
-            if line_idx == self.editor.cursor_line && self.state.focused {
+            if line_idx == self.editor.cursor_line && self.state.is_focused() {
                 let cursor_visual_col = if self.editor.cursor_col >= char_idx {
                     col_offset
                 } else {
