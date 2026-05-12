@@ -1,7 +1,7 @@
 //! Grep — search project files for a pattern, stream results incrementally.
 
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 
@@ -46,10 +46,10 @@ pub fn grep_stream(
             if let Some(entry) = parse_grep_line(&line, &root) {
                 batch.push(entry);
                 count += 1;
-                if batch.len() >= 32 || count <= 32 {
-                    if tx.send(std::mem::take(&mut batch)).is_err() {
-                        break;
-                    }
+                if (batch.len() >= 32 || count <= 32)
+                    && tx.send(std::mem::take(&mut batch)).is_err()
+                {
+                    break;
                 }
             }
             if count >= 1000 {
@@ -81,6 +81,7 @@ fn parse_grep_line(line: &str, root: &Path) -> Option<ResultEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn parse_rg_output() {

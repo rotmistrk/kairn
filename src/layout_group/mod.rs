@@ -70,16 +70,17 @@ impl LayoutGroup {
 
     /// Access a panel as TabGroup (downcast from Box<dyn View>).
     pub fn panel(&self, slot: SlotId) -> &TabGroup {
-        let child = &self.group.children[slot as usize];
+        let child = self.group.child(slot as usize).expect("valid slot");
         // SAFETY: we only insert TabGroup instances at construction
-        unsafe { &*(child.as_ref() as *const dyn View as *const TabGroup) }
+        unsafe { &*(child as *const dyn View as *const TabGroup) }
     }
 
     /// Access a panel mutably as TabGroup.
     pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabGroup {
-        let child = &mut self.group.children[slot as usize];
+        let child = self.group.child_mut(slot as usize).expect("valid slot");
         // SAFETY: we only insert TabGroup instances at construction
-        unsafe { &mut *(child.as_mut() as *mut dyn View as *mut TabGroup) }
+        let ptr: *mut dyn View = &mut **child;
+        unsafe { &mut *(ptr as *mut TabGroup) }
     }
 
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
@@ -114,7 +115,7 @@ impl LayoutGroup {
     }
 
     pub fn focused_slot(&self) -> SlotId {
-        match self.group.focused {
+        match self.group.focused_index() {
             0 => SlotId::Left,
             1 => SlotId::Center,
             2 => SlotId::Right,
@@ -124,13 +125,7 @@ impl LayoutGroup {
 
     pub fn focus_slot(&mut self, id: SlotId) {
         let new = id as usize;
-        if new == self.group.focused {
-            return;
-        }
-        self.group.children[self.group.focused].unselect();
-        self.group.focused = new;
-        self.group.children[self.group.focused].select();
-        self.group.view.mark_dirty();
+        self.group.switch_focus(new);
     }
 
     pub fn focus_tab(&mut self, slot: SlotId, tab: usize) {
@@ -142,7 +137,7 @@ impl LayoutGroup {
         self.zoomed = if self.zoomed.is_some() {
             None
         } else {
-            Some(self.group.focused)
+            Some(self.group.focused_index())
         };
         self.recompute_bounds();
     }
@@ -154,7 +149,7 @@ impl LayoutGroup {
         if visible.is_empty() {
             return;
         }
-        let cur = visible.iter().position(|&i| i == self.group.focused).unwrap_or(0);
+        let cur = visible.iter().position(|&i| i == self.group.focused_index()).unwrap_or(0);
         let next = if dir > 0 {
             (cur + 1) % visible.len()
         } else {
@@ -189,7 +184,7 @@ impl LayoutGroup {
     }
 
     pub fn rename_focused_tab(&mut self, new_user_part: &str) {
-        let focused = self.group.focused;
+        let focused = self.group.focused_index();
         self.panel_mut(Self::slot_from(focused)).rename_user_part(new_user_part);
     }
 

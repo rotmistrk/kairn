@@ -86,7 +86,7 @@ impl LayoutGroup {
     }
 
     pub(super) fn resize_focused(&mut self, delta: i16) {
-        match self.group.focused {
+        match self.group.focused_index() {
             0 => {
                 self.left_width = (self.left_width as i16 + delta).max(8) as u16;
             }
@@ -99,7 +99,7 @@ impl LayoutGroup {
     }
 
     pub(super) fn resize_vertical(&mut self, delta: i16) {
-        match self.group.focused {
+        match self.group.focused_index() {
             2 => {
                 self.right_height = (self.right_height as i16 + delta).max(3) as u16;
             }

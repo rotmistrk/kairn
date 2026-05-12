@@ -96,7 +96,7 @@ impl LayoutGroup {
             if panel.tab_count() == 0 {
                 continue;
             }
-            let focused = i == self.group.focused;
+            let focused = i == self.group.focused_index();
             self.draw_slot_tab(surface, i, r.x, b.y, r.x + r.w, focused);
         }
 
@@ -191,7 +191,7 @@ impl LayoutGroup {
         }
         // In tall mode, right panel is below — its bounds start at the divider row
         let div_y = if tall {
-            let right_bounds = self.group.children[SlotId::Right as usize].bounds();
+            let right_bounds = self.group.child(SlotId::Right as usize).map(|c| c.bounds()).unwrap_or_default();
             if right_bounds.h == 0 {
                 return;
             }
@@ -218,7 +218,7 @@ impl LayoutGroup {
 
         // Draw tab for the bottom slot
         if tall {
-            let focused = self.group.focused == SlotId::Right as usize;
+            let focused = self.group.focused_index() == SlotId::Right as usize;
             self.draw_slot_tab(surface, SlotId::Right as usize, b.x, div_y, b.x + b.w, focused);
         }
     }

@@ -8,7 +8,7 @@ impl LayoutGroup {
     /// Compute and apply layout to all panels.
     pub(super) fn apply_layout(&mut self, bounds: Rect) {
         if let Some(z) = self.zoomed {
-            self.group.children[z].set_bounds(bounds);
+            self.group.set_child_bounds(z, bounds);
             return;
         }
         let rects = self.compute_rects(bounds);
@@ -22,7 +22,7 @@ impl LayoutGroup {
             } else {
                 rects[i]
             };
-            self.group.children[i].set_bounds(r);
+            self.group.set_child_bounds(i, r);
         }
     }
 
@@ -127,7 +127,7 @@ mod tests {
         lg.group.view.set_bounds(bounds);
         lg.apply_layout(bounds);
         // Zoomed panel gets full bounds
-        assert_eq!(lg.group.children[1].bounds(), bounds);
+        assert_eq!(lg.group.child(1).unwrap().bounds(), bounds);
     }
 
     #[test]
