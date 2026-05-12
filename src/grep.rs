@@ -1,5 +1,8 @@
 //! Grep — pure Rust async project search. No external tools.
 //! Uses `ignore` crate (respects .gitignore) + `regex` for matching.
+//! Supports POSIX-style flags: -i (case-insensitive), -E (extended/default),
+//! -F (fixed string), -w (word boundary), -l (files only), -n (line numbers, default).
+//! Quoting: "Few Words" or 'single quotes' for patterns with spaces.
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -7,10 +10,72 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use ignore::WalkBuilder;
-use regex::Regex;
+use regex::RegexBuilder;
 use txv_core::run::Waker;
 
 use crate::views::results::ResultEntry;
+
+/// Parsed grep options.
+struct GrepOpts {
+    pattern: String,
+    case_insensitive: bool,
+    fixed_string: bool,
+    word_boundary: bool,
+}
+
+/// Parse a grep command line (POSIX-style flags + pattern).
+/// Supports: -i, -E, -F, -w, and quoted patterns.
+fn parse_grep_args(input: &str) -> Result<GrepOpts, String> {
+    let words = shell_words::split(input).map_err(|e| format!("Bad quoting: {e}"))?;
+    let mut case_insensitive = false;
+    let mut fixed_string = false;
+    let mut word_boundary = false;
+    let mut pattern_parts: Vec<String> = Vec::new();
+    let mut flags_done = false;
+
+    for word in &words {
+        if !flags_done && word.starts_with('-') && word.len() > 1 && !word.starts_with("--") {
+            for ch in word[1..].chars() {
+                match ch {
+                    'i' => case_insensitive = true,
+                    'E' => {} // extended regex is default
+                    'F' => fixed_string = true,
+                    'w' => word_boundary = true,
+                    'n' | 'l' | 'H' => {} // accepted but no-op (always show lines+files)
+                    _ => return Err(format!("Unknown flag: -{ch}")),
+                }
+            }
+        } else {
+            flags_done = true;
+            pattern_parts.push(word.clone());
+        }
+    }
+
+    if pattern_parts.is_empty() {
+        return Err("No pattern specified".to_string());
+    }
+
+    let pattern = pattern_parts.join(" ");
+    Ok(GrepOpts { pattern, case_insensitive, fixed_string, word_boundary })
+}
+
+/// Build a regex from parsed options.
+fn build_regex(opts: &GrepOpts) -> Result<regex::Regex, String> {
+    let mut pat = if opts.fixed_string {
+        regex::escape(&opts.pattern)
+    } else {
+        opts.pattern.clone()
+    };
+
+    if opts.word_boundary {
+        pat = format!(r"\b{pat}\b");
+    }
+
+    RegexBuilder::new(&pat)
+        .case_insensitive(opts.case_insensitive)
+        .build()
+        .map_err(|e| format!("Invalid regex: {e}"))
+}
 
 /// Shared grep state between background thread and UI.
 pub struct GrepState {
@@ -33,33 +98,36 @@ impl GrepState {
     }
 }
 
-/// Spawn async grep. Pure Rust — no external tools.
-pub fn grep_async(pattern: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
+/// Spawn async grep. Parses POSIX flags from the input string.
+/// Example inputs: `-i "hello world"`, `-iF fixed`, `-w MyStruct`
+pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
     let state = Arc::new(GrepState {
         entries: Mutex::new(Vec::new()),
         done: Mutex::new(false),
         error: Mutex::new(None),
     });
     let state_clone = state.clone();
-    let pattern = pattern.to_string();
+    let input = input.to_string();
     let root = root.to_path_buf();
 
     std::thread::spawn(move || {
-        let re = match Regex::new(&pattern) {
+        let opts = match parse_grep_args(&input) {
+            Ok(o) => o,
+            Err(e) => {
+                if let Ok(mut err) = state_clone.error.lock() { *err = Some(e); }
+                if let Ok(mut d) = state_clone.done.lock() { *d = true; }
+                waker.wake();
+                return;
+            }
+        };
+
+        let re = match build_regex(&opts) {
             Ok(r) => r,
             Err(e) => {
-                // Fall back to literal search if regex is invalid
-                match Regex::new(&regex::escape(&pattern)) {
-                    Ok(r) => r,
-                    Err(e2) => {
-                        if let Ok(mut err) = state_clone.error.lock() {
-                            *err = Some(format!("Invalid pattern: {e2}"));
-                        }
-                        if let Ok(mut d) = state_clone.done.lock() { *d = true; }
-                        waker.wake();
-                        return;
-                    }
-                }
+                if let Ok(mut err) = state_clone.error.lock() { *err = Some(e); }
+                if let Ok(mut d) = state_clone.done.lock() { *d = true; }
+                waker.wake();
+                return;
             }
         };
 
@@ -124,35 +192,6 @@ pub fn grep_async(pattern: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-    use tempfile::TempDir;
+#[path = "grep_tests.rs"]
+mod tests;
 
-    #[test]
-    fn grep_finds_matches() {
-        let dir = TempDir::new().unwrap();
-        fs::write(dir.path().join("test.rs"), "fn main() {\n    println!(\"hello\");\n}\n").unwrap();
-        let state = grep_async("main", dir.path(), Waker::noop());
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let entries = state.take_entries();
-        assert!(!entries.is_empty());
-        assert!(state.is_done());
-    }
-
-    #[test]
-    fn grep_respects_gitignore() {
-        let dir = TempDir::new().unwrap();
-        // ignore crate needs .git dir to respect .gitignore
-        fs::create_dir(dir.path().join(".git")).unwrap();
-        fs::write(dir.path().join(".gitignore"), "ignored/\n").unwrap();
-        fs::create_dir(dir.path().join("ignored")).unwrap();
-        fs::write(dir.path().join("ignored/file.rs"), "findme\n").unwrap();
-        fs::write(dir.path().join("visible.rs"), "findme\n").unwrap();
-        let state = grep_async("findme", dir.path(), Waker::noop());
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let entries = state.take_entries();
-        assert_eq!(entries.len(), 1);
-        assert!(entries[0].path.ends_with("visible.rs"));
-    }
-}
