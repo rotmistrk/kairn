@@ -8,9 +8,9 @@
       "args": [
         "--mcp-connect"
       ],
-      "command": "/home/rotmistr/.local/bin/kairn",
+      "command": "/Users/rotmistr/.local/bin/kairn",
       "env": {
-        "KAIRN_MCP_SOCKET": "/run/user/1000/kairn-a3f30cdf.sock"
+        "KAIRN_MCP_SOCKET": "/tmp/kairn-51b1bfc8.sock"
       }
     }
   },
