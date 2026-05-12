@@ -20,8 +20,8 @@ pub fn handle_todo_key(
             let path = data.path_at(id)?.clone();
             let item = model::get_item_mut(&mut data.file, &path)?;
             item.completed = match item.completed {
-                Completion::Open => Completion::Done,
                 Completion::Done => Completion::Open,
+                _ => Completion::Done,
             };
             data.save();
             data.rebuild_flat();
