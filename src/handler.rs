@@ -109,6 +109,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
 
     // Grep: drain results from background thread into the results view
     if let Some((title, gs, root)) = state.grep_pending.take() {
+        if let Some(err) = gs.take_error() {
+            let msg = txv_core::message::Message::new(
+                txv_core::message::MsgLevel::Error, "grep", err);
+            ctx.queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
         let entries = gs.take_entries();
         let done = gs.is_done();
         if !entries.is_empty() || done {

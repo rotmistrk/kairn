@@ -32,6 +32,7 @@ serde_json = "1"
 sha2 = "0.10"
 
 syntect = { version = "5", default-features = false, features = ["default-syntaxes", "default-themes", "regex-onig"] }
+ignore = "0.4.25"
 
 [dev-dependencies]
 tempfile = "3.15"

@@ -815,6 +815,7 @@ dependencies = [
  "duir-core",
  "env_logger",
  "git2",
+ "ignore",
  "libc",
  "log",
  "notify",
