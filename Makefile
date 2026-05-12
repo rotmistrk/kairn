@@ -25,8 +25,8 @@ verify: fmt clippy test
 # ── Build ───────────────────────────────────────────────
 
 BINARY := target/release/kairn
-SOURCES := $(shell find src txv-core/src txv-render/src txv-widgets/src -name '*.rs') \
-           Cargo.toml txv-core/Cargo.toml txv-render/Cargo.toml txv-widgets/Cargo.toml
+SOURCES := $(shell find src -name '*.rs') \
+           Cargo.toml Cargo.lock
 
 check:
 	cargo check --workspace
