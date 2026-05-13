@@ -81,17 +81,20 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
-            let defaults = &state.settings.editor_defaults;
-            let mut editor =
-                EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
-            editor.set_root_dir(state.root_dir.clone());
             let title = path
                 .strip_prefix(&state.root_dir)
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .to_string();
+            let view: Box<dyn View> = try_open_structured(&path).unwrap_or_else(|| {
+                let defaults = &state.settings.editor_defaults;
+                let mut editor =
+                    EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+                editor.set_root_dir(state.root_dir.clone());
+                Box::new(editor)
+            });
             if let Some(d) = downcast_desktop(desktop) {
-                crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, Box::new(editor));
+                crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, view);
             }
         }
     }
@@ -122,6 +125,38 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
         crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }
+}
+
+/// Toggle the active center tab between structured and text view.
+/// `to_structured`: true = switch to structured, false = switch to text.
+pub(crate) fn toggle_view_mode(desktop: &mut dyn View, state: &mut AppState, to_structured: bool) {
+    let Some(d) = downcast_desktop(desktop) else {
+        return;
+    };
+    let Some(title) = d.active_tab_title(SlotId::Center).map(String::from) else {
+        return;
+    };
+    let path = state.root_dir.join(&title);
+    if !path.is_file() {
+        return;
+    }
+    d.close_tab_by_title(SlotId::Center, &title);
+    state.broker.close(&path.to_string_lossy());
+    let _ = state.broker.open(&path.to_string_lossy(), SlotId::Center, 0);
+    let view: Box<dyn View> = if to_structured {
+        try_open_structured(&path).unwrap_or_else(|| {
+            let defaults = &state.settings.editor_defaults;
+            let mut ed = EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+            ed.set_root_dir(state.root_dir.clone());
+            Box::new(ed)
+        })
+    } else {
+        let defaults = &state.settings.editor_defaults;
+        let mut ed = EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+        ed.set_root_dir(state.root_dir.clone());
+        Box::new(ed)
+    };
+    crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, view);
 }
 
 /// Try to open a file as a structured view (JSON/JSONC/JSONL). Returns None if not applicable or parse fails.

@@ -153,6 +153,12 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "diff" => {
             ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
         }
+        "struct" | "structured" => {
+            crate::handler_open::toggle_view_mode(ctx.desktop, state, true);
+        }
+        "text" => {
+            crate::handler_open::toggle_view_mode(ctx.desktop, state, false);
+        }
         _ => {
             let msg = txv_core::message::Message::warn("handler", format!("Unknown command: {cmd}"));
             ctx.queue
