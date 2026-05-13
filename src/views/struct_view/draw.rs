@@ -18,21 +18,36 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     let meta_w = w.saturating_sub(key_w + val_w + 2);
 
     let normal = Style::default();
-    let cursor_style = Style {
-        bg: Color::Ansi(4),
-        ..Style::default()
+    let focused = view.state.is_focused();
+    let cursor_style = if focused {
+        Style {
+            bg: Color::Ansi(4),
+            ..Style::default()
+        }
+    } else {
+        Style {
+            bg: Color::Ansi(8),
+            ..Style::default()
+        }
     };
     let sep_style = Style {
         fg: Color::Ansi(8),
         ..Style::default()
     };
-    let focus_style = Style {
-        bg: Color::Ansi(4),
-        attrs: Attrs {
-            underline: true,
-            ..Attrs::default()
-        },
-        ..Style::default()
+    let focus_style = if focused {
+        Style {
+            bg: Color::Ansi(4),
+            attrs: Attrs {
+                underline: true,
+                ..Attrs::default()
+            },
+            ..Style::default()
+        }
+    } else {
+        Style {
+            bg: Color::Ansi(8),
+            ..Style::default()
+        }
     };
     let edit_style = Style {
         fg: Color::Ansi(0),
