@@ -18,42 +18,20 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     let meta_w = w.saturating_sub(key_w + val_w + 2);
 
     let normal = Style::default();
+    let pal = txv_core::palette::palette();
     let focused = view.state.is_focused();
     let cursor_style = if focused {
-        Style {
-            bg: Color::Ansi(4),
-            ..Style::default()
-        }
+        pal.interactive.cursor_focused.to_style()
     } else {
-        Style {
-            bg: Color::Ansi(8),
-            ..Style::default()
-        }
+        pal.interactive.cursor_unfocused.to_style()
     };
-    let sep_style = Style {
-        fg: Color::Ansi(8),
-        ..Style::default()
-    };
+    let sep_style = pal.base.dim.to_style();
     let focus_style = if focused {
-        Style {
-            bg: Color::Ansi(4),
-            attrs: Attrs {
-                underline: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        }
+        pal.interactive.cursor_focused.to_style()
     } else {
-        Style {
-            bg: Color::Ansi(8),
-            ..Style::default()
-        }
+        pal.interactive.cursor_unfocused.to_style()
     };
-    let edit_style = Style {
-        fg: Color::Ansi(0),
-        bg: Color::Ansi(3),
-        ..Style::default()
-    };
+    let edit_style = pal.interactive.edit_overlay.to_style();
 
     for row in 0..b.h as usize {
         let idx = view.scroll + row;

@@ -74,11 +74,7 @@ impl View for LayoutGroup {
 
 impl LayoutGroup {
     fn draw_dividers(&self, surface: &mut Surface, b: Rect) {
-        let cs = Style {
-            fg: Color::Ansi(7),
-            bg: Color::Ansi(0),
-            ..Style::default()
-        };
+        let cs = txv_core::palette::palette().chrome.bar.to_style();
         let rects = self.compute_rects(b);
         let left_r = rects[SlotId::Left as usize];
         let center_r = rects[SlotId::Center as usize];

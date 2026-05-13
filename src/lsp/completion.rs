@@ -90,16 +90,9 @@ impl CompletionPopup {
         let x = self.anchor_x;
         let y = self.anchor_y + 1; // below cursor
 
-        let normal = Style {
-            bg: Color::Ansi(0),
-            fg: Color::Ansi(7),
-            ..Style::default()
-        };
-        let selected = Style {
-            bg: Color::Ansi(4),
-            fg: Color::Ansi(15),
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let normal = pal.popup.background.to_style();
+        let selected = pal.popup.selected.to_style();
 
         for (i, item) in self.items.iter().take(max_items).enumerate() {
             let row = y + i as u16;

@@ -1,7 +1,33 @@
 //! Application-level palette — extends txv-core Palette with domain-specific roles.
 
+use std::sync::OnceLock;
+
 use txv_core::cell::Color;
 use txv_core::palette::{Palette, PaletteStyle, ThemeMode};
+
+static APP_PALETTE: OnceLock<std::sync::RwLock<AppPalette>> = OnceLock::new();
+
+/// Get the active app palette.
+pub fn app_palette() -> AppPalette {
+    match APP_PALETTE.get() {
+        Some(lock) => lock.read().map(|p| p.clone()).unwrap_or_default(),
+        None => AppPalette::default(),
+    }
+}
+
+/// Set the active app palette.
+pub fn set_app_palette(p: &AppPalette) {
+    match APP_PALETTE.get() {
+        Some(lock) => {
+            if let Ok(mut w) = lock.write() {
+                *w = p.clone();
+            }
+        }
+        None => {
+            let _ = APP_PALETTE.set(std::sync::RwLock::new(p.clone()));
+        }
+    }
+}
 
 /// kairn-specific palette extending the framework palette.
 #[derive(Clone, Debug)]
@@ -203,12 +229,13 @@ impl ThemeState {
                 self.active = self.dark.clone();
             }
         }
-        txv_core::palette::set_palette(self.active.base.clone());
+        self.apply();
     }
 
     /// Apply the active palette to the global state.
     pub fn apply(&self) {
         txv_core::palette::set_palette(self.active.base.clone());
+        set_app_palette(&self.active);
     }
 }
 

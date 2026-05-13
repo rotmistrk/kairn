@@ -16,29 +16,16 @@ impl EditorView {
             return;
         }
 
+        let pal = txv_core::palette::palette();
+        let app = crate::app_palette::app_palette();
         let normal = Style::default();
         let gutter_w = self.gutter_width();
-        let gutter_style = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
-        let cursor_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            ..Style::default()
-        };
+        let gutter_style = app.editor.gutter.to_style();
+        let cursor_style = app.editor.cursor.to_style();
         let visual_style = if self.state.is_focused() {
-            Style {
-                bg: Color::Ansi(4),
-                ..Style::default()
-            }
+            pal.interactive.cursor_focused.to_style()
         } else {
-            Style {
-                bg: Color::Ansi(8),
-                ..Style::default()
-            }
+            pal.interactive.cursor_unfocused.to_style()
         };
 
         let scroll = self.editor.viewport_scroll;
@@ -92,10 +79,7 @@ impl EditorView {
                                 span.style
                             };
                             if self.editor.options.list {
-                                let ls = Style {
-                                    fg: Color::Ansi(8),
-                                    ..st
-                                };
+                                let ls = app.editor.list_chars.resolve(&st);
                                 let c = if ti == tab_width - 1 {
                                     '\u{2192}'
                                 } else {
@@ -152,10 +136,7 @@ impl EditorView {
                     };
 
                     let (display_ch, display_style) = if self.editor.options.list {
-                        let list_style = Style {
-                            fg: Color::Ansi(8),
-                            ..style
-                        };
+                        let list_style = app.editor.list_chars.resolve(&style);
                         match ch {
                             ' ' => ('\u{00B7}', list_style),
                             _ => (ch, style),
@@ -177,10 +158,7 @@ impl EditorView {
 
             // End-of-line marker in list mode
             if self.editor.options.list && col_offset < avail && visual_row < b.h as usize {
-                let list_style = Style {
-                    fg: Color::Ansi(8),
-                    ..Style::default()
-                };
+                let list_style = app.editor.list_chars.to_style();
                 let vy = b.y + visual_row as u16;
                 let x = text_x + col_offset as u16;
                 surface.put(x, vy, '$', list_style);

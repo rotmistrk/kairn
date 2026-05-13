@@ -111,10 +111,7 @@ impl txv_core::view::View for FallbackTerminal {
     fn draw(&self, surface: &mut txv_core::surface::Surface) {
         let b = self.state.bounds();
         let style = txv_core::cell::Style::default();
-        let err_style = txv_core::cell::Style {
-            fg: txv_core::cell::Color::Ansi(1),
-            ..style
-        };
+        let err_style = txv_core::palette::palette().state.error.resolve(&style);
         surface.print(b.x, b.y, &format!("[{}]", self.title), style);
         if !self.message.is_empty() {
             surface.print(b.x, b.y + 1, &self.message, err_style);

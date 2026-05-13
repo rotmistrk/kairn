@@ -25,33 +25,16 @@ impl EditorView {
         let text_x = b.x + gutter_w;
         let avail = b.w.saturating_sub(gutter_w) as usize;
 
-        let added_style = Style {
-            fg: Color::Ansi(2),
-            ..Style::default()
-        };
-        let deleted_style = Style {
-            fg: Color::Ansi(1),
-            ..Style::default()
-        };
+        let app = crate::app_palette::app_palette();
+        let pal = txv_core::palette::palette();
+        let added_style = app.diff.added.to_style();
+        let deleted_style = app.diff.deleted.to_style();
         let context_style = Style::default();
-        let fold_style = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let fold_style = app.diff.fold.to_style();
         let cursor_style = if self.state.is_focused() {
-            Style {
-                bg: Color::Ansi(4),
-                attrs: Attrs {
-                    underline: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            }
+            pal.interactive.cursor_focused.to_style()
         } else {
-            Style {
-                bg: Color::Ansi(8),
-                ..Style::default()
-            }
+            pal.interactive.cursor_unfocused.to_style()
         };
 
         let height = b.h as usize;
@@ -146,10 +129,7 @@ impl EditorView {
         if !self.editor.options.number {
             return;
         }
-        let gs = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let gs = crate::app_palette::app_palette().editor.gutter.to_style();
         let left = match base_line {
             Some(n) => format!("{:>width$}", n + 1, width = dw),
             None => " ".repeat(dw),

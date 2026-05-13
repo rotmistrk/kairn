@@ -6,68 +6,31 @@ use super::{LayoutGroup, SlotId, PANEL_COUNT};
 use crate::glyphs::glyphs;
 
 fn chrome_style() -> Style {
-    Style {
-        fg: Color::Ansi(7),
-        bg: Color::Ansi(0),
-        attrs: Attrs::default(),
-    }
+    txv_core::palette::palette().chrome.bar.to_style()
 }
 
 fn focused_title() -> Style {
-    Style {
-        fg: Color::Ansi(14),
-        bg: Color::Ansi(4),
-        attrs: Attrs {
-            bold: true,
-            ..Attrs::default()
-        },
-    }
+    txv_core::palette::palette().chrome.tab_focused.to_style()
 }
 
 fn focused_arrow() -> Style {
-    Style {
-        fg: Color::Ansi(10),
-        bg: Color::Ansi(4),
-        attrs: Attrs::default(),
-    }
+    txv_core::palette::palette().chrome.tab_focused_arrow.to_style()
 }
 
 fn focused_count() -> Style {
-    Style {
-        fg: Color::Ansi(15),
-        bg: Color::Ansi(6),
-        attrs: Attrs {
-            bold: true,
-            ..Attrs::default()
-        },
-    }
+    txv_core::palette::palette().chrome.tab_focused_badge.to_style()
 }
 
 fn active_title() -> Style {
-    Style {
-        fg: Color::Ansi(15),
-        bg: Color::Ansi(8),
-        attrs: Attrs {
-            bold: true,
-            ..Attrs::default()
-        },
-    }
+    txv_core::palette::palette().chrome.tab_active.to_style()
 }
 
 fn active_arrow() -> Style {
-    Style {
-        fg: Color::Ansi(7),
-        bg: Color::Ansi(8),
-        attrs: Attrs::default(),
-    }
+    txv_core::palette::palette().chrome.tab_active_arrow.to_style()
 }
 
 fn active_count() -> Style {
-    Style {
-        fg: Color::Ansi(15),
-        bg: Color::Ansi(8),
-        attrs: Attrs::default(),
-    }
+    txv_core::palette::palette().chrome.tab_active_badge.to_style()
 }
 
 impl LayoutGroup {

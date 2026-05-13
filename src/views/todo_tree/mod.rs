@@ -110,14 +110,12 @@ impl View for TodoTreeView {
     fn draw(&self, surface: &mut Surface) {
         if self.inner.data.visible_count() == 0 {
             let b = self.inner.state.bounds();
-            let dim = Style {
-                fg: Color::Ansi(8),
-                ..Style::default()
-            };
+            let dim = txv_core::palette::palette().base.dim.to_style();
             surface.print(b.x, b.y, "  (empty \u{2014} press 'n' to add)", dim);
             return;
         }
         // Custom draw with checkboxes
+        let pal = txv_core::palette::palette();
         let b = self.inner.state.bounds();
         for row in 0..b.h as usize {
             let idx = self.inner.scroll.offset + row;
@@ -139,17 +137,9 @@ impl View for TodoTreeView {
             let node_style = self.inner.data.style(id);
             let style = if idx == self.inner.cursor {
                 if self.inner.state.is_focused() {
-                    Style {
-                        fg: node_style.fg,
-                        bg: Color::Ansi(4),
-                        attrs: node_style.attrs,
-                    }
+                    pal.interactive.cursor_focused.resolve(&node_style)
                 } else {
-                    Style {
-                        fg: node_style.fg,
-                        bg: Color::Ansi(8),
-                        attrs: node_style.attrs,
-                    }
+                    pal.interactive.cursor_unfocused.resolve(&node_style)
                 }
             } else {
                 node_style
@@ -183,11 +173,7 @@ impl View for TodoTreeView {
                     let indent = (depth * 2 + 6) as u16; // marker(2) + checkbox(4)
                     let ex = b.x + indent;
                     let ew = b.w.saturating_sub(indent);
-                    let style = Style {
-                        fg: Color::Ansi(15),
-                        bg: Color::Ansi(4),
-                        ..Style::default()
-                    };
+                    let style = pal.interactive.edit_overlay.to_style();
                     editor.draw(surface, ex, y, ew, style);
                 }
             }

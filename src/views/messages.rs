@@ -66,20 +66,12 @@ impl View for MessagesView {
                     msg.text,
                     suffix,
                 );
+                let app = crate::app_palette::app_palette();
                 let style = match msg.level {
-                    MsgLevel::Error => Style {
-                        fg: Color::Ansi(9),
-                        ..Style::default()
-                    },
-                    MsgLevel::Warn => Style {
-                        fg: Color::Ansi(11),
-                        ..Style::default()
-                    },
-                    MsgLevel::Debug => Style {
-                        fg: Color::Ansi(8),
-                        ..Style::default()
-                    },
-                    MsgLevel::Info => Style::default(),
+                    MsgLevel::Error => app.msg.error.to_style(),
+                    MsgLevel::Warn => app.msg.warning.to_style(),
+                    MsgLevel::Debug => app.msg.debug.to_style(),
+                    MsgLevel::Info => app.msg.info.to_style(),
                 };
                 surface.print_line(b.x, y, &line, b.w, style);
             } else {

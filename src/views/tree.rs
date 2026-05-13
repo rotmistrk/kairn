@@ -61,13 +61,14 @@ impl FileTreeView {
 }
 
 fn status_color(status: FileStatus) -> Color {
+    let app = crate::app_palette::app_palette();
     match status {
-        FileStatus::Modified => Color::Ansi(12),
-        FileStatus::Added => Color::Ansi(2),
-        FileStatus::Untracked => Color::Ansi(1),
-        FileStatus::Ignored => Color::Ansi(8),
-        FileStatus::Conflict => Color::Ansi(5),
-        FileStatus::Clean => Color::Ansi(7),
+        FileStatus::Modified => app.git.modified.fg.unwrap_or(Color::Ansi(12)),
+        FileStatus::Added => app.git.added.fg.unwrap_or(Color::Ansi(2)),
+        FileStatus::Untracked => app.git.untracked.fg.unwrap_or(Color::Ansi(1)),
+        FileStatus::Ignored => app.git.ignored.fg.unwrap_or(Color::Ansi(8)),
+        FileStatus::Conflict => app.git.conflict.fg.unwrap_or(Color::Ansi(5)),
+        FileStatus::Clean => Color::Reset,
     }
 }
 

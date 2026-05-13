@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use txv_core::cell::{Attrs, Color, Style};
+use txv_core::cell::Style;
 use txv_core::prelude::*;
 
 use crate::commands::{OpenFileRequest, CM_OPEN_FILE};
@@ -118,25 +118,13 @@ impl View for ResultsView {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let dim = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let dim = pal.base.dim.to_style();
         let normal = Style::default();
         let cursor_style = if self.state.is_focused() {
-            Style {
-                bg: Color::Ansi(4),
-                attrs: Attrs {
-                    underline: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            }
+            pal.interactive.cursor_focused.to_style()
         } else {
-            Style {
-                bg: Color::Ansi(8),
-                ..Style::default()
-            }
+            pal.interactive.cursor_unfocused.to_style()
         };
 
         let content_h = b.h.saturating_sub(1) as usize;
@@ -188,20 +176,11 @@ impl View for ResultsView {
             format!("✓ {} results", self.entries.len())
         };
         let status_style = if !self.done {
-            Style {
-                fg: Color::Ansi(11),
-                ..Style::default()
-            }
+            pal.state.warning.to_style()
         } else if self.entries.is_empty() {
-            Style {
-                fg: Color::Ansi(9),
-                ..Style::default()
-            }
+            pal.state.error.to_style()
         } else {
-            Style {
-                fg: Color::Ansi(10),
-                ..Style::default()
-            }
+            pal.state.success.to_style()
         };
         surface.hline(b.x, status_y, b.w, ' ', status_style);
         surface.print(b.x, status_y, &status, status_style);

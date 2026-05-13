@@ -8,7 +8,7 @@
       "args": [
         "--mcp-connect"
       ],
-      "command": "/Users/rotmistr/.local/bin/kairn",
+      "command": "/home/rotmistr/.local/bin/kairn",
       "env": {
         "KAIRN_MCP_SOCKET": "${KAIRN_MCP_SOCKET}"
       }

@@ -66,18 +66,11 @@ impl EditorView {
 }
 
 fn diag_style(severity: Severity) -> Style {
-    let fg = match severity {
-        Severity::Error => Color::Ansi(1),
-        Severity::Warning => Color::Ansi(3),
-        Severity::Info => Color::Ansi(6),
-        Severity::Hint => Color::Ansi(8),
-    };
-    Style {
-        fg,
-        attrs: Attrs {
-            underline: true,
-            ..Attrs::default()
-        },
-        ..Style::default()
+    let app = crate::app_palette::app_palette();
+    match severity {
+        Severity::Error => app.diag.error.to_style(),
+        Severity::Warning => app.diag.warning.to_style(),
+        Severity::Info => app.diag.info.to_style(),
+        Severity::Hint => app.diag.hint.to_style(),
     }
 }

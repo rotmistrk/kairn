@@ -32,14 +32,9 @@ impl View for WelcomeView {
         if b.w == 0 || b.h == 0 {
             return;
         }
-        let dim = Style {
-            fg: Color::Ansi(8),
-            ..Style::default()
-        };
-        let bright = Style {
-            fg: Color::Ansi(14),
-            ..Style::default()
-        };
+        let pal = txv_core::palette::palette();
+        let dim = pal.base.dim.to_style();
+        let bright = pal.base.bright.to_style();
         let lines: &[(&str, Style)] = &[
             ("╦╔═╔═╗╦╦═╗╔╗╔", bright),
             ("╠╩╗╠═╣║╠╦╝║║║", bright),

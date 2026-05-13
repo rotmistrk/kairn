@@ -161,10 +161,11 @@ impl TreeData for TodoTreeData {
         let Some(item) = self.item_at(id) else {
             return Style::default();
         };
+        let app = crate::app_palette::app_palette();
         let fg = match (&item.completed, item.important) {
-            (Completion::Done, _) => Color::Ansi(8), // dim for done
-            (_, true) => Color::Ansi(1),             // red for important
-            _ => Color::Ansi(7),                     // default
+            (Completion::Done, _) => app.todo.done.fg.unwrap_or(Color::Ansi(8)),
+            (_, true) => app.todo.important.fg.unwrap_or(Color::Ansi(1)),
+            _ => app.todo.normal.fg.unwrap_or(Color::Ansi(7)),
         };
         Style { fg, ..Style::default() }
     }
