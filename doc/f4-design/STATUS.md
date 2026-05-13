@@ -150,8 +150,9 @@
 2. Write failing test
 3. Implement fix
 4. Verify test passes
-5. Update status table: ❌ → ✅
-6. Commit
+5. Update doc/example-init.tcl if the feature adds settings, keys, or color roles
+6. Update status table: ❌ → ✅
+7. Commit
 ```
 
 ### 240 CODE Lines Per File Rule

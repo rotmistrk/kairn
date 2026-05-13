@@ -175,3 +175,4 @@ tests/              Integration/scenario tests (one concern per file)
 - `doc/f4-design/STATUS.md` — Feature status table + development cycle SOP
 - `doc/f4-design/steps/` — Build step files for each crate
 - `hooks/pre-commit` — The pre-commit hook source
+- `doc/example-init.tcl` — Reference config (update when adding settings/keys/colors)
