@@ -1,7 +1,7 @@
 //! Vi spec: find char, bracket match, search, dot repeat, substitute, replace.
 use kairn::editor::command::Command;
 use kairn::editor::keymap::EditorMode;
-use kairn::editor::{Editor, EditorAction};
+use kairn::editor::Editor;
 
 // === Find char ===
 

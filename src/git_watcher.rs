@@ -175,7 +175,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn multiple_handles_see_same_change() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join(".git")).unwrap();

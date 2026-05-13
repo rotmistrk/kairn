@@ -10,7 +10,7 @@
       ],
       "command": "/Users/rotmistr/.local/bin/kairn",
       "env": {
-        "KAIRN_MCP_SOCKET": "/tmp/kairn-51b1bfc8.sock"
+        "KAIRN_MCP_SOCKET": "${KAIRN_MCP_SOCKET}"
       }
     }
   },
