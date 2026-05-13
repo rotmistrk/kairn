@@ -15,6 +15,22 @@ pub fn handle_todo_key(
 ) -> Option<HandleAction> {
     let id = data.visible_id(cursor);
     match key.code {
+        // Shift+Up — swap up (same as K)
+        KeyCode::Up if key.modifiers.shift => {
+            let path = data.path_at(id)?.clone();
+            let new_path = model::swap_up(&mut data.file, &path)?;
+            data.save();
+            data.rebuild_flat();
+            data.row_for_path(&new_path).map(HandleAction::MoveTo)
+        }
+        // Shift+Down — swap down (same as J)
+        KeyCode::Down if key.modifiers.shift => {
+            let path = data.path_at(id)?.clone();
+            let new_path = model::swap_down(&mut data.file, &path)?;
+            data.save();
+            data.rebuild_flat();
+            data.row_for_path(&new_path).map(HandleAction::MoveTo)
+        }
         // Space — toggle completed
         KeyCode::Char(' ') => {
             let path = data.path_at(id)?.clone();
@@ -43,7 +59,8 @@ pub fn handle_todo_key(
             model::add_sibling(&mut data.file, &path, new_item);
             data.save();
             data.rebuild_flat();
-            Some(HandleAction::MoveDown)
+            // New sibling is at cursor+1
+            Some(HandleAction::EditNew(cursor + 1))
         }
         // b — new child
         KeyCode::Char('b') => {
@@ -55,7 +72,8 @@ pub fn handle_todo_key(
             item.folded = false;
             data.save();
             data.rebuild_flat();
-            Some(HandleAction::Stay)
+            // New child is right after parent
+            Some(HandleAction::EditNew(cursor + 1))
         }
         // d — delete item
         KeyCode::Char('d') => {
@@ -108,4 +126,6 @@ pub enum HandleAction {
     Stay,
     MoveDown,
     MoveTo(usize),
+    /// Move to row and open editor with text selected.
+    EditNew(usize),
 }

@@ -41,6 +41,16 @@ impl TodoTreeView {
         }
     }
 
+    fn start_edit_selected(&mut self) {
+        let row = self.inner.cursor;
+        if row < self.inner.data.visible_count() {
+            let id = self.inner.data.visible_id(row);
+            let label = self.inner.data.label(id).to_owned();
+            self.editing = Some(InlineEditor::new_selected(row, &label));
+            self.inner.state.mark_dirty();
+        }
+    }
+
     fn handle_editing_key(&mut self, key: &KeyEvent) -> HandleResult {
         let Some(ref mut editor) = self.editing else {
             return HandleResult::Ignored;
@@ -72,6 +82,10 @@ impl TodoTreeView {
             HandleAction::MoveTo(row) => {
                 self.inner.cursor = row;
             }
+            HandleAction::EditNew(row) => {
+                self.inner.cursor = row;
+                self.start_edit_selected();
+            }
         }
         self.inner.state.mark_dirty();
     }
@@ -98,7 +112,60 @@ impl View for TodoTreeView {
             surface.print(b.x, b.y, "  (empty \u{2014} press 'n' to add)", dim);
             return;
         }
-        self.inner.draw(surface);
+        // Custom draw with checkboxes
+        let b = self.inner.state.bounds();
+        for row in 0..b.h as usize {
+            let idx = self.inner.scroll.offset + row;
+            if idx >= self.inner.data.visible_count() {
+                break;
+            }
+            let id = self.inner.data.visible_id(idx);
+            let depth = self.inner.data.depth(id);
+            let indent = (depth * 2) as u16;
+            let marker = if self.inner.data.is_expandable(id) {
+                if self.inner.data.is_expanded(id) {
+                    "▼ "
+                } else {
+                    "▶ "
+                }
+            } else {
+                "  "
+            };
+            let node_style = self.inner.data.style(id);
+            let style = if idx == self.inner.cursor {
+                if self.inner.state.is_focused() {
+                    Style {
+                        fg: node_style.fg,
+                        bg: Color::Ansi(4),
+                        attrs: node_style.attrs,
+                    }
+                } else {
+                    Style {
+                        fg: node_style.fg,
+                        bg: Color::Ansi(8),
+                        attrs: node_style.attrs,
+                    }
+                }
+            } else {
+                node_style
+            };
+            let y = b.y + row as u16;
+            surface.hline(b.x, y, b.w, ' ', style);
+            let x = b.x + indent;
+            surface.print(x, y, marker, style);
+            // Checkbox
+            let checkbox = if let Some(item) = self.inner.data.item_at(id) {
+                match item.completed {
+                    model::Completion::Done => "[x] ",
+                    _ => "[ ] ",
+                }
+            } else {
+                "[ ] "
+            };
+            surface.print(x + 2, y, checkbox, style);
+            surface.print(x + 6, y, self.inner.data.label(id), style);
+        }
+        // Render inline editor overlay
         if let Some(ref editor) = self.editing {
             let b = self.inner.state.bounds();
             let scroll_offset = self.inner.scroll.offset;
@@ -106,12 +173,17 @@ impl View for TodoTreeView {
                 let screen_row = (editor.row - scroll_offset) as u16;
                 if screen_row < b.h {
                     let y = b.y + screen_row;
+                    let id = self.inner.data.visible_id(editor.row);
+                    let depth = self.inner.data.depth(id);
+                    let indent = (depth * 2 + 6) as u16; // marker(2) + checkbox(4)
+                    let ex = b.x + indent;
+                    let ew = b.w.saturating_sub(indent);
                     let style = Style {
                         fg: Color::Ansi(0),
                         bg: Color::Ansi(3),
                         ..Style::default()
                     };
-                    editor.draw(surface, b.x, y, b.w, style);
+                    editor.draw(surface, ex, y, ew, style);
                 }
             }
         }
