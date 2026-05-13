@@ -13,6 +13,19 @@ The pre-commit hook enforces ALL of the following. Code MUST pass before commit:
 
 ---
 
+## CRITICAL: Build Gate — All Tests Must Pass
+
+**`make install-local` WILL NOT proceed unless ALL tests pass.**
+
+The Makefile `test` target enforces:
+- All tests must **pass** (non-zero exit from `cargo test` = build failure)
+- **Zero ignored/skipped tests allowed** — any `ignored` count in test output = build failure
+
+A skipped test is a broken build. If a test cannot run, fix it or delete it.
+Never mark tests `#[ignore]` to work around failures.
+
+---
+
 ## Test Reliability — CRITICAL
 
 - **Every test MUST be deterministic.** A flaky test is a SEVERE RISK.

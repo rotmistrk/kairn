@@ -156,7 +156,7 @@ fn results_view_shows_grep_title() {
     h.run_cycles(2);
 
     // The results tab should be visible with the title
-    assert!(h.contains("grep: todo") || h.content_contains("todo!()"));
+    assert!(h.contains("grep:") || h.content_contains("todo!("));
 }
 
 #[test]

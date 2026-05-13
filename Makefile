@@ -48,13 +48,19 @@ clippy:
 	cargo clippy --workspace -- -D warnings
 
 test:
-	cargo test --workspace
+	cargo test --workspace 2>&1 | tee /tmp/kairn-test-output.txt; \
+	STATUS=$${PIPESTATUS[0]}; \
+	if grep -qE '[1-9][0-9]* ignored' /tmp/kairn-test-output.txt; then \
+		echo "❌ FATAL: tests were skipped/ignored — all tests must run"; \
+		exit 1; \
+	fi; \
+	exit $$STATUS
 
 lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
+install-local: test purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
 	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
