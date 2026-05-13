@@ -6,15 +6,27 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 pub struct TabInfo {
     pub name: String,
-    pub tab_type: String, // "shell", "kiro", "editor"
+    pub tab_type: String,
     pub path: Option<String>,
+    pub focused: bool,
+    pub modified: bool,
+    pub cursor: Option<CursorPos>,
+    pub order: usize,
+}
+
+/// Cursor position in an editor tab.
+#[derive(Debug, Clone, Serialize)]
+pub struct CursorPos {
+    pub line: usize,
+    pub col: usize,
 }
 
 /// A terminal tab entry with content access.
 #[derive(Debug, Clone, Serialize)]
 pub struct TerminalInfo {
     pub name: String,
-    pub terminal_type: String, // "shell" or "kiro"
+    pub terminal_type: String,
+    pub index: usize,
     pub content: String,
 }
 
@@ -23,4 +35,5 @@ pub struct TerminalInfo {
 pub struct McpSnapshot {
     pub tabs: Vec<TabInfo>,
     pub terminals: Vec<TerminalInfo>,
+    pub focused_slot: String,
 }
