@@ -22,10 +22,10 @@ impl EditorView {
         let gutter_w = self.gutter_width();
         let gutter_style = app.editor.gutter.to_style();
         let cursor_style = app.editor.cursor.to_style();
-        let visual_style = if self.state.is_focused() {
-            pal.interactive.cursor_focused.to_style()
+        let visual_bg = if self.state.is_focused() {
+            pal.interactive.visual_selection.bg.unwrap_or(Color::Ansi(4))
         } else {
-            pal.interactive.cursor_unfocused.to_style()
+            pal.interactive.cursor_unfocused.bg.unwrap_or(Color::Ansi(8))
         };
 
         let scroll = self.editor.viewport_scroll;
@@ -71,7 +71,10 @@ impl EditorView {
                             let vy = b.y + visual_row as u16;
                             let st = if let Some((vs, ve)) = visual_range {
                                 if byte_pos >= vs && byte_pos < ve {
-                                    visual_style
+                                    Style {
+                                        bg: visual_bg,
+                                        ..span.style
+                                    }
                                 } else {
                                     span.style
                                 }
@@ -127,7 +130,10 @@ impl EditorView {
 
                     let style = if let Some((vs, ve)) = visual_range {
                         if byte_pos >= vs && byte_pos < ve {
-                            visual_style
+                            Style {
+                                bg: visual_bg,
+                                ..span.style
+                            }
                         } else {
                             span.style
                         }

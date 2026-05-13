@@ -178,7 +178,7 @@ impl View for TodoTreeView {
                     let indent = (depth * 2 + 6) as u16; // marker(2) + checkbox(4)
                     let ex = b.x + indent;
                     let ew = b.w.saturating_sub(indent);
-                    let style = pal.interactive.edit_overlay.to_style();
+                    let style = pal.base.text.to_style();
                     editor.draw(surface, ex, y, ew, style);
                 }
             }

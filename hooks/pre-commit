@@ -60,4 +60,19 @@ if echo "$TEST_OUTPUT" | grep -qE '[1-9][0-9]* ignored'; then
     exit 1
 fi
 
+# 5. No hardcoded colors in view/widget code (only palette definitions allowed)
+echo "  hardcoded colors..."
+ALLOWED_FILES="src/app_palette.rs|src/config_colors.rs|src/highlight.rs"
+COLOR_VIOLATIONS=""
+for f in $(find src -name '*.rs' | grep -Ev "$ALLOWED_FILES"); do
+    HITS=$(grep -n 'Color::Ansi\|Color::Rgb' "$f" | grep -v '^\s*//' | grep -v 'unwrap_or' || true)
+    if [ -n "$HITS" ]; then
+        COLOR_VIOLATIONS="$COLOR_VIOLATIONS\n  $f:\n$HITS"
+    fi
+done
+if [ -n "$COLOR_VIOLATIONS" ]; then
+    echo -e "❌ Hardcoded colors found (use palette instead):$COLOR_VIOLATIONS"
+    exit 1
+fi
+
 echo "✅ All checks passed"

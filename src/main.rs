@@ -6,7 +6,7 @@ use clap::Parser;
 use txv_core::program::Program;
 use txv_core::run::Backend;
 use txv_render::backend::CrosstermBackend;
-use txv_render::color::detect_color_mode;
+use txv_render::color::{detect_color_mode, ColorMode};
 
 use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
@@ -141,7 +141,7 @@ fn main() -> anyhow::Result<()> {
     let mut program = Program::new(Box::new(status), Box::new(desktop));
 
     // Run
-    let color_mode = detect_color_mode();
+    let color_mode = detect_truecolor_mode();
     let mut backend = CrosstermBackend::new(color_mode);
     app_state.waker = Some(backend.waker());
 
@@ -174,4 +174,28 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Enhanced color mode detection — handles tmux truecolor support.
+/// tmux doesn't propagate COLORTERM but does advertise RGB in termfeatures.
+fn detect_truecolor_mode() -> ColorMode {
+    let base = detect_color_mode();
+    if base == ColorMode::TrueColor {
+        return base;
+    }
+    // tmux with RGB support
+    if let Ok(term) = std::env::var("TERM") {
+        if term.starts_with("tmux") || term.starts_with("screen") {
+            if let Ok(out) = std::process::Command::new("tmux")
+                .args(["display", "-p", "#{client_termfeatures}"])
+                .output()
+            {
+                let features = String::from_utf8_lossy(&out.stdout);
+                if features.contains("RGB") {
+                    return ColorMode::TrueColor;
+                }
+            }
+        }
+    }
+    base
 }
