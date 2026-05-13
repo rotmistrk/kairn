@@ -44,6 +44,7 @@ pub struct AppState {
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     mcp_tick: u16,
     pub waker: Option<txv_core::run::Waker>,
+    pub theme_state: Option<std::cell::RefCell<crate::app_palette::ThemeState>>,
     pub grep_pending: Option<(String, std::sync::Arc<crate::grep::GrepState>, std::path::PathBuf)>,
     pub build_pending: Option<(
         String,
@@ -70,6 +71,7 @@ impl AppState {
             mcp_snapshot: None,
             mcp_tick: 0,
             waker: None,
+            theme_state: None,
             grep_pending: None,
             build_pending: None,
             pending_tab: None,
@@ -92,6 +94,7 @@ impl AppState {
             mcp_snapshot: None,
             mcp_tick: 0,
             waker: None,
+            theme_state: None,
             grep_pending: None,
             build_pending: None,
             pending_tab: None,
@@ -215,6 +218,25 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
         CM_DIFF => {} // Handled by the focused editor view directly
+        CM_TOGGLE_THEME => {
+            let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
+            if let Some(ref ts) = state.theme_state {
+                let mut ts = ts.borrow_mut();
+                match arg.as_deref() {
+                    Some("dark") => {
+                        ts.mode = txv_core::palette::ThemeMode::Dark;
+                        ts.active = ts.dark.clone();
+                        ts.apply();
+                    }
+                    Some("light") => {
+                        ts.mode = txv_core::palette::ThemeMode::Light;
+                        ts.active = ts.light.clone();
+                        ts.apply();
+                    }
+                    _ => ts.toggle(),
+                }
+            }
+        }
         CM_CURSOR_MOVED => {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {

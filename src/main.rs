@@ -101,6 +101,15 @@ fn main() -> anyhow::Result<()> {
     let git_keys = settings.git_keys.clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
     app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
+    // Initialize theme
+    let theme_mode = match app_state.settings.theme_mode.as_str() {
+        "dark" => txv_core::palette::ThemeMode::Dark,
+        "light" => txv_core::palette::ThemeMode::Light,
+        _ => txv_core::palette::ThemeMode::Auto,
+    };
+    let theme = kairn::app_palette::ThemeState::new(theme_mode);
+    theme.apply();
+    app_state.theme_state = Some(std::cell::RefCell::new(theme));
     let mut desktop = build_desktop(&root_dir, git_keys);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)

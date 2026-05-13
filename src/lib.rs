@@ -2,6 +2,7 @@
 
 #![allow(dead_code)]
 
+pub mod app_palette;
 pub mod broker;
 pub mod buffer;
 pub mod build;

@@ -6,7 +6,7 @@ use txv_core::complete::{Completer, Completion};
 
 /// Known commands for the M-x prompt and :command mode.
 const COMMANDS: &[&str] = &[
-    "close", "e", "edit", "help", "kiro", "paste", "quit", "rename", "save", "shell",
+    "close", "e", "edit", "help", "kiro", "paste", "quit", "rename", "save", "shell", "theme",
 ];
 
 /// Completer for kairn application commands.

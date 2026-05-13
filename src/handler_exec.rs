@@ -95,6 +95,11 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
+        "theme" => {
+            if arg == "dark" || arg == "light" || arg == "toggle" || arg.is_empty() {
+                ctx.queue.put_command(CM_TOGGLE_THEME, Some(Box::new(arg.to_string())));
+            }
+        }
         "lsp-status" => {
             let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
             ctx.queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(status)));

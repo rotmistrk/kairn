@@ -92,6 +92,12 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.max_tabs = n as u16;
         }
     }
+    if let Some(val) = interp.get_var("theme.mode") {
+        let s = val.as_str();
+        if s == "dark" || s == "light" || s == "auto" {
+            settings.theme_mode = s.to_string();
+        }
+    }
     if let Some(val) = interp.get_var("git.stage") {
         if let Some(k) = parse_key_var(&val.as_str()) {
             settings.git_keys.stage = k;

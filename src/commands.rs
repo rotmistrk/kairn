@@ -133,3 +133,4 @@ pub struct ContentChanged {
 }
 pub const CM_GOTO_LINE: CommandId = 182;
 pub const CM_GREP_RESULTS: CommandId = 183;
+pub const CM_TOGGLE_THEME: CommandId = 184;
