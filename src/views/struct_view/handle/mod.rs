@@ -206,6 +206,10 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
             view.apply_redo();
             HandleResult::Consumed
         }
+        KeyCode::Char(':') => {
+            _queue.put_command(crate::commands::CM_COMMAND_PREFILL, Some(Box::new(String::new())));
+            HandleResult::Consumed
+        }
         _ => HandleResult::Ignored,
     }
 }
