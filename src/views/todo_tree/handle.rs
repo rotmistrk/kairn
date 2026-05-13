@@ -31,6 +31,22 @@ pub fn handle_todo_key(
             data.rebuild_flat();
             data.row_for_path(&new_path).map(HandleAction::MoveTo)
         }
+        // Shift+Left — promote (same as H)
+        KeyCode::Left if key.modifiers.shift => {
+            let path = data.path_at(id)?.clone();
+            let new_path = model::promote(&mut data.file, &path)?;
+            data.save();
+            data.rebuild_flat();
+            data.row_for_path(&new_path).map(HandleAction::MoveTo)
+        }
+        // Shift+Right — demote (same as L)
+        KeyCode::Right if key.modifiers.shift => {
+            let path = data.path_at(id)?.clone();
+            let new_path = model::demote(&mut data.file, &path)?;
+            data.save();
+            data.rebuild_flat();
+            data.row_for_path(&new_path).map(HandleAction::MoveTo)
+        }
         // Space — toggle completed
         KeyCode::Char(' ') => {
             let path = data.path_at(id)?.clone();
@@ -75,14 +91,19 @@ pub fn handle_todo_key(
             // New child is right after parent
             Some(HandleAction::EditNew(cursor + 1))
         }
-        // d — delete item
+        // d — delete item (confirm if unchecked)
         KeyCode::Char('d') => {
             let path = data.path_at(id)?.clone();
-            // TODO: add y/n confirmation dialog
-            model::remove_item(&mut data.file, &path)?;
-            data.save();
-            data.rebuild_flat();
-            Some(HandleAction::Stay)
+            let is_done =
+                model::get_item(&data.file, &path).is_some_and(|item| matches!(item.completed, Completion::Done));
+            if is_done {
+                model::remove_item(&mut data.file, &path)?;
+                data.save();
+                data.rebuild_flat();
+                Some(HandleAction::Stay)
+            } else {
+                Some(HandleAction::ConfirmDelete)
+            }
         }
         // J — swap down (Shift+j)
         KeyCode::Char('J') => {
@@ -128,4 +149,6 @@ pub enum HandleAction {
     MoveTo(usize),
     /// Move to row and open editor with text selected.
     EditNew(usize),
+    /// Ask for confirmation before deleting.
+    ConfirmDelete,
 }

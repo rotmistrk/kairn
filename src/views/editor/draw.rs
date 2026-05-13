@@ -29,13 +29,16 @@ impl EditorView {
             },
             ..Style::default()
         };
-        let visual_style = Style {
-            attrs: Attrs {
-                reverse: true,
-                ..Attrs::default()
-            },
-            fg: Color::Ansi(3),
-            ..Style::default()
+        let visual_style = if self.state.is_focused() {
+            Style {
+                bg: Color::Ansi(4),
+                ..Style::default()
+            }
+        } else {
+            Style {
+                bg: Color::Ansi(8),
+                ..Style::default()
+            }
         };
 
         let scroll = self.editor.viewport_scroll;

@@ -19,6 +19,7 @@ pub use self::data::TodoTreeData;
 pub struct TodoTreeView {
     inner: TreeView<TodoTreeData>,
     editing: Option<InlineEditor>,
+    confirm_delete: bool,
 }
 
 impl TodoTreeView {
@@ -28,6 +29,7 @@ impl TodoTreeView {
         Self {
             inner: TreeView::new(data),
             editing: None,
+            confirm_delete: false,
         }
     }
 
@@ -85,6 +87,9 @@ impl TodoTreeView {
             HandleAction::EditNew(row) => {
                 self.inner.cursor = row;
                 self.start_edit_selected();
+            }
+            HandleAction::ConfirmDelete => {
+                self.confirm_delete = true;
             }
         }
         self.inner.state.mark_dirty();
@@ -179,8 +184,8 @@ impl View for TodoTreeView {
                     let ex = b.x + indent;
                     let ew = b.w.saturating_sub(indent);
                     let style = Style {
-                        fg: Color::Ansi(0),
-                        bg: Color::Ansi(3),
+                        fg: Color::Ansi(15),
+                        bg: Color::Ansi(4),
                         ..Style::default()
                     };
                     editor.draw(surface, ex, y, ew, style);
@@ -193,6 +198,24 @@ impl View for TodoTreeView {
         let Event::Key(key) = event else {
             return self.inner.handle(event, queue);
         };
+        // Handle delete confirmation
+        if self.confirm_delete {
+            self.confirm_delete = false;
+            if key.code == KeyCode::Char('y') {
+                let cursor = self.inner.cursor;
+                if cursor < self.inner.data.visible_count() {
+                    let id = self.inner.data.visible_id(cursor);
+                    if let Some(path) = self.inner.data.path_at(id) {
+                        let path = path.clone();
+                        model::remove_item(&mut self.inner.data.file, &path);
+                        self.inner.data.save();
+                        self.inner.data.rebuild_flat();
+                    }
+                }
+            }
+            self.inner.state.mark_dirty();
+            return HandleResult::Consumed;
+        }
         if self.editing.is_some() {
             return self.handle_editing_key(key);
         }

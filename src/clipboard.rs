@@ -1,14 +1,28 @@
-//! System clipboard integration via OSC 52 (copy) and platform commands (paste).
+//! System clipboard integration via platform commands (macOS) or OSC 52.
 
 use std::io::Write;
 
 use base64::Engine;
 
-/// Copy text to system clipboard via OSC 52 escape sequence.
-/// Works through SSH, tmux, and iTerm2/kitty/etc.
+/// Copy text to system clipboard.
+/// On macOS, uses pbcopy for reliable single-copy behavior.
+/// On other platforms, uses OSC 52 escape sequence.
 pub fn copy_to_clipboard(text: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(mut child) = std::process::Command::new("pbcopy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            if let Some(stdin) = child.stdin.as_mut() {
+                let _ = stdin.write_all(text.as_bytes());
+            }
+            let _ = child.wait();
+            return;
+        }
+    }
+    // Fallback: OSC 52
     let encoded = base64::engine::general_purpose::STANDARD.encode(text);
-    // OSC 52: \x1b]52;c;{base64}\x07
     let seq = format!("\x1b]52;c;{encoded}\x07");
     let _ = std::io::stdout().write_all(seq.as_bytes());
     let _ = std::io::stdout().flush();
