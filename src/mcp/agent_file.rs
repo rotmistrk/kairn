@@ -5,8 +5,8 @@ use std::path::Path;
 use serde_json::json;
 
 /// Write the agent file at `.kiro/agents/kairn.json` relative to project root.
-/// Uses the current executable path and the given socket path.
-pub fn write_agent_file(root: &Path, socket_path: &Path) {
+/// Uses the current executable path. Socket path comes from KAIRN_MCP_SOCKET env var at runtime.
+pub fn write_agent_file(root: &Path) {
     let agents_dir = root.join(".kiro/agents");
     if let Err(e) = std::fs::create_dir_all(&agents_dir) {
         log::error!("MCP agent: create_dir_all {}: {e}", agents_dir.display());
@@ -17,15 +17,13 @@ pub fn write_agent_file(root: &Path, socket_path: &Path) {
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| "kairn".to_owned());
 
-    let sock_str = socket_path.to_string_lossy();
-
     let config = json!({
         "name": "kairn",
         "mcpServers": {
             "kairn": {
                 "command": bin,
                 "args": ["--mcp-connect"],
-                "env": {"KAIRN_MCP_SOCKET": sock_str}
+                "env": {"KAIRN_MCP_SOCKET": "${KAIRN_MCP_SOCKET}"}
             }
         },
         "includeMcpJson": true,

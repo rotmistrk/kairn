@@ -61,7 +61,13 @@ pub fn new_kiro_terminal_with_resume(
         resume_flag = format!("--resume-id={id}");
         args.push(&resume_flag);
     }
-    match txv_widgets::PtyTerminal::spawn_command("kiro-cli", &args, cwd, 80, 24) {
+    let socket_val = std::env::var("KAIRN_MCP_SOCKET").unwrap_or_default();
+    let envs: Vec<(&str, &str)> = if socket_val.is_empty() {
+        vec![]
+    } else {
+        vec![("KAIRN_MCP_SOCKET", &socket_val)]
+    };
+    match txv_widgets::PtyTerminal::spawn_command_with_env("kiro-cli", &args, cwd, 80, 24, &envs) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);

@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
     let mcp_snapshot = std::sync::Arc::new(std::sync::Mutex::new(kairn::mcp::snapshot::McpSnapshot::default()));
     let mcp_socket = kairn::mcp::listener::start_mcp_listener(std::sync::Arc::clone(&mcp_snapshot), &socket_path);
     if let Ok(ref sock) = mcp_socket {
-        kairn::mcp::agent_file::write_agent_file(&root_dir, sock);
+        kairn::mcp::agent_file::write_agent_file(&root_dir);
         std::env::set_var("KAIRN_MCP_SOCKET", sock.to_string_lossy().as_ref());
     }
 
