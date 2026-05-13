@@ -149,6 +149,9 @@ impl EditorView {
                 );
                 queue.put_command(crate::commands::CM_LSP_HOVER, Some(Box::new(data)));
             }
+            EditorAction::AppCommand(cmd) => {
+                queue.put_command(crate::commands::CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
+            }
             _ => {}
         }
     }

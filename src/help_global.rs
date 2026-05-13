@@ -74,6 +74,8 @@ pub fn help_global() -> String {
   tab-rename <n>  Rename tool tab
   shell           New shell tab
   kiro [agent]    New kiro session (default: kairn agent)
+  struct          Switch to structured view (JSON/YAML)
+  text            Switch to plain text editor
   build           Run build command
   run             Run project
   test            Run tests
@@ -86,6 +88,7 @@ pub fn help_global() -> String {
   code-action     Show code actions (LSP)
   paste           Paste from system clipboard
   messages        Show messages window
+  grep <pattern>  Search files for pattern
   grow / shrink   Resize panel width
   grow-v / shrink-v  Resize panel height
   diff            Diff current file
@@ -94,6 +97,24 @@ pub fn help_global() -> String {
   git-untrack <p> Untrack file
   git-commit <m>  Commit with message
   Tab             Complete command / file path
+
+─── Command Scope ────────────────────────────────────
+  Commands can be entered two ways:
+    :command    From editor or structured view (vim-style)
+    M-x command From anywhere (status bar prompt)
+
+  Editor : handles local commands first, then forwards
+  unknown commands to M-x dispatch. Shell/kiro tabs
+  pass all keys to the PTY — use M-x from those.
+
+  Scope table:
+    Editor-only:  :123 (goto line), :s/pat/rep/ (substitute),
+                  :d (delete lines), :y (yank lines),
+                  :set (local option), :! (shell filter)
+    View-local:   save, close, diff, nodiff, struct, text
+    App-global:   shell, kiro, build, test, grep, edit,
+                  lsp-rename, code-action, paste, messages,
+                  grow, shrink, git-*
 "
     .to_string()
 }

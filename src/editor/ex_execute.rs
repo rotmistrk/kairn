@@ -27,8 +27,7 @@ impl Editor {
 
         let total = self.buffer.line_count();
         let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) else {
-            self.status = format!("Unknown: {trimmed}");
-            return EditorAction::None;
+            return EditorAction::AppCommand(trimmed.to_string());
         };
 
         match ex_cmd {

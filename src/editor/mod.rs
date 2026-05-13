@@ -46,6 +46,8 @@ pub enum EditorAction {
     LspFindReferences,
     LspHover,
     LspCompletion,
+    /// Forward unrecognized : command to app-level M-x dispatch.
+    AppCommand(String),
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.
