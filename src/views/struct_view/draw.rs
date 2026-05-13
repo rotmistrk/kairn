@@ -121,8 +121,22 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
     let mut text = String::new();
 
     if depth > 0 {
+        // Build ancestor continuation lines: │ for non-last ancestors, space for last
+        let mut guides = Vec::with_capacity(depth.saturating_sub(1));
+        let mut current = node_id;
         for _ in 0..depth.saturating_sub(1) {
-            text.push_str("  ");
+            if let Some(parent) = view.doc.parent(current) {
+                current = parent;
+                guides.push(!view.is_last_child(current));
+            }
+        }
+        guides.reverse();
+        for has_line in &guides {
+            if *has_line {
+                text.push_str("│ ");
+            } else {
+                text.push_str("  ");
+            }
         }
         if view.is_last_child(node_id) {
             text.push_str("└─");

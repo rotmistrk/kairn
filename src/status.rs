@@ -85,6 +85,7 @@ pub fn build_status_bar(
     bar.add_active_only(KeyLabelItem::hidden(ctrl('z'), CM_SUSPEND));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('o'), CM_PEEK));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('d'), CM_DIFF));
+    bar.add_active_only(KeyLabelItem::hidden(ctrl('l'), CM_REPAINT));
     // Command input (exclusive on activation)
     bar.add(
         CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
