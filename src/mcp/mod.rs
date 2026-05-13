@@ -3,6 +3,7 @@
 pub mod agent_file;
 pub mod bridge;
 pub mod collect;
+pub mod commands;
 pub mod listener;
 pub mod log;
 pub mod server;

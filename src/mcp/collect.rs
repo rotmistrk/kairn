@@ -34,6 +34,7 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
                 tab_type: tab_type.to_string(),
                 path,
                 focused: is_focused,
+                active: i == active_idx,
                 modified,
                 cursor,
                 order,

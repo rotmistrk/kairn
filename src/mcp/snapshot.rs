@@ -9,6 +9,7 @@ pub struct TabInfo {
     pub tab_type: String,
     pub path: Option<String>,
     pub focused: bool,
+    pub active: bool,
     pub modified: bool,
     pub cursor: Option<CursorPos>,
     pub order: usize,

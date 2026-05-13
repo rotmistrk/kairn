@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Map, Value};
 
+use super::commands::McpCommandQueue;
 use super::snapshot::McpSnapshot;
 use super::tools;
 
@@ -27,11 +28,12 @@ fn jsonrpc_result(id: &Value, result: &Value) -> Value {
 /// MCP server holding a shared snapshot of kairn state.
 pub struct McpServer {
     snapshot: Arc<Mutex<McpSnapshot>>,
+    cmd_queue: Option<McpCommandQueue>,
 }
 
 impl McpServer {
-    pub fn new(snapshot: Arc<Mutex<McpSnapshot>>) -> Self {
-        Self { snapshot }
+    pub fn new(snapshot: Arc<Mutex<McpSnapshot>>, cmd_queue: Option<McpCommandQueue>) -> Self {
+        Self { snapshot, cmd_queue }
     }
 
     /// Run the server loop: read JSON-RPC lines, dispatch, write responses.
@@ -97,7 +99,7 @@ impl McpServer {
         let empty_map = Map::new();
         let arguments = params.get("arguments").and_then(Value::as_object).unwrap_or(&empty_map);
 
-        match tools::handle_tool_call(&self.snapshot, tool_name, arguments) {
+        match tools::handle_tool_call(&self.snapshot, self.cmd_queue.as_ref(), tool_name, arguments) {
             Ok(result) => {
                 let text = if result.is_string() {
                     result.as_str().unwrap_or("").to_owned()

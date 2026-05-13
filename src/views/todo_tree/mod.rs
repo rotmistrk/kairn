@@ -11,6 +11,7 @@ use self::handle::HandleAction;
 
 pub mod data;
 mod handle;
+mod mcp;
 pub mod model;
 
 pub use self::data::TodoTreeData;
@@ -101,6 +102,10 @@ impl View for TodoTreeView {
 
     fn title(&self) -> &str {
         "Todo"
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
     }
 
     fn can_close(&self) -> CloseResult {
@@ -199,6 +204,8 @@ impl View for TodoTreeView {
                     }
                 }
             }
+            let msg = txv_core::message::Message::info("todo", String::new());
+            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             self.inner.state.mark_dirty();
             return HandleResult::Consumed;
         }
@@ -217,6 +224,10 @@ impl View for TodoTreeView {
         let cursor = self.inner.cursor;
         if self.inner.data.visible_count() > 0 {
             if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor, queue) {
+                if matches!(action, HandleAction::ConfirmDelete) {
+                    let msg = txv_core::message::Message::info("todo", "Delete item? [y]es [Esc]cancel".to_string());
+                    queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                }
                 self.apply_action(action);
                 return HandleResult::Consumed;
             }

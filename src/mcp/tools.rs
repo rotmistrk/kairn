@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Map, Value};
 
+use super::commands::{McpAction, McpCommandQueue};
 use super::snapshot::McpSnapshot;
 
 /// Return the list of tool definitions for `tools/list`.
@@ -34,6 +35,30 @@ pub fn tool_definitions() -> Value {
             "name": "get_todo_tree",
             "description": "Get the full todo tree (titles, checked state, nesting)",
             "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "update_todo",
+            "description": "Modify the todo tree: toggle, add, remove, move, promote, demote items",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote", "demote"],
+                        "description": "Action to perform"
+                    },
+                    "path": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Index path to the item (e.g. [0] for first root, [2,1] for second child of third root)"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title for new item (required for 'add' action)"
+                    }
+                },
+                "required": ["action", "path"]
+            }
         }
     ])
 }
@@ -41,6 +66,7 @@ pub fn tool_definitions() -> Value {
 /// Dispatch a tool call to the appropriate handler.
 pub fn handle_tool_call(
     snapshot: &Arc<Mutex<McpSnapshot>>,
+    cmd_queue: Option<&McpCommandQueue>,
     name: &str,
     args: &Map<String, Value>,
 ) -> Result<Value, String> {
@@ -49,6 +75,7 @@ pub fn handle_tool_call(
         "list_terminals" => tool_list_terminals(snapshot),
         "get_terminal_content" => tool_get_terminal_content(snapshot, args),
         "get_todo_tree" => tool_get_todo_tree(snapshot),
+        "update_todo" => tool_update_todo(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }
@@ -63,6 +90,7 @@ fn tool_list_tabs(snapshot: &Arc<Mutex<McpSnapshot>>) -> Result<Value, String> {
                 "name": t.name,
                 "type": t.tab_type,
                 "focused": t.focused,
+                "active": t.active,
                 "modified": t.modified,
                 "order": t.order,
             });
@@ -143,4 +171,37 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
             obj
         })
         .collect()
+}
+
+fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let action_str = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
+    let path: Vec<usize> = args
+        .get("path")
+        .and_then(Value::as_array)
+        .ok_or("Missing 'path'")?
+        .iter()
+        .filter_map(Value::as_u64)
+        .map(|n| n as usize)
+        .collect();
+
+    let action = match action_str {
+        "toggle" => McpAction::TodoToggle { path },
+        "add" => {
+            let title = args
+                .get("title")
+                .and_then(Value::as_str)
+                .unwrap_or("New task")
+                .to_string();
+            McpAction::TodoAdd { path, title }
+        }
+        "remove" => McpAction::TodoRemove { path },
+        "move_up" => McpAction::TodoMoveUp { path },
+        "move_down" => McpAction::TodoMoveDown { path },
+        "promote" => McpAction::TodoPromote { path },
+        "demote" => McpAction::TodoDemote { path },
+        _ => return Err(format!("Unknown action: {action_str}")),
+    };
+
+    queue.send(action)
 }

@@ -42,6 +42,8 @@ pub struct AppState {
     pub doc_versions: std::collections::HashMap<String, i64>,
     /// MCP snapshot (updated periodically for MCP server reads).
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
+    /// MCP command queue for write operations from MCP tools.
+    pub mcp_commands: Option<crate::mcp::commands::McpCommandQueue>,
     mcp_tick: u16,
     pub waker: Option<txv_core::run::Waker>,
     pub theme_state: Option<std::cell::RefCell<crate::app_palette::ThemeState>>,
@@ -69,6 +71,7 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
+            mcp_commands: None,
             mcp_tick: 0,
             waker: None,
             theme_state: None,
@@ -92,6 +95,7 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
             mcp_snapshot: None,
+            mcp_commands: None,
             mcp_tick: 0,
             waker: None,
             theme_state: None,
@@ -127,6 +131,9 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // Drain background tasks (grep, build)
     crate::handler_drain::drain_grep(ctx, state);
     crate::handler_drain::drain_build(ctx, state);
+
+    // Drain MCP write commands
+    crate::handler_drain::drain_mcp(ctx, state);
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     if state.mcp_snapshot.is_some() {

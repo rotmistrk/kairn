@@ -148,7 +148,7 @@ fn mcp_tool_list_tabs_includes_new_fields() {
         h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     }
 
-    let result = handle_tool_call(&snap, "list_tabs", &Map::new()).unwrap();
+    let result = handle_tool_call(&snap, None, "list_tabs", &Map::new()).unwrap();
     assert!(result.get("focused_slot").is_some());
     assert!(result.get("tabs").is_some());
     let tabs = result["tabs"].as_array().unwrap();
@@ -181,6 +181,6 @@ fn mcp_tool_get_terminal_by_index() {
 
     let mut args = Map::new();
     args.insert("index".to_string(), json!(0));
-    let result = handle_tool_call(&snap, "get_terminal_content", &args);
+    let result = handle_tool_call(&snap, None, "get_terminal_content", &args);
     assert!(result.is_ok());
 }

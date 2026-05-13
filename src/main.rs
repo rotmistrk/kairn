@@ -78,7 +78,12 @@ fn main() -> anyhow::Result<()> {
 
     // Start MCP listener
     let mcp_snapshot = std::sync::Arc::new(std::sync::Mutex::new(kairn::mcp::snapshot::McpSnapshot::default()));
-    let mcp_socket = kairn::mcp::listener::start_mcp_listener(std::sync::Arc::clone(&mcp_snapshot), &socket_path);
+    let mcp_cmd_queue: kairn::mcp::listener::SharedCommandQueue = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let mcp_socket = kairn::mcp::listener::start_mcp_listener(
+        std::sync::Arc::clone(&mcp_snapshot),
+        std::sync::Arc::clone(&mcp_cmd_queue),
+        &socket_path,
+    );
     if let Ok(ref sock) = mcp_socket {
         kairn::mcp::agent_file::write_agent_file(&root_dir);
         std::env::set_var("KAIRN_MCP_SOCKET", sock.to_string_lossy().as_ref());
@@ -139,6 +144,13 @@ fn main() -> anyhow::Result<()> {
     let color_mode = detect_color_mode();
     let mut backend = CrosstermBackend::new(color_mode);
     app_state.waker = Some(backend.waker());
+
+    // Now that waker is available, set up MCP command queue for write operations
+    let cmd_queue = kairn::mcp::commands::McpCommandQueue::new(backend.waker());
+    app_state.mcp_commands = Some(cmd_queue.clone());
+    if let Ok(mut guard) = mcp_cmd_queue.lock() {
+        *guard = Some(cmd_queue);
+    }
 
     program.run(&mut backend, |ctx| {
         handle_command(ctx, &mut app_state);

@@ -6,15 +6,23 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use super::commands::McpCommandQueue;
 use super::log;
 use super::server::McpServer;
 use super::snapshot::McpSnapshot;
+
+/// Shared handle for the MCP command queue (set after waker is available).
+pub type SharedCommandQueue = Arc<Mutex<Option<McpCommandQueue>>>;
 
 /// Start the MCP listener thread on the given socket path.
 ///
 /// # Errors
 /// Returns an error string if binding fails.
-pub fn start_mcp_listener(snapshot: Arc<Mutex<McpSnapshot>>, socket_path: &Path) -> Result<PathBuf, String> {
+pub fn start_mcp_listener(
+    snapshot: Arc<Mutex<McpSnapshot>>,
+    cmd_queue: SharedCommandQueue,
+    socket_path: &Path,
+) -> Result<PathBuf, String> {
     log::log("listener", &format!("binding {}", socket_path.display()));
 
     // Instance lock: if we can connect, another instance is running.
@@ -54,8 +62,9 @@ pub fn start_mcp_listener(snapshot: Arc<Mutex<McpSnapshot>>, socket_path: &Path)
             let writer = std::io::BufWriter::new(stream);
 
             let snap = Arc::clone(&snapshot);
+            let cq = cmd_queue.lock().ok().and_then(|g| g.clone());
             std::thread::spawn(move || {
-                let server = McpServer::new(snap);
+                let server = McpServer::new(snap, cq);
                 let result = server.run(reader, writer);
                 log::log("listener", &format!("connection closed: {result:?}"));
             });
