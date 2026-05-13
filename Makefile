@@ -48,13 +48,18 @@ clippy:
 	cargo clippy --workspace -- -D warnings
 
 test:
+	@bash -c '\
 	cargo test --workspace 2>&1 | tee /tmp/kairn-test-output.txt; \
 	STATUS=$${PIPESTATUS[0]}; \
-	if grep -qE '[1-9][0-9]* ignored' /tmp/kairn-test-output.txt; then \
+	if [ $$STATUS -ne 0 ]; then \
+		echo "❌ Tests failed (exit code $$STATUS)"; \
+		exit 1; \
+	fi; \
+	if grep -qE "[1-9][0-9]* ignored" /tmp/kairn-test-output.txt; then \
 		echo "❌ FATAL: tests were skipped/ignored — all tests must run"; \
 		exit 1; \
 	fi; \
-	exit $$STATUS
+	echo "  ✅ All tests passed, none ignored"'
 
 lint: clippy
 

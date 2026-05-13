@@ -161,13 +161,18 @@ queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 
 ## Palette / Colors
 
-Colors are being refactored (palette system). Avoid hardcoding `Color::Ansi(N)` in new code — this will change soon.
+All colors go through the palette system. NEVER hardcode `Color::Ansi(N)` in views.
+
+- Framework roles: `txv_core::palette::palette()` (base, interactive, chrome, popup, state)
+- App roles: `crate::app_palette::app_palette()` (git, diff, editor, diag, tree, todo, msg)
+- Config: users override via `set color.<group>.<role> <ansi-number>` in `init.tcl`
+- Reference: `doc/example-init.tcl` lists all available color roles
 
 ## File Persistence
 
 - Todo tree: `.kairn.todo` (duir-compatible format)
 - Session state: `.kairn.state` (auto-save on quit, auto-restore on launch)
-- Settings: `.kairnrc` (JSON, sparse overlay — global `~/.kairnrc` + project `.kairnrc`)
+- Settings: `~/.config/kairn/init.tcl` (Tcl syntax, sparse — only set what you change)
 
 ## Code Style
 

@@ -92,6 +92,10 @@
 | LSP integration | ❌ | |
 | :split / :vsplit | ❌ | |
 | Session persistence | ❌ | |
+| MCP server (read tools) | ✅ | Tabs, terminal content, snapshots |
+| MCP server (write tools) | ✅ | Commands, todo operations |
+| Palette system (dark/light) | ✅ | AppPalette + ThemeState + config |
+| Handler drain pattern | ✅ | Background task results |
 
 ### Known Bugs
 
@@ -101,7 +105,7 @@
 
 ### Test Coverage
 
-692 tests passing (as of 2026-05-10). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
+935 tests passing (as of 2026-05-12). Pre-commit hook enforces: fmt, clippy -D warnings, 240 code line limit, all tests pass.
 
 ### Features to Port from Master (ratatui → txv rewrite)
 

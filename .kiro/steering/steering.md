@@ -1,5 +1,32 @@
 # kairn — Agent Steering Document
 
+## CRITICAL: No External Tools
+
+kairn must NEVER depend on external CLI tools for core functionality. Use pure Rust crates.
+
+Forbidden: `rg`, `grep`, `git` CLI, `find`, `pbcopy`, etc.
+Use instead: `ignore` (file walking), `regex` (search), `gix` (git), `syntect` (highlighting).
+
+---
+
+## CRITICAL: No Silent Errors
+
+Every failure MUST either show in status bar + message ring (user-facing) or log at
+WARN/ERROR (background). Never `let _ = fallible_op();` without logging.
+
+---
+
+## GRITS: Feature Implementation Cycle
+
+Every feature/fix follows this cycle iteratively:
+
+1. **G**reen — start from passing build + tests
+2. **R**egression — confirm existing tests still pass
+3. **I**mplementation with new tests — code AND tests together
+4. **T**ests **S**ucceed — all tests (old + new) pass before done
+
+---
+
 ## CRITICAL: Pre-Commit Hook
 
 The pre-commit hook enforces ALL of the following. Code MUST pass before commit:
@@ -171,6 +198,7 @@ tests/              Integration/scenario tests (one concern per file)
 
 ## Reference Documents
 
+- `CONVENTIONS.md` — Patterns and rules (error handling, confirmations, drain pattern)
 - `doc/f4-design/v-013-txv-architecture.md` — Definitive TXV design
 - `doc/f4-design/STATUS.md` — Feature status table + development cycle SOP
 - `doc/f4-design/steps/` — Build step files for each crate

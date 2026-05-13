@@ -53,5 +53,11 @@ if echo "$TEST_OUTPUT" | grep -q "FAILED"; then
     echo "❌ Test failures detected"
     exit 1
 fi
+# Ensure zero ignored/skipped tests
+if echo "$TEST_OUTPUT" | grep -qE '[1-9][0-9]* ignored'; then
+    echo "$TEST_OUTPUT" | grep 'ignored'
+    echo "❌ Tests were skipped/ignored — all tests must run"
+    exit 1
+fi
 
 echo "✅ All checks passed"
