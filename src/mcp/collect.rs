@@ -1,7 +1,7 @@
 //! MCP snapshot collector — extracts state from the desktop for MCP tools.
 
 use crate::layout_group::{LayoutGroup, SlotId};
-use crate::mcp::snapshot::{CursorPos, McpSnapshot, TabInfo, TerminalInfo};
+use crate::mcp::snapshot::{CursorPos, McpSnapshot, SelectionRange, TabInfo, TerminalInfo};
 use crate::views::editor::EditorView;
 
 /// Collect current state from the desktop into a snapshot.
@@ -23,10 +23,10 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
             };
             let is_focused = slot == focused_slot && i == active_idx;
 
-            let (modified, cursor) = if tab_type == "editor" {
+            let (modified, cursor, selection) = if tab_type == "editor" {
                 extract_editor_state(panel.view_at_mut(i))
             } else {
-                (false, None)
+                (false, None, None)
             };
 
             tabs.push(TabInfo {
@@ -37,6 +37,7 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
                 active: i == active_idx,
                 modified,
                 cursor,
+                selection,
                 order,
             });
             order += 1;
@@ -57,23 +58,35 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
     }
 }
 
-/// Extract cursor and modified state from an editor view.
-fn extract_editor_state(view: Option<&mut Box<dyn txv_core::view::View>>) -> (bool, Option<CursorPos>) {
+/// Extract cursor, modified, and selection state from an editor view.
+fn extract_editor_state(
+    view: Option<&mut Box<dyn txv_core::view::View>>,
+) -> (bool, Option<CursorPos>, Option<SelectionRange>) {
     let Some(v) = view else {
-        return (false, None);
+        return (false, None, None);
     };
     let Some(any) = v.as_any_mut() else {
-        return (false, None);
+        return (false, None, None);
     };
     let Some(editor) = any.downcast_ref::<EditorView>() else {
-        return (false, None);
+        return (false, None, None);
     };
     let modified = editor.editor.buffer.is_dirty();
     let cursor = Some(CursorPos {
         line: editor.editor.cursor_line,
         col: editor.editor.cursor_col,
     });
-    (modified, cursor)
+    let selection = editor.editor.visual_range().map(|(start, end)| {
+        let (sl, sc) = editor.editor.buffer.offset_to_line_col(start);
+        let (el, ec) = editor.editor.buffer.offset_to_line_col(end);
+        SelectionRange {
+            start_line: sl,
+            start_col: sc,
+            end_line: el,
+            end_col: ec,
+        }
+    });
+    (modified, cursor, selection)
 }
 
 /// Collect terminal content (requires mutable access for PtyTerminal).

@@ -7,7 +7,6 @@ mod draw;
 mod draw_diagnostics;
 mod draw_diff;
 mod handle;
-mod handle_close;
 mod handle_completion;
 mod handle_diff;
 
@@ -33,7 +32,6 @@ pub struct EditorView {
     pub settings: EditorSettings,
     last_edit_tick: u64,
     tick_counter: u64,
-    close_prompt: bool,
     eviction_close: bool,
     display_title: String,
     diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
@@ -63,9 +61,8 @@ impl EditorView {
     /// Sets eviction_close so the prompt skips CM_TAB_CLOSE on resolution.
     pub fn request_close(&mut self) {
         if self.editor.buffer.is_dirty() && !self.settings.autosave {
-            self.close_prompt = true;
             self.eviction_close = true;
-            self.editor.status = "Save changes? [y]es [n]o [Esc]cancel".to_string();
+            // The caller (handler_evict) must emit CM_CONFIRM + CM_SET_CONFIRM_CONTEXT
             self.state.mark_dirty();
         }
     }
@@ -219,11 +216,6 @@ impl View for EditorView {
         // Diff mode: intercept keys for navigation
         if self.in_diff_mode() {
             return self.handle_diff_key(key, queue);
-        }
-
-        // Close prompt: y/n/c
-        if self.close_prompt {
-            return self.handle_close_prompt(key, queue);
         }
 
         let old_mode = self.editor.mode;

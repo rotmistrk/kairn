@@ -30,6 +30,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
+                        ctx.queue,
                         SlotId::Center,
                         "Help".into(),
                         Box::new(HelpView::new()),
@@ -38,7 +39,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         "quit" => ctx.queue.put_command(CM_QUIT, None),
-        "edit" | "e" if !arg.is_empty() => crate::handler_open::handle_edit_file(ctx.desktop, state, arg),
+        "edit" | "e" if !arg.is_empty() => crate::handler_open::handle_edit_file(ctx.desktop, ctx.queue, state, arg),
         "save" => ctx.queue.put_command(CM_SAVE, None),
         "close" => ctx.queue.put_command(CM_TAB_CLOSE, None),
         "tab-rename" if !arg.is_empty() => {
@@ -62,7 +63,14 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "shell" => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), new_shell_terminal());
+                crate::handler_evict::try_insert_tab(
+                    desktop,
+                    state,
+                    ctx.queue,
+                    SlotId::Right,
+                    name.clone(),
+                    new_shell_terminal(),
+                );
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(txv_core::message::Message::info(
@@ -83,7 +91,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                     Some("kairn")
                 };
                 let term = new_kiro_terminal(agent_arg, &state.root_dir);
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), term);
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, name.clone(), term);
                 state.kiro_registry.register(&name);
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
@@ -115,7 +123,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             let title = format!("grep:{arg}");
             let view = crate::views::results::ResultsView::searching(&title, &root);
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title, Box::new(view));
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, title, Box::new(view));
                 desktop.focus_slot(SlotId::Right);
             }
         }
@@ -159,10 +167,10 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
         }
         "struct" | "structured" => {
-            crate::handler_open::toggle_view_mode(ctx.desktop, state, true);
+            crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, true);
         }
         "text" => {
-            crate::handler_open::toggle_view_mode(ctx.desktop, state, false);
+            crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, false);
         }
         _ => {
             let msg = txv_core::message::Message::warn("handler", format!("Unknown command: {cmd}"));

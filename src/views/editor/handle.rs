@@ -74,26 +74,28 @@ impl EditorView {
             }
             EditorAction::CloseRequested => {
                 if self.editor.buffer.is_dirty() && !self.settings.autosave {
-                    self.close_prompt = true;
-                    self.editor.status = "Save changes? [y]es [n]o [Esc]cancel".to_string();
+                    self.eviction_close = false;
+                    let path = self.path.to_string_lossy().to_string();
+                    let ctx = crate::commands::ConfirmContext::EditorClose(path);
+                    queue.put_command(crate::commands::CM_SET_CONFIRM_CONTEXT, Some(Box::new(ctx)));
+                    queue.put_command(
+                        crate::commands::CM_CONFIRM,
+                        Some(Box::new("Save changes? [y]es [n]o [Esc]cancel".to_string())),
+                    );
                     self.state.mark_dirty();
                 } else {
                     if self.settings.autosave && self.editor.buffer.is_dirty() {
                         self.save_buffer();
                     }
-                    queue.put_command(
-                        crate::commands::CM_FILE_CLOSED,
-                        Some(Box::new(self.path.to_string_lossy().to_string())),
-                    );
+                    let p = self.path.to_string_lossy().to_string();
+                    queue.put_command(crate::commands::CM_FILE_CLOSED, Some(Box::new(p)));
                     queue.put_command(CM_TAB_CLOSE, None);
                 }
             }
             EditorAction::ForceCloseRequested => {
-                self.editor.buffer.mark_saved(); // discard changes
-                queue.put_command(
-                    crate::commands::CM_FILE_CLOSED,
-                    Some(Box::new(self.path.to_string_lossy().to_string())),
-                );
+                self.editor.buffer.mark_saved();
+                let p = self.path.to_string_lossy().to_string();
+                queue.put_command(crate::commands::CM_FILE_CLOSED, Some(Box::new(p)));
                 queue.put_command(CM_TAB_CLOSE, None);
             }
             EditorAction::ShellOutput(output) => {

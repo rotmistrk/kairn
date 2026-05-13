@@ -134,3 +134,18 @@ pub struct ContentChanged {
 pub const CM_GOTO_LINE: CommandId = 182;
 pub const CM_GREP_RESULTS: CommandId = 183;
 pub const CM_TOGGLE_THEME: CommandId = 184;
+
+// Confirmation prompt (ConfirmItem in status bar)
+pub const CM_CONFIRM: CommandId = 190;
+pub const CM_CONFIRM_RESPONSE: CommandId = 191;
+/// Sets the confirm context (data: ConfirmContext). Handled by main handler.
+pub const CM_SET_CONFIRM_CONTEXT: CommandId = 192;
+
+/// Context for which confirmation is active — used to route CM_CONFIRM_RESPONSE.
+#[derive(Debug, Clone)]
+pub enum ConfirmContext {
+    /// Editor close: save? (payload: file path)
+    EditorClose(String),
+    /// Todo tree: delete item
+    TodoDelete,
+}

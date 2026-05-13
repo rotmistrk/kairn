@@ -20,7 +20,6 @@ pub use self::data::TodoTreeData;
 pub struct TodoTreeView {
     inner: TreeView<TodoTreeData>,
     editing: Option<InlineEditor>,
-    confirm_delete: bool,
 }
 
 impl TodoTreeView {
@@ -30,7 +29,21 @@ impl TodoTreeView {
         Self {
             inner: TreeView::new(data),
             editing: None,
-            confirm_delete: false,
+        }
+    }
+
+    /// Execute the pending delete (called from handler_confirm on 'y' response).
+    pub fn confirm_delete_execute(&mut self) {
+        let cursor = self.inner.cursor;
+        if cursor < self.inner.data.visible_count() {
+            let id = self.inner.data.visible_id(cursor);
+            if let Some(path) = self.inner.data.path_at(id) {
+                let path = path.clone();
+                model::remove_item(&mut self.inner.data.file, &path);
+                self.inner.data.save();
+                self.inner.data.rebuild_flat();
+                self.inner.state.mark_dirty();
+            }
         }
     }
 
@@ -90,7 +103,7 @@ impl TodoTreeView {
                 self.start_edit_selected();
             }
             HandleAction::ConfirmDelete => {
-                self.confirm_delete = true;
+                // Confirmation triggered via CM_CONFIRM command in handle()
             }
         }
         self.inner.state.mark_dirty();
@@ -189,26 +202,6 @@ impl View for TodoTreeView {
         let Event::Key(key) = event else {
             return self.inner.handle(event, queue);
         };
-        // Handle delete confirmation
-        if self.confirm_delete {
-            self.confirm_delete = false;
-            if key.code == KeyCode::Char('y') {
-                let cursor = self.inner.cursor;
-                if cursor < self.inner.data.visible_count() {
-                    let id = self.inner.data.visible_id(cursor);
-                    if let Some(path) = self.inner.data.path_at(id) {
-                        let path = path.clone();
-                        model::remove_item(&mut self.inner.data.file, &path);
-                        self.inner.data.save();
-                        self.inner.data.rebuild_flat();
-                    }
-                }
-            }
-            let msg = txv_core::message::Message::info("todo", String::new());
-            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            self.inner.state.mark_dirty();
-            return HandleResult::Consumed;
-        }
         if self.editing.is_some() {
             return self.handle_editing_key(key);
         }
@@ -225,8 +218,14 @@ impl View for TodoTreeView {
         if self.inner.data.visible_count() > 0 {
             if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor, queue) {
                 if matches!(action, HandleAction::ConfirmDelete) {
-                    let msg = txv_core::message::Message::info("todo", "Delete item? [y]es [Esc]cancel".to_string());
-                    queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                    queue.put_command(
+                        crate::commands::CM_SET_CONFIRM_CONTEXT,
+                        Some(Box::new(crate::commands::ConfirmContext::TodoDelete)),
+                    );
+                    queue.put_command(
+                        crate::commands::CM_CONFIRM,
+                        Some(Box::new("Delete item? [y]es [Esc]cancel".to_string())),
+                    );
                 }
                 self.apply_action(action);
                 return HandleResult::Consumed;

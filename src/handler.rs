@@ -72,7 +72,14 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
                     let help = HelpView::new();
-                    crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, "Help".into(), Box::new(help));
+                    crate::handler_evict::try_insert_tab(
+                        desktop,
+                        state,
+                        ctx.queue,
+                        SlotId::Center,
+                        "Help".into(),
+                        Box::new(help),
+                    );
                 }
             }
         }
@@ -85,6 +92,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
+                        ctx.queue,
                         SlotId::Right,
                         "Messages".into(),
                         Box::new(messages),
@@ -97,7 +105,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, name.clone(), term);
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, name.clone(), term);
                 ctx.queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("shell", format!("Started: {name}")))),
@@ -162,6 +170,16 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     state.cursor_pos = (pos.line.saturating_sub(1), pos.col.saturating_sub(1));
                 }
             }
+        }
+        CM_SET_CONFIRM_CONTEXT => {
+            if let Some(boxed) = ctx.data.as_ref() {
+                if let Some(context) = boxed.downcast_ref::<crate::commands::ConfirmContext>() {
+                    state.confirm_context = Some(context.clone());
+                }
+            }
+        }
+        CM_CONFIRM_RESPONSE => {
+            crate::handler_confirm::handle_confirm_response(ctx, state);
         }
         _ => {}
     }

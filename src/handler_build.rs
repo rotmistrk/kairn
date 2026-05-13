@@ -25,7 +25,7 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         desktop.close_tab_by_title(SlotId::Right, "Run");
         let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, "Run".into(), term);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, "Run".into(), term);
         desktop.focus_slot(SlotId::Right);
     }
 }
@@ -73,7 +73,14 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         desktop.close_tab_by_title(SlotId::Right, title);
         let view = crate::views::results::ResultsView::searching(title, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.to_string(), Box::new(view));
+        crate::handler_evict::try_insert_tab(
+            desktop,
+            state,
+            ctx.queue,
+            SlotId::Right,
+            title.to_string(),
+            Box::new(view),
+        );
         desktop.focus_slot(SlotId::Right);
     }
 }

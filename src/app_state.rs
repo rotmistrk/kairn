@@ -40,6 +40,8 @@ pub struct AppState {
         std::path::PathBuf,
     )>,
     pub pending_tab: Option<crate::eviction::PendingTab>,
+    /// Active confirmation context — routes CM_CONFIRM_RESPONSE to the right handler.
+    pub confirm_context: Option<crate::commands::ConfirmContext>,
 }
 
 impl AppState {
@@ -64,6 +66,7 @@ impl AppState {
             grep_pending: None,
             build_pending: None,
             pending_tab: None,
+            confirm_context: None,
         }
     }
 
@@ -88,6 +91,7 @@ impl AppState {
             grep_pending: None,
             build_pending: None,
             pending_tab: None,
+            confirm_context: None,
         }
     }
 }

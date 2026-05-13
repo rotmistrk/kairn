@@ -12,6 +12,7 @@ pub struct TabInfo {
     pub active: bool,
     pub modified: bool,
     pub cursor: Option<CursorPos>,
+    pub selection: Option<SelectionRange>,
     pub order: usize,
 }
 
@@ -20,6 +21,15 @@ pub struct TabInfo {
 pub struct CursorPos {
     pub line: usize,
     pub col: usize,
+}
+
+/// Selection range in an editor tab.
+#[derive(Debug, Clone, Serialize)]
+pub struct SelectionRange {
+    pub start_line: usize,
+    pub start_col: usize,
+    pub end_line: usize,
+    pub end_col: usize,
 }
 
 /// A terminal tab entry with content access.

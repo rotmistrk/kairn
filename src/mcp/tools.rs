@@ -100,6 +100,12 @@ fn tool_list_tabs(snapshot: &Arc<Mutex<McpSnapshot>>) -> Result<Value, String> {
             if let Some(ref c) = t.cursor {
                 obj["cursor"] = json!({"line": c.line, "col": c.col});
             }
+            if let Some(ref s) = t.selection {
+                obj["selection"] = json!({
+                    "start": {"line": s.start_line, "col": s.start_col},
+                    "end": {"line": s.end_line, "col": s.end_col},
+                });
+            }
             obj
         })
         .collect();

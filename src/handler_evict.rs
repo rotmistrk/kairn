@@ -1,9 +1,10 @@
-//! Handler logic for tab eviction — LRU close via editor's own prompt.
+//! Handler logic for tab eviction — LRU close via ConfirmItem prompt.
 
 use txv_core::prelude::*;
 
+use crate::app_state::AppState;
+use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 use crate::eviction::PendingTab;
-use crate::handler::AppState;
 use crate::layout_group::{LayoutGroup, SlotId};
 use crate::views::editor::EditorView;
 
@@ -13,6 +14,7 @@ use crate::views::editor::EditorView;
 pub fn try_insert_tab(
     desktop: &mut LayoutGroup,
     state: &mut AppState,
+    queue: &mut EventQueue,
     slot: SlotId,
     title: String,
     view: Box<dyn View>,
@@ -38,20 +40,29 @@ pub fn try_insert_tab(
         desktop.insert_tab(slot, &title, view);
         return true;
     }
-    // Dirty LRU: activate it and trigger its close prompt
+    // Dirty LRU: activate it and trigger its close prompt via ConfirmItem
     desktop.panel_mut(slot).set_active(lru_idx);
-    trigger_close_prompt(desktop, slot, lru_idx);
+    trigger_close_prompt(desktop, queue, slot, lru_idx);
     state.pending_tab = Some(PendingTab { slot, title, view });
     false
 }
 
-/// Trigger the editor's own close prompt on the LRU tab.
-fn trigger_close_prompt(desktop: &mut LayoutGroup, slot: SlotId, idx: usize) {
+/// Trigger the confirm prompt for the LRU tab via ConfirmItem.
+fn trigger_close_prompt(desktop: &mut LayoutGroup, queue: &mut EventQueue, slot: SlotId, idx: usize) {
     let panel = desktop.panel_mut(slot);
     if let Some(view) = panel.view_at_mut(idx) {
         if let Some(any) = view.as_any_mut() {
             if let Some(editor) = any.downcast_mut::<EditorView>() {
                 editor.request_close();
+                let path = editor.path().to_string_lossy().to_string();
+                queue.put_command(
+                    CM_SET_CONFIRM_CONTEXT,
+                    Some(Box::new(ConfirmContext::EditorClose(path))),
+                );
+                queue.put_command(
+                    CM_CONFIRM,
+                    Some(Box::new("Save changes? [y]es [n]o [Esc]cancel".to_string())),
+                );
             }
         }
     }

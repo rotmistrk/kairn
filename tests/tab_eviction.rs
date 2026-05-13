@@ -113,11 +113,11 @@ fn discard_evicts_and_opens_new() {
     open_file(&mut h, "b.rs");
     h.run_cycles(2);
     open_file(&mut h, "c.rs");
-    h.run_cycles(2);
+    h.run_cycles(4);
 
-    // Press 'n' to discard (editor's close prompt: [y]es [n]o [Esc]cancel)
+    // Press 'n' to discard (ConfirmItem prompt: [y]es [n]o [Esc]cancel)
     h.inject_key(KeyCode::Char('n'), KeyMod::default());
-    h.run_cycles(2);
+    h.run_cycles(4);
 
     // c.rs should now be open
     assert!(h.content_contains("ccc"));

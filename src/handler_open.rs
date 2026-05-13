@@ -62,7 +62,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .to_string();
                 let view: Box<dyn View> = try_open_structured(path)
                     .unwrap_or_else(|| open_editor(path, &state.root_dir, &state.settings.editor_defaults, req));
-                crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, title.clone(), view);
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Center, title.clone(), view);
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
@@ -75,7 +75,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
     }
 }
 
-pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg: &str) {
+pub(crate) fn handle_edit_file(desktop: &mut dyn View, queue: &mut EventQueue, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
     let path_str = path.to_string_lossy().to_string();
     match state.broker.open(&path_str, SlotId::Center, 0) {
@@ -94,7 +94,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, state: &mut AppState, arg
                 Box::new(editor)
             });
             if let Some(d) = downcast_desktop(desktop) {
-                crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, view);
+                crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
             }
         }
     }
@@ -109,7 +109,14 @@ pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = EditorView::from_text(output);
-        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Center, "[cmd output]".into(), Box::new(view));
+        crate::handler_evict::try_insert_tab(
+            desktop,
+            state,
+            ctx.queue,
+            SlotId::Center,
+            "[cmd output]".into(),
+            Box::new(view),
+        );
     }
 }
 
@@ -122,14 +129,19 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = crate::views::results::ResultsView::new(title, entries.clone());
-        crate::handler_evict::try_insert_tab(desktop, state, SlotId::Right, title.clone(), Box::new(view));
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }
 }
 
 /// Toggle the active center tab between structured and text view.
 /// `to_structured`: true = switch to structured, false = switch to text.
-pub(crate) fn toggle_view_mode(desktop: &mut dyn View, state: &mut AppState, to_structured: bool) {
+pub(crate) fn toggle_view_mode(
+    desktop: &mut dyn View,
+    queue: &mut EventQueue,
+    state: &mut AppState,
+    to_structured: bool,
+) {
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
@@ -156,7 +168,7 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, state: &mut AppState, to_
         ed.set_root_dir(state.root_dir.clone());
         Box::new(ed)
     };
-    crate::handler_evict::try_insert_tab(d, state, SlotId::Center, title, view);
+    crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
 }
 
 /// Try to open a file as a structured view (JSON/JSONC/JSONL). Returns None if not applicable or parse fails.

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use txv_core::prelude::*;
 use txv_core::status::StatusBar;
 use txv_widgets::command_item::CommandItem;
+use txv_widgets::confirm_item::ConfirmItem;
 use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
@@ -102,6 +103,7 @@ pub fn build_status_bar(
         bar.add_active_only(KeyLabelItem::hidden_with_data(mac_key, CM_FOCUS_TAB, i as u16));
     }
     // Command input (exclusive on activation)
+    bar.add(ConfirmItem::new(CM_CONFIRM, CM_CONFIRM_RESPONSE));
     bar.add(
         CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
             .with_label("M-x")
