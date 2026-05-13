@@ -6,7 +6,12 @@ use super::{LayoutGroup, SlotId};
 use crate::commands::*;
 
 impl LayoutGroup {
-    pub(super) fn handle_command(&mut self, id: CommandId, queue: &mut EventQueue) -> HandleResult {
+    pub(super) fn handle_command(
+        &mut self,
+        id: CommandId,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+        queue: &mut EventQueue,
+    ) -> HandleResult {
         match id {
             CM_FOCUS_LEFT => {
                 self.focus_slot(SlotId::Left);
@@ -42,6 +47,12 @@ impl LayoutGroup {
             }
             CM_TAB_PREV => {
                 self.panel_mut(self.focused_slot()).tab_prev();
+                HandleResult::Consumed
+            }
+            CM_FOCUS_TAB => {
+                if let Some(idx) = data.as_ref().and_then(|d| d.downcast_ref::<u16>()) {
+                    self.panel_mut(self.focused_slot()).set_active(*idx as usize);
+                }
                 HandleResult::Consumed
             }
             CM_TAB_CLOSE => {

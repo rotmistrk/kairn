@@ -54,8 +54,8 @@ impl View for LayoutGroup {
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         // Commands handled by LayoutGroup itself
-        if let Event::Command { id, .. } = event {
-            let r = self.handle_command(*id, queue);
+        if let Event::Command { id, data } = event {
+            let r = self.handle_command(*id, data, queue);
             if r == HandleResult::Consumed {
                 return r;
             }

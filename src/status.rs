@@ -86,6 +86,21 @@ pub fn build_status_bar(
     bar.add_active_only(KeyLabelItem::hidden(ctrl('o'), CM_PEEK));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('d'), CM_DIFF));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('l'), CM_REPAINT));
+    // Alt-0..9: select tab by number (Linux: alt+digit, macOS: Unicode chars)
+    let mac_digits = ['º', '¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
+    for i in 0..10u8 {
+        let alt_key = KeyEvent {
+            code: KeyCode::Char((b'0' + i) as char),
+            modifiers: KeyMod {
+                ctrl: false,
+                alt: true,
+                shift: false,
+            },
+        };
+        bar.add_active_only(KeyLabelItem::hidden_with_data(alt_key, CM_FOCUS_TAB, i as u16));
+        let mac_key = key(KeyCode::Char(mac_digits[i as usize]));
+        bar.add_active_only(KeyLabelItem::hidden_with_data(mac_key, CM_FOCUS_TAB, i as u16));
+    }
     // Command input (exclusive on activation)
     bar.add(
         CommandItem::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
