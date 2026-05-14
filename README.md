@@ -27,6 +27,7 @@ A TUI IDE oriented around [Kiro](https://kiro.dev) AI. Named after *cairn* — s
 ## Quick Start
 
 ```bash
+make setup              # enable pre-commit hook (once per clone)
 cargo build --release
 ./target/release/kairn
 ```
