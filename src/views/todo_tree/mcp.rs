@@ -38,6 +38,26 @@ impl TodoTreeView {
             McpAction::TodoDemote { path } => {
                 model::demote(&mut self.inner.data.file, path).ok_or("Cannot demote")?;
             }
+            McpAction::TodoAddSubtree { path, items } => {
+                fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
+                    let title = val.get("title")?.as_str()?;
+                    let mut item = model::TodoItem::new(title);
+                    if let Some(children) = val.get("items").and_then(|v| v.as_array()) {
+                        for child_val in children {
+                            if let Some(child) = build_item(child_val) {
+                                item.items.push(child);
+                            }
+                        }
+                    }
+                    Some(item)
+                }
+                for item_val in items {
+                    let item = build_item(item_val).ok_or("Invalid item in subtree")?;
+                    if !model::add_child(&mut self.inner.data.file, path, item) {
+                        return Err("Failed to add subtree item".to_string());
+                    }
+                }
+            }
         }
         self.inner.data.save();
         self.inner.data.rebuild_flat();

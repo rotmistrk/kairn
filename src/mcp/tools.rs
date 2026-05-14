@@ -59,6 +59,33 @@ pub fn tool_definitions() -> Value {
                 },
                 "required": ["action", "path"]
             }
+        },
+        {
+            "name": "add_subtree",
+            "description": "Add a subtree of todo items as children of the item at path",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Index path to the parent item"
+                    },
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "items": {"type": "array", "description": "Nested children (recursive)"}
+                            },
+                            "required": ["title"]
+                        },
+                        "description": "Tree of items to add (each with title and optional nested items)"
+                    }
+                },
+                "required": ["path", "items"]
+            }
         }
     ])
 }
@@ -76,6 +103,7 @@ pub fn handle_tool_call(
         "get_terminal_content" => tool_get_terminal_content(snapshot, args),
         "get_todo_tree" => tool_get_todo_tree(snapshot),
         "update_todo" => tool_update_todo(cmd_queue, args),
+        "add_subtree" => tool_add_subtree(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }
@@ -210,4 +238,23 @@ fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Valu
     };
 
     queue.send(action)
+}
+
+fn tool_add_subtree(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let path: Vec<usize> = args
+        .get("path")
+        .and_then(Value::as_array)
+        .ok_or("Missing 'path'")?
+        .iter()
+        .filter_map(Value::as_u64)
+        .map(|n| n as usize)
+        .collect();
+    let items = args
+        .get("items")
+        .and_then(Value::as_array)
+        .ok_or("Missing 'items'")?
+        .clone();
+
+    queue.send(McpAction::TodoAddSubtree { path, items })
 }

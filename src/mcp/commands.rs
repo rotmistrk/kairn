@@ -28,6 +28,11 @@ pub enum McpAction {
     TodoPromote { path: Vec<usize> },
     /// Demote a todo item (increase nesting).
     TodoDemote { path: Vec<usize> },
+    /// Add a subtree of items as children of the item at path.
+    TodoAddSubtree {
+        path: Vec<usize>,
+        items: Vec<serde_json::Value>,
+    },
 }
 
 /// Shared command queue + waker for MCP write operations.
