@@ -52,7 +52,7 @@ pub fn start_mcp_listener(
 
             log::log("listener", "client connected");
 
-            let _ = stream.set_read_timeout(Some(Duration::from_secs(300)));
+            let _ = stream.set_read_timeout(None);
             let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
 
             let reader = BufReader::new(match stream.try_clone() {

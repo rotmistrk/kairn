@@ -76,10 +76,18 @@ impl LspRegistry {
     /// Get or start the LSP client for a language. Returns None if disabled or spawn fails.
     pub fn get_or_start(&mut self, language_id: &str, root_dir: &Path) -> Option<&mut LspClient> {
         if self.disabled.contains(&language_id.to_string()) {
-            log::debug!("LSP disabled for {language_id}");
             return None;
         }
         if self.active.contains_key(language_id) {
+            // Check if the server is still alive
+            if !self.active[language_id].is_alive() {
+                self.active.remove(language_id);
+                let err = format!("LSP server for {language_id} died — disabled until restart");
+                log::error!("{}", err);
+                self.last_error = Some(err);
+                self.disabled.push(language_id.to_string());
+                return None;
+            }
             return self.active.get_mut(language_id);
         }
         let config = match self.configs.get(language_id) {

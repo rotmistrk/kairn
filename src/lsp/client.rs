@@ -16,6 +16,7 @@ pub struct LspClient {
     msg_rx: Receiver<LspMessage>,
     #[allow(dead_code)]
     child: Child,
+    dead: bool,
 }
 
 impl LspClient {
@@ -40,6 +41,7 @@ impl LspClient {
             write_tx,
             msg_rx,
             child,
+            dead: false,
         })
     }
 
@@ -50,6 +52,7 @@ impl LspClient {
         let data = messages::encode_request(id, method, params);
         if self.write_tx.send(data).is_err() {
             log::error!("LSP send_request failed: server connection lost");
+            self.dead = true;
         }
         id
     }
@@ -59,7 +62,13 @@ impl LspClient {
         let data = messages::encode_notification(method, params);
         if self.write_tx.send(data).is_err() {
             log::error!("LSP send_notification failed: server connection lost");
+            self.dead = true;
         }
+    }
+
+    /// Returns true if the server connection is still alive.
+    pub fn is_alive(&self) -> bool {
+        !self.dead
     }
 
     /// Poll for incoming messages (non-blocking). Returns all available.
