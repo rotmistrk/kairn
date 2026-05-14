@@ -12,7 +12,18 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 .PHONY: all check lint clippy test test-fast fmt clean build release \
         install-local uninstall-local purge-cargo-bin \
         install-rusticle install-rusticle-tk install-kairn \
-        install-demos verify
+        install-demos verify setup check-hooks
+
+# ── Setup (run once per clone) ──────────────────────────
+
+setup:
+	@git config core.hooksPath hooks
+	@echo "✅ Pre-commit hook enabled (hooks/pre-commit)"
+
+check-hooks:
+	@if [ "$$(git config core.hooksPath)" != "hooks" ]; then \
+		echo "❌ Pre-commit hook not configured. Run: make setup"; exit 1; \
+	fi
 
 # ── Full cycle ──────────────────────────────────────────
 
@@ -28,13 +39,13 @@ BINARY := target/release/kairn
 SOURCES := $(shell find src -name '*.rs') \
            Cargo.toml Cargo.lock
 
-check:
+check: check-hooks
 	cargo check --workspace
 
-build:
+build: check-hooks
 	cargo build --workspace
 
-release: $(BINARY)
+release: check-hooks $(BINARY)
 
 $(BINARY): $(SOURCES)
 	cargo build --workspace --release
@@ -48,7 +59,7 @@ clippy:
 	cargo clippy --workspace -- -D warnings
 
 # Fast tests: unit + lib only (for install gate)
-test-fast:
+test-fast: check-hooks
 	cargo test --lib --workspace
 
 # Full tests: all integration tests
