@@ -2,30 +2,35 @@
 
 use std::io::Write;
 
-use base64::Engine;
-
 /// Copy text to system clipboard.
 /// On macOS, uses pbcopy for reliable single-copy behavior.
 /// On other platforms, uses OSC 52 escape sequence.
-pub fn copy_to_clipboard(text: &str) {
+pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        if let Ok(mut child) = std::process::Command::new("pbcopy")
+        let mut child = std::process::Command::new("pbcopy")
             .stdin(std::process::Stdio::piped())
             .spawn()
-        {
-            if let Some(stdin) = child.stdin.as_mut() {
-                let _ = stdin.write_all(text.as_bytes());
-            }
-            let _ = child.wait();
-            return;
+            .map_err(|e| format!("pbcopy: {e}"))?;
+        if let Some(stdin) = child.stdin.as_mut() {
+            stdin
+                .write_all(text.as_bytes())
+                .map_err(|e| format!("pbcopy write: {e}"))?;
         }
+        child.wait().map_err(|e| format!("pbcopy: {e}"))?;
+        Ok(())
     }
     // Fallback: OSC 52
-    let encoded = base64::engine::general_purpose::STANDARD.encode(text);
-    let seq = format!("\x1b]52;c;{encoded}\x07");
-    let _ = std::io::stdout().write_all(seq.as_bytes());
-    let _ = std::io::stdout().flush();
+    #[cfg(not(target_os = "macos"))]
+    {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(text);
+        let seq = format!("\x1b]52;c;{encoded}\x07");
+        std::io::stdout()
+            .write_all(seq.as_bytes())
+            .map_err(|e| format!("clipboard: {e}"))?;
+        std::io::stdout().flush().map_err(|e| format!("clipboard: {e}"))?;
+        Ok(())
+    }
 }
 
 /// Paste from system clipboard using platform-specific command.

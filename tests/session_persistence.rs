@@ -90,7 +90,7 @@ fn restore_tabs_opens_editors() {
 
     let mut desktop = kairn::layout_group::LayoutGroup::new();
     let defaults = EditorSettings::default();
-    session::restore_tabs(&mut desktop, &state, &root, &defaults);
+    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 
     assert_eq!(desktop.panel(SlotId::Center).tab_count(), 1);
     assert_eq!(desktop.panel(SlotId::Center).tab_title(0), Some("foo.rs"));
@@ -118,7 +118,7 @@ fn restore_skips_missing_files() {
 
     let mut desktop = kairn::layout_group::LayoutGroup::new();
     let defaults = EditorSettings::default();
-    session::restore_tabs(&mut desktop, &state, &root, &defaults);
+    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 
     // No tabs opened since file doesn't exist
     assert_eq!(desktop.panel(SlotId::Center).tab_count(), 0);

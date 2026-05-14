@@ -94,4 +94,14 @@ impl AppState {
             confirm_context: None,
         }
     }
+
+    /// Returns the syntax theme name appropriate for the current light/dark mode.
+    pub fn current_syntax_theme(&self) -> &str {
+        let is_light = self
+            .theme_state
+            .as_ref()
+            .map(|ts| ts.borrow().mode == txv_core::palette::ThemeMode::Light)
+            .unwrap_or(false);
+        self.settings.syntax_theme_for_mode(is_light)
+    }
 }

@@ -55,6 +55,7 @@ pub fn handle_todo_key(
                 Completion::Done => Completion::Open,
                 _ => Completion::Done,
             };
+            model::propagate_completion(&mut data.file, &path);
             data.save();
             data.rebuild_flat();
             Some(HandleAction::Stay)
@@ -73,6 +74,7 @@ pub fn handle_todo_key(
             let path = data.path_at(id)?.clone();
             let new_item = TodoItem::new("New task");
             model::add_sibling(&mut data.file, &path, new_item);
+            model::propagate_completion(&mut data.file, &path);
             data.save();
             data.rebuild_flat();
             // New sibling is at cursor+1
@@ -86,6 +88,7 @@ pub fn handle_todo_key(
             // Ensure parent is expanded
             let item = model::get_item_mut(&mut data.file, &path)?;
             item.folded = false;
+            model::propagate_completion(&mut data.file, &path);
             data.save();
             data.rebuild_flat();
             // New child is right after parent
@@ -98,11 +101,54 @@ pub fn handle_todo_key(
                 model::get_item(&data.file, &path).is_some_and(|item| matches!(item.completed, Completion::Done));
             if is_done {
                 model::remove_item(&mut data.file, &path)?;
+                model::propagate_completion(&mut data.file, &path);
                 data.save();
                 data.rebuild_flat();
                 Some(HandleAction::Stay)
             } else {
                 Some(HandleAction::ConfirmDelete)
+            }
+        }
+        // S — sort children
+        KeyCode::Char('S') => {
+            let path = data.path_at(id)?.clone();
+            model::sort_children(&mut data.file, &path);
+            data.save();
+            data.rebuild_flat();
+            Some(HandleAction::Stay)
+        }
+        // c — clone subtree
+        KeyCode::Char('c') => {
+            let path = data.path_at(id)?.clone();
+            if model::clone_subtree(&mut data.file, &path) {
+                data.save();
+                data.rebuild_flat();
+                Some(HandleAction::MoveTo(cursor + 1))
+            } else {
+                Some(HandleAction::Stay)
+            }
+        }
+        // / — enter filter mode
+        KeyCode::Char('/') => Some(HandleAction::EnterFilter),
+        // Ctrl+L — encryption toggle
+        KeyCode::Char('l') if key.modifiers.ctrl => {
+            let path = data.path_at(id)?.clone();
+            let item = model::get_item(&data.file, &path)?;
+            if item.is_locked() {
+                Some(HandleAction::CryptoDecrypt(path))
+            } else if item.is_encrypted() && item.unlocked {
+                // Re-lock: no passphrase needed
+                if let Some(it) = model::get_item_mut(&mut data.file, &path) {
+                    it.items.clear();
+                    it.note.clear();
+                    it.unlocked = false;
+                    it.folded = true;
+                }
+                data.save();
+                data.rebuild_flat();
+                Some(HandleAction::Stay)
+            } else {
+                Some(HandleAction::CryptoEncrypt(path))
             }
         }
         // J — swap down (Shift+j)
@@ -151,4 +197,10 @@ pub enum HandleAction {
     EditNew(usize),
     /// Ask for confirmation before deleting.
     ConfirmDelete,
+    /// Enter filter mode.
+    EnterFilter,
+    /// Encrypt the node at path (prompt for passphrase).
+    CryptoEncrypt(model::TreePath),
+    /// Decrypt the node at path (prompt for passphrase).
+    CryptoDecrypt(model::TreePath),
 }

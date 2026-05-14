@@ -160,15 +160,11 @@ impl StructuredView {
     }
 
     /// Commit the current inline edit.
-    pub(crate) fn commit_edit(&mut self) {
-        let Some(editor) = self.editing.take() else {
-            return;
-        };
-        let Some(&node_id) = self.visible_nodes.get(editor.row) else {
-            return;
-        };
+    pub(crate) fn commit_edit(&mut self) -> Option<String> {
+        let editor = self.editing.take()?;
+        let &node_id = self.visible_nodes.get(editor.row)?;
         let text = editor.buffer;
-        let _ = match self.edit_target {
+        let result = match self.edit_target {
             EditTarget::Value => self.doc.set_value(node_id, &text),
             EditTarget::Key => self.doc.set_key(node_id, &text),
             EditTarget::Meta => {
@@ -179,6 +175,7 @@ impl StructuredView {
         self.dirty = true;
         self.sync_title();
         self.state.mark_dirty();
+        result.err()
     }
 
     /// Cancel the current inline edit.

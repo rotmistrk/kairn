@@ -49,6 +49,10 @@ impl Completer for AppCompleter {
         if let Some(path_part) = trimmed.strip_prefix("e ") {
             return complete_path(path_part, &self.root);
         }
+        // Theme sub-commands
+        if let Some(sub) = trimmed.strip_prefix("theme ") {
+            return complete_theme(sub);
+        }
         // Otherwise complete command names
         COMMANDS
             .iter()
@@ -60,6 +64,49 @@ impl Completer for AppCompleter {
             })
             .collect()
     }
+}
+
+/// Theme sub-argument completions.
+fn complete_theme(sub: &str) -> Vec<Completion> {
+    const THEME_SUBS: &[&str] = &["auto", "dark", "glyphs", "light", "syntax"];
+    const GLYPH_OPTS: &[&str] = &["ascii", "nerd", "utf"];
+
+    if let Some(partial) = sub.strip_prefix("syntax ") {
+        // Complete syntax theme names
+        let themes = crate::highlight::Highlighter::new();
+        let mut names: Vec<&str> = themes.available_themes();
+        names.sort();
+        return names
+            .into_iter()
+            .filter(|t| t.starts_with(partial))
+            .map(|t| Completion {
+                text: format!("theme syntax {t}"),
+                display: t.to_string(),
+                kind: "theme",
+            })
+            .collect();
+    }
+    if let Some(partial) = sub.strip_prefix("glyphs ") {
+        return GLYPH_OPTS
+            .iter()
+            .filter(|o| o.starts_with(partial))
+            .map(|o| Completion {
+                text: format!("theme glyphs {o}"),
+                display: o.to_string(),
+                kind: "option",
+            })
+            .collect();
+    }
+    // Complete first-level sub-commands
+    THEME_SUBS
+        .iter()
+        .filter(|s| s.starts_with(sub))
+        .map(|s| Completion {
+            text: format!("theme {s}"),
+            display: s.to_string(),
+            kind: "command",
+        })
+        .collect()
 }
 
 /// Complete filesystem paths relative to root dir.

@@ -104,7 +104,12 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
         "messages" => ctx.queue.put_command(CM_SHOW_MESSAGES, None),
         "theme" => {
-            if arg == "dark" || arg == "light" || arg == "toggle" || arg.is_empty() {
+            if let Some(name) = arg.strip_prefix("syntax ") {
+                ctx.queue
+                    .put_command(CM_SET_SYNTAX_THEME, Some(Box::new(name.to_string())));
+            } else if let Some(g) = arg.strip_prefix("glyphs ") {
+                ctx.queue.put_command(CM_SET_GLYPHS, Some(Box::new(g.to_string())));
+            } else if matches!(arg, "dark" | "light" | "auto" | "toggle" | "") {
                 ctx.queue.put_command(CM_TOGGLE_THEME, Some(Box::new(arg.to_string())));
             }
         }

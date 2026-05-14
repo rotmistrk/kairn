@@ -47,4 +47,5 @@ pub mod status;
 pub mod structured;
 pub mod suspend;
 pub mod task_output;
+pub mod tool_check;
 pub mod views;

@@ -22,6 +22,7 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
     match context {
         ConfirmContext::EditorClose(path) => handle_editor_close(ctx, state, &path, ch),
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
+        ConfirmContext::TodoCrypto => handle_todo_crypto(ctx, state, ch),
     }
 }
 
@@ -104,6 +105,30 @@ fn handle_todo_delete(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
             if let Some(any) = view.as_any_mut() {
                 if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {
                     todo.confirm_delete_execute();
+                }
+            }
+        }
+    }
+}
+
+fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char) {
+    // For crypto, the 'char' is actually a commit signal; the passphrase comes via data.
+    // In our simplified flow, we treat any non-cancel as "use the confirm text as passphrase".
+    let passphrase = ctx
+        .data
+        .as_ref()
+        .and_then(|b| b.downcast_ref::<String>())
+        .cloned()
+        .unwrap_or_default();
+    if ch == '\x1b' || passphrase.is_empty() {
+        return; // cancelled
+    }
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        let panel = desktop.panel_mut(SlotId::Left);
+        if let Some(view) = panel.view_at_mut(2) {
+            if let Some(any) = view.as_any_mut() {
+                if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {
+                    todo.crypto_passphrase_response(&passphrase);
                 }
             }
         }

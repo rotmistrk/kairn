@@ -34,7 +34,7 @@ pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> LayoutGroup {
     // Keep "Files" as the initially active tab
     desktop.set_active_tab(SlotId::Left, 0);
 
-    let welcome = WelcomeView::new();
+    let welcome = WelcomeView::new(root_dir.to_path_buf());
     desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
     let term = new_shell_terminal();
     desktop.insert_tab(SlotId::Right, "Shell:0", term);

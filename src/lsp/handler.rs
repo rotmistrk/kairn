@@ -102,11 +102,18 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                     }
                 }
             }
-            LspMessage::Response { id, result, .. } => {
+            LspMessage::Response { id, result, error } => {
                 if let Some(kind) = state.lsp_pending.take(id) {
                     log::info!("LSP response: {kind:?} (id={id})");
                     if let Some(result) = result {
                         handle_response(kind, &result, queue);
+                    } else if let Some(err) = error {
+                        let msg = format!("{kind:?}: {}", err.message);
+                        log::error!("LSP error: {msg}");
+                        queue.put_command(
+                            txv_widgets::CM_STATUS_MESSAGE,
+                            Some(Box::new(Message::error("lsp", msg))),
+                        );
                     }
                 } else {
                     log::warn!("LSP response id={id} doesn't match any pending request");
@@ -141,7 +148,12 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
         PendingKind::FindReferences { symbol } => {
             let locs = requests::parse_locations(result);
             log::info!("LSP: references -> {} locations", locs.len());
-            if !locs.is_empty() {
+            if locs.len() == 1 {
+                let loc = &locs[0];
+                let path = uri_to_path(&loc.uri);
+                let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
+                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+            } else if !locs.is_empty() {
                 let entries: Vec<crate::views::results::ResultEntry> = locs
                     .iter()
                     .map(|l| crate::views::results::ResultEntry {
@@ -169,8 +181,7 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
             let items = requests::parse_completion(result);
             log::info!("LSP: completion -> {} items", items.len());
             if !items.is_empty() {
-                let labels: Vec<String> = items.iter().map(|i| i.label.clone()).collect();
-                queue.put_command(CM_LSP_COMPLETION, Some(Box::new(labels)));
+                queue.put_command(CM_LSP_COMPLETION, Some(Box::new(items)));
             }
         }
         PendingKind::Rename => {

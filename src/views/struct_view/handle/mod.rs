@@ -30,7 +30,7 @@ pub fn handle_save_command(view: &mut StructuredView, queue: &mut EventQueue) ->
 }
 
 /// Handle a key event for the structured view.
-pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut EventQueue) -> HandleResult {
+pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, queue: &mut EventQueue) -> HandleResult {
     // Route to inline editor first when active
     if let Some(ref mut editor) = view.editing {
         match editor.handle_key(key) {
@@ -53,7 +53,10 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
                     view.rebuild_visible();
                 } else {
                     view.save_undo_point();
-                    view.commit_edit();
+                    if let Some(err) = view.commit_edit() {
+                        let msg = txv_core::message::Message::error("struct", err);
+                        queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                    }
                 }
             }
             InlineEditResult::Cancel => {
@@ -207,7 +210,7 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, _queue: &mut
             HandleResult::Consumed
         }
         KeyCode::Char(':') => {
-            _queue.put_command(crate::commands::CM_COMMAND_PREFILL, Some(Box::new(String::new())));
+            queue.put_command(crate::commands::CM_COMMAND_PREFILL, Some(Box::new(String::new())));
             HandleResult::Consumed
         }
         _ => HandleResult::Ignored,

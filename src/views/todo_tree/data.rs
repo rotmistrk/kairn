@@ -21,6 +21,7 @@ pub struct TodoTreeData {
     file_path: PathBuf,
     nodes: Vec<FlatNode>,
     visible: Vec<usize>,
+    pub filter_text: String,
 }
 
 impl TodoTreeData {
@@ -31,6 +32,7 @@ impl TodoTreeData {
             file_path: file_path.to_path_buf(),
             nodes: Vec::new(),
             visible: Vec::new(),
+            filter_text: String::new(),
         };
         data.rebuild_flat();
         data
@@ -69,9 +71,26 @@ impl TodoTreeData {
 
     fn rebuild_visible(&mut self) {
         self.visible.clear();
-        for i in 0..self.nodes.len() {
-            self.visible.push(i);
+        if self.filter_text.is_empty() {
+            for i in 0..self.nodes.len() {
+                self.visible.push(i);
+            }
+        } else {
+            let query = self.filter_text.to_lowercase();
+            for i in 0..self.nodes.len() {
+                if let Some(item) = self.item_at_node(i) {
+                    if item.title.to_lowercase().contains(&query) {
+                        self.visible.push(i);
+                    }
+                }
+            }
         }
+    }
+
+    /// Get item for a node index (not visible row).
+    fn item_at_node(&self, node_idx: usize) -> Option<&TodoItem> {
+        let node = self.nodes.get(node_idx)?;
+        model::get_item(&self.file, &node.path)
     }
 
     /// Get the TodoItem for a given flat node id.
@@ -90,6 +109,30 @@ impl TodoTreeData {
         self.visible
             .iter()
             .position(|&nid| self.nodes.get(nid).is_some_and(|n| n.path == *path))
+    }
+
+    /// Check if the node at `id` or any of its ancestors has `important = true`.
+    pub fn is_in_important_subtree(&self, id: usize) -> bool {
+        let Some(node) = self.nodes.get(id) else {
+            return false;
+        };
+        // Check self
+        if let Some(item) = model::get_item(&self.file, &node.path) {
+            if item.important {
+                return true;
+            }
+        }
+        // Check ancestors
+        let path = &node.path;
+        for len in 1..path.len() {
+            let ancestor_path: Vec<usize> = path[..len].to_vec();
+            if let Some(item) = model::get_item(&self.file, &ancestor_path) {
+                if item.important {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Add the first item to an empty tree. Creates the file if needed.

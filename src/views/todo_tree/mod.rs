@@ -10,6 +10,7 @@ use txv_widgets::TreeView;
 use self::handle::HandleAction;
 
 pub mod data;
+mod draw;
 mod handle;
 mod mcp;
 pub mod model;
@@ -20,6 +21,14 @@ pub use self::data::TodoTreeData;
 pub struct TodoTreeView {
     inner: TreeView<TodoTreeData>,
     editing: Option<InlineEditor>,
+    filter_editor: Option<InlineEditor>,
+    /// Pending crypto path for passphrase prompt.
+    crypto_pending: Option<CryptoPending>,
+}
+
+enum CryptoPending {
+    Encrypt(model::TreePath),
+    Decrypt(model::TreePath),
 }
 
 impl TodoTreeView {
@@ -29,6 +38,8 @@ impl TodoTreeView {
         Self {
             inner: TreeView::new(data),
             editing: None,
+            filter_editor: None,
+            crypto_pending: None,
         }
     }
 
@@ -40,11 +51,38 @@ impl TodoTreeView {
             if let Some(path) = self.inner.data.path_at(id) {
                 let path = path.clone();
                 model::remove_item(&mut self.inner.data.file, &path);
+                model::propagate_completion(&mut self.inner.data.file, &path);
                 self.inner.data.save();
                 self.inner.data.rebuild_flat();
                 self.inner.state.mark_dirty();
             }
         }
+    }
+
+    /// Execute crypto passphrase response (called from handler_confirm on 'y'/commit).
+    pub fn crypto_passphrase_response(&mut self, passphrase: &str) {
+        let Some(pending) = self.crypto_pending.take() else {
+            return;
+        };
+        match pending {
+            CryptoPending::Encrypt(path) => {
+                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
+                    if let Err(e) = duir_core::crypto::encrypt_item(item, passphrase) {
+                        log::warn!("encrypt failed: {e}");
+                    }
+                }
+            }
+            CryptoPending::Decrypt(path) => {
+                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
+                    if let Err(e) = duir_core::crypto::decrypt_item(item, passphrase) {
+                        log::warn!("decrypt failed: {e}");
+                    }
+                }
+            }
+        }
+        self.inner.data.save();
+        self.inner.data.rebuild_flat();
+        self.inner.state.mark_dirty();
     }
 
     fn start_edit(&mut self) {
@@ -86,7 +124,7 @@ impl TodoTreeView {
         HandleResult::Consumed
     }
 
-    fn apply_action(&mut self, action: HandleAction) {
+    fn apply_action(&mut self, action: HandleAction, queue: &mut EventQueue) {
         match action {
             HandleAction::Stay => {}
             HandleAction::MoveDown => {
@@ -103,7 +141,26 @@ impl TodoTreeView {
                 self.start_edit_selected();
             }
             HandleAction::ConfirmDelete => {
-                // Confirmation triggered via CM_CONFIRM command in handle()
+                // Handled below via CM_CONFIRM
+            }
+            HandleAction::EnterFilter => {
+                self.filter_editor = Some(InlineEditor::new(0, &self.inner.data.filter_text));
+            }
+            HandleAction::CryptoEncrypt(path) => {
+                self.crypto_pending = Some(CryptoPending::Encrypt(path));
+                queue.put_command(
+                    crate::commands::CM_SET_CONFIRM_CONTEXT,
+                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
+                );
+                queue.put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
+            }
+            HandleAction::CryptoDecrypt(path) => {
+                self.crypto_pending = Some(CryptoPending::Decrypt(path));
+                queue.put_command(
+                    crate::commands::CM_SET_CONFIRM_CONTEXT,
+                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
+                );
+                queue.put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
             }
         }
         self.inner.state.mark_dirty();
@@ -126,82 +183,40 @@ impl View for TodoTreeView {
     }
 
     fn draw(&self, surface: &mut Surface) {
-        if self.inner.data.visible_count() == 0 {
-            let b = self.inner.state.bounds();
-            let dim = txv_core::palette::palette().base.dim.to_style();
-            surface.print(b.x, b.y, "  (empty \u{2014} press 'n' to add)", dim);
-            return;
-        }
-        // Custom draw with checkboxes
-        let pal = txv_core::palette::palette();
-        let b = self.inner.state.bounds();
-        for row in 0..b.h as usize {
-            let idx = self.inner.scroll.offset + row;
-            if idx >= self.inner.data.visible_count() {
-                break;
-            }
-            let id = self.inner.data.visible_id(idx);
-            let depth = self.inner.data.depth(id);
-            let indent = (depth * 2) as u16;
-            let marker = if self.inner.data.is_expandable(id) {
-                if self.inner.data.is_expanded(id) {
-                    "▼ "
-                } else {
-                    "▶ "
-                }
-            } else {
-                "  "
-            };
-            let node_style = self.inner.data.style(id);
-            let style = if idx == self.inner.cursor {
-                if self.inner.state.is_focused() {
-                    pal.interactive.cursor_focused.resolve(&node_style)
-                } else {
-                    pal.interactive.cursor_unfocused.resolve(&node_style)
-                }
-            } else {
-                node_style
-            };
-            let y = b.y + row as u16;
-            surface.hline(b.x, y, b.w, ' ', style);
-            let x = b.x + indent;
-            surface.print(x, y, marker, style);
-            // Checkbox
-            let checkbox = if let Some(item) = self.inner.data.item_at(id) {
-                match item.completed {
-                    model::Completion::Done => "[x] ",
-                    _ => "[ ] ",
-                }
-            } else {
-                "[ ] "
-            };
-            surface.print(x + 2, y, checkbox, style);
-            surface.print(x + 6, y, self.inner.data.label(id), style);
-        }
-        // Render inline editor overlay
-        if let Some(ref editor) = self.editing {
-            let b = self.inner.state.bounds();
-            let scroll_offset = self.inner.scroll.offset;
-            if editor.row >= scroll_offset {
-                let screen_row = (editor.row - scroll_offset) as u16;
-                if screen_row < b.h {
-                    let y = b.y + screen_row;
-                    let id = self.inner.data.visible_id(editor.row);
-                    let depth = self.inner.data.depth(id);
-                    let indent = (depth * 2 + 6) as u16; // marker(2) + checkbox(4)
-                    let ex = b.x + indent;
-                    let ew = b.w.saturating_sub(indent);
-                    let style = pal.base.text.to_style();
-                    editor.draw(surface, ex, y, ew, style);
-                }
-            }
-        }
+        self.draw_tree(surface);
     }
 
     fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
         let Event::Key(key) = event else {
             return self.inner.handle(event, queue);
         };
+        // Filter editor takes priority
+        if self.filter_editor.is_some() {
+            // Special: Esc exits filter
+            if key.code == KeyCode::Esc {
+                self.inner.data.filter_text.clear();
+                self.inner.data.rebuild_flat();
+                self.inner.cursor = 0;
+                self.filter_editor = None;
+                self.inner.state.mark_dirty();
+                return HandleResult::Consumed;
+            }
+            // Enter commits filter (keeps text, exits editor)
+            if key.code == KeyCode::Enter {
+                self.filter_editor = None;
+                self.inner.state.mark_dirty();
+                return HandleResult::Consumed;
+            }
+            // Pass to filter editor
+            if let Some(ref mut editor) = self.filter_editor {
+                editor.handle_key(key);
+                self.inner.data.filter_text = editor.buffer.clone();
+                self.inner.data.rebuild_flat();
+                self.inner.cursor = 0;
+                self.inner.state.mark_dirty();
+            }
+            return HandleResult::Consumed;
+        }
         if self.editing.is_some() {
             return self.handle_editing_key(key);
         }
@@ -227,7 +242,7 @@ impl View for TodoTreeView {
                         Some(Box::new("Delete item? [y]es [Esc]cancel".to_string())),
                     );
                 }
-                self.apply_action(action);
+                self.apply_action(action, queue);
                 return HandleResult::Consumed;
             }
         }

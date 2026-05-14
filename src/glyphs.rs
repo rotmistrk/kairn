@@ -7,6 +7,8 @@ pub struct Glyphs {
     pub dropdown_arrow: &'static str,
     pub badge_left: &'static str,
     pub badge_right: &'static str,
+    pub check: &'static str,
+    pub cross: &'static str,
 }
 
 /// Nerd Font / Powerline glyphs (default).
@@ -16,6 +18,8 @@ pub const NERD: Glyphs = Glyphs {
     dropdown_arrow: "▾",
     badge_left: "\u{E0B6}",
     badge_right: "\u{E0B4}",
+    check: "✓",
+    cross: "✗",
 };
 
 /// ASCII-safe fallback.
@@ -25,6 +29,8 @@ pub const ASCII: Glyphs = Glyphs {
     dropdown_arrow: "v",
     badge_left: "(",
     badge_right: ")",
+    check: "[x]",
+    cross: "[ ]",
 };
 
 /// Active glyph set. TODO: make configurable via .kairnrc.

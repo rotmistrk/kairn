@@ -192,6 +192,13 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
     let (uri, lang) = current_file_info(state);
     let root = state.root_dir.clone();
     let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        if let Some(err) = state.lsp.last_error.take() {
+            use txv_core::message::{Message, MsgLevel};
+            ctx.queue.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
+            );
+        }
         return;
     };
 
@@ -204,13 +211,19 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
     let (uri, lang) = current_file_info(state);
     let root = state.root_dir.clone();
     let Some(client) = state.lsp.get_or_start(&lang, &root) else {
+        if let Some(err) = state.lsp.last_error.take() {
+            use txv_core::message::{Message, MsgLevel};
+            ctx.queue.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
+            );
+        }
         return;
     };
 
     let (line, col) = state.cursor_pos;
     let id = requests::code_action(client, &uri, line, col);
     state.lsp_pending.insert(id, PendingKind::CodeAction);
-    let _ = ctx;
 }
 
 pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {

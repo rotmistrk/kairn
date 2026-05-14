@@ -65,6 +65,9 @@ pub struct AppSettings {
     pub scrollback_lines: u16,
     pub max_tabs: u16,
     pub theme_mode: String,
+    pub theme_syntax_dark: String,
+    pub theme_syntax_light: String,
+    pub theme_glyphs: String,
     pub editor_defaults: EditorSettings,
     pub build_command: Option<String>,
     pub run_command: Option<String>,
@@ -131,12 +134,26 @@ impl Default for AppSettings {
             scrollback_lines: 2000,
             max_tabs: 10,
             theme_mode: "auto".to_string(),
+            theme_syntax_dark: "base16-eighties.dark".to_string(),
+            theme_syntax_light: "base16-ocean.light".to_string(),
+            theme_glyphs: "auto".to_string(),
             editor_defaults: EditorSettings::default(),
             build_command: None,
             run_command: None,
             test_command: None,
             git_keys: GitKeys::default(),
             status_keys: StatusKeys::default(),
+        }
+    }
+}
+
+impl AppSettings {
+    /// Returns the syntax theme name for the current mode.
+    pub fn syntax_theme_for_mode(&self, is_light: bool) -> &str {
+        if is_light {
+            &self.theme_syntax_light
+        } else {
+            &self.theme_syntax_dark
         }
     }
 }

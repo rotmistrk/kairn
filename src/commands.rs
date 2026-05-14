@@ -134,6 +134,8 @@ pub struct ContentChanged {
 pub const CM_GOTO_LINE: CommandId = 182;
 pub const CM_GREP_RESULTS: CommandId = 183;
 pub const CM_TOGGLE_THEME: CommandId = 184;
+pub const CM_SET_SYNTAX_THEME: CommandId = 185;
+pub const CM_SET_GLYPHS: CommandId = 186;
 
 // Confirmation prompt (ConfirmItem in status bar)
 pub const CM_CONFIRM: CommandId = 190;
@@ -148,4 +150,6 @@ pub enum ConfirmContext {
     EditorClose(String),
     /// Todo tree: delete item
     TodoDelete,
+    /// Todo tree: crypto passphrase prompt
+    TodoCrypto,
 }

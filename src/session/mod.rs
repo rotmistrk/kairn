@@ -67,6 +67,7 @@ pub fn restore_tabs(
     state: &SessionState,
     root_dir: &Path,
     editor_defaults: &EditorSettings,
+    syntax_theme: &str,
 ) {
     // Restore editor tabs
     if !state.editor_tabs.is_empty() {
@@ -76,7 +77,7 @@ pub fn restore_tabs(
             if !path.is_file() {
                 continue;
             }
-            let mut editor = EditorView::open(&path, editor_defaults)
+            let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
                 .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
             editor.set_root_dir(root_dir.to_path_buf());
             editor.goto(tab.line, tab.col);

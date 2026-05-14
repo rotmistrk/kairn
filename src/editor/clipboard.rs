@@ -8,7 +8,9 @@ impl Editor {
     /// Set the yank register and copy to system clipboard via OSC 52.
     pub fn yank(&mut self, text: String) {
         self.register = text.clone();
-        crate::clipboard::copy_to_clipboard(&text);
+        if let Err(e) = crate::clipboard::copy_to_clipboard(&text) {
+            self.status = format!("clipboard: {e}");
+        }
     }
 
     pub(super) fn paste_after(&mut self) {

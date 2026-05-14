@@ -1,7 +1,5 @@
 //! EditorView event handling helpers.
 
-use std::path::Path;
-
 use txv_core::prelude::*;
 
 use super::EditorView;
@@ -66,11 +64,18 @@ impl EditorView {
     pub(super) fn handle_action(&mut self, action: EditorAction, queue: &mut EventQueue) {
         match action {
             EditorAction::SaveRequested => {
-                self.save_buffer();
-                queue.put_command(CM_SAVE, None);
-                let name = self.path.file_name().unwrap_or(self.path.as_os_str());
-                let msg = txv_core::message::Message::info("editor", format!("Saved: {}", name.to_string_lossy()));
-                queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                let name = self.path.file_name().unwrap_or(self.path.as_os_str()).to_os_string();
+                if self.save_buffer() {
+                    queue.put_command(CM_SAVE, None);
+                    let msg = txv_core::message::Message::info("editor", format!("Saved: {}", name.to_string_lossy()));
+                    queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                } else {
+                    let msg = txv_core::message::Message::error(
+                        "editor",
+                        format!("Failed to save: {}", name.to_string_lossy()),
+                    );
+                    queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                }
             }
             EditorAction::CloseRequested => {
                 if self.editor.buffer.is_dirty() && !self.settings.autosave {
@@ -212,44 +217,6 @@ impl EditorView {
             self.display_title = format!("*{name}");
         } else {
             self.display_title = name.to_string();
-        }
-    }
-
-    pub(super) fn complete_command_buf(&mut self) {
-        let buf = &self.editor.command_buf;
-        let partial = buf.strip_prefix("e ").or_else(|| buf.strip_prefix("edit "));
-        let Some(partial) = partial else {
-            return;
-        };
-
-        let (search_dir, file_prefix, dir_prefix) = if partial.contains('/') {
-            let p = Path::new(partial);
-            let parent = p.parent().unwrap_or(Path::new(""));
-            let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            let dp = format!("{}/", parent.display());
-            (self.root_dir.join(parent), prefix.to_string(), dp)
-        } else {
-            (self.root_dir.clone(), partial.to_string(), String::new())
-        };
-
-        let Ok(entries) = std::fs::read_dir(&search_dir) else {
-            return;
-        };
-        let mut matches: Vec<String> = Vec::new();
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy().to_string();
-            if name_str.starts_with(&file_prefix) {
-                matches.push(format!("{dir_prefix}{name_str}"));
-            }
-        }
-        if matches.len() == 1 {
-            let prefix = if buf.starts_with("edit ") {
-                "edit "
-            } else {
-                "e "
-            };
-            self.editor.command_buf = format!("{prefix}{}", matches[0]);
         }
     }
 }

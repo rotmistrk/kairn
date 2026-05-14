@@ -49,6 +49,11 @@ impl EditorView {
         self.editor.options.number = self.settings.number;
     }
 
+    /// Switch the syntax highlighting theme.
+    pub fn set_syntax_theme(&mut self, name: &str) {
+        self.highlighter.set_theme(name);
+    }
+
     /// Save the file to disk. Returns Ok on success.
     pub fn save(&mut self) -> Result<(), String> {
         let content = self.editor.buffer.content();
@@ -173,8 +178,8 @@ impl View for EditorView {
                 }
                 if *id == crate::commands::CM_LSP_COMPLETION {
                     if let Some(boxed) = data.as_ref() {
-                        if let Some(labels) = boxed.downcast_ref::<Vec<String>>() {
-                            self.show_completion(labels);
+                        if let Some(items) = boxed.downcast_ref::<Vec<crate::lsp::requests::CompletionItem>>() {
+                            self.show_completion_items(items);
                             return HandleResult::Consumed;
                         }
                     }
@@ -186,22 +191,22 @@ impl View for EditorView {
         // Completion popup key handling
         if self.completion_popup.visible {
             use txv_core::event::KeyCode;
-            match &key.code {
-                KeyCode::Down => {
+            match (&key.code, key.modifiers.ctrl) {
+                (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
                     self.completion_popup.next();
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
-                KeyCode::Up => {
+                (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
                     self.completion_popup.prev();
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
-                KeyCode::Enter | KeyCode::Tab => {
+                (KeyCode::Enter | KeyCode::Tab, _) => {
                     self.accept_completion();
                     return HandleResult::Consumed;
                 }
-                KeyCode::Esc => {
+                (KeyCode::Esc, _) => {
                     self.completion_popup.hide();
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
@@ -211,6 +216,15 @@ impl View for EditorView {
                     // fall through to normal handling
                 }
             }
+        } else if key.modifiers.ctrl && key.code == txv_core::event::KeyCode::Char('n') {
+            // Ctrl+N triggers completion request when popup not visible
+            let pos = (
+                self.path.clone(),
+                self.editor.cursor_line as u32,
+                self.editor.cursor_col as u32,
+            );
+            queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
+            return HandleResult::Consumed;
         }
 
         // Diff mode: intercept keys for navigation

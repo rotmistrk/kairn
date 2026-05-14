@@ -115,12 +115,27 @@ fn main() -> anyhow::Result<()> {
     let theme = kairn::app_palette::ThemeState::new(theme_mode);
     theme.apply();
     app_state.theme_state = Some(std::cell::RefCell::new(theme));
+
+    // Initialize glyphs
+    let glyph_tier = match app_state.settings.theme_glyphs.as_str() {
+        "ascii" => txv_core::glyphs::GlyphTier::Ascii,
+        "utf" => txv_core::glyphs::GlyphTier::Unicode,
+        "nerd" => txv_core::glyphs::GlyphTier::Nerd,
+        _ => txv_core::glyphs::detect_glyph_tier(),
+    };
+    txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
     let mut desktop = build_desktop(&root_dir, git_keys);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
     if let Some(ref sess) = saved_session {
         session::restore_session(&mut desktop, sess);
-        session::restore_tabs(&mut desktop, sess, &root_dir, &app_state.settings.editor_defaults);
+        session::restore_tabs(
+            &mut desktop,
+            sess,
+            &root_dir,
+            &app_state.settings.editor_defaults,
+            app_state.current_syntax_theme(),
+        );
         session::restore_kiro_tabs(
             &mut desktop,
             &sess.kiro_sessions,

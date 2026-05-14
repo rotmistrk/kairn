@@ -9,7 +9,7 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 # removes any stale copies from ~/.cargo/bin on every install.
 # ─────────────────────────────────────────────────────────
 
-.PHONY: all check lint clippy test fmt clean build release \
+.PHONY: all check lint clippy test test-fast fmt clean build release \
         install-local uninstall-local purge-cargo-bin \
         install-rusticle install-rusticle-tk install-kairn \
         install-demos verify
@@ -47,6 +47,11 @@ fmt:
 clippy:
 	cargo clippy --workspace -- -D warnings
 
+# Fast tests: unit + lib only (for install gate)
+test-fast:
+	cargo test --lib --workspace
+
+# Full tests: all integration tests
 test:
 	@bash -c '\
 	cargo test --workspace 2>&1 | tee /tmp/kairn-test-output.txt; \
@@ -65,7 +70,7 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: test purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
+install-local: test-fast purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
 	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin

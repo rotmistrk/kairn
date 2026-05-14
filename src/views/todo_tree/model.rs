@@ -62,6 +62,51 @@ pub fn demote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
         .ok()
 }
 
+/// Walk up from `path`, updating parent completion based on children.
+/// If ALL children are Done → parent becomes Done.
+/// If ANY child is Open/Partial → parent becomes Open.
+pub fn propagate_completion(file: &mut TodoFile, path: &TreePath) {
+    let mut p = path.clone();
+    while !p.is_empty() {
+        p.pop();
+        let siblings = if p.is_empty() {
+            &file.items
+        } else {
+            match get_item(file, &p) {
+                Some(item) => &item.items,
+                None => return,
+            }
+        };
+        let all_done = !siblings.is_empty() && siblings.iter().all(|s| matches!(s.completed, Completion::Done));
+        if p.is_empty() {
+            break;
+        }
+        if let Some(parent) = get_item_mut(file, &p) {
+            parent.completed = if all_done {
+                Completion::Done
+            } else {
+                Completion::Open
+            };
+        }
+    }
+}
+
+pub fn sort_children(file: &mut TodoFile, path: &TreePath) -> bool {
+    if let Err(e) = tree_ops::sort_children(file, path) {
+        log::warn!("todo sort_children: {e}");
+        return false;
+    }
+    true
+}
+
+pub fn clone_subtree(file: &mut TodoFile, path: &TreePath) -> bool {
+    if let Err(e) = tree_ops::clone_subtree(file, path) {
+        log::warn!("todo clone_subtree: {e}");
+        return false;
+    }
+    true
+}
+
 /// Load a TodoFile from path, creating empty if absent.
 pub fn load_todo_file(path: &Path) -> TodoFile {
     match fs::read_to_string(path) {

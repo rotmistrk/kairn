@@ -60,8 +60,15 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
-                let view: Box<dyn View> = try_open_structured(path)
-                    .unwrap_or_else(|| open_editor(path, &state.root_dir, &state.settings.editor_defaults, req));
+                let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| {
+                    open_editor(
+                        path,
+                        &state.root_dir,
+                        &state.settings.editor_defaults,
+                        req,
+                        state.current_syntax_theme(),
+                    )
+                });
                 crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Center, title.clone(), view);
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
@@ -88,8 +95,9 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, queue: &mut EventQueue, s
                 .to_string();
             let view: Box<dyn View> = try_open_structured(&path).unwrap_or_else(|| {
                 let defaults = &state.settings.editor_defaults;
-                let mut editor =
-                    EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+                let syntax_theme = state.current_syntax_theme();
+                let mut editor = EditorView::open_with_theme(&path, defaults, syntax_theme)
+                    .unwrap_or_else(|_| EditorView::new_file(&path, defaults));
                 editor.set_root_dir(state.root_dir.clone());
                 Box::new(editor)
             });
@@ -158,13 +166,17 @@ pub(crate) fn toggle_view_mode(
     let view: Box<dyn View> = if to_structured {
         try_open_structured(&path).unwrap_or_else(|| {
             let defaults = &state.settings.editor_defaults;
-            let mut ed = EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+            let syntax_theme = state.current_syntax_theme();
+            let mut ed = EditorView::open_with_theme(&path, defaults, syntax_theme)
+                .unwrap_or_else(|_| EditorView::new_file(&path, defaults));
             ed.set_root_dir(state.root_dir.clone());
             Box::new(ed)
         })
     } else {
         let defaults = &state.settings.editor_defaults;
-        let mut ed = EditorView::open(&path, defaults).unwrap_or_else(|_| EditorView::new_file(&path, defaults));
+        let syntax_theme = state.current_syntax_theme();
+        let mut ed = EditorView::open_with_theme(&path, defaults, syntax_theme)
+            .unwrap_or_else(|_| EditorView::new_file(&path, defaults));
         ed.set_root_dir(state.root_dir.clone());
         Box::new(ed)
     };
@@ -193,8 +205,15 @@ fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
 }
 
 /// Open a file as an EditorView (fallback).
-fn open_editor(path: &Path, root_dir: &Path, defaults: &EditorSettings, req: &OpenFileRequest) -> Box<dyn View> {
-    let mut editor = EditorView::open(path, defaults).unwrap_or_else(|_| EditorView::new_file(path, defaults));
+fn open_editor(
+    path: &Path,
+    root_dir: &Path,
+    defaults: &EditorSettings,
+    req: &OpenFileRequest,
+    syntax_theme: &str,
+) -> Box<dyn View> {
+    let mut editor = EditorView::open_with_theme(path, defaults, syntax_theme)
+        .unwrap_or_else(|_| EditorView::new_file(path, defaults));
     editor.set_root_dir(root_dir.to_path_buf());
     if let (Some(line), Some(col)) = (req.line, req.col) {
         editor.goto(line, col);

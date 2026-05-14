@@ -122,7 +122,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 crate::handler_evict::complete_pending_insert(desktop, state);
                 if desktop.tab_count(SlotId::Center) == 0 {
-                    desktop.insert_tab(SlotId::Center, "Welcome", Box::new(WelcomeView::new()));
+                    desktop.insert_tab(
+                        SlotId::Center,
+                        "Welcome",
+                        Box::new(WelcomeView::new(state.root_dir.clone())),
+                    );
                 }
             }
         }
@@ -159,8 +163,59 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                         ts.active = ts.light.clone();
                         ts.apply();
                     }
+                    Some("auto") => {
+                        let detected = txv_core::palette::detect_system_theme();
+                        ts.mode = detected.clone();
+                        ts.active = match detected {
+                            txv_core::palette::ThemeMode::Light => ts.light.clone(),
+                            _ => ts.dark.clone(),
+                        };
+                        ts.apply();
+                    }
                     _ => ts.toggle(),
                 }
+            }
+        }
+        CM_SET_SYNTAX_THEME => {
+            if let Some(name) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+                // Store in settings for the current mode
+                let is_light = state
+                    .theme_state
+                    .as_ref()
+                    .map(|ts| ts.borrow().mode == txv_core::palette::ThemeMode::Light)
+                    .unwrap_or(false);
+                if is_light {
+                    state.settings.theme_syntax_light = name.clone();
+                } else {
+                    state.settings.theme_syntax_dark = name.clone();
+                }
+                // Apply to all open editors
+                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                    for slot in [SlotId::Center, SlotId::Right] {
+                        let panel = desktop.panel_mut(slot);
+                        for i in 0..panel.tab_count() {
+                            if let Some(view) = panel.view_at_mut(i) {
+                                if let Some(any) = view.as_any_mut() {
+                                    if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
+                                        editor.set_syntax_theme(name);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        CM_SET_GLYPHS => {
+            if let Some(g) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+                let tier = match g.as_str() {
+                    "ascii" => txv_core::glyphs::GlyphTier::Ascii,
+                    "utf" => txv_core::glyphs::GlyphTier::Unicode,
+                    "nerd" => txv_core::glyphs::GlyphTier::Nerd,
+                    _ => return,
+                };
+                txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(tier));
+                state.settings.theme_glyphs = g.clone();
             }
         }
         CM_CURSOR_MOVED => {

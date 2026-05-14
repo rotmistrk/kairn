@@ -98,6 +98,18 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.theme_mode = s.to_string();
         }
     }
+    if let Some(val) = interp.get_var("theme.syntax_dark") {
+        settings.theme_syntax_dark = val.as_str().to_string();
+    }
+    if let Some(val) = interp.get_var("theme.syntax_light") {
+        settings.theme_syntax_light = val.as_str().to_string();
+    }
+    if let Some(val) = interp.get_var("theme.glyphs") {
+        let s = val.as_str();
+        if s == "ascii" || s == "utf" || s == "nerd" || s == "auto" {
+            settings.theme_glyphs = s.to_string();
+        }
+    }
     if let Some(val) = interp.get_var("git.stage") {
         if let Some(k) = parse_key_var(&val.as_str()) {
             settings.git_keys.stage = k;

@@ -17,6 +17,13 @@ impl EditorView {
         Ok(view)
     }
 
+    pub fn open_with_theme(path: &Path, settings: &EditorSettings, syntax_theme: &str) -> anyhow::Result<Self> {
+        let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
+        let mut view = Self::build_with_theme(editor, path, settings, syntax_theme);
+        view.apply_settings();
+        Ok(view)
+    }
+
     pub fn new_file(path: &Path, settings: &EditorSettings) -> Self {
         let mut view = Self::build(Editor::from_text(""), path, settings);
         view.apply_settings();
@@ -56,6 +63,32 @@ impl EditorView {
             path: path.to_path_buf(),
             root_dir,
             highlighter: Highlighter::new(),
+            file_ext,
+            settings: settings.clone(),
+            last_edit_tick: 0,
+            tick_counter: 0,
+            eviction_close: false,
+            display_title,
+            diagnostics: None,
+            diff_state: None,
+            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+        }
+    }
+
+    fn build_with_theme(editor: Editor, path: &Path, settings: &EditorSettings, syntax_theme: &str) -> Self {
+        let file_ext = highlight::extension_from_path(path).to_string();
+        let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        let display_title = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("untitled")
+            .to_string();
+        Self {
+            state: ViewState::default(),
+            editor,
+            path: path.to_path_buf(),
+            root_dir,
+            highlighter: Highlighter::with_theme(syntax_theme),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,

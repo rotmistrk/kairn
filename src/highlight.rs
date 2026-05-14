@@ -17,22 +17,49 @@ pub struct HlSpan {
 pub struct Highlighter {
     syntax_set: SyntaxSet,
     theme: Theme,
+    themes: ThemeSet,
 }
 
 impl Default for Highlighter {
     fn default() -> Self {
-        Self::new()
+        Self::with_theme("base16-eighties.dark")
     }
 }
 
 impl Highlighter {
     pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create with a specific theme name. Falls back to first available if not found.
+    pub fn with_theme(name: &str) -> Self {
         let syntax_set = SyntaxSet::load_defaults_newlines();
-        let theme = ThemeSet::load_defaults()
+        let themes = ThemeSet::load_defaults();
+        let theme = themes
             .themes
-            .remove("base16-eighties.dark")
-            .unwrap_or_else(|| ThemeSet::load_defaults().themes.into_values().next().unwrap());
-        Self { syntax_set, theme }
+            .get(name)
+            .cloned()
+            .unwrap_or_else(|| themes.themes.values().next().unwrap().clone());
+        Self {
+            syntax_set,
+            theme,
+            themes,
+        }
+    }
+
+    /// List available theme names.
+    pub fn available_themes(&self) -> Vec<&str> {
+        self.themes.themes.keys().map(|s| s.as_str()).collect()
+    }
+
+    /// Switch to a different theme by name. Returns true if found.
+    pub fn set_theme(&mut self, name: &str) -> bool {
+        if let Some(t) = self.themes.themes.get(name) {
+            self.theme = t.clone();
+            true
+        } else {
+            false
+        }
     }
 
     /// Highlight a single line of text for the given file extension.

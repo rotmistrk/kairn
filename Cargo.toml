@@ -14,7 +14,7 @@ path = "tests/mock_lsp/main.rs"
 txv-core = { git = "https://github.com/rotmistrk/txv.git" }
 txv-render = { git = "https://github.com/rotmistrk/txv.git" }
 txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
-duir-core = { git = "https://github.com/rotmistrk/duir.git", default-features = false }
+duir-core = { git = "https://github.com/rotmistrk/duir.git", default-features = false, features = ["crypto"] }
 rusticle = { path = "rusticle" }
 anyhow = "1.0"
 base64 = "0.22"
