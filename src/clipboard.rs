@@ -1,5 +1,7 @@
 //! System clipboard integration via platform commands (macOS) or OSC 52.
 
+#[cfg(not(target_os = "macos"))]
+use base64::Engine;
 use std::io::Write;
 
 /// Copy text to system clipboard.

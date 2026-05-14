@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use txv_core::cell::{Color, Style};
+use txv_core::cell::Style;
 use txv_core::prelude::*;
 
 use crate::glyphs::glyphs;
@@ -63,14 +63,9 @@ impl View for WelcomeView {
         if let Some(tools) = &self.tools {
             lines.push((String::new(), dim));
             let g = glyphs();
-            let green = Style {
-                fg: Color::Ansi(2),
-                ..Style::default()
-            };
-            let gray = Style {
-                fg: Color::Ansi(8),
-                ..Style::default()
-            };
+            let pal = crate::app_palette::app_palette();
+            let green = pal.base.state.success.to_style();
+            let gray = pal.base.base.dim.to_style();
             for tool in tools {
                 if tool.found {
                     let ver = tool.version.as_deref().unwrap_or("");
