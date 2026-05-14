@@ -137,7 +137,7 @@ impl TodoTreeData {
 
     /// Add the first item to an empty tree. Creates the file if needed.
     pub fn add_first_item(&mut self) {
-        let item = model::TodoItem::new("New task");
+        let item = model::TodoItem::new("<new task>");
         self.file.items.push(item);
         self.save();
         self.rebuild_flat();

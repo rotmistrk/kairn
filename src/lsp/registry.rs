@@ -19,6 +19,8 @@ pub struct LspRegistry {
     active: HashMap<String, LspClient>,
     disabled: Vec<String>,
     pub last_error: Option<String>,
+    /// Maps initialize request IDs to language IDs so we can send `initialized` on response.
+    pub(super) pending_init: HashMap<u64, String>,
 }
 
 impl LspRegistry {
@@ -38,6 +40,7 @@ impl LspRegistry {
             active: HashMap::new(),
             disabled: Vec::new(),
             last_error: None,
+            pending_init: HashMap::new(),
         }
     }
 
@@ -101,8 +104,14 @@ impl LspRegistry {
         };
         log::info!("LSP started: {} for {language_id}", config.command);
         let root_uri = protocol::path_to_uri(root_dir);
-        protocol::initialize(&mut client, &root_uri);
+        let init_id = protocol::initialize(&mut client, &root_uri);
+        self.pending_init.insert(init_id, language_id.to_string());
         self.active.insert(language_id.to_string(), client);
+        self.active.get_mut(language_id)
+    }
+
+    /// Get a mutable reference to an active client by language.
+    pub(super) fn get_client_mut(&mut self, language_id: &str) -> Option<&mut LspClient> {
         self.active.get_mut(language_id)
     }
 

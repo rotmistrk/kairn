@@ -41,7 +41,7 @@ impl PendingRequests {
         self.map.remove(&id).map(|(k, _)| k)
     }
 
-    pub(crate) fn remove_timed_out(&mut self) {
+    pub(crate) fn remove_timed_out(&mut self, queue: &mut EventQueue) {
         let timeout = std::time::Duration::from_secs(10);
         let expired: Vec<u64> = self
             .map
@@ -51,7 +51,12 @@ impl PendingRequests {
             .collect();
         for id in expired {
             if let Some((kind, _)) = self.map.remove(&id) {
-                log::warn!("LSP timeout: {kind:?} request (id={id}) got no response after 10s");
+                let msg = format!("{kind:?}: no response after 10s");
+                log::warn!("LSP timeout: {msg}");
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::error("lsp", msg))),
+                );
             }
         }
     }
@@ -91,7 +96,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Poll all LSP servers and dispatch notifications/responses.
 pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
-    state.lsp_pending.remove_timed_out();
+    state.lsp_pending.remove_timed_out(queue);
     for (_lang, msg) in state.lsp.poll_all() {
         log::trace!("LSP poll: {:?}", &msg);
         match msg {
@@ -103,6 +108,27 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                 }
             }
             LspMessage::Response { id, result, error } => {
+                // Check if this is an initialize response
+                if let Some(lang) = state.lsp.pending_init.remove(&id) {
+                    if let Some(err) = error {
+                        let msg = format!("LSP init failed for {lang}: {}", err.message);
+                        log::error!("{msg}");
+                        queue.put_command(
+                            txv_widgets::CM_STATUS_MESSAGE,
+                            Some(Box::new(Message::error("lsp", msg))),
+                        );
+                    } else {
+                        log::info!("LSP initialized for {lang}");
+                        if let Some(client) = state.lsp.get_client_mut(&lang) {
+                            super::protocol::initialized(client);
+                        }
+                        queue.put_command(
+                            txv_widgets::CM_STATUS_MESSAGE,
+                            Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
+                        );
+                    }
+                    continue;
+                }
                 if let Some(kind) = state.lsp_pending.take(id) {
                     log::info!("LSP response: {kind:?} (id={id})");
                     if let Some(result) = result {
@@ -143,6 +169,11 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
                     let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
                     queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
                 }
+            } else {
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::info("lsp", "No definition found"))),
+                );
             }
         }
         PendingKind::FindReferences { symbol } => {
@@ -169,6 +200,11 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
                     format!("References: {symbol}")
                 };
                 queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
+            } else {
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::info("lsp", "No references found"))),
+                );
             }
         }
         PendingKind::Hover => {
@@ -182,6 +218,11 @@ fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut Ev
             log::info!("LSP: completion -> {} items", items.len());
             if !items.is_empty() {
                 queue.put_command(CM_LSP_COMPLETION, Some(Box::new(items)));
+            } else {
+                queue.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(Message::info("lsp", "No completions"))),
+                );
             }
         }
         PendingKind::Rename => {

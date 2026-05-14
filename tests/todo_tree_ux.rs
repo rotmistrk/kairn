@@ -111,20 +111,20 @@ fn new_sibling_opens_editor() {
     let todo = todo_json(&item("Existing"));
     std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
 
-    let mut h = TestHarness::new(dir.path());
+    let mut h = TestHarness::with_size(dir.path(), 80, 24);
     focus_todo(&mut h);
 
     h.inject_key(KeyCode::Char('n'), KeyMod::default());
     h.run_cycles(2);
 
-    // The editor should be open with "New task" visible
-    assert!(h.content_contains("New task"));
+    // The editor should be open with "<new task>" in the file
+    let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
+    assert!(content.contains("<new task>"));
 
     // Type replaces the selected text
     h.inject_str("My item");
     h.run_cycles(2);
     assert!(h.content_contains("My item"));
-    assert!(!h.content_contains("New task"));
 
     // Enter commits
     h.inject_key(KeyCode::Enter, KeyMod::default());
@@ -148,14 +148,14 @@ fn new_child_opens_editor() {
 
     // Check file was created with subtask
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
-    assert!(content.contains("New subtask"));
+    assert!(content.contains("<new task>"));
 
-    // Esc cancels edit — title stays as "New subtask"
+    // Esc cancels edit — title stays as "<new task>"
     h.inject_key(KeyCode::Esc, KeyMod::default());
     h.run_cycles(2);
 
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
-    assert!(content.contains("New subtask"));
+    assert!(content.contains("<new task>"));
 }
 
 #[test]

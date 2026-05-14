@@ -72,34 +72,46 @@ pub fn handle_todo_key(
         // n — new sibling
         KeyCode::Char('n') => {
             let path = data.path_at(id)?.clone();
-            let new_item = TodoItem::new("New task");
-            model::add_sibling(&mut data.file, &path, new_item);
-            model::propagate_completion(&mut data.file, &path);
+            let new_item = TodoItem::new("<new task>");
+            if !model::add_sibling(&mut data.file, &path, new_item) {
+                return Some(HandleAction::Stay);
+            }
+            let mut new_path = path.clone();
+            if let Some(last) = new_path.last_mut() {
+                *last += 1;
+            }
+            model::propagate_completion(&mut data.file, &new_path);
             data.save();
             data.rebuild_flat();
-            // New sibling is at cursor+1
-            Some(HandleAction::EditNew(cursor + 1))
+            let row = data.row_for_path(&new_path).unwrap_or(cursor + 1);
+            Some(HandleAction::EditNew(row))
         }
         // b — new child
         KeyCode::Char('b') => {
             let path = data.path_at(id)?.clone();
-            let new_item = TodoItem::new("New subtask");
-            model::add_child(&mut data.file, &path, new_item);
+            let child_idx = model::get_item(&data.file, &path).map_or(0, |item| item.items.len());
+            let new_item = TodoItem::new("<new task>");
+            if !model::add_child(&mut data.file, &path, new_item) {
+                return Some(HandleAction::Stay);
+            }
             // Ensure parent is expanded
-            let item = model::get_item_mut(&mut data.file, &path)?;
-            item.folded = false;
-            model::propagate_completion(&mut data.file, &path);
+            if let Some(item) = model::get_item_mut(&mut data.file, &path) {
+                item.folded = false;
+            }
+            let mut new_path = path.clone();
+            new_path.push(child_idx);
+            model::propagate_completion(&mut data.file, &new_path);
             data.save();
             data.rebuild_flat();
-            // New child is right after parent
-            Some(HandleAction::EditNew(cursor + 1))
+            let row = data.row_for_path(&new_path).unwrap_or(cursor + 1);
+            Some(HandleAction::EditNew(row))
         }
-        // d — delete item (confirm if unchecked)
+        // d — delete item (confirm if unchecked or has children)
         KeyCode::Char('d') => {
             let path = data.path_at(id)?.clone();
-            let is_done =
-                model::get_item(&data.file, &path).is_some_and(|item| matches!(item.completed, Completion::Done));
-            if is_done {
+            let item = model::get_item(&data.file, &path)?;
+            let needs_confirm = !item.items.is_empty() || !matches!(item.completed, Completion::Done);
+            if !needs_confirm {
                 model::remove_item(&mut data.file, &path)?;
                 model::propagate_completion(&mut data.file, &path);
                 data.save();
@@ -121,9 +133,14 @@ pub fn handle_todo_key(
         KeyCode::Char('c') => {
             let path = data.path_at(id)?.clone();
             if model::clone_subtree(&mut data.file, &path) {
+                let mut new_path = path.clone();
+                if let Some(last) = new_path.last_mut() {
+                    *last += 1;
+                }
                 data.save();
                 data.rebuild_flat();
-                Some(HandleAction::MoveTo(cursor + 1))
+                let row = data.row_for_path(&new_path).unwrap_or(cursor + 1);
+                Some(HandleAction::MoveTo(row))
             } else {
                 Some(HandleAction::Stay)
             }

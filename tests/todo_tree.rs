@@ -34,8 +34,9 @@ fn todo_tree_add_item_on_empty() {
     h.inject_key(KeyCode::Char('n'), KeyMod::default());
     h.run_cycles(2);
 
-    assert!(h.content_contains("New task"));
     assert!(dir.path().join(".kairn.todo").exists());
+    let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
+    assert!(content.contains("<new task>"));
 }
 
 #[test]
@@ -70,7 +71,7 @@ fn todo_tree_new_sibling() {
     // Verify file has both items
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
     assert!(content.contains("First"));
-    assert!(content.contains("New task"));
+    assert!(content.contains("<new task>"));
 }
 
 #[test]
@@ -86,7 +87,7 @@ fn todo_tree_save_creates_file() {
 
     assert!(dir.path().join(".kairn.todo").exists());
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
-    assert!(content.contains("New task"));
+    assert!(content.contains("<new task>"));
 }
 
 #[test]

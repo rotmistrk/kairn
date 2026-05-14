@@ -62,32 +62,11 @@ pub fn demote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
         .ok()
 }
 
-/// Walk up from `path`, updating parent completion based on children.
-/// If ALL children are Done → parent becomes Done.
-/// If ANY child is Open/Partial → parent becomes Open.
-pub fn propagate_completion(file: &mut TodoFile, path: &TreePath) {
-    let mut p = path.clone();
-    while !p.is_empty() {
-        p.pop();
-        let siblings = if p.is_empty() {
-            &file.items
-        } else {
-            match get_item(file, &p) {
-                Some(item) => &item.items,
-                None => return,
-            }
-        };
-        let all_done = !siblings.is_empty() && siblings.iter().all(|s| matches!(s.completed, Completion::Done));
-        if p.is_empty() {
-            break;
-        }
-        if let Some(parent) = get_item_mut(file, &p) {
-            parent.completed = if all_done {
-                Completion::Done
-            } else {
-                Completion::Open
-            };
-        }
+/// Update completion state for all root items using duir-core's recursive logic.
+/// This propagates completion both up and down the tree correctly.
+pub fn propagate_completion(file: &mut TodoFile, _path: &TreePath) {
+    for item in &mut file.items {
+        duir_core::stats::update_completion(item);
     }
 }
 
