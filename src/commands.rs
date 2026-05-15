@@ -117,6 +117,7 @@ pub const CM_GIT_COMMIT_PROMPT: CommandId = 174;
 /// Activates the command input with pre-filled text.
 pub const CM_COMMAND_PREFILL: CommandId = 175;
 pub const CM_DIFF: CommandId = 176;
+pub const CM_BLAME: CommandId = 177;
 
 // LSP document sync
 /// Editor content changed — triggers didChange to LSP server.

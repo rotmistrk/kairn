@@ -186,6 +186,9 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "diff" => {
             ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
         }
+        "blame" => {
+            ctx.queue.put_command(crate::commands::CM_BLAME, None);
+        }
         "tree" | "struct" | "structured" => {
             crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, true);
         }
@@ -227,24 +230,4 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
 /// A bare word is a single token with no Tcl syntax (no spaces, brackets, braces, quotes).
 fn is_bare_word(s: &str) -> bool {
     !s.is_empty() && !s.contains(|c: char| c.is_whitespace() || "[]{}\"$;".contains(c))
-}
-
-/// Handle :set options (wrap, number, list, etc.)
-pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(opt) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    let defaults = &mut state.settings.editor_defaults;
-    match opt.as_str() {
-        "wrap" => defaults.wrap = true,
-        "nowrap" => defaults.wrap = false,
-        "list" | "li" => defaults.list = true,
-        "nolist" | "noli" => defaults.list = false,
-        "number" | "nu" => defaults.number = true,
-        "nonumber" | "nonu" => defaults.number = false,
-        _ => {}
-    }
 }

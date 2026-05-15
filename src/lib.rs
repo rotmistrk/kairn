@@ -4,6 +4,7 @@
 
 pub mod app_palette;
 pub mod app_state;
+pub mod blame;
 pub mod broker;
 pub mod buffer;
 pub mod build;
@@ -38,6 +39,7 @@ pub mod handler_mcp_build;
 pub mod handler_open;
 pub mod handler_script;
 pub mod handler_script_edit;
+pub mod handler_set;
 pub mod help;
 pub mod help_editor;
 pub mod help_global;

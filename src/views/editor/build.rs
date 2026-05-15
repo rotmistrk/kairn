@@ -44,6 +44,7 @@ impl EditorView {
             eviction_close: false,
             display_title: "[cmd output]".to_string(),
             diagnostics: None,
+            blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
         }
@@ -70,6 +71,7 @@ impl EditorView {
             eviction_close: false,
             display_title,
             diagnostics: None,
+            blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
         }
@@ -96,6 +98,7 @@ impl EditorView {
             eviction_close: false,
             display_title,
             diagnostics: None,
+            blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
         }
@@ -159,6 +162,26 @@ impl EditorView {
         } else {
             (lines as f64).log10() as u16 + 1
         };
-        digits + 1
+        let blame_w = if self.blame_state.is_some() {
+            24
+        } else {
+            0
+        };
+        digits + 1 + blame_w
+    }
+
+    /// Toggle blame mode on/off.
+    pub(super) fn toggle_blame(&mut self) {
+        if self.blame_state.is_some() {
+            self.blame_state = None;
+        } else {
+            let rel = self
+                .path
+                .strip_prefix(&self.root_dir)
+                .unwrap_or(&self.path)
+                .to_path_buf();
+            self.blame_state = Some(crate::blame::blame_async(&self.root_dir, &rel));
+        }
+        self.state.mark_dirty();
     }
 }

@@ -7,6 +7,7 @@ use txv_core::complete::{Completer, Completion};
 
 /// Built-in commands (always available).
 pub const BUILTIN_COMMANDS: &[&str] = &[
+    "blame",
     "build",
     "close",
     "code-action",

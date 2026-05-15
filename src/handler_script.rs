@@ -152,6 +152,9 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::GitCommit { message } => {
             queue.put_command(CM_GIT_COMMIT, Some(Box::new(message)));
         }
+        ScriptCommand::GitBlame => {
+            queue.put_command(crate::commands::CM_BLAME, None);
+        }
         ScriptCommand::TodoAdd { .. } | ScriptCommand::TodoRemove { .. } | ScriptCommand::TodoComplete { .. } => {
             // Todo commands handled via direct tree manipulation
         }

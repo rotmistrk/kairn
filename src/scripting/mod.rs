@@ -92,6 +92,7 @@ pub enum ScriptCommand {
     GitCommit {
         message: String,
     },
+    GitBlame,
     TodoAdd {
         text: String,
         parent: Option<String>,

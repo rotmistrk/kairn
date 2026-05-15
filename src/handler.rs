@@ -142,7 +142,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TEST_AT_CURSOR => crate::handler_build::handle_test_at_cursor(ctx, state),
         CM_NEXT_ERROR => crate::handler_build::handle_next_error(ctx, state),
         CM_PREV_ERROR => crate::handler_build::handle_prev_error(ctx, state),
-        CM_SET_GLOBAL => crate::handler_exec::handle_set_global(ctx, state),
+        CM_SET_GLOBAL => crate::handler_set::handle_set_global(ctx, state),
         CM_SUSPEND => crate::suspend::suspend_to_shell(),
         CM_PEEK => crate::suspend::peek_screen(),
         CM_GIT_STAGE => crate::handler_git::handle_git_stage(ctx, state),

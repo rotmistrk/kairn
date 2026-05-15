@@ -4,6 +4,7 @@ mod build;
 mod diff;
 pub mod diff_model;
 mod draw;
+mod draw_blame;
 mod draw_diagnostics;
 mod draw_diff;
 mod handle;
@@ -36,6 +37,8 @@ pub struct EditorView {
     eviction_close: bool,
     display_title: String,
     pub(crate) diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
+    /// Blame mode state. None = blame off.
+    pub(crate) blame_state: Option<crate::blame::SharedBlame>,
     /// Diff mode state. None = normal mode.
     pub(super) diff_state: Option<diff_model::DiffState>,
     /// Completion popup overlay.
@@ -55,6 +58,7 @@ impl View for EditorView {
 
     fn draw(&self, surface: &mut Surface) {
         self.draw_editor(surface);
+        self.draw_blame_gutter(surface);
         self.draw_diagnostics(surface);
         self.completion_popup.draw(surface);
     }
@@ -98,6 +102,10 @@ impl View for EditorView {
                         "NOR"
                     };
                     queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
+                    return HandleResult::Consumed;
+                }
+                if *id == crate::commands::CM_BLAME {
+                    self.toggle_blame();
                     return HandleResult::Consumed;
                 }
                 if *id == crate::commands::CM_GOTO_LINE {
