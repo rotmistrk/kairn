@@ -40,6 +40,15 @@ const EXT_TO_TOOL: &[(&str, &str)] = &[
 ];
 
 /// Detect which tools are relevant and their status.
+/// Get install hint for a tool by command name.
+pub fn install_hint(command: &str) -> &'static str {
+    TOOLS
+        .iter()
+        .find(|(name, _)| *name == command)
+        .map(|(_, hint)| *hint)
+        .unwrap_or("check your package manager")
+}
+
 pub fn check_tools(root_dir: &Path) -> Vec<ToolStatus> {
     let relevant = relevant_tools(root_dir);
     relevant

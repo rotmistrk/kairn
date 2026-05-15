@@ -5,7 +5,7 @@
 kairn must NEVER depend on external CLI tools for core functionality. Use pure Rust crates.
 
 Forbidden: `rg`, `grep`, `git` CLI, `find`, `pbcopy`, etc.
-Use instead: `ignore` (file walking), `regex` (search), `gix` (git), `syntect` (highlighting).
+Use instead: `ignore` (file walking), `regex` (search), `git2` (git), `syntect` (highlighting).
 
 ---
 
@@ -150,16 +150,22 @@ TXV forces high cohesion through:
 src/
   buffer/           PieceTable text buffer + undo
   editor/           Vi editor (keymap, commands, motions, visual, search, ex)
-  desktop/          SlottedDesktop (layout, chrome, tabs, dropdown)
+  layout_group/     SlottedDesktop (layout, chrome, tabs, dropdown)
+  lsp/              LSP client, registry, diagnostics, handler
+  mcp/              MCP server (snapshot, tools, commands, listener)
+  scripting/        Tcl engine (ScriptEngine + bridge_* modules)
   views/            Concrete views (editor/, tree.rs, help.rs, welcome.rs)
   handler.rs        Command handler (wires commands to actions)
-  commands.rs       Command ID constants
-  config.rs         Configuration loading
+  handler_*.rs      Split handlers (open, exec, build, git, confirm, context, drain, evict)
+  commands.rs       Command ID constants + ViewContext struct
+  config.rs         Configuration loading (Tcl-based)
   status.rs         Status bar setup
+  status_items.rs   Context-aware status bar items
   main.rs           Entry point
 txv-core/src/       Framework core (View, Group, Surface, Event, Program)
 txv-render/src/     Terminal backend (crossterm, TermBuf, diff flush)
 txv-widgets/src/    Reusable widgets (TextArea, StatusBar items, PtyTerminal)
+rusticle/src/       Tcl interpreter (pure Rust)
 tests/              Integration/scenario tests (one concern per file)
 ```
 
@@ -201,6 +207,5 @@ tests/              Integration/scenario tests (one concern per file)
 - `CONVENTIONS.md` — Patterns and rules (error handling, confirmations, drain pattern)
 - `doc/f4-design/v-013-txv-architecture.md` — Definitive TXV design
 - `doc/f4-design/STATUS.md` — Feature status table + development cycle SOP
-- `doc/f4-design/steps/` — Build step files for each crate
 - `hooks/pre-commit` — The pre-commit hook source
 - `doc/example-init.tcl` — Reference config (update when adding settings/keys/colors)

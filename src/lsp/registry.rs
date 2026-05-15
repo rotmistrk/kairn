@@ -93,9 +93,7 @@ impl LspRegistry {
         let config = match self.configs.get(language_id) {
             Some(c) => c.clone(),
             None => {
-                let err = format!("No LSP server configured for {language_id}");
-                log::warn!("{}", err);
-                self.last_error = Some(err);
+                log::debug!("No LSP server configured for {language_id}");
                 return None;
             }
         };
@@ -103,7 +101,8 @@ impl LspRegistry {
         let mut client = match LspClient::spawn(&config.command, &args) {
             Some(c) => c,
             None => {
-                let err = format!("LSP: {} not found (is it installed?)", config.command);
+                let hint = crate::tool_check::install_hint(&config.command);
+                let err = format!("LSP: {} not found. Install: {}", config.command, hint);
                 log::error!("{}", err);
                 self.last_error = Some(err);
                 self.disabled.push(language_id.to_string());

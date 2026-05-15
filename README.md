@@ -8,21 +8,9 @@
 
 A TUI IDE oriented around [Kiro](https://kiro.dev) AI. Named after *cairn* — stacked stones marking a trail.
 
-## Features
+## What It Does
 
-- **Three-panel layout**: Files/Git/Todo ←→ Editor ←→ Terminal (kiro/shell)
-- **Left panel tabs**: File tree, Git changes, Todo tree (cycle with tab dropdown)
-- **Full terminal emulation** (vte + PTY) for kiro-cli and shell tabs
-- **Scrollback buffer**: PgUp/PgDn to scroll terminal history (configurable size)
-- **Inline editing**: Vim-style editor with syntax highlighting, line numbers
-- **LSP integration**: completion, go-to-definition, references, hover, diagnostics, rename, code actions
-- **Git integration**: diff, file status colors, stage/unstage/untrack/commit from Git panel
-- **Todo tree**: hierarchical task management (`.kairn.todo`, duir-compatible format)
-- **MCP server**: exposes tabs and terminal content to kiro for AI integration
-- **Session persistence**: auto-save on quit, auto-restore on launch
-- **Fuzzy file search** (`Ctrl-P`) via nucleo
-- **Configurable keybindings** via `.kairnrc` (JSON, sparse overlay with source tracking)
-- **Build integration**: build/run/test commands with error navigation (next-error/prev-error)
+Three-panel TUI with a vim editor, terminal emulator, and file/git/todo tree — all wired together through an MCP server so Kiro AI can see and control everything. Scriptable via Tcl.
 
 ## Quick Start
 
@@ -32,88 +20,164 @@ cargo build --release
 ./target/release/kairn
 ```
 
-Press `F1` for full interactive help.
+Press `F1` for interactive help. Press `M-x` (Alt-x) for command mode.
 
-## Navigation
+## Layout
 
 ```
-← Tree ←→ Main ←→ Terminal →
+Wide (>176 cols):        Tall (<176 cols):
+┌────┬──────┬─────┐     ┌────┬──────────────┐
+│Tree│Editor│Term │     │Tree│   Editor     │
+│Git │      │     │     │Git ├──────────────┤
+│Todo│      │     │     │Todo│  Terminal    │
+└────┴──────┴─────┘     └────┴──────────────┘
 ```
 
-| Context | Key | Action |
-|---------|-----|--------|
-| Tree | `Enter`/`→` on file | Open in editor |
-| Tree | `→` on dir | Expand directory |
-| Any | `F2`/`F3`/`F4` | Direct focus: Tree/Main/Terminal |
-| Any | `F5` | Zoom toggle (maximize focused slot) |
-| Any | `Ctrl-Shift-←/→` | Focus prev/next slot |
+Panels: Left (tree/git/todo tabs) · Center (editor) · Right/Bottom (terminal).
+Auto-switches between Wide and Tall based on terminal width.
 
 ## Key Bindings
 
+### Global
+
 | Key | Action |
 |-----|--------|
-| `F1` | Help (full docs in main panel) |
-| `F2`/`F3`/`F4` | Focus: Tree / Main / Terminal |
-| `F5` | Zoom toggle (maximize focused slot) |
-| `F6` | Messages window |
+| `F1` | Help |
+| `F2` / `F3` / `F4` | Focus: Tree / Editor / Terminal |
+| `F5` | Zoom (maximize focused panel) |
+| `F6` | Messages |
 | `Ctrl-Q` | Quit |
 | `Ctrl-Z` | Suspend to shell |
-| `Ctrl-O` | Peek screen (MC style) |
-| `Ctrl-D` | Diff vs HEAD (`:diff` for options) |
-| `Ctrl-.` | Toggle hidden (dot) files in tree |
-| `Ctrl-Shift-←/→` | Focus prev/next slot |
-| `Ctrl-Shift-↑/↓` | Open tab dropdown picker |
+| `Ctrl-O` | Peek (show terminal underneath) |
+| `Ctrl-D` | Diff current file vs HEAD |
+| `Ctrl-L` | Repaint screen |
+| `M-x` (Alt-x / ≈) | Command mode |
+| `Ctrl-Shift-←/→` | Focus prev/next panel |
+| `Ctrl-Shift-↑/↓` | Tab dropdown picker |
+| `Alt-0..9` | Select tab by number |
 | `≠/–` (Alt+=/Alt+-) | Grow/shrink panel width |
 | `±/—` (Alt+Shift) | Grow/shrink panel height |
-| `M-x` (Alt-x/≈) | Command mode prompt |
-| `PgUp`/`PgDn` | Scroll back in terminal |
+| `PgUp/PgDn` | Terminal scrollback |
 
-## Layouts
+### Editor (Vim)
 
-```
-Wide:                   Tall-Right:               Tall-Bottom:
-┌────┬──────┬─────┐    ┌────┬──────────────┐     ┌────┬──────────────┐
-│Tree│ Main │Term │    │Tree│    Main      │     │Tree│    Main      │
-│    │      │     │    │    ├──────────────┤     ├────┴──────────────┤
-└────┴──────┴─────┘    │    │   Terminal   │     │    Terminal       │
-                       └────┴──────────────┘     └──────────────────┘
-```
+Normal mode: `h/j/k/l`, `w/b/e`, `0/$`, `gg/G`, `dd/yy/p`, `u/Ctrl-R`, `.`, `v/V`, `>>/<<`, `f/t`, `%`
+
+LSP: `gd` (definition), `gr` (references), `gR` (rename), `K` (hover)
+
+Visual: extend selection, `d/c/y/>/<`, `:` for ex commands
+
+Search: `/pattern`, `n/N`, `*/#`
+
+Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:e <path>`
+
+Insert: `Esc` to exit, `Ctrl-N/P` for completion
+
+### File Tree
+
+`j/k` navigate, `Enter/→` open/expand, `h/←` collapse, `Ctrl-.` toggle hidden
+
+### Git Panel
+
+`s` stage, `u` unstage, `x` untrack, `c` commit
+
+### Todo Panel
+
+`Space` toggle done, `!` toggle important, `e` edit, `n` new sibling, `b` new child, `d` delete, `J/K` swap, `H/L` promote/demote
+
+## Commands (M-x)
+
+| Command | Description |
+|---------|-------------|
+| `edit <path>` / `e <path>` | Open file |
+| `save` | Save current file |
+| `close` | Close current tab |
+| `shell` | New shell tab |
+| `kiro [--agent=name]` | New Kiro AI session |
+| `build` / `run` / `test` | Build integration |
+| `test-file` / `test-at-cursor` | Targeted tests |
+| `next-error` / `prev-error` | Error navigation |
+| `grep <pattern>` | Project-wide search |
+| `diff` | Diff current file |
+| `lsp-rename <name>` | Rename symbol |
+| `lsp-status` | Show LSP status |
+| `code-action` | LSP code actions |
+| `paste` | System clipboard paste |
+| `theme dark/light/toggle` | Switch theme |
+| `git-stage/unstage/untrack <f>` | Git operations |
+| `git-commit <msg>` | Commit |
+| `tab-rename <name>` | Rename tab |
+| `struct` / `text` | Switch view mode |
+| *anything else* | Evaluated as Tcl script |
 
 ## Configuration
 
+Config is Tcl. Loaded in order (later overrides earlier):
+
 ```
-~/.kairnrc          Global config (auto-created on first run)
-$PWD/.kairnrc       Project override (sparse — only set what you change)
-$PWD/.kairn.state   Auto-saved on quit, restored on launch
+~/.config/kairn/init.tcl     Global settings
+~/.kairn/config.tcl          User preferences
+~/.kairn/plugins/*/init.tcl  Plugins (alphabetical)
+.kairn/init.tcl              Project-local overrides
 ```
 
-```json
-{
-  "kiro_command": "kiro-cli",
-  "line_numbers": true,
-  "keys": {
-    "quit": "ctrl+q",
-    "new_shell_tab": "ctrl+x t",
-    "prev_tab": "alt+left",
-    "next_tab": "alt+right"
-  }
-}
+Example (`~/.kairn/config.tcl`):
+```tcl
+set editor.wrap false
+set editor.number true
+set editor.tabstop 4
+set terminal.scrollback 5000
+set theme.mode "dark"
 ```
 
-All keybindings configurable. `F1` shows active bindings with source (default/global/project).
+See `doc/example-init.tcl` for all settings including colors and LSP config.
+
+## Tcl Scripting
+
+Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
+
+| Namespace | Operations |
+|-----------|-----------|
+| `editor` | open, save, close, goto, insert, undo, redo, current-file, current-line, modified? |
+| `view` | focus, message, status |
+| `build` | run, test |
+| `lsp` | hover, definition, references, rename, format |
+| `git` | stage, unstage, commit |
+| `todo` | add, remove, complete |
+| `keymap` | bind, unbind |
+| `hook` | add, remove, list |
+| `system` | exec, env, set-env, root-dir, platform, clipboard-get, clipboard-set |
+
+Example:
+```tcl
+hook add file-save { build run }
+keymap bind ctrl+b { build run }
+editor goto 42
+```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `KAIRN_PID` | Set on start, prevents nested instances |
-| `KAIRN_CAPTURE` | Named pipe — `command > $KAIRN_CAPTURE` sends output to main panel |
+| `KAIRN_MCP_SOCKET` | Set on start — MCP socket path for AI integration |
+| `KAIRN_SUSPENDED` | Nesting guard (prevents running inside suspended session) |
 | `SHELL` | Used for shell tabs |
-| `EDITOR` | Used for Ctrl-E |
+
+## MCP Server
+
+Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
+
+- Read/write terminal content
+- List/switch tabs
+- Open/save files
+- Read editor state (cursor, selection, diagnostics)
+- Add todo items (including batch `add_subtree`)
 
 ## Tech Stack
 
-Rust · ratatui · crossterm · vte · portable-pty · syntect · nucleo · gix · similar
+Rust · txv (custom TUI framework) · crossterm · syntect · git2 · similar · rusticle (Tcl) · duir (todo)
+
+External (in txv-widgets): vte · portable-pty · nucleo
 
 ## License
 

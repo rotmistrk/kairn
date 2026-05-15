@@ -1,6 +1,6 @@
-//! Help text: global, tree, terminal, git, todo, and M-x sections.
+//! Help text: global, tree, terminal, git, todo, commands, and scripting.
 
-/// Generate help text for global keys, panels, and commands.
+/// Generate help text for global keys, panels, commands, and scripting.
 pub fn help_global() -> String {
     "\
 ─── Slot Focus ───────────────────────────────────────
@@ -28,6 +28,7 @@ pub fn help_global() -> String {
   Ctrl-Z          Suspend to shell
   Ctrl-O          Peek screen (show terminal underneath)
   Ctrl-D          Diff current file vs HEAD
+  Ctrl-L          Repaint screen
   M-x (Alt-x/≈)  Command mode prompt
 
 ─── File Tree (left slot, \"Files\" tab) ────────────────
@@ -73,8 +74,8 @@ pub fn help_global() -> String {
   close           Close current tab
   tab-rename <n>  Rename tool tab
   shell           New shell tab
-  kiro [agent]    New kiro session (default: kairn agent)
-  struct          Switch to structured view (JSON/YAML)
+  kiro [--agent=name]  New kiro session
+  struct          Switch to structured view (JSON/CSV/TSV)
   text            Switch to plain text editor
   build           Run build command
   run             Run project
@@ -89,14 +90,49 @@ pub fn help_global() -> String {
   paste           Paste from system clipboard
   messages        Show messages window
   grep <pattern>  Search files for pattern
-  grow / shrink   Resize panel width
-  grow-v / shrink-v  Resize panel height
   diff            Diff current file
+  theme <mode>    dark / light / auto / toggle
   git-stage <p>   Stage file
   git-unstage <p> Unstage file
   git-untrack <p> Untrack file
   git-commit <m>  Commit with message
   Tab             Complete command / file path
+
+  Anything not recognized is evaluated as Tcl script.
+
+─── Tcl Scripting ────────────────────────────────────
+  Any M-x input that isn't a built-in command is
+  evaluated as Tcl. Available namespaces:
+
+  editor open <path> ?-line N?   Open file
+  editor save / close / undo / redo
+  editor goto <line> ?<col>?     Jump to position
+  editor insert <text>           Insert at cursor
+  editor current-file / current-line / modified?
+
+  view focus <slot>              left/center/right
+  view message <level> <origin> <text>
+  view status <text>             Flash in status bar
+
+  build run ?<cmd>? / build test ?<cmd>?
+  lsp hover / definition / references
+  lsp rename <name> / lsp format
+
+  git stage <file> / unstage <file> / commit <msg>
+  todo add <text> / remove <path> / complete <path>
+
+  keymap bind <key> <command>    Bind key to command
+  keymap unbind <key>            Remove binding
+
+  hook add <event> <body>        Register hook
+  hook remove <event>            Unregister hooks
+  Events: file-save, file-open, file-close,
+          build-done, tab-switched, startup
+
+  system exec <cmd>              Run shell command
+  system env <var>               Get env variable
+  system root-dir / platform
+  system clipboard-get / clipboard-set <text>
 
 ─── Command Scope ────────────────────────────────────
   Commands can be entered two ways:

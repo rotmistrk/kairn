@@ -33,6 +33,14 @@ struct Cli {
     /// Run as MCP bridge (stdin↔socket proxy) and exit
     #[arg(long = "mcp-connect")]
     mcp_connect: bool,
+
+    /// Write default user config to ~/.config/kairn/init.tcl
+    #[arg(long = "init-home")]
+    init_home: bool,
+
+    /// Write default project config to .kairn/init.tcl
+    #[arg(long = "init-wp", alias = "init-workplace")]
+    init_wp: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -59,6 +67,14 @@ fn main() -> anyhow::Result<()> {
     // MCP bridge mode: proxy stdin↔socket and exit
     if cli.mcp_connect {
         return kairn::mcp::bridge::run_mcp_bridge().map_err(|e| anyhow::anyhow!("MCP bridge failed: {e}"));
+    }
+
+    // Init modes: write default configs and exit
+    if cli.init_home {
+        return kairn::init::init_home_config();
+    }
+    if cli.init_wp {
+        return kairn::init::init_wp_config(&cli.path);
     }
 
     // Nesting guard: prevent running inside a suspended kairn session
@@ -106,6 +122,8 @@ fn main() -> anyhow::Result<()> {
     let git_keys = settings.git_keys.clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
     app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
+    // Load Tcl config files
+    app_state.script.load_config(&root_dir);
     // Initialize theme
     let theme_mode = match app_state.settings.theme_mode.as_str() {
         "dark" => txv_core::palette::ThemeMode::Dark,
