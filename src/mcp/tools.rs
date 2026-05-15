@@ -102,6 +102,40 @@ pub fn tool_definitions() -> Value {
                 },
                 "required": ["path", "items"]
             }
+        },
+        {
+            "name": "open_file",
+            "description": "Open an existing file in the editor",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative path from project root"}
+                },
+                "required": ["path"]
+            }
+        },
+        {
+            "name": "create_file",
+            "description": "Create a new file on disk and open it in the editor",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Relative path from project root"},
+                    "content": {"type": "string", "description": "Initial file content (default: empty)"}
+                },
+                "required": ["path"]
+            }
+        },
+        {
+            "name": "close_tab",
+            "description": "Close an editor tab by name/path",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Tab name (as shown in list_tabs)"}
+                },
+                "required": ["name"]
+            }
         }
     ])
 }
@@ -122,6 +156,9 @@ pub fn handle_tool_call(
         "get_todo_tree" => super::tools_todo::tool_get_todo_tree(),
         "update_todo" => super::tools_todo::tool_update_todo(cmd_queue, args),
         "add_subtree" => super::tools_todo::tool_add_subtree(cmd_queue, args),
+        "open_file" => super::tools_write::tool_open_file(cmd_queue, args),
+        "create_file" => super::tools_write::tool_create_file(cmd_queue, args),
+        "close_tab" => super::tools_write::tool_close_tab(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

@@ -33,6 +33,12 @@ pub enum McpAction {
         path: Vec<usize>,
         items: Vec<serde_json::Value>,
     },
+    /// Open an existing file in the editor.
+    OpenFile { path: String },
+    /// Create a new file on disk and open it.
+    CreateFile { path: String, content: String },
+    /// Close an editor tab by path/name.
+    CloseTab { name: String },
 }
 
 /// Shared command queue + waker for MCP write operations.
