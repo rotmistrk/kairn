@@ -40,6 +40,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                 mcp_set_cursor(desktop, name, *line, *col)
             }
             crate::mcp::commands::McpAction::SaveFile { name } => mcp_save_file(desktop, name),
+            crate::mcp::commands::McpAction::GetDiagnostics { name } => mcp_get_diagnostics(desktop, name),
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel
@@ -195,4 +196,45 @@ fn mcp_save_file(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> 
     let editor = find_editor(desktop, name)?;
     editor.save().map_err(|e| format!("Save failed: {e}"))?;
     Ok(serde_json::json!({"saved": name}))
+}
+
+fn mcp_get_diagnostics(
+    desktop: &mut crate::layout_group::LayoutGroup,
+    name: &str,
+) -> Result<serde_json::Value, String> {
+    let panel = desktop.panel_mut(SlotId::Center);
+    let mut all_diags = Vec::new();
+    for i in 0..panel.tab_count() {
+        let title = panel.tab_title(i).unwrap_or_default().to_string();
+        if !name.is_empty() && title != name {
+            continue;
+        }
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        let Some(any) = view.as_any_mut() else {
+            continue;
+        };
+        let Some(editor) = any.downcast_ref::<crate::views::editor::EditorView>() else {
+            continue;
+        };
+        if let Some(diags) = &editor.diagnostics {
+            for d in diags {
+                let severity = match d.severity {
+                    crate::lsp::diagnostics::Severity::Error => "error",
+                    crate::lsp::diagnostics::Severity::Warning => "warning",
+                    crate::lsp::diagnostics::Severity::Info => "info",
+                    crate::lsp::diagnostics::Severity::Hint => "hint",
+                };
+                all_diags.push(serde_json::json!({
+                    "file": title,
+                    "line": d.line,
+                    "col": d.col_start,
+                    "severity": severity,
+                    "message": d.message,
+                }));
+            }
+        }
+    }
+    Ok(serde_json::json!({"diagnostics": all_diags}))
 }

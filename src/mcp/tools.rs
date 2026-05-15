@@ -32,6 +32,7 @@ pub fn handle_tool_call(
         "insert_text" => super::tools_write::tool_insert_text(cmd_queue, args),
         "set_cursor" => super::tools_write::tool_set_cursor(cmd_queue, args),
         "save_file" => super::tools_write::tool_save_file(cmd_queue, args),
+        "get_diagnostics" => super::tools_write::tool_get_diagnostics(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

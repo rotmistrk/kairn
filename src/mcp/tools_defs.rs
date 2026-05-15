@@ -183,6 +183,16 @@ pub fn tool_definitions() -> Value {
                 },
                 "required": ["name"]
             }
+        },
+        {
+            "name": "get_diagnostics",
+            "description": "Get LSP diagnostics (errors/warnings) for an open file",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Tab name (omit for all files)"}
+                }
+            }
         }
     ])
 }

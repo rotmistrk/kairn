@@ -89,3 +89,9 @@ pub fn tool_save_file(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Va
     let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
     queue.send(McpAction::SaveFile { name: name.to_string() })
 }
+
+pub fn tool_get_diagnostics(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).unwrap_or("");
+    queue.send(McpAction::GetDiagnostics { name: name.to_string() })
+}

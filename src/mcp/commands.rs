@@ -57,6 +57,8 @@ pub enum McpAction {
     SetCursor { name: String, line: usize, col: usize },
     /// Save the buffer to disk.
     SaveFile { name: String },
+    /// Get diagnostics for a file.
+    GetDiagnostics { name: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

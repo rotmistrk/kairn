@@ -35,7 +35,7 @@ pub struct EditorView {
     tick_counter: u64,
     eviction_close: bool,
     display_title: String,
-    diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
+    pub(crate) diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
     /// Diff mode state. None = normal mode.
     pub(super) diff_state: Option<diff_model::DiffState>,
     /// Completion popup overlay.
