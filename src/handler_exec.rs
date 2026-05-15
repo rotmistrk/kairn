@@ -8,6 +8,7 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
 use crate::views::help::HelpView;
 use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
+use crate::views::welcome::WelcomeView;
 
 /// Handle the M-x command dispatch.
 pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
@@ -34,6 +35,20 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                         SlotId::Center,
                         "Help".into(),
                         Box::new(HelpView::new()),
+                    );
+                }
+            }
+        }
+        "welcome" => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                if !desktop.focus_tab_by_title(SlotId::Center, "Welcome") {
+                    crate::handler_evict::try_insert_tab(
+                        desktop,
+                        state,
+                        ctx.queue,
+                        SlotId::Center,
+                        "Welcome".into(),
+                        Box::new(WelcomeView::new(state.root_dir.clone())),
                     );
                 }
             }
@@ -171,16 +186,42 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "diff" => {
             ctx.queue.put_command(CM_DIFF, Some(Box::new(arg.to_string())));
         }
-        "struct" | "structured" => {
+        "tree" | "struct" | "structured" => {
             crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, true);
+        }
+        "tab" => {
+            crate::handler_open::open_as_csv(ctx.desktop, ctx.queue, state);
         }
         "text" => {
             crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, false);
         }
         _ => {
-            let msg = txv_core::message::Message::warn("handler", format!("Unknown command: {cmd}"));
-            ctx.queue
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            // Try as Tcl script before reporting unknown
+            if is_bare_word(text) && !state.script.has_command(text) {
+                let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
+                ctx.queue
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            } else {
+                match state.script.eval(text) {
+                    Ok(result) => {
+                        if !result.is_empty() {
+                            let msg = txv_core::message::Message::info("tcl", result);
+                            ctx.queue
+                                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                        }
+                    }
+                    Err(e) => {
+                        let msg = txv_core::message::Message::error("tcl", e);
+                        ctx.queue
+                            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                    }
+                }
+            }
         }
     }
+}
+
+/// A bare word is a single token with no Tcl syntax (no spaces, brackets, braces, quotes).
+fn is_bare_word(s: &str) -> bool {
+    !s.is_empty() && !s.contains(|c: char| c.is_whitespace() || "[]{}\"$;".contains(c))
 }

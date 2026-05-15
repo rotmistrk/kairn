@@ -7,6 +7,7 @@ use crate::broker::FileBroker;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
+use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
 
 /// Application state shared across command handler invocations.
@@ -42,6 +43,8 @@ pub struct AppState {
     pub pending_tab: Option<crate::eviction::PendingTab>,
     /// Active confirmation context — routes CM_CONFIRM_RESPONSE to the right handler.
     pub confirm_context: Option<crate::commands::ConfirmContext>,
+    /// Tcl scripting engine.
+    pub script: ScriptEngine,
 }
 
 impl AppState {
@@ -67,6 +70,7 @@ impl AppState {
             build_pending: None,
             pending_tab: None,
             confirm_context: None,
+            script: ScriptEngine::new(),
         }
     }
 
@@ -92,6 +96,7 @@ impl AppState {
             build_pending: None,
             pending_tab: None,
             confirm_context: None,
+            script: ScriptEngine::new(),
         }
     }
 

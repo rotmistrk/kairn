@@ -134,6 +134,11 @@ impl Interpreter {
         self.commands.insert(name.to_string(), Rc::from(cmd));
     }
 
+    /// Check if a command is registered.
+    pub fn has_command(&self, name: &str) -> bool {
+        self.commands.contains_key(name)
+    }
+
     /// Register a command from a closure.
     pub fn register_fn<F>(&mut self, name: &str, f: F)
     where
