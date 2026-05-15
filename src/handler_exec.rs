@@ -189,6 +189,9 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "blame" => {
             ctx.queue.put_command(crate::commands::CM_BLAME, None);
         }
+        "log" => {
+            crate::handler_log::open_git_log(ctx, state, arg);
+        }
         "tree" | "struct" | "structured" => {
             crate::handler_open::toggle_view_mode(ctx.desktop, ctx.queue, state, true);
         }

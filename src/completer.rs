@@ -23,6 +23,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "grow-v",
     "help",
     "kiro",
+    "log",
     "lsp-rename",
     "lsp-status",
     "messages",

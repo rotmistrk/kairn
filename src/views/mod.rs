@@ -3,6 +3,7 @@
 pub mod csv_view;
 pub mod editor;
 pub mod git_changes;
+pub mod git_log;
 pub mod help;
 pub mod messages;
 pub mod results;
