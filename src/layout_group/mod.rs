@@ -143,6 +143,7 @@ impl LayoutGroup {
     }
 
     pub fn cycle_focus(&mut self, dir: i32) {
+        let was_zoomed = self.zoomed.is_some();
         let visible: Vec<usize> = (0..PANEL_COUNT)
             .filter(|&i| self.panel(Self::slot_from(i)).tab_count() > 0)
             .collect();
@@ -158,7 +159,12 @@ impl LayoutGroup {
         } else {
             (cur + visible.len() - 1) % visible.len()
         };
-        self.focus_slot(Self::slot_from(visible[next]));
+        let next_idx = visible[next];
+        self.focus_slot(Self::slot_from(next_idx));
+        if was_zoomed {
+            self.zoomed = Some(next_idx);
+            self.recompute_bounds();
+        }
     }
 
     pub fn is_tall(&self) -> bool {
