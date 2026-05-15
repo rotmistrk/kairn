@@ -39,6 +39,24 @@ pub enum McpAction {
     CreateFile { path: String, content: String },
     /// Close an editor tab by path/name.
     CloseTab { name: String },
+    /// Replace lines in an open buffer.
+    EditBuffer {
+        name: String,
+        start_line: usize,
+        end_line: usize,
+        text: String,
+    },
+    /// Insert text at a position in an open buffer.
+    InsertText {
+        name: String,
+        line: usize,
+        col: usize,
+        text: String,
+    },
+    /// Move cursor to a position in a tab.
+    SetCursor { name: String, line: usize, col: usize },
+    /// Save the buffer to disk.
+    SaveFile { name: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

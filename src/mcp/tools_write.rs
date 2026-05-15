@@ -37,3 +37,55 @@ pub fn tool_close_tab(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Va
     queue.send(McpAction::CloseTab { name: name.to_string() })?;
     Ok(json!({"closed": name}))
 }
+
+pub fn tool_edit_buffer(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
+    let start = args
+        .get("start_line")
+        .and_then(Value::as_u64)
+        .ok_or("Missing 'start_line'")? as usize;
+    let end = args
+        .get("end_line")
+        .and_then(Value::as_u64)
+        .ok_or("Missing 'end_line'")? as usize;
+    let text = args.get("text").and_then(Value::as_str).ok_or("Missing 'text'")?;
+    queue.send(McpAction::EditBuffer {
+        name: name.to_string(),
+        start_line: start,
+        end_line: end,
+        text: text.to_string(),
+    })
+}
+
+pub fn tool_insert_text(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
+    let line = args.get("line").and_then(Value::as_u64).ok_or("Missing 'line'")? as usize;
+    let col = args.get("col").and_then(Value::as_u64).ok_or("Missing 'col'")? as usize;
+    let text = args.get("text").and_then(Value::as_str).ok_or("Missing 'text'")?;
+    queue.send(McpAction::InsertText {
+        name: name.to_string(),
+        line,
+        col,
+        text: text.to_string(),
+    })
+}
+
+pub fn tool_set_cursor(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
+    let line = args.get("line").and_then(Value::as_u64).ok_or("Missing 'line'")? as usize;
+    let col = args.get("col").and_then(Value::as_u64).ok_or("Missing 'col'")? as usize;
+    queue.send(McpAction::SetCursor {
+        name: name.to_string(),
+        line,
+        col,
+    })
+}
+
+pub fn tool_save_file(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
+    queue.send(McpAction::SaveFile { name: name.to_string() })
+}

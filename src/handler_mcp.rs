@@ -27,6 +27,19 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                 mcp_create_file(desktop, state, ctx.queue, path, content)
             }
             crate::mcp::commands::McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
+            crate::mcp::commands::McpAction::EditBuffer {
+                name,
+                start_line,
+                end_line,
+                text,
+            } => mcp_edit_buffer(desktop, name, *start_line, *end_line, text),
+            crate::mcp::commands::McpAction::InsertText { name, line, col, text } => {
+                mcp_insert_text(desktop, name, *line, *col, text)
+            }
+            crate::mcp::commands::McpAction::SetCursor { name, line, col } => {
+                mcp_set_cursor(desktop, name, *line, *col)
+            }
+            crate::mcp::commands::McpAction::SaveFile { name } => mcp_save_file(desktop, name),
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel
@@ -103,4 +116,83 @@ fn mcp_close_tab(
     } else {
         Err(format!("Tab not found: {name}"))
     }
+}
+
+/// Find an editor view by tab name in the center panel.
+fn find_editor<'a>(
+    desktop: &'a mut crate::layout_group::LayoutGroup,
+    name: &str,
+) -> Result<&'a mut crate::views::editor::EditorView, String> {
+    let panel = desktop.panel_mut(SlotId::Center);
+    for i in 0..panel.tab_count() {
+        if panel.tab_title(i) == Some(name) {
+            let view = panel.view_at_mut(i).ok_or("View not accessible")?;
+            let any = view.as_any_mut().ok_or("View has no Any")?;
+            return any
+                .downcast_mut::<crate::views::editor::EditorView>()
+                .ok_or_else(|| format!("Tab '{name}' is not an editor"));
+        }
+    }
+    Err(format!("Tab not found: {name}"))
+}
+
+fn mcp_edit_buffer(
+    desktop: &mut crate::layout_group::LayoutGroup,
+    name: &str,
+    start_line: usize,
+    end_line: usize,
+    text: &str,
+) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    let buf = &mut editor.editor.buffer;
+    let line_count = buf.line_count();
+    let start = start_line.min(line_count);
+    let end = end_line.min(line_count);
+    if start > end {
+        return Err("start_line > end_line".to_string());
+    }
+    // Delete the range, then insert new text
+    let start_offset = buf.line_col_to_offset(start, 0).unwrap_or(0);
+    let end_offset = if end >= line_count {
+        buf.content().len()
+    } else {
+        buf.line_col_to_offset(end, 0).unwrap_or(buf.content().len())
+    };
+    if end_offset > start_offset {
+        buf.delete(start_offset, end_offset);
+    }
+    if !text.is_empty() {
+        let insert_at = buf.line_col_to_offset(start, 0).unwrap_or(0);
+        buf.insert(insert_at, text);
+    }
+    Ok(serde_json::json!({"edited": name}))
+}
+
+fn mcp_insert_text(
+    desktop: &mut crate::layout_group::LayoutGroup,
+    name: &str,
+    line: usize,
+    col: usize,
+    text: &str,
+) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    editor.editor.buffer.insert_at(line, col, text);
+    Ok(serde_json::json!({"inserted": text.len()}))
+}
+
+fn mcp_set_cursor(
+    desktop: &mut crate::layout_group::LayoutGroup,
+    name: &str,
+    line: usize,
+    col: usize,
+) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    editor.goto(line as u32, col as u32);
+    Ok(serde_json::json!({"cursor": {"line": line, "col": col}}))
+}
+
+fn mcp_save_file(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    editor.save().map_err(|e| format!("Save failed: {e}"))?;
+    Ok(serde_json::json!({"saved": name}))
 }
