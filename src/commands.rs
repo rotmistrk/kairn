@@ -168,6 +168,9 @@ pub const CM_EDITOR_CLEAR_HIGHLIGHT: CommandId = 214;
 pub const CM_CHAR_INSERTED: CommandId = 220;
 pub const CM_WORD_COMPLETED: CommandId = 221;
 
+// Todo operations
+pub const CM_TODO_NOTE_OPEN: CommandId = 230;
+
 /// Context collected from the active view each tick.
 #[derive(Debug, Clone, Default)]
 pub struct ViewContext {

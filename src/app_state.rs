@@ -62,6 +62,8 @@ pub struct AppState {
     pub plugins: crate::scripting::plugins::PluginManager,
     /// Deferred LSP requests waiting for server initialization.
     pub deferred_lsp: Vec<DeferredLspRequest>,
+    /// Path of the todo item whose note is currently open in the Notes tab.
+    pub todo_note_path: Option<Vec<usize>>,
 }
 
 impl AppState {
@@ -92,6 +94,7 @@ impl AppState {
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            todo_note_path: None,
         }
     }
 
@@ -123,6 +126,7 @@ impl AppState {
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            todo_note_path: None,
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s

@@ -1,5 +1,6 @@
 //! Background task drain — polls grep and build tasks for results.
 
+use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 use crate::handler::{downcast_desktop, AppState};
@@ -144,5 +145,57 @@ pub fn update_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
                 }
             }
         }
+    }
+}
+
+/// Open (or focus) the Notes tab for a todo item.
+pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((tree_path, note)) = boxed.downcast_ref::<(Vec<usize>, String)>() else {
+        return;
+    };
+    let kairn_dir = state.root_dir.join(".kairn");
+    let _ = std::fs::create_dir_all(&kairn_dir);
+    let note_file = kairn_dir.join("note.md");
+    if let Err(e) = std::fs::write(&note_file, note) {
+        log::warn!("todo note: failed to write note.md: {e}");
+        return;
+    }
+    state.todo_note_path = Some(tree_path.clone());
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let title = "Notes";
+    if desktop.focus_tab_by_title(SlotId::Center, title) {
+        // Tab exists — reload content by replacing the editor
+        desktop.close_tab_by_title(SlotId::Center, title);
+    }
+    let defaults = &state.settings.editor_defaults;
+    let theme = state.current_syntax_theme();
+    let view: Box<dyn View> = match crate::views::editor::EditorView::open_with_theme(&note_file, defaults, theme) {
+        Ok(editor) => Box::new(editor),
+        Err(_) => Box::new(crate::views::editor::EditorView::new_file(&note_file, defaults)),
+    };
+    crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Center, title.to_string(), view);
+    desktop.focus_tab_by_title(SlotId::Center, title);
+    desktop.focus_slot(SlotId::Center);
+}
+
+/// Sync the Notes tab content back to the todo item on save.
+pub fn sync_todo_note(state: &mut AppState) {
+    let Some(ref path) = state.todo_note_path else {
+        return;
+    };
+    let note_file = state.root_dir.join(".kairn").join("note.md");
+    let Ok(content) = std::fs::read_to_string(&note_file) else {
+        return;
+    };
+    let todo_path = state.root_dir.join(".kairn.todo");
+    let mut file = crate::views::todo_tree::model::load_todo_file(&todo_path);
+    if let Some(item) = crate::views::todo_tree::model::get_item_mut(&mut file, path) {
+        item.note = content;
+        crate::views::todo_tree::model::save_todo_file(&todo_path, &file);
     }
 }

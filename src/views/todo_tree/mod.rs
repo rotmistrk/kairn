@@ -162,6 +162,9 @@ impl TodoTreeView {
                 );
                 queue.put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
             }
+            HandleAction::OpenNote(path, note) => {
+                queue.put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note))));
+            }
         }
         self.inner.state.mark_dirty();
     }

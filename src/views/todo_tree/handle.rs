@@ -201,6 +201,12 @@ pub fn handle_todo_key(
             data.rebuild_flat();
             data.row_for_path(&new_path).map(HandleAction::MoveTo)
         }
+        // N — open note for this item
+        KeyCode::Char('N') => {
+            let path = data.path_at(id)?.clone();
+            let item = model::get_item(&data.file, &path)?;
+            Some(HandleAction::OpenNote(path, item.note.clone()))
+        }
         _ => None,
     }
 }
@@ -220,4 +226,6 @@ pub enum HandleAction {
     CryptoEncrypt(model::TreePath),
     /// Decrypt the node at path (prompt for passphrase).
     CryptoDecrypt(model::TreePath),
+    /// Open the note editor for the item at path.
+    OpenNote(model::TreePath, String),
 }
