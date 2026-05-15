@@ -79,47 +79,6 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-/// Drain MCP write commands and execute them on the live app state.
-pub fn drain_mcp(_ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(ref queue) = state.mcp_commands else {
-        return;
-    };
-    let requests = queue.drain();
-    if requests.is_empty() {
-        return;
-    }
-    // Access todo tree view (index 2 in Left panel)
-    let desktop = _ctx
-        .desktop
-        .as_any_mut()
-        .and_then(|a| a.downcast_mut::<crate::layout_group::LayoutGroup>());
-    let Some(desktop) = desktop else {
-        for req in requests {
-            let _ = req.reply.send(Err("Desktop unavailable".to_string()));
-        }
-        return;
-    };
-    let panel = desktop.panel_mut(SlotId::Left);
-    let todo_view = panel
-        .view_at_mut(2)
-        .and_then(|v| v.as_any_mut())
-        .and_then(|a| a.downcast_mut::<crate::views::todo_tree::TodoTreeView>());
-
-    match todo_view {
-        Some(tv) => {
-            for req in requests {
-                let result = tv.mcp_action(&req.action);
-                let _ = req.reply.send(result);
-            }
-        }
-        None => {
-            for req in requests {
-                let _ = req.reply.send(Err("Todo view not found".to_string()));
-            }
-        }
-    }
-}
-
 /// Refresh plugins: scan dirs, reload changed, unload removed.
 pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
     let warnings = state.plugins.refresh(&mut state.script);

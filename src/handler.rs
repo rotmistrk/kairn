@@ -39,7 +39,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::handler_drain::drain_build(ctx, state);
 
     // Drain MCP write commands
-    crate::handler_drain::drain_mcp(ctx, state);
+    crate::handler_mcp::drain_mcp(ctx, state);
 
     // PTY activity badges + auto-close
     crate::handler_drain::update_pty_badges(ctx, state);

@@ -61,6 +61,7 @@ impl TodoTreeView {
                     }
                 }
             }
+            _ => return Err("Not a todo action".to_string()),
         }
         self.inner.data.save();
         self.inner.data.rebuild_flat();

@@ -7,104 +7,7 @@ use serde_json::{json, Map, Value};
 use super::commands::McpCommandQueue;
 use super::snapshot::McpSnapshot;
 
-/// Return the list of tool definitions for `tools/list`.
-pub fn tool_definitions() -> Value {
-    json!([
-        {
-            "name": "list_tabs",
-            "description": "List all open tabs with type, focus, modified, cursor, order",
-            "inputSchema": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "list_terminals",
-            "description": "List terminal tabs with name, type, and index",
-            "inputSchema": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "get_terminal_content",
-            "description": "Get terminal content by name or index",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Terminal tab name"},
-                    "index": {"type": "integer", "description": "Terminal index (fallback)"}
-                }
-            }
-        },
-        {
-            "name": "get_todo_tree",
-            "description": "Get the full todo tree (titles, checked state, nesting)",
-            "inputSchema": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "get_messages",
-            "description": "Get the Messages log (errors, warnings, info from LSP, build, git, etc.)",
-            "inputSchema": {"type": "object", "properties": {}}
-        },
-        {
-            "name": "get_tab_content",
-            "description": "Get text content of a center-panel tab (editor buffer or results list) by name",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Tab name (as shown in list_tabs)"}
-                },
-                "required": ["name"]
-            }
-        },
-        {
-            "name": "update_todo",
-            "description": "Modify the todo tree: toggle, add, remove, move, promote, demote items",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote", "demote"],
-                        "description": "Action to perform"
-                    },
-                    "path": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "description": "Index path to the item (e.g. [0] for first root, [2,1] for second child of third root)"
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "Title for new item (required for 'add' action)"
-                    }
-                },
-                "required": ["action", "path"]
-            }
-        },
-        {
-            "name": "add_subtree",
-            "description": "Add a subtree of todo items as children of the item at path",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "description": "Index path to the parent item"
-                    },
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "title": {"type": "string"},
-                                "items": {"type": "array", "description": "Nested children (recursive)"}
-                            },
-                            "required": ["title"]
-                        },
-                        "description": "Tree of items to add (each with title and optional nested items)"
-                    }
-                },
-                "required": ["path", "items"]
-            }
-        }
-    ])
-}
+pub use super::tools_defs::tool_definitions;
 
 /// Dispatch a tool call to the appropriate handler.
 pub fn handle_tool_call(
@@ -122,6 +25,17 @@ pub fn handle_tool_call(
         "get_todo_tree" => super::tools_todo::tool_get_todo_tree(),
         "update_todo" => super::tools_todo::tool_update_todo(cmd_queue, args),
         "add_subtree" => super::tools_todo::tool_add_subtree(cmd_queue, args),
+        "open_file" => super::tools_write::tool_open_file(cmd_queue, args),
+        "create_file" => super::tools_write::tool_create_file(cmd_queue, args),
+        "close_tab" => super::tools_write::tool_close_tab(cmd_queue, args),
+        "edit_buffer" => super::tools_write::tool_edit_buffer(cmd_queue, args),
+        "insert_text" => super::tools_write::tool_insert_text(cmd_queue, args),
+        "set_cursor" => super::tools_write::tool_set_cursor(cmd_queue, args),
+        "save_file" => super::tools_write::tool_save_file(cmd_queue, args),
+        "get_diagnostics" => super::tools_write::tool_get_diagnostics(cmd_queue, args),
+        "get_build_errors" => super::tools_write::tool_get_build_errors(cmd_queue, args),
+        "search_project" => super::tools_write::tool_search_project(cmd_queue, args),
+        "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

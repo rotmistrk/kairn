@@ -33,6 +33,8 @@ pub mod handler_drain;
 pub mod handler_evict;
 pub mod handler_exec;
 pub mod handler_git;
+pub mod handler_mcp;
+pub mod handler_mcp_build;
 pub mod handler_open;
 pub mod handler_script;
 pub mod handler_script_edit;

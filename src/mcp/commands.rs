@@ -33,6 +33,38 @@ pub enum McpAction {
         path: Vec<usize>,
         items: Vec<serde_json::Value>,
     },
+    /// Open an existing file in the editor.
+    OpenFile { path: String },
+    /// Create a new file on disk and open it.
+    CreateFile { path: String, content: String },
+    /// Close an editor tab by path/name.
+    CloseTab { name: String },
+    /// Replace lines in an open buffer.
+    EditBuffer {
+        name: String,
+        start_line: usize,
+        end_line: usize,
+        text: String,
+    },
+    /// Insert text at a position in an open buffer.
+    InsertText {
+        name: String,
+        line: usize,
+        col: usize,
+        text: String,
+    },
+    /// Move cursor to a position in a tab.
+    SetCursor { name: String, line: usize, col: usize },
+    /// Save the buffer to disk.
+    SaveFile { name: String },
+    /// Get diagnostics for a file.
+    GetDiagnostics { name: String },
+    /// Get last build errors.
+    GetBuildErrors,
+    /// Search project files (synchronous grep).
+    SearchProject { pattern: String },
+    /// Trigger a build command.
+    RunBuild { command: String },
 }
 
 /// Shared command queue + waker for MCP write operations.
