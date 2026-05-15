@@ -157,6 +157,15 @@ pub enum ConfirmContext {
 // Context broadcast
 pub const CM_CONTEXT_UPDATE: CommandId = 200;
 
+// Editor script operations (from Tcl bridge)
+pub const CM_EDITOR_REPLACE_SELECTION: CommandId = 210;
+pub const CM_EDITOR_DELETE_LINE: CommandId = 211;
+pub const CM_EDITOR_REPLACE_WORD: CommandId = 212;
+
+// Hook triggers from editor
+pub const CM_CHAR_INSERTED: CommandId = 220;
+pub const CM_WORD_COMPLETED: CommandId = 221;
+
 /// Context collected from the active view each tick.
 #[derive(Debug, Clone, Default)]
 pub struct ViewContext {

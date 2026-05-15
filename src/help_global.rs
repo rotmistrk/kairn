@@ -136,6 +136,36 @@ pub fn help_global() -> String {
   system root-dir / home-dir / platform
   system clipboard-get / clipboard-set <text>
 
+─── Editor Selection & Line Commands ─────────────────
+  editor get-selection        Return selected text
+  editor replace-selection <text>  Replace selection
+  editor get-line ?<n>?       Get line content (default: cursor)
+  editor delete-line ?<n>?    Delete line (default: cursor)
+  editor replace-word <text>  Replace word under cursor
+
+  These work from Tcl scripts and keybindings:
+    keymap bind ctrl+q {
+      set sel [editor get-selection]
+      editor replace-selection [concat {'} $sel {'}]
+    }
+
+─── Filtered Hooks ───────────────────────────────────
+  hook add <event> ?-filter <pat>? <body>
+
+  Events with filter support:
+    char-inserted   Filter: the character (e.g. open paren)
+    word-completed  Filter: the completed word
+    idle            No filter (fires after idle timeout)
+
+  Examples:
+    hook add char-inserted -filter {(} {
+      editor insert {)}
+    }
+    hook add word-completed -filter {TODO} {
+      view message info hook {TODO detected}
+    }
+    hook add idle { lsp format }
+
 ─── Command Scope ────────────────────────────────────
   Commands can be entered two ways:
     :command    From editor or structured view (vim-style)

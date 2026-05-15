@@ -101,3 +101,23 @@ set keys.quit "ctrl+q"
 #     command "typescript-language-server --stdio"
 #     filetypes {ts tsx js jsx}
 # }
+
+# ─── Hooks & Selection Scripting ─────────────────────────────────────────────
+# Auto-close brackets via char-inserted hook with filter:
+# hook add char-inserted -filter "(" { editor insert ")" }
+# hook add char-inserted -filter "{" { editor insert "}" }
+# hook add char-inserted -filter "[" { editor insert "]" }
+
+# Quote the current selection:
+# keymap bind ctrl+q {
+#   set sel [editor get-selection]
+#   editor replace-selection "\"$sel\""
+# }
+
+# Word expansion via word-completed hook:
+# hook add word-completed -filter "todo" {
+#   editor replace-word "// TODO(user): "
+# }
+
+# Format on idle (fires after no keystrokes for idle timeout):
+# hook add idle { lsp format }

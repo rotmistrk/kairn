@@ -1,15 +1,21 @@
 {
-  "name": "kairn",
-  "tools": ["*"],
-  "allowedTools": ["@kairn"],
+  "allowedTools": [
+    "@kairn"
+  ],
   "includeMcpJson": true,
   "mcpServers": {
     "kairn": {
-      "command": "kairn",
-      "args": ["--mcp-connect"],
+      "args": [
+        "--mcp-connect"
+      ],
+      "command": "/home/rotmistr/.local/bin/kairn",
       "env": {
         "KAIRN_MCP_SOCKET": "${KAIRN_MCP_SOCKET}"
       }
     }
-  }
+  },
+  "name": "kairn",
+  "tools": [
+    "*"
+  ]
 }

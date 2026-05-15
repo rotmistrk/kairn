@@ -23,10 +23,20 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         ..Default::default()
     };
 
+    let mut selection_text = String::new();
+    let mut current_line_text = String::new();
+
     if let Some(view) = desktop.active_view_mut(slot) {
         if let Some(any) = view.as_any_mut() {
             if let Some(editor) = any.downcast_ref::<EditorView>() {
                 fill_from_editor(editor, state, &mut vc);
+                current_line_text = editor.editor.buffer.line(editor.editor.cursor_line).unwrap_or_default();
+                if let Some((start, end)) = editor.editor.visual_range() {
+                    let content = editor.editor.buffer.content();
+                    if end <= content.len() {
+                        selection_text = content[start..end].to_string();
+                    }
+                }
             }
         }
     }
@@ -38,7 +48,9 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
 
     // Update script engine snapshot
     let root = state.root_dir.to_string_lossy().to_string();
-    state.script.update_snapshot(&vc, &root);
+    state
+        .script
+        .update_snapshot_full(&vc, &root, &selection_text, &current_line_text);
 
     ctx.queue.put_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }

@@ -7,6 +7,7 @@ use crate::broker::FileBroker;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
+use crate::scripting::hooks::HookTrigger;
 use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
 
@@ -45,6 +46,8 @@ pub struct AppState {
     pub confirm_context: Option<crate::commands::ConfirmContext>,
     /// Tcl scripting engine.
     pub script: ScriptEngine,
+    /// Pending hook triggers from the editor.
+    pub pending_hooks: Vec<HookTrigger>,
     /// Dynamic command list for completions (shared with completer).
     pub command_list: crate::completer::CommandList,
     /// Plugin hot-reload manager.
@@ -75,6 +78,7 @@ impl AppState {
             pending_tab: None,
             confirm_context: None,
             script: ScriptEngine::new(),
+            pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
         }
@@ -103,6 +107,7 @@ impl AppState {
             pending_tab: None,
             confirm_context: None,
             script: ScriptEngine::new(),
+            pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
         }

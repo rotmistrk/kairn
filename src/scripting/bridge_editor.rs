@@ -78,6 +78,37 @@ pub fn register(
                 let snap = snapshot.lock().map_err(|e| TclError::new(e.to_string()))?;
                 Ok(TclValue::Str(snap.context.language.clone()))
             }
+            "get-selection" => {
+                let snap = snapshot.lock().map_err(|e| TclError::new(e.to_string()))?;
+                Ok(TclValue::Str(snap.selection_text.clone()))
+            }
+            "replace-selection" => {
+                let text = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::ReplaceSelection { text });
+                Ok(TclValue::Str(String::new()))
+            }
+            "get-line" => {
+                let line = super::arg_opt(args, 1).and_then(|s| s.parse::<u32>().ok());
+                if line.is_some() {
+                    push(&cmds, ScriptCommand::GetLine { line });
+                    // For explicit line, we'd need synchronous access; return from snapshot
+                    let snap = snapshot.lock().map_err(|e| TclError::new(e.to_string()))?;
+                    Ok(TclValue::Str(snap.current_line_text.clone()))
+                } else {
+                    let snap = snapshot.lock().map_err(|e| TclError::new(e.to_string()))?;
+                    Ok(TclValue::Str(snap.current_line_text.clone()))
+                }
+            }
+            "delete-line" => {
+                let line = super::arg_opt(args, 1).and_then(|s| s.parse::<u32>().ok());
+                push(&cmds, ScriptCommand::DeleteLine { line });
+                Ok(TclValue::Str(String::new()))
+            }
+            "replace-word" => {
+                let text = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::ReplaceWord { text });
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("editor: unknown subcommand '{other}'"))),
         }
     });

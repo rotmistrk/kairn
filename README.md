@@ -139,7 +139,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 
 | Namespace | Operations |
 |-----------|-----------|
-| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype |
+| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word |
 | `view` | focus, message, status |
 | `build` | run, test |
 | `lsp` | hover, definition, references, rename, format |
@@ -154,6 +154,26 @@ Example:
 hook add file-save { build run }
 keymap bind ctrl+b { build run }
 editor goto 42
+```
+
+### Selection Manipulation & Filtered Hooks
+
+Scripts can read and modify the editor selection:
+```tcl
+# Quote the current selection
+keymap bind ctrl+q {
+  set sel [editor get-selection]
+  editor replace-selection "\"$sel\""
+}
+```
+
+Hooks support optional `-filter` to fire only on matching input:
+```tcl
+# Auto-close brackets
+hook add char-inserted -filter "(" { editor insert ")" }
+
+# Format on idle
+hook add idle { lsp format }
 ```
 
 ## Environment Variables

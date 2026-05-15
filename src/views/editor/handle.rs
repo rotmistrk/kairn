@@ -219,4 +219,40 @@ impl EditorView {
             self.display_title = name.to_string();
         }
     }
+
+    /// Emit hook triggers for char-inserted and word-completed events.
+    pub(super) fn emit_hook_triggers(&self, cmd: &crate::editor::command::Command, queue: &mut EventQueue) {
+        use crate::editor::command::Command;
+        if let Command::InsertChar(ch) = cmd {
+            queue.put_command(crate::commands::CM_CHAR_INSERTED, Some(Box::new(*ch)));
+            // Check for word-completed: space/punctuation after a word
+            if ch.is_whitespace() || ch.is_ascii_punctuation() {
+                // Look back for the word that just ended
+                if let Some(word) = self.word_before_cursor() {
+                    queue.put_command(crate::commands::CM_WORD_COMPLETED, Some(Box::new(word)));
+                }
+            }
+        }
+    }
+
+    /// Get the word immediately before the cursor (before the just-typed char).
+    fn word_before_cursor(&self) -> Option<String> {
+        let line = self.editor.buffer.line(self.editor.cursor_line)?;
+        let chars: Vec<char> = line.chars().collect();
+        // cursor_col points after the just-inserted char, so word ends at col-2
+        let end = self.editor.cursor_col.checked_sub(1)?;
+        if end == 0 || !chars.get(end.checked_sub(1)?)?.is_alphanumeric() {
+            return None;
+        }
+        let word_end = end;
+        let start = (0..word_end)
+            .rev()
+            .take_while(|&i| chars.get(i).is_some_and(|c| c.is_alphanumeric() || *c == '_'))
+            .count();
+        let begin = word_end - start;
+        if begin == word_end {
+            return None;
+        }
+        Some(chars[begin..word_end].iter().collect())
+    }
 }

@@ -34,6 +34,8 @@ pub mod handler_evict;
 pub mod handler_exec;
 pub mod handler_git;
 pub mod handler_open;
+pub mod handler_script;
+pub mod handler_script_edit;
 pub mod help;
 pub mod help_editor;
 pub mod help_global;

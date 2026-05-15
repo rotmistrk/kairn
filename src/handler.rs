@@ -141,7 +141,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TEST_AT_CURSOR => crate::handler_build::handle_test_at_cursor(ctx, state),
         CM_NEXT_ERROR => crate::handler_build::handle_next_error(ctx, state),
         CM_PREV_ERROR => crate::handler_build::handle_prev_error(ctx, state),
-        CM_SET_GLOBAL => handle_set_global(ctx, state),
+        CM_SET_GLOBAL => crate::handler_exec::handle_set_global(ctx, state),
         CM_SUSPEND => crate::suspend::suspend_to_shell(),
         CM_PEEK => crate::suspend::peek_screen(),
         CM_GIT_STAGE => crate::handler_git::handle_git_stage(ctx, state),
@@ -238,25 +238,13 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_CONFIRM_RESPONSE => {
             crate::handler_confirm::handle_confirm_response(ctx, state);
         }
-        _ => {}
-    }
-}
-
-fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(opt) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    let defaults = &mut state.settings.editor_defaults;
-    match opt.as_str() {
-        "wrap" => defaults.wrap = true,
-        "nowrap" => defaults.wrap = false,
-        "list" | "li" => defaults.list = true,
-        "nolist" | "noli" => defaults.list = false,
-        "number" | "nu" => defaults.number = true,
-        "nonumber" | "nonu" => defaults.number = false,
+        CM_EDITOR_REPLACE_SELECTION
+        | CM_EDITOR_DELETE_LINE
+        | CM_EDITOR_REPLACE_WORD
+        | CM_CHAR_INSERTED
+        | CM_WORD_COMPLETED => {
+            crate::handler_script::handle_script_command(ctx, state);
+        }
         _ => {}
     }
 }

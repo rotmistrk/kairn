@@ -205,6 +205,8 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
                 match state.script.eval(text) {
                     Ok(result) => {
                         crate::completer::refresh_commands(&state.command_list, &state.script);
+                        let cmds = state.script.drain_commands();
+                        crate::handler_script::dispatch_script_commands(cmds, ctx, state);
                         if !result.is_empty() {
                             let msg = txv_core::message::Message::info("tcl", result);
                             ctx.queue
@@ -225,4 +227,24 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
 /// A bare word is a single token with no Tcl syntax (no spaces, brackets, braces, quotes).
 fn is_bare_word(s: &str) -> bool {
     !s.is_empty() && !s.contains(|c: char| c.is_whitespace() || "[]{}\"$;".contains(c))
+}
+
+/// Handle :set options (wrap, number, list, etc.)
+pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(opt) = boxed.downcast_ref::<String>() else {
+        return;
+    };
+    let defaults = &mut state.settings.editor_defaults;
+    match opt.as_str() {
+        "wrap" => defaults.wrap = true,
+        "nowrap" => defaults.wrap = false,
+        "list" | "li" => defaults.list = true,
+        "nolist" | "noli" => defaults.list = false,
+        "number" | "nu" => defaults.number = true,
+        "nonumber" | "nonu" => defaults.number = false,
+        _ => {}
+    }
 }

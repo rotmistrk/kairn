@@ -9,6 +9,7 @@ mod bridge_lsp;
 mod bridge_system;
 mod bridge_todo;
 mod bridge_view;
+pub mod hooks;
 pub mod plugins;
 
 use std::path::Path;
@@ -20,11 +21,15 @@ use rusticle::value::TclValue;
 
 use crate::commands::ViewContext;
 
+use self::hooks::HookRegistry;
+
 /// Read-only snapshot of app state, updated each tick for Tcl queries.
 #[derive(Clone, Default)]
 pub struct StateSnapshot {
     pub context: ViewContext,
     pub root_dir: String,
+    pub selection_text: String,
+    pub current_line_text: String,
 }
 
 /// Commands produced by Tcl scripts, drained by the handler.
@@ -97,6 +102,20 @@ pub enum ScriptCommand {
     TodoComplete {
         path: String,
     },
+    // Editor selection/text operations (Feature 2)
+    GetSelection,
+    ReplaceSelection {
+        text: String,
+    },
+    GetLine {
+        line: Option<u32>,
+    },
+    DeleteLine {
+        line: Option<u32>,
+    },
+    ReplaceWord {
+        text: String,
+    },
 }
 
 /// The scripting engine: interpreter + command queue + state snapshot.
@@ -104,12 +123,14 @@ pub struct ScriptEngine {
     interp: Interpreter,
     commands: Arc<Mutex<Vec<ScriptCommand>>>,
     snapshot: Arc<Mutex<StateSnapshot>>,
+    pub hook_registry: Arc<Mutex<HookRegistry>>,
 }
 
 impl ScriptEngine {
     pub fn new() -> Self {
         let commands: Arc<Mutex<Vec<ScriptCommand>>> = Arc::new(Mutex::new(Vec::new()));
         let snapshot: Arc<Mutex<StateSnapshot>> = Arc::new(Mutex::new(StateSnapshot::default()));
+        let hook_registry: Arc<Mutex<HookRegistry>> = Arc::new(Mutex::new(HookRegistry::new()));
 
         let mut interp = Interpreter::new();
         bridge_editor::register(&mut interp, commands.clone(), snapshot.clone());
@@ -117,7 +138,7 @@ impl ScriptEngine {
         bridge_system::register(&mut interp, snapshot.clone());
         bridge_build::register(&mut interp, commands.clone());
         bridge_keymap::register(&mut interp, commands.clone());
-        bridge_hook::register(&mut interp);
+        bridge_hook::register(&mut interp, hook_registry.clone());
         bridge_lsp::register(&mut interp, commands.clone());
         bridge_git::register(&mut interp, commands.clone());
         bridge_todo::register(&mut interp, commands.clone());
@@ -126,6 +147,7 @@ impl ScriptEngine {
             interp,
             commands,
             snapshot,
+            hook_registry,
         }
     }
 
@@ -197,6 +219,22 @@ impl ScriptEngine {
         }
     }
 
+    /// Update the state snapshot with editor text fields.
+    pub fn update_snapshot_full(
+        &self,
+        ctx: &ViewContext,
+        root_dir: &str,
+        selection_text: &str,
+        current_line_text: &str,
+    ) {
+        if let Ok(mut snap) = self.snapshot.lock() {
+            snap.context = ctx.clone();
+            snap.root_dir = root_dir.to_string();
+            snap.selection_text = selection_text.to_string();
+            snap.current_line_text = current_line_text.to_string();
+        }
+    }
+
     /// Get captured output from puts commands.
     pub fn get_output(&self) -> Vec<String> {
         self.interp.get_output().to_vec()
@@ -208,6 +246,7 @@ impl ScriptEngine {
     }
 
     /// Load config files in standard order. Errors are logged, never fatal.
+    /// Plugins are handled separately by PluginManager.
     pub fn load_config(&mut self, root_dir: &Path) {
         let home = std::env::var("HOME").unwrap_or_default();
         if !home.is_empty() {
@@ -217,24 +256,7 @@ impl ScriptEngine {
                     log::warn!("config.tcl: {e}");
                 }
             }
-            // Plugins
-            let plugins_dir = Path::new(&home).join(".kairn/plugins");
-            if plugins_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&plugins_dir) {
-                    let mut dirs: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-                    dirs.sort_by_key(|e| e.file_name());
-                    for entry in dirs {
-                        let init = entry.path().join("init.tcl");
-                        if init.exists() {
-                            if let Err(e) = self.load_file(&init) {
-                                log::warn!("plugin {}: {e}", entry.file_name().to_string_lossy());
-                            }
-                        }
-                    }
-                }
-            }
         }
-        // Project-local config
         let project_init = root_dir.join(".kairn/init.tcl");
         if project_init.exists() {
             if let Err(e) = self.load_file(&project_init) {

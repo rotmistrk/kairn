@@ -253,10 +253,12 @@ impl View for EditorView {
             return HandleResult::Consumed;
         }
 
-        let action = self.editor.execute(cmd);
+        let action = self.editor.execute(cmd.clone());
         // Track edits for autosave
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
+            // Emit hook triggers for char-inserted / word-completed
+            self.emit_hook_triggers(&cmd, queue);
         }
         self.handle_action(action, queue);
         self.ensure_cursor_visible();
