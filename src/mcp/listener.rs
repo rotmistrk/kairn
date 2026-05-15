@@ -64,9 +64,15 @@ pub fn start_mcp_listener(
             let snap = Arc::clone(&snapshot);
             let cq = cmd_queue.lock().ok().and_then(|g| g.clone());
             std::thread::spawn(move || {
-                let server = McpServer::new(snap, cq);
-                let result = server.run(reader, writer);
-                log::log("listener", &format!("connection closed: {result:?}"));
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let server = McpServer::new(snap, cq);
+                    server.run(reader, writer)
+                }));
+                match result {
+                    Ok(Ok(())) => log::log("listener", "connection closed normally"),
+                    Ok(Err(e)) => log::log("listener", &format!("connection error: {e}")),
+                    Err(_) => log::log("listener", "connection handler panicked"),
+                }
             });
         }
     });

@@ -55,6 +55,7 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
         tabs,
         terminals: Vec::new(),
         focused_slot: slot_name.to_string(),
+        messages: Vec::new(),
     }
 }
 
@@ -139,4 +140,28 @@ fn classify_tab(slot: SlotId, title: &str) -> &'static str {
             }
         }
     }
+}
+
+/// Format messages for MCP snapshot.
+pub fn collect_messages(ring: &std::sync::Arc<std::sync::Mutex<crate::message_ring::MessageRing>>) -> Vec<String> {
+    let Ok(guard) = ring.lock() else {
+        return Vec::new();
+    };
+    guard
+        .entries()
+        .iter()
+        .map(|m| {
+            let level = match m.level {
+                crate::message_ring::MsgLevel::Error => "ERR",
+                crate::message_ring::MsgLevel::Warn => "WARN",
+                crate::message_ring::MsgLevel::Info => "INFO",
+                crate::message_ring::MsgLevel::Debug => "DBG",
+            };
+            if m.count > 1 {
+                format!("[{}] [{}] {} (x{})", level, m.origin, m.text, m.count)
+            } else {
+                format!("[{}] [{}] {}", level, m.origin, m.text)
+            }
+        })
+        .collect()
 }

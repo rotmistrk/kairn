@@ -47,4 +47,5 @@ pub struct McpSnapshot {
     pub tabs: Vec<TabInfo>,
     pub terminals: Vec<TerminalInfo>,
     pub focused_slot: String,
+    pub messages: Vec<String>,
 }

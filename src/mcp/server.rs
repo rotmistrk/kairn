@@ -52,6 +52,8 @@ impl McpServer {
                 writer.flush()?;
                 continue;
             };
+            let method = request.get("method").and_then(Value::as_str).unwrap_or("?");
+            super::log::log("mcp", &format!("← {method}"));
             if let Some(response) = self.handle_request(&request) {
                 writeln!(writer, "{response}")?;
                 writer.flush()?;
