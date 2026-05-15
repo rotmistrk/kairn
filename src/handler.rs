@@ -53,6 +53,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let mut snap = crate::mcp::collect::collect_snapshot(desktop);
                 snap.terminals = crate::mcp::collect::collect_terminal_content(desktop);
+                snap.messages = crate::mcp::collect::collect_messages(&state.messages);
                 if let Some(ref arc) = state.mcp_snapshot {
                     if let Ok(mut locked) = arc.lock() {
                         *locked = snap;
@@ -65,6 +66,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     }
 
     match ctx.command {
+        CM_TICK => crate::handler_context::broadcast_context(ctx, state),
         CM_OPEN_FILE => crate::handler_open::handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => crate::handler_open::handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),

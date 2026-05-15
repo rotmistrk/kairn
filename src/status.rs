@@ -6,11 +6,12 @@ use txv_core::prelude::*;
 use txv_core::status::StatusBar;
 use txv_widgets::command_item::CommandItem;
 use txv_widgets::confirm_item::ConfirmItem;
-use txv_widgets::status_indicators::{BranchItem, ModeItem, PositionItem};
+use txv_widgets::status_indicators::BranchItem;
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
+use crate::status_items::{CtxLangItem, CtxModeItem, CtxModifiedItem, CtxPositionItem};
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
@@ -112,8 +113,10 @@ pub fn build_status_bar(
     );
     // Right side
     bar.add(MessageItem::new(5));
-    bar.add(PositionItem::new(CM_CURSOR_MOVED));
-    bar.add(ModeItem::new(CM_MODE_CHANGED));
+    bar.add(CtxModifiedItem::new());
+    bar.add(CtxPositionItem::new());
+    bar.add(CtxModeItem::new());
+    bar.add(CtxLangItem::new());
     bar.add_visible_only(BranchItem::new(root_dir));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar

@@ -153,3 +153,21 @@ pub enum ConfirmContext {
     /// Todo tree: crypto passphrase prompt
     TodoCrypto,
 }
+
+// Context broadcast
+pub const CM_CONTEXT_UPDATE: CommandId = 200;
+
+/// Context collected from the active view each tick.
+#[derive(Debug, Clone, Default)]
+pub struct ViewContext {
+    pub file: Option<String>,
+    pub line: u32,
+    pub col: u32,
+    pub mode: String,
+    pub modified: bool,
+    pub language: String,
+    pub title: String,
+    pub selection_lines: u32,
+    pub git_branch: String,
+    pub lsp_status: String,
+}

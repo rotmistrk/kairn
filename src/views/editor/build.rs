@@ -108,4 +108,8 @@ impl EditorView {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
+    pub fn language(&self) -> &str {
+        &self.file_ext
+    }
 }
