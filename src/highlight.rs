@@ -80,7 +80,8 @@ impl Highlighter {
             Ok(ranges) => ranges
                 .iter()
                 .map(|(style, text)| {
-                    let fg = Color::Rgb(style.foreground.r, style.foreground.g, style.foreground.b);
+                    let (r, g, b) = ensure_readable(style.foreground.r, style.foreground.g, style.foreground.b);
+                    let fg = Color::Rgb(r, g, b);
                     HlSpan {
                         text: text.to_string(),
                         style: Style { fg, ..Style::default() },
@@ -98,4 +99,43 @@ impl Highlighter {
 /// Extract file extension from a path.
 pub fn extension_from_path(path: &Path) -> &str {
     path.extension().and_then(|e| e.to_str()).unwrap_or("")
+}
+
+/// Ensure foreground color is readable on a dark background.
+/// If brightness is below threshold, clamp to a minimum visible gray.
+fn ensure_readable(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
+    let brightness = (r as u16 + g as u16 + b as u16) / 3;
+    if brightness < 80 {
+        let floor: u8 = 120;
+        (r.max(floor), g.max(floor), b.max(floor))
+    } else {
+        (r, g, b)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn java_brackets_readable_after_fix() {
+        let hl = Highlighter::with_theme("base16-eighties.dark");
+        let spans = hl.highlight_line("}", "java");
+        for span in &spans {
+            if span.text.contains('}') {
+                let Color::Rgb(r, g, b) = span.style.fg else {
+                    panic!("not rgb")
+                };
+                eprintln!("  java bracket -> ({r},{g},{b})");
+                assert!(r >= 120 || g >= 120 || b >= 120, "too dark: ({r},{g},{b})");
+            }
+        }
+    }
+
+    #[test]
+    fn ensure_readable_clamps_dark() {
+        assert_eq!(ensure_readable(45, 45, 45), (120, 120, 120));
+        assert_eq!(ensure_readable(200, 200, 200), (200, 200, 200));
+        assert_eq!(ensure_readable(0, 0, 100), (120, 120, 120));
+    }
 }
