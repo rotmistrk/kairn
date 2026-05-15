@@ -78,6 +78,10 @@ impl EditorView {
         self.editor.cursor_line = (line as usize).min(max_line);
         self.editor.cursor_col = col as usize;
         self.ensure_cursor_visible();
+        // If bounds not yet set, pre-scroll so first draw shows the right area
+        if self.state.bounds().h == 0 {
+            self.editor.viewport_scroll = self.editor.cursor_line;
+        }
         self.state.mark_dirty();
     }
 

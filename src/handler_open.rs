@@ -137,7 +137,7 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
         return;
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let view = crate::views::results::ResultsView::new(title, entries.clone());
+        let view = crate::views::results::ResultsView::new(title, entries.clone()).with_root(&state.root_dir);
         crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }

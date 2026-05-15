@@ -1,7 +1,6 @@
 //! LSP command handler — wires LSP events into the editor.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::Instant;
 
 use txv_core::prelude::*;
@@ -12,7 +11,6 @@ use crate::handler::AppState;
 
 use super::diagnostics;
 use super::messages::LspMessage;
-use super::requests;
 use super::send;
 
 /// Tracks pending LSP requests so responses can be routed.
@@ -150,105 +148,9 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
 }
 
 fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut EventQueue) {
-    match kind {
-        PendingKind::GotoDefinition => {
-            let locs = requests::parse_locations(result);
-            if let Some(loc) = locs.into_iter().next() {
-                log::info!("LSP: definition -> {}:{}", &loc.uri, loc.line);
-                if loc.uri.starts_with("jdt://") {
-                    queue.put_command(
-                        CM_LSP_GOTO_DEF,
-                        Some(Box::new(JdtRequest {
-                            uri: loc.uri,
-                            line: loc.line,
-                            character: loc.character,
-                        })),
-                    );
-                } else {
-                    let path = uri_to_path(&loc.uri);
-                    let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
-                    queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
-                }
-            } else {
-                queue.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::info("lsp", "No definition found"))),
-                );
-            }
-        }
-        PendingKind::FindReferences { symbol } => {
-            let locs = requests::parse_locations(result);
-            log::info!("LSP: references -> {} locations", locs.len());
-            if locs.len() == 1 {
-                let loc = &locs[0];
-                let path = uri_to_path(&loc.uri);
-                let req = crate::commands::OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
-                queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
-            } else if !locs.is_empty() {
-                let entries: Vec<crate::views::results::ResultEntry> = locs
-                    .iter()
-                    .map(|l| crate::views::results::ResultEntry {
-                        path: std::path::PathBuf::from(uri_to_path(&l.uri)),
-                        line: l.line,
-                        col: l.character,
-                        text: String::new(),
-                    })
-                    .collect();
-                let title = if symbol.is_empty() {
-                    "References".to_string()
-                } else {
-                    format!("References: {symbol}")
-                };
-                queue.put_command(CM_SHOW_RESULTS, Some(Box::new((title, entries))));
-            } else {
-                queue.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::info("lsp", "No references found"))),
-                );
-            }
-        }
-        PendingKind::Hover => {
-            if let Some(text) = requests::parse_hover(result) {
-                log::info!("LSP: hover -> {} chars", text.len());
-                queue.put_command(CM_DIAGNOSTIC, Some(Box::new(("hover".to_string(), text))));
-            }
-        }
-        PendingKind::Completion => {
-            let items = requests::parse_completion(result);
-            log::info!("LSP: completion -> {} items", items.len());
-            if !items.is_empty() {
-                queue.put_command(CM_LSP_COMPLETION, Some(Box::new(items)));
-            } else {
-                queue.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::info("lsp", "No completions"))),
-                );
-            }
-        }
-        PendingKind::Rename => {
-            let count = requests::apply_workspace_edit(result);
-            let msg = format!("Renamed in {count} location(s)");
-            queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
-        }
-        PendingKind::CodeAction => {
-            let actions = requests::parse_code_actions(result);
-            if !actions.is_empty() {
-                let text = actions.join("\n");
-                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(text)));
-            }
-        }
-        PendingKind::JdtClassContents { line, character } => {
-            if let Some(content) = result.as_str() {
-                let msg = format!("[decompiled]:{}:{}\n{}", line + 1, character + 1, content);
-                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
-            } else {
-                let msg = "[Source not available]".to_string();
-                queue.put_command(CM_SHELL_OUTPUT, Some(Box::new(msg)));
-            }
-        }
-    }
+    super::response::handle_response(kind, result, queue);
 }
 
 fn uri_to_path(uri: &str) -> String {
-    uri.strip_prefix("file://").unwrap_or(uri).to_string()
+    super::response::uri_to_path(uri)
 }
