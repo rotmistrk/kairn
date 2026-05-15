@@ -3,6 +3,11 @@
 use super::Editor;
 
 impl Editor {
+    pub(super) fn current_line_indent(&self) -> String {
+        let line = self.buffer.line(self.cursor_line).unwrap_or_default();
+        line.chars().take_while(|c| *c == ' ' || *c == '\t').collect()
+    }
+
     pub(super) fn indent_line(&mut self) {
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, 0) {
             self.buffer.insert(offset, "    ");

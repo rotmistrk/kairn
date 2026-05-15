@@ -5,6 +5,13 @@
 # Mode: "auto" (detect from terminal), "dark", or "light"
 set theme.mode "auto"
 
+# Syntax highlighting theme (syntect theme names)
+# set theme.syntax_dark "base16-eighties.dark"
+# set theme.syntax_light "base16-ocean.light"
+
+# Glyph style: "auto" (detect from terminal), "ascii", "utf", or "nerd"
+# set theme.glyphs "auto"
+
 # ─── Editor ──────────────────────────────────────────────────────────────────
 set editor.wrap false
 set editor.list false
@@ -22,10 +29,11 @@ set tabs.max 10
 set clock.interval 60
 
 # ─── Build / Run / Test ──────────────────────────────────────────────────────
-# Auto-detected from Cargo.toml / Makefile / package.json if not set.
-# set build.command "cargo build"
-# set run.command "cargo run"
-# set test.command "cargo test"
+# Build commands are auto-detected from Cargo.toml / Makefile / package.json.
+# Override in .kairn/init (plain text, not Tcl):
+#   build = make -j8
+#   test = make check
+#   test-file = cargo test --lib {file}
 
 # ─── Git Panel Keys ──────────────────────────────────────────────────────────
 set git.stage "s"

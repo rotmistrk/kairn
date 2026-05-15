@@ -151,16 +151,50 @@ src/
   buffer/           PieceTable text buffer + undo
   editor/           Vi editor (keymap, commands, motions, visual, search, ex)
   layout_group/     SlottedDesktop (layout, chrome, tabs, dropdown)
-  lsp/              LSP client, registry, diagnostics, handler
+  lsp/              LSP client, registry, diagnostics, handler, response, completion
   mcp/              MCP server (snapshot, tools, commands, listener)
   scripting/        Tcl engine (ScriptEngine + bridge_* modules)
-  views/            Concrete views (editor/, tree.rs, help.rs, welcome.rs)
+  session/          Session persistence (save/restore workspace)
+  structured/       Structured document models (JSON, JSONL, JSONC)
+  views/            Concrete views:
+    editor/           Editor view (draw, handle, completion, diff, build)
+    csv_view/         CSV/TSV table view
+    struct_view/      Structured (JSON tree) view
+    todo_tree/        Todo panel
+    git_changes/      Git changes panel
+    tree.rs           File tree
+    terminal.rs       PTY terminal
+    results.rs        Grep/build results
+    messages.rs       Message ring viewer
+    help.rs / welcome.rs
   handler.rs        Command handler (wires commands to actions)
   handler_*.rs      Split handlers (open, exec, build, git, confirm, context, drain, evict)
   commands.rs       Command ID constants + ViewContext struct
   config.rs         Configuration loading (Tcl-based)
+  app_state.rs      Application state struct
+  app_palette.rs    Color palette definitions
+  config_colors.rs  Color config parsing
+  config_keys.rs    Key binding config parsing
+  init.rs           --init-home / --init-wp CLI commands
   status.rs         Status bar setup
   status_items.rs   Context-aware status bar items
+  build.rs          Async build/test execution
+  build_detect.rs   Auto-detect build system
+  build_parse.rs    Parse build output for errors
+  grep.rs           Async project-wide search
+  csv_parse.rs      CSV/TSV parsing
+  diff.rs           File diff computation
+  highlight.rs      Syntax highlighting (syntect)
+  glyphs.rs         Glyph style (ascii/utf/nerd)
+  git_watcher.rs    Background git status polling
+  git_ops.rs        Git operations (stage, unstage, commit)
+  git_status.rs     Git status model
+  clipboard.rs      System clipboard access
+  completer.rs      M-x command/path completion
+  kiro_registry.rs  Track active Kiro sessions
+  message_ring.rs   Message history ring buffer
+  suspend.rs        Ctrl-Z suspend/resume
+  eviction.rs       Tab eviction policy
   main.rs           Entry point
 txv-core/src/       Framework core (View, Group, Surface, Event, Program)
 txv-render/src/     Terminal backend (crossterm, TermBuf, diff flush)

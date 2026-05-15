@@ -204,6 +204,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             } else {
                 match state.script.eval(text) {
                     Ok(result) => {
+                        crate::completer::refresh_commands(&state.command_list, &state.script);
                         if !result.is_empty() {
                             let msg = txv_core::message::Message::info("tcl", result);
                             ctx.queue

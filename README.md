@@ -108,6 +108,7 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 | `git-commit <msg>` | Commit |
 | `tab-rename <name>` | Rename tab |
 | `struct` / `text` | Switch view mode |
+| `tab` | Open current file as CSV/TSV table |
 | *anything else* | Evaluated as Tcl script |
 
 ## Configuration
@@ -138,7 +139,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 
 | Namespace | Operations |
 |-----------|-----------|
-| `editor` | open, save, close, goto, insert, undo, redo, current-file, current-line, modified? |
+| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype |
 | `view` | focus, message, status |
 | `build` | run, test |
 | `lsp` | hover, definition, references, rename, format |
@@ -146,7 +147,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 | `todo` | add, remove, complete |
 | `keymap` | bind, unbind |
 | `hook` | add, remove, list |
-| `system` | exec, env, set-env, root-dir, platform, clipboard-get, clipboard-set |
+| `system` | exec, env, set-env, root-dir, home-dir, platform, clipboard-get, clipboard-set |
 
 Example:
 ```tcl

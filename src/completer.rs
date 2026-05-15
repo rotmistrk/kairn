@@ -200,3 +200,32 @@ pub fn refresh_commands(list: &CommandList, script: &crate::scripting::ScriptEng
         *guard = cmds;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scripting::ScriptEngine;
+
+    #[test]
+    fn refresh_commands_includes_builtins_and_tcl_bridge() {
+        let list = new_command_list();
+        let script = ScriptEngine::new();
+        refresh_commands(&list, &script);
+        let cmds = list.lock().unwrap();
+        // Should contain built-in kairn commands
+        assert!(cmds.contains(&"build".to_string()), "should contain builtin 'build'");
+        assert!(cmds.contains(&"quit".to_string()), "should contain builtin 'quit'");
+        // Should contain Tcl bridge namespace commands (registered by ScriptEngine)
+        assert!(
+            cmds.contains(&"editor".to_string()),
+            "should contain Tcl bridge 'editor'"
+        );
+        // Verify sorted
+        let sorted: Vec<String> = {
+            let mut c = cmds.clone();
+            c.sort();
+            c
+        };
+        assert_eq!(*cmds, sorted, "commands should be sorted");
+    }
+}

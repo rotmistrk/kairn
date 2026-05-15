@@ -9,10 +9,11 @@ const WP_CONFIG_TEMPLATE: &str = "\
 # Tcl syntax. Overrides ~/.config/kairn/init.tcl for this project.
 
 # ─── Build Commands ──────────────────────────────────────────────────────────
-# Auto-detected from Cargo.toml / Makefile / package.json if not set.
-# set build.command \"cargo build\"
-# set run.command \"cargo run\"
-# set test.command \"cargo test\"
+# Auto-detected from Cargo.toml / Makefile / package.json.
+# Override in .kairn/init (plain text, not Tcl):
+#   build = make -j8
+#   test = make check
+#   test-file = cargo test --lib {file}
 
 # ─── Editor ──────────────────────────────────────────────────────────────────
 # set editor.tabstop 4

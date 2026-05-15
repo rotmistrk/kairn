@@ -122,8 +122,9 @@ fn main() -> anyhow::Result<()> {
     let git_keys = settings.git_keys.clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
     app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
-    // Load Tcl config files
+    // Load Tcl config files (plugins may define new commands)
     app_state.script.load_config(&root_dir);
+    kairn::completer::refresh_commands(&app_state.command_list, &app_state.script);
     // Initialize theme
     let theme_mode = match app_state.settings.theme_mode.as_str() {
         "dark" => txv_core::palette::ThemeMode::Dark,

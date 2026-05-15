@@ -166,4 +166,18 @@ mod tests {
         assert!(!found);
         assert!(version.is_none());
     }
+
+    #[test]
+    fn check_all_tools_includes_all_known_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}").unwrap();
+        let results = check_all_tools(dir.path());
+        let names: Vec<&str> = results.iter().map(|t| t.name).collect();
+        // Should include all TOOLS entries, not just relevant ones
+        for &(tool_name, _) in TOOLS {
+            assert!(names.contains(&tool_name), "missing tool: {tool_name}");
+        }
+        // Relevant tools should come first (kiro-cli, rust-analyzer for .rs)
+        assert_eq!(results[0].name, "kiro-cli");
+    }
 }

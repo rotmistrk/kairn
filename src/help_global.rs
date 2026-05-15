@@ -77,6 +77,7 @@ pub fn help_global() -> String {
   kiro [--agent=name]  New kiro session
   struct          Switch to structured view (JSON/CSV/TSV)
   text            Switch to plain text editor
+  tab             Open current file as CSV/TSV table
   build           Run build command
   run             Run project
   test            Run tests
@@ -105,10 +106,11 @@ pub fn help_global() -> String {
   evaluated as Tcl. Available namespaces:
 
   editor open <path> ?-line N?   Open file
-  editor save / close / undo / redo
+  editor save / save-all / close / undo / redo
   editor goto <line> ?<col>?     Jump to position
   editor insert <text>           Insert at cursor
-  editor current-file / current-line / modified?
+  editor current-file / current-line / current-col
+  editor modified? / filetype
 
   view focus <slot>              left/center/right
   view message <level> <origin> <text>
@@ -131,7 +133,7 @@ pub fn help_global() -> String {
 
   system exec <cmd>              Run shell command
   system env <var>               Get env variable
-  system root-dir / platform
+  system root-dir / home-dir / platform
   system clipboard-get / clipboard-set <text>
 
 ─── Command Scope ────────────────────────────────────

@@ -25,20 +25,24 @@ impl Editor {
     pub(super) fn open_line_below(&mut self) {
         self.buffer.begin_group();
         self.mode = EditorMode::Insert;
+        let indent = self.current_line_indent();
         let line_len = self.buffer.line_len(self.cursor_line);
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, line_len) {
-            self.buffer.insert(offset, "\n");
+            let text = format!("\n{indent}");
+            self.buffer.insert(offset, &text);
             self.cursor_line += 1;
-            self.cursor_col = 0;
+            self.cursor_col = indent.len();
         }
     }
 
     pub(super) fn open_line_above(&mut self) {
         self.buffer.begin_group();
         self.mode = EditorMode::Insert;
+        let indent = self.current_line_indent();
         if let Some(offset) = self.buffer.line_col_to_offset(self.cursor_line, 0) {
-            self.buffer.insert(offset, "\n");
-            self.cursor_col = 0;
+            let text = format!("{indent}\n");
+            self.buffer.insert(offset, &text);
+            self.cursor_col = indent.len();
         }
     }
 
