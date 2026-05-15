@@ -12,6 +12,7 @@ use crate::layout_group::SlotId;
 use crate::settings::EditorSettings;
 use crate::structured::json_doc::JsonDoc;
 use crate::structured::jsonl_doc::JsonlDoc;
+use crate::views::csv_view::CsvView;
 use crate::views::editor::EditorView;
 use crate::views::struct_view::StructuredView;
 
@@ -183,7 +184,7 @@ pub(crate) fn toggle_view_mode(
     crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
 }
 
-/// Try to open a file as a structured view (JSON/JSONC/JSONL). Returns None if not applicable or parse fails.
+/// Try to open a file as a structured view (JSON/JSONC/JSONL/CSV/TSV). Returns None if not applicable or parse fails.
 fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
     let ext = path.extension()?.to_str()?;
     let content = std::fs::read_to_string(path).ok()?;
@@ -200,6 +201,7 @@ fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
             let doc = JsonlDoc::parse(&content).ok()?;
             Some(Box::new(StructuredView::new(path, Box::new(doc))))
         }
+        "csv" | "tsv" | "tab" | "psv" => Some(Box::new(CsvView::new(path, &content))),
         _ => None,
     }
 }
@@ -222,4 +224,26 @@ fn open_editor(
         editor.toggle_diff("");
     }
     Box::new(editor)
+}
+
+/// Open the current file as a CSV table view.
+pub(crate) fn open_as_csv(desktop: &mut dyn View, queue: &mut EventQueue, state: &mut AppState) {
+    let Some(d) = downcast_desktop(desktop) else {
+        return;
+    };
+    let Some(title) = d.active_tab_title(SlotId::Center).map(String::from) else {
+        return;
+    };
+    let path = state.root_dir.join(&title);
+    if !path.is_file() {
+        return;
+    }
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return;
+    };
+    d.close_tab_by_title(SlotId::Center, &title);
+    state.broker.close(&path.to_string_lossy());
+    let _ = state.broker.open(&path.to_string_lossy(), SlotId::Center, 0);
+    let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
+    crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
 }

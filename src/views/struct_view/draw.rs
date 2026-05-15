@@ -25,12 +25,8 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     } else {
         pal.interactive.cursor_unfocused.to_style()
     };
+    let cursor_row_style = pal.base.dim.to_style();
     let sep_style = pal.base.dim.to_style();
-    let focus_style = if focused {
-        pal.interactive.cursor_focused.to_style()
-    } else {
-        pal.interactive.cursor_unfocused.to_style()
-    };
     let edit_style = pal.interactive.edit_overlay.to_style();
 
     for row in 0..b.h as usize {
@@ -45,7 +41,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
         let node_id = view.visible_nodes[idx];
         let is_cursor = idx == view.cursor;
         let base = if is_cursor {
-            cursor_style
+            cursor_row_style
         } else {
             normal
         };
@@ -55,7 +51,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
         // Key column
         let key_text = build_key_text(view, node_id);
         let col_style = if is_cursor && view.col_focus == ColFocus::Key {
-            focus_style
+            cursor_style
         } else {
             base
         };
@@ -69,7 +65,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
         // Value column
         let val_text = view.doc.value_display(node_id);
         let col_style = if is_cursor && view.col_focus == ColFocus::Value {
-            focus_style
+            cursor_style
         } else {
             base
         };
@@ -84,7 +80,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
         // Meta column
         let meta_text = view.doc.meta(node_id);
         let col_style = if is_cursor && view.col_focus == ColFocus::Meta {
-            focus_style
+            cursor_style
         } else {
             base
         };
