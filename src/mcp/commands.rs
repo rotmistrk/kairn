@@ -54,11 +54,13 @@ impl McpCommandQueue {
     pub fn send(&self, action: McpAction) -> Result<Value, String> {
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let req = McpRequest { action, reply: tx };
-        if let Ok(mut q) = self.queue.lock() {
+        {
+            let mut q = self.queue.lock().map_err(|_| "MCP queue mutex poisoned")?;
             q.push_back(req);
         }
         self.waker.wake();
-        rx.recv().map_err(|_| "MCP command dropped".to_string())?
+        rx.recv_timeout(std::time::Duration::from_secs(5))
+            .map_err(|e| format!("MCP command timeout: {e}"))?
     }
 
     /// Drain pending requests (called from main thread).

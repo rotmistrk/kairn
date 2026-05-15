@@ -53,7 +53,10 @@ impl TodoTreeView {
                 }
                 for item_val in items {
                     let item = build_item(item_val).ok_or("Invalid item in subtree")?;
-                    if !model::add_child(&mut self.inner.data.file, path, item) {
+                    if path.is_empty() {
+                        // Empty path: add as top-level item
+                        self.inner.data.file.items.push(item);
+                    } else if !model::add_child(&mut self.inner.data.file, path, item) {
                         return Err("Failed to add subtree item".to_string());
                     }
                 }
