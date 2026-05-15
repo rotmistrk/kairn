@@ -1,5 +1,7 @@
 # Task: MCP IDE Bridge — Full Editor Integration
 
+<!-- TODO: mark done → todo tree [2][2] -->
+
 ## Objective
 Extend kairn's MCP server into a full IDE bridge so Kiro can see, navigate,
 and manipulate editor state — preventing conflicts, leveraging LSP, and

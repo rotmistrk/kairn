@@ -72,6 +72,7 @@ pub struct AppSettings {
     pub build_command: Option<String>,
     pub run_command: Option<String>,
     pub test_command: Option<String>,
+    pub lsp_timeout: u64,
     pub git_keys: GitKeys,
     pub status_keys: StatusKeys,
 }
@@ -141,6 +142,7 @@ impl Default for AppSettings {
             build_command: None,
             run_command: None,
             test_command: None,
+            lsp_timeout: 10,
             git_keys: GitKeys::default(),
             status_keys: StatusKeys::default(),
         }

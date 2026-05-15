@@ -14,9 +14,18 @@ use super::messages::LspMessage;
 use super::send;
 
 /// Tracks pending LSP requests so responses can be routed.
-#[derive(Default)]
 pub struct PendingRequests {
     map: HashMap<u64, (PendingKind, Instant)>,
+    pub timeout_secs: u64,
+}
+
+impl Default for PendingRequests {
+    fn default() -> Self {
+        Self {
+            map: HashMap::new(),
+            timeout_secs: 10,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -40,7 +49,7 @@ impl PendingRequests {
     }
 
     pub(crate) fn remove_timed_out(&mut self, queue: &mut EventQueue) {
-        let timeout = std::time::Duration::from_secs(10);
+        let timeout = std::time::Duration::from_secs(self.timeout_secs);
         let expired: Vec<u64> = self
             .map
             .iter()
@@ -49,7 +58,7 @@ impl PendingRequests {
             .collect();
         for id in expired {
             if let Some((kind, _)) = self.map.remove(&id) {
-                let msg = format!("{kind:?}: no response after 10s");
+                let msg = format!("{kind:?}: no response after {}s", self.timeout_secs);
                 log::warn!("LSP timeout: {msg}");
                 queue.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,

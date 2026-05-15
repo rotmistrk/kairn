@@ -96,7 +96,8 @@ impl AppState {
     }
 
     pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {
-        Self {
+        let lsp_timeout = settings.lsp_timeout;
+        let mut s = Self {
             broker: FileBroker::new(),
             root_dir,
             settings,
@@ -122,7 +123,9 @@ impl AppState {
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
-        }
+        };
+        s.lsp_pending.timeout_secs = lsp_timeout;
+        s
     }
 
     /// Returns the syntax theme name appropriate for the current light/dark mode.
