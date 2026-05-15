@@ -50,7 +50,7 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
     let root = state.root_dir.to_string_lossy().to_string();
     state
         .script
-        .update_snapshot_full(&vc, &root, &selection_text, &current_line_text);
+        .update_snapshot(&vc, &root, &selection_text, &current_line_text);
 
     ctx.queue.put_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }

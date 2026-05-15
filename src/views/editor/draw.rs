@@ -4,6 +4,32 @@ use txv_core::prelude::*;
 
 use super::EditorView;
 
+/// Resolve the style for a character at `byte_pos`, considering visual selection and highlights.
+fn char_style(
+    base: Style,
+    byte_pos: usize,
+    visual_range: Option<(usize, usize)>,
+    visual_bg: Color,
+    highlight: Option<&crate::editor::highlight_state::HighlightState>,
+    hl_match: Style,
+    hl_other_bg: Color,
+) -> Style {
+    if let Some((vs, ve)) = visual_range {
+        if byte_pos >= vs && byte_pos < ve {
+            return Style { bg: visual_bg, ..base };
+        }
+    } else if let Some(is_current) = highlight.and_then(|h| h.match_at(byte_pos)) {
+        if is_current {
+            return hl_match;
+        }
+        return Style {
+            bg: hl_other_bg,
+            ..base
+        };
+    }
+    base
+}
+
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
         let b = self.state.bounds();
@@ -22,6 +48,8 @@ impl EditorView {
         let gutter_w = self.gutter_width();
         let gutter_style = app.editor.gutter.to_style();
         let cursor_style = app.editor.cursor.to_style();
+        let hl_match_style = app.editor.highlight_match.to_style();
+        let hl_other_bg = app.editor.highlight_other.to_style().bg;
         let visual_bg = if self.state.is_focused() {
             pal.interactive.visual_selection.bg.unwrap_or(Color::Ansi(4))
         } else {
@@ -33,6 +61,7 @@ impl EditorView {
         let avail = b.w.saturating_sub(gutter_w) as usize;
         let wrap = self.editor.options.wrap;
         let tab_width = self.editor.options.tab_width;
+        let highlight = self.editor.highlight.as_ref();
 
         let mut row: usize = 0;
         let mut line_idx = scroll;
@@ -60,27 +89,21 @@ impl EditorView {
             for span in &spans {
                 for ch in span.text.chars() {
                     if ch == '\t' {
+                        let st = char_style(
+                            span.style,
+                            byte_pos,
+                            visual_range,
+                            visual_bg,
+                            highlight,
+                            hl_match_style,
+                            hl_other_bg,
+                        );
                         for ti in 0..tab_width {
-                            if col_offset >= avail {
-                                break;
-                            }
-                            if visual_row >= b.h as usize {
+                            if col_offset >= avail || visual_row >= b.h as usize {
                                 break;
                             }
                             let x = text_x + col_offset as u16;
                             let vy = b.y + visual_row as u16;
-                            let st = if let Some((vs, ve)) = visual_range {
-                                if byte_pos >= vs && byte_pos < ve {
-                                    Style {
-                                        bg: visual_bg,
-                                        ..span.style
-                                    }
-                                } else {
-                                    span.style
-                                }
-                            } else {
-                                span.style
-                            };
                             if self.editor.options.list {
                                 let ls = app.editor.list_chars.resolve(&st);
                                 let c = if ti == tab_width - 1 {
@@ -101,7 +124,6 @@ impl EditorView {
 
                     if wrap {
                         if col_offset >= avail {
-                            // Pad remainder of current visual row
                             let vy = b.y + visual_row as u16;
                             for pad_col in col_offset..avail {
                                 surface.put(text_x + pad_col as u16, vy, ' ', normal);
@@ -111,7 +133,6 @@ impl EditorView {
                             if visual_row >= b.h as usize {
                                 break;
                             }
-                            // Gutter for wrapped line (blank)
                             if gutter_w > 0 {
                                 let wy = b.y + visual_row as u16;
                                 surface.print_line(b.x, wy, "", gutter_w, gutter_style);
@@ -127,19 +148,15 @@ impl EditorView {
                         break;
                     }
                     let x = text_x + col_offset as u16;
-
-                    let style = if let Some((vs, ve)) = visual_range {
-                        if byte_pos >= vs && byte_pos < ve {
-                            Style {
-                                bg: visual_bg,
-                                ..span.style
-                            }
-                        } else {
-                            span.style
-                        }
-                    } else {
-                        span.style
-                    };
+                    let style = char_style(
+                        span.style,
+                        byte_pos,
+                        visual_range,
+                        visual_bg,
+                        highlight,
+                        hl_match_style,
+                        hl_other_bg,
+                    );
 
                     let (display_ch, display_style) = if self.editor.options.list {
                         let list_style = app.editor.list_chars.resolve(&style);

@@ -11,6 +11,7 @@ pub enum ExCmdId {
     Diff,
     Edit,
     NoDiff,
+    NoHighlight,
     Quit,
     QuitForce,
     Set,
@@ -49,6 +50,11 @@ const CMD_TABLE: &[CmdEntry] = &[
         full: "nodiff",
         min_abbrev: 3,
         id: ExCmdId::NoDiff,
+    },
+    CmdEntry {
+        full: "nohlsearch",
+        min_abbrev: 3,
+        id: ExCmdId::NoHighlight,
     },
     CmdEntry {
         full: "quit",

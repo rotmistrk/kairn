@@ -63,6 +63,8 @@ pub struct EditorPalette {
     pub gutter: PaletteStyle,
     pub list_chars: PaletteStyle,
     pub cursor: PaletteStyle,
+    pub highlight_match: PaletteStyle,
+    pub highlight_other: PaletteStyle,
 }
 
 #[derive(Clone, Debug)]
@@ -136,6 +138,16 @@ impl Default for AppPalette {
                         ..Default::default()
                     }),
                     ..Default::default()
+                },
+                highlight_match: PaletteStyle {
+                    fg: Some(ansi(0)),
+                    bg: Some(ansi(3)),
+                    attrs: None,
+                },
+                highlight_other: PaletteStyle {
+                    fg: None,
+                    bg: Some(ansi(58)),
+                    attrs: None,
                 },
             },
             diag: DiagPalette {

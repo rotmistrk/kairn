@@ -104,3 +104,34 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
 fn is_word(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
+
+/// Handle CM_EDITOR_SEARCH — set search pattern and highlight matches.
+pub fn handle_search(ctx: &mut CommandContext, _state: &AppState, pattern: &str) {
+    let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let slot = desktop.focused_slot();
+    let Some(view) = desktop.active_view_mut(slot) else {
+        return;
+    };
+    let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+        return;
+    };
+    editor.editor.search_pattern = pattern.to_string();
+    editor.editor.update_highlight();
+}
+
+/// Handle CM_EDITOR_CLEAR_HIGHLIGHT — clear search highlights.
+pub fn handle_clear_highlight(ctx: &mut CommandContext, _state: &AppState) {
+    let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let slot = desktop.focused_slot();
+    let Some(view) = desktop.active_view_mut(slot) else {
+        return;
+    };
+    let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+        return;
+    };
+    editor.editor.highlight = None;
+}

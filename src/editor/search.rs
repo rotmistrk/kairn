@@ -1,5 +1,6 @@
 //! Search and ex command execution.
 
+use super::highlight_state::HighlightState;
 use super::motions;
 use super::Editor;
 
@@ -43,6 +44,7 @@ impl Editor {
             self.cursor_col = c;
             self.status = "search wrapped".to_string();
         }
+        self.update_highlight();
     }
 
     pub(super) fn search_prev(&mut self) {
@@ -64,6 +66,7 @@ impl Editor {
             self.cursor_col = c;
             self.status = "search wrapped".to_string();
         }
+        self.update_highlight();
     }
 
     pub(super) fn search_word(&mut self, forward: bool) {
@@ -76,5 +79,15 @@ impl Editor {
                 self.search_prev();
             }
         }
+    }
+
+    /// Rebuild highlight state from current search_pattern and cursor position.
+    pub fn update_highlight(&mut self) {
+        let content = self.buffer.content();
+        let cursor_off = self
+            .buffer
+            .line_col_to_offset(self.cursor_line, self.cursor_col)
+            .unwrap_or(0);
+        self.highlight = HighlightState::build(&self.search_pattern, &content, cursor_off);
     }
 }

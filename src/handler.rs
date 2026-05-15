@@ -241,6 +241,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_EDITOR_REPLACE_SELECTION
         | CM_EDITOR_DELETE_LINE
         | CM_EDITOR_REPLACE_WORD
+        | CM_EDITOR_SEARCH
+        | CM_EDITOR_CLEAR_HIGHLIGHT
         | CM_CHAR_INSERTED
         | CM_WORD_COMPLETED => {
             crate::handler_script::handle_script_command(ctx, state);

@@ -109,6 +109,15 @@ pub fn register(
                 push(&cmds, ScriptCommand::ReplaceWord { text });
                 Ok(TclValue::Str(String::new()))
             }
+            "search" => {
+                let pattern = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::Search { pattern: Some(pattern) });
+                Ok(TclValue::Str(String::new()))
+            }
+            "clear-highlight" => {
+                push(&cmds, ScriptCommand::Search { pattern: None });
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("editor: unknown subcommand '{other}'"))),
         }
     });

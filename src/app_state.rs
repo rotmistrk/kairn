@@ -11,6 +11,14 @@ use crate::scripting::hooks::HookTrigger;
 use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
 
+/// A deferred LSP request waiting for server initialization.
+pub struct DeferredLspRequest {
+    pub command: txv_core::prelude::CommandId,
+    pub data: Box<dyn std::any::Any + Send>,
+    pub language: String,
+    pub created: std::time::Instant,
+}
+
 /// Application state shared across command handler invocations.
 pub struct AppState {
     pub broker: FileBroker,
@@ -52,6 +60,8 @@ pub struct AppState {
     pub command_list: crate::completer::CommandList,
     /// Plugin hot-reload manager.
     pub plugins: crate::scripting::plugins::PluginManager,
+    /// Deferred LSP requests waiting for server initialization.
+    pub deferred_lsp: Vec<DeferredLspRequest>,
 }
 
 impl AppState {
@@ -81,6 +91,7 @@ impl AppState {
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
+            deferred_lsp: Vec::new(),
         }
     }
 
@@ -110,6 +121,7 @@ impl AppState {
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
             plugins: crate::scripting::plugins::PluginManager::new(),
+            deferred_lsp: Vec::new(),
         }
     }
 

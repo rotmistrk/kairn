@@ -72,6 +72,8 @@ impl Editor {
             "nonumber" | "nonu" => self.options.number = false,
             "wrap" => self.options.wrap = true,
             "nowrap" => self.options.wrap = false,
+            "incsearch" | "is" => self.options.incsearch = true,
+            "noincsearch" | "nois" => self.options.incsearch = false,
             _ => {
                 self.status = format!("Unknown option: {opt}");
             }

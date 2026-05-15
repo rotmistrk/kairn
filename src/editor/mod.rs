@@ -9,6 +9,7 @@ pub mod ex;
 pub mod ex_commands;
 mod ex_execute;
 mod execute;
+pub mod highlight_state;
 mod indent;
 pub mod keymap;
 pub mod keymap_vim;
@@ -24,6 +25,7 @@ use std::path::Path;
 use crate::buffer::PieceTable;
 
 use self::command::Command;
+use self::highlight_state::HighlightState;
 use self::keymap::EditorMode;
 use self::keymap_vim::VimKeymap;
 
@@ -68,6 +70,7 @@ pub struct Editor {
     pub last_command: Option<Command>,
     pub status: String,
     pub options: EditorOptions,
+    pub highlight: Option<HighlightState>,
 }
 
 /// Editor display options controlled by :set.
@@ -77,6 +80,7 @@ pub struct EditorOptions {
     pub number: bool,
     pub wrap: bool,
     pub tab_width: usize,
+    pub incsearch: bool,
 }
 
 impl Default for EditorOptions {
@@ -86,6 +90,7 @@ impl Default for EditorOptions {
             number: true,
             wrap: true,
             tab_width: 4,
+            incsearch: true,
         }
     }
 }
@@ -118,6 +123,7 @@ impl Editor {
             last_command: None,
             status: String::new(),
             options: EditorOptions::default(),
+            highlight: None,
         }
     }
 }

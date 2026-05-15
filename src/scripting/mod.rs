@@ -116,6 +116,11 @@ pub enum ScriptCommand {
     ReplaceWord {
         text: String,
     },
+    // Search highlighting (None pattern = clear)
+    Search {
+        pattern: Option<String>,
+    },
+    ClearHighlight,
 }
 
 /// The scripting engine: interpreter + command queue + state snapshot.
@@ -212,21 +217,7 @@ impl ScriptEngine {
     }
 
     /// Update the state snapshot (called each tick from handler).
-    pub fn update_snapshot(&self, ctx: &ViewContext, root_dir: &str) {
-        if let Ok(mut snap) = self.snapshot.lock() {
-            snap.context = ctx.clone();
-            snap.root_dir = root_dir.to_string();
-        }
-    }
-
-    /// Update the state snapshot with editor text fields.
-    pub fn update_snapshot_full(
-        &self,
-        ctx: &ViewContext,
-        root_dir: &str,
-        selection_text: &str,
-        current_line_text: &str,
-    ) {
+    pub fn update_snapshot(&self, ctx: &ViewContext, root_dir: &str, selection_text: &str, current_line_text: &str) {
         if let Ok(mut snap) = self.snapshot.lock() {
             snap.context = ctx.clone();
             snap.root_dir = root_dir.to_string();
@@ -272,14 +263,12 @@ impl Default for ScriptEngine {
     }
 }
 
-/// Helper: extract string arg from TclValue slice at index.
 pub(crate) fn arg_str(args: &[TclValue], idx: usize) -> Result<String, TclError> {
     args.get(idx)
         .map(|v| v.as_str().into_owned())
         .ok_or_else(|| TclError::new(format!("missing argument {idx}")))
 }
 
-/// Helper: extract optional string arg.
 pub(crate) fn arg_opt(args: &[TclValue], idx: usize) -> Option<String> {
     args.get(idx).map(|v| v.as_str().into_owned())
 }

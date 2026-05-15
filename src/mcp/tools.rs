@@ -42,6 +42,17 @@ pub fn tool_definitions() -> Value {
             "inputSchema": {"type": "object", "properties": {}}
         },
         {
+            "name": "get_tab_content",
+            "description": "Get text content of a center-panel tab (editor buffer or results list) by name",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Tab name (as shown in list_tabs)"}
+                },
+                "required": ["name"]
+            }
+        },
+        {
             "name": "update_todo",
             "description": "Modify the todo tree: toggle, add, remove, move, promote, demote items",
             "inputSchema": {
@@ -107,6 +118,7 @@ pub fn handle_tool_call(
         "list_terminals" => tool_list_terminals(snapshot),
         "get_terminal_content" => tool_get_terminal_content(snapshot, args),
         "get_messages" => tool_get_messages(snapshot),
+        "get_tab_content" => tool_get_tab_content(snapshot, args),
         "get_todo_tree" => super::tools_todo::tool_get_todo_tree(),
         "update_todo" => super::tools_todo::tool_update_todo(cmd_queue, args),
         "add_subtree" => super::tools_todo::tool_add_subtree(cmd_queue, args),
@@ -184,4 +196,16 @@ fn tool_get_terminal_content(snapshot: &Arc<Mutex<McpSnapshot>>, args: &Map<Stri
 fn tool_get_messages(snapshot: &Arc<Mutex<McpSnapshot>>) -> Result<Value, String> {
     let snap = snapshot.lock().map_err(|e| e.to_string())?;
     Ok(json!(snap.messages.join("\n")))
+}
+
+fn tool_get_tab_content(snapshot: &Arc<Mutex<McpSnapshot>>, args: &Map<String, Value>) -> Result<Value, String> {
+    let name = args
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or("Missing 'name' argument")?;
+    let snap = snapshot.lock().map_err(|e| e.to_string())?;
+    match snap.tab_contents.get(name) {
+        Some(content) => Ok(json!({"name": name, "content": content})),
+        None => Err(format!("Tab not found or has no readable content: {name}")),
+    }
 }

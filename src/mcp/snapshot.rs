@@ -48,4 +48,6 @@ pub struct McpSnapshot {
     pub terminals: Vec<TerminalInfo>,
     pub focused_slot: String,
     pub messages: Vec<String>,
+    /// Content of center-panel tabs (keyed by tab name).
+    pub tab_contents: std::collections::HashMap<String, String>,
 }

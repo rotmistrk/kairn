@@ -7,6 +7,7 @@ mod draw;
 mod draw_diagnostics;
 mod draw_diff;
 mod handle;
+mod handle_action;
 mod handle_completion;
 mod handle_diff;
 
@@ -39,64 +40,6 @@ pub struct EditorView {
     pub(super) diff_state: Option<diff_model::DiffState>,
     /// Completion popup overlay.
     pub(super) completion_popup: CompletionPopup,
-}
-
-impl EditorView {
-    pub(super) fn apply_settings(&mut self) {
-        self.editor.options.wrap = self.settings.wrap;
-        self.editor.options.list = self.settings.list;
-        self.editor.options.tab_width = self.settings.tabstop as usize;
-        self.editor.options.number = self.settings.number;
-    }
-
-    /// Switch the syntax highlighting theme.
-    pub fn set_syntax_theme(&mut self, name: &str) {
-        self.highlighter.set_theme(name);
-    }
-
-    /// Save the file to disk. Returns Ok on success.
-    pub fn save(&mut self) -> Result<(), String> {
-        let content = self.editor.buffer.content();
-        crate::editor::save::save_file(&self.path, &content).map_err(|e| e.to_string())?;
-        self.editor.buffer.mark_saved();
-        Ok(())
-    }
-
-    /// Trigger the close prompt for eviction (same as `:q` on dirty buffer).
-    /// Sets eviction_close so the prompt skips CM_TAB_CLOSE on resolution.
-    pub fn request_close(&mut self) {
-        if self.editor.buffer.is_dirty() && !self.settings.autosave {
-            self.eviction_close = true;
-            // The caller (handler_evict) must emit CM_CONFIRM + CM_SET_CONFIRM_CONTEXT
-            self.state.mark_dirty();
-        }
-    }
-
-    /// Position cursor at (line, col), clamping to buffer bounds.
-    pub fn goto(&mut self, line: u32, col: u32) {
-        let max_line = self.editor.buffer.line_count().saturating_sub(1);
-        self.editor.cursor_line = (line as usize).min(max_line);
-        self.editor.cursor_col = col as usize;
-        self.ensure_cursor_visible();
-        // If bounds not yet set, pre-scroll so first draw shows the right area
-        if self.state.bounds().h == 0 {
-            self.editor.viewport_scroll = self.editor.cursor_line;
-        }
-        self.state.mark_dirty();
-    }
-
-    fn gutter_width(&self) -> u16 {
-        if !self.editor.options.number {
-            return 0;
-        }
-        let lines = self.editor.buffer.line_count();
-        let digits = if lines == 0 {
-            1
-        } else {
-            (lines as f64).log10() as u16 + 1
-        };
-        digits + 1
-    }
 }
 
 impl View for EditorView {
@@ -253,12 +196,22 @@ impl View for EditorView {
             return HandleResult::Consumed;
         }
 
+        let is_search_nav = handle::is_search_navigation(&cmd);
         let action = self.editor.execute(cmd.clone());
         // Track edits for autosave
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
             // Emit hook triggers for char-inserted / word-completed
             self.emit_hook_triggers(&cmd, queue);
+        }
+        // Clear highlights on cursor move or content change, except search navigation
+        if !is_search_nav
+            && matches!(
+                action,
+                crate::editor::EditorAction::CursorMoved | crate::editor::EditorAction::ContentChanged
+            )
+        {
+            self.editor.highlight = None;
         }
         self.handle_action(action, queue);
         self.ensure_cursor_visible();

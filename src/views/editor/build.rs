@@ -112,4 +112,53 @@ impl EditorView {
     pub fn language(&self) -> &str {
         &self.file_ext
     }
+
+    pub(super) fn apply_settings(&mut self) {
+        self.editor.options.wrap = self.settings.wrap;
+        self.editor.options.list = self.settings.list;
+        self.editor.options.tab_width = self.settings.tabstop as usize;
+        self.editor.options.number = self.settings.number;
+    }
+
+    pub fn set_syntax_theme(&mut self, name: &str) {
+        self.highlighter.set_theme(name);
+    }
+
+    pub fn save(&mut self) -> Result<(), String> {
+        let content = self.editor.buffer.content();
+        crate::editor::save::save_file(&self.path, &content).map_err(|e| e.to_string())?;
+        self.editor.buffer.mark_saved();
+        Ok(())
+    }
+
+    pub fn request_close(&mut self) {
+        if self.editor.buffer.is_dirty() && !self.settings.autosave {
+            self.eviction_close = true;
+            self.state.mark_dirty();
+        }
+    }
+
+    pub fn goto(&mut self, line: u32, col: u32) {
+        let max_line = self.editor.buffer.line_count().saturating_sub(1);
+        self.editor.cursor_line = (line as usize).min(max_line);
+        self.editor.cursor_col = col as usize;
+        self.ensure_cursor_visible();
+        if self.state.bounds().h == 0 {
+            self.editor.viewport_scroll = self.editor.cursor_line;
+        }
+        self.state.mark_dirty();
+    }
+
+    pub(super) fn gutter_width(&self) -> u16 {
+        if !self.editor.options.number {
+            return 0;
+        }
+        let lines = self.editor.buffer.line_count();
+        let digits = if lines == 0 {
+            1
+        } else {
+            (lines as f64).log10() as u16 + 1
+        };
+        digits + 1
+    }
 }

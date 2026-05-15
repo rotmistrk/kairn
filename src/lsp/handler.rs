@@ -95,6 +95,19 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 /// Poll all LSP servers and dispatch notifications/responses.
 pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
     state.lsp_pending.remove_timed_out(queue);
+    // Expire deferred requests older than 10s
+    let timeout = std::time::Duration::from_secs(10);
+    state.deferred_lsp.retain(|r| {
+        if r.created.elapsed() > timeout {
+            queue.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::error("lsp", "LSP not ready — request timed out"))),
+            );
+            false
+        } else {
+            true
+        }
+    });
     for (_lang, msg) in state.lsp.poll_all() {
         log::trace!("LSP poll: {:?}", &msg);
         match msg {
@@ -115,6 +128,8 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::error("lsp", msg))),
                         );
+                        // Drop deferred requests for this language
+                        state.deferred_lsp.retain(|r| r.language != lang);
                     } else {
                         log::info!("LSP initialized for {lang}");
                         if let Some(client) = state.lsp.get_client_mut(&lang) {
@@ -124,6 +139,22 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
                         );
+                        // Retry deferred requests for this language
+                        let ready_lang = lang.clone();
+                        let mut remaining = Vec::new();
+                        for req in state.deferred_lsp.drain(..) {
+                            if req.created.elapsed() > std::time::Duration::from_secs(10) {
+                                queue.put_command(
+                                    txv_widgets::CM_STATUS_MESSAGE,
+                                    Some(Box::new(Message::error("lsp", "Deferred request timed out"))),
+                                );
+                            } else if req.language == ready_lang {
+                                queue.put_command(req.command, Some(req.data));
+                            } else {
+                                remaining.push(req);
+                            }
+                        }
+                        state.deferred_lsp = remaining;
                     }
                     continue;
                 }

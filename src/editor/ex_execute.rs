@@ -68,6 +68,10 @@ impl Editor {
             }
             ex::ExCommand::Diff(args) => EditorAction::Diff(args),
             ex::ExCommand::NoDiff => EditorAction::NoDiff,
+            ex::ExCommand::NoHighlight => {
+                self.highlight = None;
+                EditorAction::None
+            }
             ex::ExCommand::Delete { start, end } => {
                 self.ex_delete(start, end);
                 EditorAction::ContentChanged

@@ -70,6 +70,10 @@ impl ResultsView {
         self.entries.get(self.cursor)
     }
 
+    pub fn entries(&self) -> &[ResultEntry] {
+        &self.entries
+    }
+
     pub fn next(&mut self) {
         if !self.entries.is_empty() {
             self.cursor = (self.cursor + 1) % self.entries.len();

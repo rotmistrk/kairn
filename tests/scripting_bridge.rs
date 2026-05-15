@@ -49,7 +49,7 @@ fn editor_query_returns_snapshot_data() {
         language: "rust".into(),
         ..Default::default()
     };
-    engine.update_snapshot(&ctx, "/project");
+    engine.update_snapshot(&ctx, "/project", "", "");
     assert_eq!(engine.eval("editor current-file").unwrap(), "src/main.rs");
     assert_eq!(engine.eval("editor current-line").unwrap(), "42");
     assert_eq!(engine.eval("editor current-col").unwrap(), "7");
@@ -87,7 +87,7 @@ fn system_platform_returns_value() {
 fn system_root_dir_returns_snapshot() {
     let mut engine = ScriptEngine::new();
     let ctx = kairn::commands::ViewContext::default();
-    engine.update_snapshot(&ctx, "/home/user/project");
+    engine.update_snapshot(&ctx, "/home/user/project", "", "");
     assert_eq!(engine.eval("system root-dir").unwrap(), "/home/user/project");
 }
 

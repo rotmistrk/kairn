@@ -122,6 +122,11 @@ impl LspRegistry {
         self.active.get_mut(language_id)
     }
 
+    /// Check if a language server is still in the initialization phase.
+    pub fn is_initializing(&self, language_id: &str) -> bool {
+        self.pending_init.values().any(|lang| lang == language_id)
+    }
+
     /// Poll all active clients for messages.
     pub fn poll_all(&self) -> Vec<(String, super::messages::LspMessage)> {
         let mut all = Vec::new();

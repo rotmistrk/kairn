@@ -32,6 +32,14 @@ pub fn handle_script_command(ctx: &mut CommandContext, state: &mut AppState) {
                 fire_hooks_for_event(state, &crate::scripting::hooks::HookEvent::WordCompleted, &word, ctx);
             }
         }
+        CM_EDITOR_SEARCH => {
+            if let Some(pattern) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
+                crate::handler_script_edit::handle_search(ctx, state, &pattern);
+            }
+        }
+        CM_EDITOR_CLEAR_HIGHLIGHT => {
+            crate::handler_script_edit::handle_clear_highlight(ctx, state);
+        }
         _ => {}
     }
 }
@@ -158,6 +166,12 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         }
         ScriptCommand::ReplaceWord { text } => {
             queue.put_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text)));
+        }
+        ScriptCommand::Search { pattern } => {
+            queue.put_command(CM_EDITOR_SEARCH, Some(Box::new(pattern)));
+        }
+        ScriptCommand::ClearHighlight => {
+            queue.put_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
         }
     }
 }
