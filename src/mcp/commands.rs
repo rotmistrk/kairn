@@ -59,6 +59,12 @@ pub enum McpAction {
     SaveFile { name: String },
     /// Get diagnostics for a file.
     GetDiagnostics { name: String },
+    /// Get last build errors.
+    GetBuildErrors,
+    /// Search project files (synchronous grep).
+    SearchProject { pattern: String },
+    /// Trigger a build command.
+    RunBuild { command: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

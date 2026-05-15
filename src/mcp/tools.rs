@@ -33,6 +33,9 @@ pub fn handle_tool_call(
         "set_cursor" => super::tools_write::tool_set_cursor(cmd_queue, args),
         "save_file" => super::tools_write::tool_save_file(cmd_queue, args),
         "get_diagnostics" => super::tools_write::tool_get_diagnostics(cmd_queue, args),
+        "get_build_errors" => super::tools_write::tool_get_build_errors(cmd_queue, args),
+        "search_project" => super::tools_write::tool_search_project(cmd_queue, args),
+        "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

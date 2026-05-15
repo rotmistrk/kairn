@@ -193,6 +193,32 @@ pub fn tool_definitions() -> Value {
                     "name": {"type": "string", "description": "Tab name (omit for all files)"}
                 }
             }
+        },
+        {
+            "name": "get_build_errors",
+            "description": "Get parsed errors from the last build/test run",
+            "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "search_project",
+            "description": "Search project files for a regex pattern (respects .gitignore)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Regex pattern to search for"}
+                },
+                "required": ["pattern"]
+            }
+        },
+        {
+            "name": "run_build",
+            "description": "Run a build/test command (returns immediately, poll get_build_errors for results)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "Shell command (default: auto-detected build)"}
+                }
+            }
         }
     ])
 }

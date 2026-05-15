@@ -95,3 +95,24 @@ pub fn tool_get_diagnostics(cmd_queue: Option<&McpCommandQueue>, args: &Map<Stri
     let name = args.get("name").and_then(Value::as_str).unwrap_or("");
     queue.send(McpAction::GetDiagnostics { name: name.to_string() })
 }
+
+pub fn tool_get_build_errors(cmd_queue: Option<&McpCommandQueue>, _args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    queue.send(McpAction::GetBuildErrors)
+}
+
+pub fn tool_search_project(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let pattern = args.get("pattern").and_then(Value::as_str).ok_or("Missing 'pattern'")?;
+    queue.send(McpAction::SearchProject {
+        pattern: pattern.to_string(),
+    })
+}
+
+pub fn tool_run_build(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let command = args.get("command").and_then(Value::as_str).unwrap_or("");
+    queue.send(McpAction::RunBuild {
+        command: command.to_string(),
+    })
+}

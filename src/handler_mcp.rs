@@ -41,6 +41,13 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
             }
             crate::mcp::commands::McpAction::SaveFile { name } => mcp_save_file(desktop, name),
             crate::mcp::commands::McpAction::GetDiagnostics { name } => mcp_get_diagnostics(desktop, name),
+            crate::mcp::commands::McpAction::GetBuildErrors => crate::handler_mcp_build::mcp_get_build_errors(state),
+            crate::mcp::commands::McpAction::SearchProject { pattern } => {
+                crate::handler_mcp_build::mcp_search_project(state, pattern)
+            }
+            crate::mcp::commands::McpAction::RunBuild { command } => {
+                crate::handler_mcp_build::mcp_run_build(state, ctx.queue, command)
+            }
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel
