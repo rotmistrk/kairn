@@ -25,7 +25,7 @@ impl WelcomeView {
 
     fn ensure_tools(&mut self) {
         if self.tools.is_none() {
-            self.tools = Some(tool_check::check_tools(&self.root_dir));
+            self.tools = Some(tool_check::check_all_tools(&self.root_dir));
         }
     }
 }

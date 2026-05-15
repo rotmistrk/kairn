@@ -65,6 +65,36 @@ pub fn check_tools(root_dir: &Path) -> Vec<ToolStatus> {
         .collect()
 }
 
+/// Check ALL known tools (for welcome screen): relevant first, then others.
+pub fn check_all_tools(root_dir: &Path) -> Vec<ToolStatus> {
+    let relevant = relevant_tools(root_dir);
+    let relevant_names: Vec<&str> = relevant.iter().map(|(n, _)| *n).collect();
+    let mut results: Vec<ToolStatus> = relevant
+        .iter()
+        .map(|(name, hint)| {
+            let (found, version) = probe(name);
+            ToolStatus {
+                name,
+                found,
+                version,
+                install_hint: hint,
+            }
+        })
+        .collect();
+    for &(name, hint) in TOOLS {
+        if !relevant_names.contains(&name) {
+            let (found, version) = probe(name);
+            results.push(ToolStatus {
+                name,
+                found,
+                version,
+                install_hint: hint,
+            });
+        }
+    }
+    results
+}
+
 /// Determine which tools are relevant based on file extensions in the project.
 fn relevant_tools(root_dir: &Path) -> Vec<(&'static str, &'static str)> {
     let mut needed: Vec<&str> = vec!["kiro-cli"];
