@@ -136,7 +136,7 @@ fn main() -> anyhow::Result<()> {
         "light" => txv_core::palette::ThemeMode::Light,
         _ => txv_core::palette::ThemeMode::Auto,
     };
-    let theme = kairn::app_palette::ThemeState::new(theme_mode);
+    let theme = kairn::theme_state::ThemeState::new(theme_mode);
     theme.apply();
     app_state.theme_state = Some(std::cell::RefCell::new(theme));
 

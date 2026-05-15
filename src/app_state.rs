@@ -42,7 +42,7 @@ pub struct AppState {
     pub mcp_commands: Option<crate::mcp::commands::McpCommandQueue>,
     pub(crate) mcp_tick: u16,
     pub waker: Option<txv_core::run::Waker>,
-    pub theme_state: Option<std::cell::RefCell<crate::app_palette::ThemeState>>,
+    pub theme_state: Option<std::cell::RefCell<crate::theme_state::ThemeState>>,
     pub grep_pending: Option<(String, std::sync::Arc<crate::grep::GrepState>, std::path::PathBuf)>,
     pub build_pending: Option<(
         String,

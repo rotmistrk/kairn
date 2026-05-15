@@ -3,7 +3,7 @@
 use std::sync::OnceLock;
 
 use txv_core::cell::Color;
-use txv_core::palette::{Palette, PaletteStyle, ThemeMode};
+use txv_core::palette::{Palette, PaletteStyle};
 
 static APP_PALETTE: OnceLock<std::sync::RwLock<AppPalette>> = OnceLock::new();
 
@@ -40,6 +40,7 @@ pub struct AppPalette {
     pub tree: TreePalette,
     pub todo: TodoPalette,
     pub msg: MsgPalette,
+    pub badge: BadgePalette,
 }
 
 #[derive(Clone, Debug)]
@@ -93,6 +94,13 @@ pub struct MsgPalette {
     pub warning: PaletteStyle,
     pub info: PaletteStyle,
     pub debug: PaletteStyle,
+}
+
+#[derive(Clone, Debug)]
+pub struct BadgePalette {
+    pub busy: PaletteStyle,
+    pub idle: PaletteStyle,
+    pub exited: PaletteStyle,
 }
 
 const fn ansi(n: u8) -> Color {
@@ -198,61 +206,11 @@ impl Default for AppPalette {
                 info: PaletteStyle::fg(ansi(7)),
                 debug: PaletteStyle::fg(ansi(8)),
             },
+            badge: BadgePalette {
+                busy: PaletteStyle::fg(ansi(2)),
+                idle: PaletteStyle::fg(ansi(3)),
+                exited: PaletteStyle::fg(ansi(1)),
+            },
         }
-    }
-}
-
-/// Runtime theme state — holds both palettes and supports hot-swap.
-pub struct ThemeState {
-    pub active: AppPalette,
-    pub dark: AppPalette,
-    pub light: AppPalette,
-    pub mode: ThemeMode,
-}
-
-impl ThemeState {
-    pub fn new(mode: ThemeMode) -> Self {
-        let resolved = match mode {
-            ThemeMode::Auto => txv_core::palette::detect_system_theme(),
-            ref m => m.clone(),
-        };
-        let dark = AppPalette::dark();
-        let light = AppPalette::light();
-        let active = match resolved {
-            ThemeMode::Light => light.clone(),
-            _ => dark.clone(),
-        };
-        Self {
-            active,
-            dark,
-            light,
-            mode: resolved,
-        }
-    }
-
-    pub fn toggle(&mut self) {
-        match self.mode {
-            ThemeMode::Dark => {
-                self.mode = ThemeMode::Light;
-                self.active = self.light.clone();
-            }
-            _ => {
-                self.mode = ThemeMode::Dark;
-                self.active = self.dark.clone();
-            }
-        }
-        self.apply();
-    }
-
-    /// Apply the active palette to the global state.
-    pub fn apply(&self) {
-        txv_core::palette::set_palette(self.active.base.clone());
-        set_app_palette(&self.active);
-    }
-}
-
-impl Default for ThemeState {
-    fn default() -> Self {
-        Self::new(ThemeMode::Auto)
     }
 }

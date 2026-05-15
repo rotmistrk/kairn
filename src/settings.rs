@@ -75,6 +75,10 @@ pub struct AppSettings {
     pub lsp_timeout: u64,
     pub git_keys: GitKeys,
     pub status_keys: StatusKeys,
+    /// Seconds before a terminal tab is considered idle.
+    pub terminal_idle_timeout: u64,
+    /// Auto-close terminal tabs on exit.
+    pub terminal_auto_close: bool,
 }
 
 /// Key bindings for the status bar (visible labels).
@@ -145,6 +149,8 @@ impl Default for AppSettings {
             lsp_timeout: 10,
             git_keys: GitKeys::default(),
             status_keys: StatusKeys::default(),
+            terminal_idle_timeout: 3,
+            terminal_auto_close: true,
         }
     }
 }
