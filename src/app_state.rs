@@ -45,6 +45,8 @@ pub struct AppState {
     pub confirm_context: Option<crate::commands::ConfirmContext>,
     /// Tcl scripting engine.
     pub script: ScriptEngine,
+    /// Dynamic command list for completions (shared with completer).
+    pub command_list: crate::completer::CommandList,
 }
 
 impl AppState {
@@ -71,6 +73,7 @@ impl AppState {
             pending_tab: None,
             confirm_context: None,
             script: ScriptEngine::new(),
+            command_list: crate::completer::new_command_list(),
         }
     }
 
@@ -97,6 +100,7 @@ impl AppState {
             pending_tab: None,
             confirm_context: None,
             script: ScriptEngine::new(),
+            command_list: crate::completer::new_command_list(),
         }
     }
 

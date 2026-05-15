@@ -164,7 +164,7 @@ fn main() -> anyhow::Result<()> {
 
     // Build status bar
     let status = build_status_bar(
-        Box::new(AppCompleter::new(root_dir.clone())),
+        Box::new(AppCompleter::new(root_dir.clone(), app_state.command_list.clone())),
         app_state.settings.clock_interval,
         root_dir.clone(),
         &app_state.settings.status_keys,

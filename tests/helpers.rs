@@ -31,15 +31,15 @@ impl TestHarness {
     pub fn new(root_dir: &Path) -> Self {
         init_test_logger();
         let desktop = build_desktop(root_dir, GitKeys::default());
+        let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
-            Box::new(AppCompleter::new(root_dir.to_path_buf())),
+            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
             0,
             root_dir.to_path_buf(),
             &StatusKeys::default(),
         );
         let program = Program::new(Box::new(status), Box::new(desktop));
         let backend = MockBackend::new(80, 24);
-        let state = AppState::new(root_dir.to_path_buf());
         Self {
             program,
             backend,
@@ -51,8 +51,9 @@ impl TestHarness {
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
         init_test_logger();
         let desktop = build_desktop(root_dir, GitKeys::default());
+        let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
-            Box::new(AppCompleter::new(root_dir.to_path_buf())),
+            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
             0,
             root_dir.to_path_buf(),
             &StatusKeys::default(),

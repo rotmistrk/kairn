@@ -139,6 +139,11 @@ impl Interpreter {
         self.commands.contains_key(name)
     }
 
+    /// Get all registered command names.
+    pub fn command_names(&self) -> Vec<String> {
+        self.commands.keys().cloned().collect()
+    }
+
     /// Register a command from a closure.
     pub fn register_fn<F>(&mut self, name: &str, f: F)
     where

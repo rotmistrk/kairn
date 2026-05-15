@@ -40,6 +40,9 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
     let root = state.root_dir.to_string_lossy().to_string();
     state.script.update_snapshot(&vc, &root);
 
+    // Refresh command completions from Tcl engine (cheap — just reads keys)
+    crate::completer::refresh_commands(&state.command_list, &state.script);
+
     ctx.queue.put_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }
 

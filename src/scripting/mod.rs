@@ -141,6 +141,11 @@ impl ScriptEngine {
         self.interp.has_command(name)
     }
 
+    /// Get all registered Tcl command names (for completion).
+    pub fn command_names(&self) -> Vec<String> {
+        self.interp.command_names()
+    }
+
     /// Load and evaluate a Tcl file.
     pub fn load_file(&mut self, path: &Path) -> Result<(), String> {
         let content = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;

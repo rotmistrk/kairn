@@ -1,41 +1,68 @@
-//! Completers — FilePathCompleter and CommandCompleter for kairn.
+//! Completers — dynamic command completion + file path completion for kairn.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use txv_core::complete::{Completer, Completion};
 
-/// Known commands for the M-x prompt and :command mode.
-const COMMANDS: &[&str] = &[
-    "close", "e", "edit", "help", "kiro", "paste", "quit", "rename", "save", "shell", "theme",
+/// Built-in commands (always available).
+const BUILTIN_COMMANDS: &[&str] = &[
+    "build",
+    "close",
+    "code-action",
+    "diff",
+    "e",
+    "edit",
+    "git-commit",
+    "git-stage",
+    "git-unstage",
+    "git-untrack",
+    "grep",
+    "grow",
+    "grow-v",
+    "help",
+    "kiro",
+    "lsp-rename",
+    "lsp-status",
+    "messages",
+    "next-error",
+    "paste",
+    "prev-error",
+    "quit",
+    "run",
+    "save",
+    "shell",
+    "shrink",
+    "shrink-v",
+    "struct",
+    "tab",
+    "tab-rename",
+    "test",
+    "test-at-cursor",
+    "test-file",
+    "text",
+    "theme",
+    "tree",
+    "welcome",
 ];
 
-/// Completer for kairn application commands.
-pub struct CommandCompleter;
+/// Shared command list that can be updated at runtime (e.g. from plugins).
+pub type CommandList = Arc<Mutex<Vec<String>>>;
 
-impl Completer for CommandCompleter {
-    fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
-        let trimmed = input.trim();
-        COMMANDS
-            .iter()
-            .filter(|cmd| cmd.starts_with(trimmed))
-            .map(|cmd| Completion {
-                text: cmd.to_string(),
-                display: cmd.to_string(),
-                kind: "command",
-            })
-            .collect()
-    }
+/// Create a new command list pre-populated with built-in commands.
+pub fn new_command_list() -> CommandList {
+    Arc::new(Mutex::new(BUILTIN_COMMANDS.iter().map(|s| s.to_string()).collect()))
 }
 
-/// Combined completer: command names + file paths for edit/e commands.
-/// Resolves file paths relative to a root directory.
+/// Combined completer: dynamic command names + file paths for edit/e commands.
 pub struct AppCompleter {
     root: PathBuf,
+    commands: CommandList,
 }
 
 impl AppCompleter {
-    pub fn new(root: PathBuf) -> Self {
-        Self { root }
+    pub fn new(root: PathBuf, commands: CommandList) -> Self {
+        Self { root, commands }
     }
 }
 
@@ -54,12 +81,12 @@ impl Completer for AppCompleter {
             return complete_theme(sub);
         }
         // Otherwise complete command names
-        COMMANDS
-            .iter()
+        let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
+        cmds.iter()
             .filter(|cmd| cmd.starts_with(trimmed))
             .map(|cmd| Completion {
-                text: cmd.to_string(),
-                display: cmd.to_string(),
+                text: cmd.clone(),
+                display: cmd.clone(),
                 kind: "command",
             })
             .collect()
@@ -158,4 +185,18 @@ fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
     }
     results.sort_by(|a, b| a.display.cmp(&b.display));
     results
+}
+
+/// Refresh the command list with Tcl commands from the script engine.
+pub fn refresh_commands(list: &CommandList, script: &crate::scripting::ScriptEngine) {
+    let mut cmds: Vec<String> = BUILTIN_COMMANDS.iter().map(|s| s.to_string()).collect();
+    for name in script.command_names() {
+        if !cmds.contains(&name) {
+            cmds.push(name);
+        }
+    }
+    cmds.sort();
+    if let Ok(mut guard) = list.lock() {
+        *guard = cmds;
+    }
 }
