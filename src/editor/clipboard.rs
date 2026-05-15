@@ -78,6 +78,8 @@ impl Editor {
             "nomatchparen" => self.options.matchparen = false,
             "rainbow" => self.options.rainbow = true,
             "norainbow" => self.options.rainbow = false,
+            "guides" => self.options.guides = true,
+            "noguides" => self.options.guides = false,
             _ => {
                 self.status = format!("Unknown option: {opt}");
             }

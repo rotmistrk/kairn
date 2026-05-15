@@ -53,6 +53,29 @@ pub(super) fn bracket_overlay(
     }
 }
 
+/// Draw indent guides for a line. Draws `│` at each tab_width column within the indent.
+pub(super) fn draw_indent_guides(
+    surface: &mut txv_core::surface::Surface,
+    line: &str,
+    text_x: u16,
+    vy: u16,
+    tab_width: usize,
+    avail: usize,
+    style: Style,
+) {
+    let indent = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
+    let indent_visual = if line.starts_with('\t') {
+        indent * tab_width
+    } else {
+        indent
+    };
+    let mut g = tab_width;
+    while g < indent_visual && g < avail {
+        surface.put(text_x + g as u16, vy, '\u{2502}', style);
+        g += tab_width;
+    }
+}
+
 /// Rainbow bracket colors — 4 distinct hues cycling by depth.
 const RAINBOW_COLORS: [Color; 4] = [
     Color::Ansi(3), // yellow
@@ -126,5 +149,17 @@ mod tests {
         assert_eq!(result[1].0, 3); // second '('
         assert_ne!(result[0].1, result[1].1); // different colors
         assert_eq!(result[0].1, result[3].1); // matching depth = same color
+    }
+
+    #[test]
+    fn indent_guides_drawn_at_tab_stops() {
+        let mut view = EditorView::from_text("        hello");
+        view.editor.options.number = false;
+        view.editor.options.guides = true;
+        view.set_bounds(Rect::new(0, 0, 20, 1));
+        let mut surface = Surface::new(20, 1);
+        view.draw(&mut surface);
+        // 8 spaces = 2 indent levels at tab_width=4, guides at col 4.
+        assert_eq!(surface.cell(4, 0).ch, '\u{2502}');
     }
 }

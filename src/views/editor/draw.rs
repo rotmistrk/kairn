@@ -3,6 +3,7 @@
 use txv_core::prelude::*;
 
 use super::{draw_style::char_style, EditorView};
+use crate::highlight::HlSpan;
 
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
@@ -54,8 +55,8 @@ impl EditorView {
             )
         };
 
-        // Matchparen: find the matching bracket for the cursor position.
-        let matchparen_pos: Option<(usize, usize)> = if self.editor.options.matchparen {
+        // Matchparen: find matching bracket for cursor position.
+        let matchparen_pos = if self.editor.options.matchparen {
             crate::editor::motions::match_bracket(&self.editor.buffer, self.editor.cursor_line, self.editor.cursor_col)
         } else {
             None
@@ -80,15 +81,11 @@ impl EditorView {
             // --- Line content: write char-by-char, then pad to full width ---
             let line = self.editor.buffer.line(line_idx).unwrap_or_default();
             let line_start_off = self.editor.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
-            let spans = viewport_spans.get(line_idx - scroll).map(|s| s.as_slice());
             let default_spans;
-            let spans: &[crate::highlight::HlSpan] = match spans {
+            let spans: &[HlSpan] = match viewport_spans.get(line_idx - scroll) {
                 Some(s) => s,
                 None => {
-                    default_spans = vec![crate::highlight::HlSpan {
-                        text: line.clone(),
-                        style: Style::default(),
-                    }];
+                    default_spans = [HlSpan::plain(line.clone())];
                     &default_spans
                 }
             };
@@ -209,11 +206,14 @@ impl EditorView {
                 col_offset += 1;
             }
 
-            // --- PAD remainder of line to full width (TXV model) ---
+            // --- PAD remainder + indent guides ---
             if visual_row < b.h as usize {
                 let vy = b.y + visual_row as u16;
                 for pad_col in col_offset..avail {
                     surface.put(text_x + pad_col as u16, vy, ' ', normal);
+                }
+                if self.editor.options.guides {
+                    super::draw_style::draw_indent_guides(surface, &line, text_x, vy, tab_width, avail, gutter_style);
                 }
             }
 

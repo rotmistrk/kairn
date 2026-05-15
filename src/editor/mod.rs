@@ -83,6 +83,7 @@ pub struct EditorOptions {
     pub incsearch: bool,
     pub matchparen: bool,
     pub rainbow: bool,
+    pub guides: bool,
 }
 
 impl Default for EditorOptions {
@@ -95,6 +96,7 @@ impl Default for EditorOptions {
             incsearch: true,
             matchparen: true,
             rainbow: false,
+            guides: false,
         }
     }
 }

@@ -13,6 +13,15 @@ pub struct HlSpan {
     pub style: Style,
 }
 
+impl HlSpan {
+    pub fn plain(text: String) -> Self {
+        Self {
+            text,
+            style: Style::default(),
+        }
+    }
+}
+
 /// Caches syntax sets and per-file highlighter state.
 pub struct Highlighter {
     syntax_set: SyntaxSet,
