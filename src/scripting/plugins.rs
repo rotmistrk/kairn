@@ -93,11 +93,15 @@ impl PluginManager {
             }
         }
 
-        // Check for conflicts (same proc in multiple plugins)
+        // Check for conflicts (same proc in multiple plugins, or shadowing built-ins)
         let mut proc_owners: HashMap<&str, &str> = HashMap::new();
         for (name, entry) in &self.plugins {
             for proc_name in &entry.procs {
-                if let Some(other) = proc_owners.get(proc_name.as_str()) {
+                if crate::completer::BUILTIN_COMMANDS.contains(&proc_name.as_str()) {
+                    warnings.push(format!(
+                        "plugin '{name}': proc '{proc_name}' shadows built-in command (will be ignored)"
+                    ));
+                } else if let Some(other) = proc_owners.get(proc_name.as_str()) {
                     warnings.push(format!(
                         "conflict: proc '{proc_name}' defined in both '{other}' and '{name}'"
                     ));

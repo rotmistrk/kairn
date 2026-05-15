@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use txv_core::complete::{Completer, Completion};
 
 /// Built-in commands (always available).
-const BUILTIN_COMMANDS: &[&str] = &[
+pub const BUILTIN_COMMANDS: &[&str] = &[
     "build",
     "close",
     "code-action",
