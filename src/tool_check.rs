@@ -135,15 +135,39 @@ fn probe(name: &str) -> (bool, Option<String>) {
         return (false, None);
     }
 
-    let version = Command::new(name).arg("--version").output().ok().and_then(|o| {
-        if o.status.success() {
-            String::from_utf8(o.stdout)
-                .ok()
-                .and_then(|s| s.lines().next().map(|l| l.trim().to_string()))
-        } else {
-            None
-        }
-    });
+    // Some tools (e.g. jdtls) don't support --version and start a long-running
+    // server instead. Use a timeout to avoid hanging.
+    let version = Command::new(name)
+        .arg("--version")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()
+        .and_then(|mut child| {
+            let timeout = std::time::Duration::from_secs(2);
+            let start = std::time::Instant::now();
+            loop {
+                match child.try_wait() {
+                    Ok(Some(status)) if status.success() => {
+                        let out = child.wait_with_output().ok()?;
+                        return String::from_utf8(out.stdout)
+                            .ok()
+                            .and_then(|s| s.lines().next().map(|l| l.trim().to_string()));
+                    }
+                    Ok(Some(_)) => return None,
+                    Ok(None) => {
+                        if start.elapsed() > timeout {
+                            child.kill().ok();
+                            child.wait().ok();
+                            return None;
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                    }
+                    Err(_) => return None,
+                }
+            }
+        });
 
     (true, version)
 }
