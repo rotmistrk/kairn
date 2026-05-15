@@ -81,6 +81,8 @@ pub struct EditorOptions {
     pub wrap: bool,
     pub tab_width: usize,
     pub incsearch: bool,
+    pub matchparen: bool,
+    pub rainbow: bool,
 }
 
 impl Default for EditorOptions {
@@ -91,6 +93,8 @@ impl Default for EditorOptions {
             wrap: true,
             tab_width: 4,
             incsearch: true,
+            matchparen: true,
+            rainbow: false,
         }
     }
 }

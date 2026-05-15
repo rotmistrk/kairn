@@ -166,7 +166,6 @@ fn parse_line_styled(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::highlight::Highlighter;
 
     #[test]
     fn java_brackets_correct_with_context() {

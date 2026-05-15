@@ -66,6 +66,7 @@ pub struct EditorPalette {
     pub cursor: PaletteStyle,
     pub highlight_match: PaletteStyle,
     pub highlight_other: PaletteStyle,
+    pub matchparen: PaletteStyle,
 }
 
 #[derive(Clone, Debug)]
@@ -156,6 +157,14 @@ impl Default for AppPalette {
                     fg: None,
                     bg: Some(ansi(58)),
                     attrs: None,
+                },
+                matchparen: PaletteStyle {
+                    fg: None,
+                    bg: Some(ansi(8)),
+                    attrs: Some(txv_core::cell::Attrs {
+                        bold: true,
+                        ..Default::default()
+                    }),
                 },
             },
             diag: DiagPalette {

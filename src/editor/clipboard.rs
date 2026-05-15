@@ -74,6 +74,10 @@ impl Editor {
             "nowrap" => self.options.wrap = false,
             "incsearch" | "is" => self.options.incsearch = true,
             "noincsearch" | "nois" => self.options.incsearch = false,
+            "matchparen" => self.options.matchparen = true,
+            "nomatchparen" => self.options.matchparen = false,
+            "rainbow" => self.options.rainbow = true,
+            "norainbow" => self.options.rainbow = false,
             _ => {
                 self.status = format!("Unknown option: {opt}");
             }

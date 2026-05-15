@@ -2,10 +2,7 @@
 
 use txv_core::prelude::*;
 
-use super::EditorView;
-
-/// Resolve the style for a character at `byte_pos`, considering visual selection and highlights.
-use super::draw_style::char_style;
+use super::{draw_style::char_style, EditorView};
 
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
@@ -55,6 +52,19 @@ impl EditorView {
                 self.highlighter.syntax_set(),
                 self.highlighter.theme(),
             )
+        };
+
+        // Matchparen: find the matching bracket for the cursor position.
+        let matchparen_pos: Option<(usize, usize)> = if self.editor.options.matchparen {
+            crate::editor::motions::match_bracket(&self.editor.buffer, self.editor.cursor_line, self.editor.cursor_col)
+        } else {
+            None
+        };
+        let matchparen_style = app.editor.matchparen;
+        let rainbow_map = if self.editor.options.rainbow {
+            super::draw_style::rainbow_brackets(&self.editor.buffer.line(self.editor.cursor_line).unwrap_or_default())
+        } else {
+            Vec::new()
         };
 
         while row < b.h as usize && line_idx < self.editor.buffer.line_count() {
@@ -171,6 +181,15 @@ impl EditorView {
                     };
 
                     let vy = b.y + visual_row as u16;
+                    let display_style = super::draw_style::bracket_overlay(
+                        display_style,
+                        line_idx,
+                        char_idx,
+                        self.editor.cursor_line,
+                        matchparen_pos,
+                        &matchparen_style,
+                        &rainbow_map,
+                    );
                     surface.put(x, vy, display_ch, display_style);
                     col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
