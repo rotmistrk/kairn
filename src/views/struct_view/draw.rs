@@ -25,7 +25,7 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     } else {
         pal.interactive.cursor_unfocused.to_style()
     };
-    let cursor_row_style = pal.base.dim.to_style();
+    let cursor_row_style = normal;
     let sep_style = pal.base.dim.to_style();
     let edit_style = pal.interactive.edit_overlay.to_style();
 
