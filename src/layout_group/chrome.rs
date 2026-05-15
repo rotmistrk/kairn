@@ -23,6 +23,16 @@ fn truncate_title(title: &str, max_chars: usize) -> String {
     }
 }
 
+/// Return (glyph, foreground color) for a terminal activity badge.
+fn badge_glyph(badge: super::TabBadge) -> (char, txv_core::cell::Color) {
+    let pal = crate::app_palette::app_palette();
+    match badge {
+        super::TabBadge::Busy => ('◉', pal.badge.busy.fg.unwrap_or_default()),
+        super::TabBadge::Idle => ('●', pal.badge.idle.fg.unwrap_or_default()),
+        super::TabBadge::Exited => ('✗', pal.badge.exited.fg.unwrap_or_default()),
+    }
+}
+
 fn focused_title() -> Style {
     txv_core::palette::palette().chrome.tab_focused.to_style()
 }
@@ -128,6 +138,21 @@ impl LayoutGroup {
         }
         surface.print(x, y, &label, ts);
         x += lw;
+
+        // Activity badge for terminal tabs
+        let slot = Self::slot_from(panel_idx);
+        if let Some(badge) = self.active_badge(slot) {
+            let (glyph, fg) = badge_glyph(badge);
+            let badge_style = Style {
+                fg,
+                bg: ts.bg,
+                ..Style::default()
+            };
+            if x < max_x {
+                surface.put(x, y, glyph, badge_style);
+                x += 1;
+            }
+        }
 
         if count > 1 && !panel.dropdown_open() {
             // Arrow

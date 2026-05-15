@@ -41,20 +41,21 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // Drain MCP write commands
     crate::handler_drain::drain_mcp(ctx, state);
 
+    // PTY activity badges + auto-close
+    crate::handler_drain::update_pty_badges(ctx, state);
+
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
-    if state.mcp_snapshot.is_some() {
-        state.mcp_tick = state.mcp_tick.wrapping_add(1);
-        if state.mcp_tick.is_multiple_of(20) {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let mut snap = crate::mcp::collect::collect_snapshot(desktop);
-                snap.terminals = crate::mcp::collect::collect_terminal_content(desktop);
-                snap.messages = crate::mcp::collect::collect_messages(&state.messages);
-                if let Some(ref arc) = state.mcp_snapshot {
-                    if let Ok(mut locked) = arc.lock() {
-                        *locked = snap;
-                    } else {
-                        log::error!("MCP snapshot mutex poisoned");
-                    }
+    state.mcp_tick = state.mcp_tick.wrapping_add(1);
+    if state.mcp_snapshot.is_some() && state.mcp_tick.is_multiple_of(20) {
+        if let Some(desktop) = downcast_desktop(ctx.desktop) {
+            let mut snap = crate::mcp::collect::collect_snapshot(desktop);
+            snap.terminals = crate::mcp::collect::collect_terminal_content(desktop);
+            snap.messages = crate::mcp::collect::collect_messages(&state.messages);
+            if let Some(ref arc) = state.mcp_snapshot {
+                if let Ok(mut locked) = arc.lock() {
+                    *locked = snap;
+                } else {
+                    log::error!("MCP snapshot mutex poisoned");
                 }
             }
         }
