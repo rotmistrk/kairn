@@ -92,6 +92,7 @@ set keys.quit "ctrl+q"
 # set color.state.success 2
 
 # ─── LSP ─────────────────────────────────────────────────────────────────────
+# set lsp.timeout 10          ;# seconds to wait for LSP response (default: 10)
 # LSP servers are auto-detected. Override with:
 # lsp rust-analyzer {
 #     command "rust-analyzer"
