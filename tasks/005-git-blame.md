@@ -29,10 +29,11 @@ Show per-line blame annotations alongside the editor content. Toggle with
 
 ## Implementation
 
-1. Shell out to `git blame --porcelain <file>` (or use git2 crate)
-2. Parse output into `Vec<BlameLine>` (hash, author, date, line)
+1. Use `git2` crate's `Repository::blame_file()` API (no shelling out — per steering doc)
+2. Iterate `BlameHunk`s to build `Vec<BlameLine>` (hash, author, date, line range)
 3. Render as an extra gutter column in the editor (like line numbers)
 4. Blame data cached per file, invalidated on save
+5. Run blame on a background thread (git2 is blocking), send result via channel
 
 ## Commands
 

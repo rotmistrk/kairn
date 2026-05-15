@@ -29,10 +29,12 @@ the center or tools panel.
 
 ## Implementation
 
-1. Shell out to `git log --oneline --decorate --graph -n 200` (or structured format)
-2. Parse into `Vec<CommitEntry>`
-3. Render in a ResultsView-style scrollable list
-4. On Enter: `git show <hash>` → display in a read-only editor tab
+1. Use `git2` crate's `Revwalk` API to iterate commits (no shelling out — per steering doc)
+2. For file history: use `git2` diff-tree-to-tree to filter commits touching the file
+3. Build `Vec<CommitEntry>` (oid, author, time, summary, decorations)
+4. Render in a ResultsView-style scrollable list
+5. On Enter: use `git2` to load full commit (message + diffstat) → display in read-only editor tab
+6. Run revwalk on a background thread, send results via channel
 
 ## Constraints
 
