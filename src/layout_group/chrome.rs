@@ -9,6 +9,20 @@ fn chrome_style() -> Style {
     txv_core::palette::palette().chrome.bar.to_style()
 }
 
+/// Truncate a title to fit within `max_chars`, appending `…` if needed.
+fn truncate_title(title: &str, max_chars: usize) -> String {
+    let char_count = title.chars().count();
+    if char_count <= max_chars {
+        title.to_string()
+    } else if max_chars <= 1 {
+        "…".to_string()
+    } else {
+        let mut s: String = title.chars().take(max_chars - 1).collect();
+        s.push('…');
+        s
+    }
+}
+
 fn focused_title() -> Style {
     txv_core::palette::palette().chrome.tab_focused.to_style()
 }
@@ -102,8 +116,12 @@ impl LayoutGroup {
         surface.print(x, y, g.tab_left, cap);
         x += g.tab_left.chars().count() as u16;
 
-        // Title
-        let label = format!(" {title} ");
+        // Title — truncate to fit available space (max 60 chars, min 8)
+        let chrome_overhead = 4u16; // right cap + badge + arrow + padding
+        let avail = max_x.saturating_sub(x + chrome_overhead) as usize;
+        let max_title_len = avail.clamp(8, 60);
+        let display_title = truncate_title(title, max_title_len);
+        let label = format!(" {display_title} ");
         let lw = display_width(&label, 1);
         if x + lw > max_x {
             return;
