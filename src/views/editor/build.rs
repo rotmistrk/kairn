@@ -37,6 +37,7 @@ impl EditorView {
             path: PathBuf::from("[cmd output]"),
             root_dir: PathBuf::from("."),
             highlighter: Highlighter::new(),
+            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new("")),
             file_ext: String::new(),
             settings: EditorSettings::default(),
             last_edit_tick: 0,
@@ -64,6 +65,7 @@ impl EditorView {
             path: path.to_path_buf(),
             root_dir,
             highlighter: Highlighter::new(),
+            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,
@@ -91,6 +93,7 @@ impl EditorView {
             path: path.to_path_buf(),
             root_dir,
             highlighter: Highlighter::with_theme(syntax_theme),
+            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,
@@ -125,6 +128,7 @@ impl EditorView {
 
     pub fn set_syntax_theme(&mut self, name: &str) {
         self.highlighter.set_theme(name);
+        self.hl_cache.borrow_mut().invalidate_all();
     }
 
     pub fn save(&mut self) -> Result<(), String> {

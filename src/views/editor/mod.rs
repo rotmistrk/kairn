@@ -7,6 +7,7 @@ mod draw;
 mod draw_blame;
 mod draw_diagnostics;
 mod draw_diff;
+mod draw_style;
 mod handle;
 mod handle_action;
 mod handle_completion;
@@ -30,6 +31,7 @@ pub struct EditorView {
     path: PathBuf,
     root_dir: PathBuf,
     highlighter: Highlighter,
+    hl_cache: std::cell::RefCell<crate::highlight_cache::HighlightCache>,
     file_ext: String,
     pub settings: EditorSettings,
     last_edit_tick: u64,
@@ -209,6 +211,7 @@ impl View for EditorView {
         // Track edits for autosave
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
+            self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line);
             // Emit hook triggers for char-inserted / word-completed
             self.emit_hook_triggers(&cmd, queue);
         }

@@ -52,6 +52,16 @@ impl Highlighter {
         self.themes.themes.keys().map(|s| s.as_str()).collect()
     }
 
+    /// Access the syntax set.
+    pub fn syntax_set(&self) -> &SyntaxSet {
+        &self.syntax_set
+    }
+
+    /// Access the current theme.
+    pub fn theme(&self) -> &Theme {
+        &self.theme
+    }
+
     /// Switch to a different theme by name. Returns true if found.
     pub fn set_theme(&mut self, name: &str) -> bool {
         if let Some(t) = self.themes.themes.get(name) {
@@ -103,7 +113,7 @@ pub fn extension_from_path(path: &Path) -> &str {
 
 /// Ensure foreground color is readable on a dark background.
 /// If brightness is below threshold, clamp to a minimum visible gray.
-fn ensure_readable(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
+pub(crate) fn ensure_readable(r: u8, g: u8, b: u8) -> (u8, u8, u8) {
     let brightness = (r as u16 + g as u16 + b as u16) / 3;
     if brightness < 80 {
         let floor: u8 = 120;

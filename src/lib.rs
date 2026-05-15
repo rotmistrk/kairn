@@ -46,6 +46,7 @@ pub mod help;
 pub mod help_editor;
 pub mod help_global;
 pub mod highlight;
+pub mod highlight_cache;
 pub mod init;
 pub mod kiro_registry;
 pub mod layout_group;

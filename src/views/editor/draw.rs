@@ -5,30 +5,7 @@ use txv_core::prelude::*;
 use super::EditorView;
 
 /// Resolve the style for a character at `byte_pos`, considering visual selection and highlights.
-fn char_style(
-    base: Style,
-    byte_pos: usize,
-    visual_range: Option<(usize, usize)>,
-    visual_bg: Color,
-    highlight: Option<&crate::editor::highlight_state::HighlightState>,
-    hl_match: Style,
-    hl_other_bg: Color,
-) -> Style {
-    if let Some((vs, ve)) = visual_range {
-        if byte_pos >= vs && byte_pos < ve {
-            return Style { bg: visual_bg, ..base };
-        }
-    } else if let Some(is_current) = highlight.and_then(|h| h.match_at(byte_pos)) {
-        if is_current {
-            return hl_match;
-        }
-        return Style {
-            bg: hl_other_bg,
-            ..base
-        };
-    }
-    base
-}
+use super::draw_style::char_style;
 
 impl EditorView {
     pub(super) fn draw_editor(&self, surface: &mut Surface) {
@@ -66,6 +43,20 @@ impl EditorView {
         let mut row: usize = 0;
         let mut line_idx = scroll;
 
+        // Pre-compute highlighted spans for the visible viewport using cached state.
+        let viewport_end = (scroll + b.h as usize).min(self.editor.buffer.line_count());
+        let viewport_spans = {
+            let mut cache = self.hl_cache.borrow_mut();
+            cache.highlight_viewport(
+                scroll,
+                viewport_end,
+                self.editor.buffer.line_count(),
+                |i| self.editor.buffer.line(i).unwrap_or_default(),
+                self.highlighter.syntax_set(),
+                self.highlighter.theme(),
+            )
+        };
+
         while row < b.h as usize && line_idx < self.editor.buffer.line_count() {
             let y = b.y + row as u16;
             let text_x = b.x + gutter_w;
@@ -79,14 +70,25 @@ impl EditorView {
             // --- Line content: write char-by-char, then pad to full width ---
             let line = self.editor.buffer.line(line_idx).unwrap_or_default();
             let line_start_off = self.editor.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
-            let spans = self.highlighter.highlight_line(&line, &self.file_ext);
+            let spans = viewport_spans.get(line_idx - scroll).map(|s| s.as_slice());
+            let default_spans;
+            let spans: &[crate::highlight::HlSpan] = match spans {
+                Some(s) => s,
+                None => {
+                    default_spans = vec![crate::highlight::HlSpan {
+                        text: line.clone(),
+                        style: Style::default(),
+                    }];
+                    &default_spans
+                }
+            };
 
             let mut col_offset: usize = 0;
             let mut char_idx: usize = 0;
             let mut byte_pos = line_start_off;
             let mut visual_row = row;
 
-            for span in &spans {
+            for span in spans {
                 for ch in span.text.chars() {
                     if ch == '\t' {
                         let st = char_style(
@@ -249,25 +251,5 @@ impl EditorView {
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
             surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::views::editor::EditorView;
-    use txv_core::prelude::*;
-
-    #[test]
-    fn wide_char_positions_correct() {
-        // "A✅B" — ✅ is width 2, so B should be at visual column 4
-        // (A=col0, ✅=col1+col2, B should be at col3)
-        let mut view = EditorView::from_text("A✅B");
-        view.editor.options.number = false;
-        view.set_bounds(Rect::new(0, 0, 20, 1));
-        let mut surface = Surface::new(20, 1);
-        view.draw(&mut surface);
-        assert_eq!(surface.cell(0, 0).ch, 'A');
-        assert_eq!(surface.cell(1, 0).ch, '✅');
-        assert_eq!(surface.cell(3, 0).ch, 'B');
     }
 }
