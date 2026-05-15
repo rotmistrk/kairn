@@ -47,6 +47,8 @@ pub struct AppState {
     pub script: ScriptEngine,
     /// Dynamic command list for completions (shared with completer).
     pub command_list: crate::completer::CommandList,
+    /// Plugin hot-reload manager.
+    pub plugins: crate::scripting::plugins::PluginManager,
 }
 
 impl AppState {
@@ -74,6 +76,7 @@ impl AppState {
             confirm_context: None,
             script: ScriptEngine::new(),
             command_list: crate::completer::new_command_list(),
+            plugins: crate::scripting::plugins::PluginManager::new(),
         }
     }
 
@@ -101,6 +104,7 @@ impl AppState {
             confirm_context: None,
             script: ScriptEngine::new(),
             command_list: crate::completer::new_command_list(),
+            plugins: crate::scripting::plugins::PluginManager::new(),
         }
     }
 

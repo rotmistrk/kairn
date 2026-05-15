@@ -144,6 +144,16 @@ impl Interpreter {
         self.commands.keys().cloned().collect()
     }
 
+    /// Get all user-defined proc names.
+    pub fn proc_names(&self) -> Vec<String> {
+        self.procs.keys().cloned().collect()
+    }
+
+    /// Remove a user-defined proc by name.
+    pub fn remove_proc(&mut self, name: &str) {
+        self.procs.remove(name);
+    }
+
     /// Register a command from a closure.
     pub fn register_fn<F>(&mut self, name: &str, f: F)
     where

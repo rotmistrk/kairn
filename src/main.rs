@@ -124,6 +124,11 @@ fn main() -> anyhow::Result<()> {
     app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
     // Load Tcl config files (plugins may define new commands)
     app_state.script.load_config(&root_dir);
+    app_state.plugins.add_plugin_dir(root_dir.join(".kairn/plugins"));
+    let plugin_warnings = app_state.plugins.refresh(&mut app_state.script);
+    for w in &plugin_warnings {
+        log::warn!("plugin: {w}");
+    }
     kairn::completer::refresh_commands(&app_state.command_list, &app_state.script);
     // Initialize theme
     let theme_mode = match app_state.settings.theme_mode.as_str() {

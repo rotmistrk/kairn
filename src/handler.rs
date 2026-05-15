@@ -1,17 +1,12 @@
 //! Shared command handler — used by both main.rs and test harness.
-//!
-//! NOTE: App command handlers call each other directly (not via queue).
-//! This is correct — the queue is for cross-view communication.
-//! When the App already knows what to do, it does it immediately.
-//! Same pattern as TXV's Program::handle.
+//! App handlers call each other directly (queue is for cross-view communication).
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 pub use crate::app_state::AppState;
 use crate::commands::*;
-use crate::layout_group::LayoutGroup;
-use crate::layout_group::SlotId;
+use crate::layout_group::{LayoutGroup, SlotId};
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
@@ -63,6 +58,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 }
             }
         }
+    }
+
+    // Plugin hot-reload: scan every ~5s (100 ticks at 50ms)
+    if state.mcp_tick.is_multiple_of(100) {
+        crate::handler_drain::refresh_plugins(ctx, state);
     }
 
     match ctx.command {

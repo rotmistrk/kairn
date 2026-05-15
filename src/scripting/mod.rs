@@ -9,6 +9,7 @@ mod bridge_lsp;
 mod bridge_system;
 mod bridge_todo;
 mod bridge_view;
+pub mod plugins;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -144,6 +145,32 @@ impl ScriptEngine {
     /// Get all registered Tcl command names (for completion).
     pub fn command_names(&self) -> Vec<String> {
         self.interp.command_names()
+    }
+
+    /// Get all user-defined proc names.
+    pub fn proc_names(&self) -> Vec<String> {
+        self.interp.proc_names()
+    }
+
+    /// Remove a user-defined proc by name.
+    pub fn remove_proc(&mut self, name: &str) {
+        self.interp.remove_proc(name);
+    }
+
+    /// Validate Tcl syntax without executing. Returns Ok(()) or error message.
+    pub fn validate(&self, script: &str) -> Result<(), String> {
+        let result = self.interp.validate(script);
+        if result.is_ok() {
+            Ok(())
+        } else {
+            let msg = result
+                .errors
+                .iter()
+                .map(|e| e.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; ");
+            Err(msg)
+        }
     }
 
     /// Load and evaluate a Tcl file.

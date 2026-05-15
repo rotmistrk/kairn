@@ -118,3 +118,16 @@ pub fn drain_mcp(_ctx: &mut CommandContext, state: &mut AppState) {
         }
     }
 }
+
+/// Refresh plugins: scan dirs, reload changed, unload removed.
+pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
+    let warnings = state.plugins.refresh(&mut state.script);
+    if !warnings.is_empty() {
+        crate::completer::refresh_commands(&state.command_list, &state.script);
+        for w in warnings {
+            let msg = txv_core::message::Message::warn("plugin", w);
+            ctx.queue
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+    }
+}
