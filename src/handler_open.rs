@@ -23,9 +23,13 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         return;
     };
     let path = &req.path;
-    let path_str = path.to_string_lossy().to_string();
+    let title = path
+        .strip_prefix(&state.root_dir)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string();
 
-    match state.broker.open(&path_str, SlotId::Center, 0) {
+    match state.broker.open(&title, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let title = path
@@ -35,7 +39,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .to_string();
                 if !desktop.focus_tab_by_title(SlotId::Center, &title) {
                     // Tab was evicted but broker wasn't updated — reopen
-                    state.broker.close(&path_str);
+                    state.broker.close(&title);
                     let view: Box<dyn View> =
                         try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
                     crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
@@ -90,15 +94,14 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
 
 pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
-    let path_str = path.to_string_lossy().to_string();
-    match state.broker.open(&path_str, SlotId::Center, 0) {
+    let title = path
+        .strip_prefix(&state.root_dir)
+        .unwrap_or(&path)
+        .to_string_lossy()
+        .to_string();
+    match state.broker.open(&title, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {
-            let title = path
-                .strip_prefix(&state.root_dir)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .to_string();
             let view: Box<dyn View> = try_open_structured(&path).unwrap_or_else(|| {
                 let syntax_theme = state.current_syntax_theme().to_string();
                 let defaults = state.settings.editor_defaults.clone();
@@ -165,8 +168,8 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
         return;
     }
     d.close_tab_by_title(SlotId::Center, &title);
-    state.broker.close(&path.to_string_lossy());
-    let _ = state.broker.open(&path.to_string_lossy(), SlotId::Center, 0);
+    state.broker.close(&title);
+    let _ = state.broker.open(&title, SlotId::Center, 0);
     let view: Box<dyn View> = if to_structured {
         try_open_structured(&path).unwrap_or_else(|| {
             let syntax_theme = state.current_syntax_theme().to_string();
@@ -248,8 +251,8 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut 
         return;
     };
     d.close_tab_by_title(SlotId::Center, &title);
-    state.broker.close(&path.to_string_lossy());
-    let _ = state.broker.open(&path.to_string_lossy(), SlotId::Center, 0);
+    state.broker.close(&title);
+    let _ = state.broker.open(&title, SlotId::Center, 0);
     let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
     crate::handler_evict::try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

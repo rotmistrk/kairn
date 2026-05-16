@@ -184,6 +184,10 @@ fn main() -> anyhow::Result<()> {
             &app_state.settings.editor_defaults,
             app_state.current_syntax_theme(),
         );
+        // Register restored tabs with broker
+        for tab in &sess.editor_tabs {
+            app_state.broker.open(&tab.path, kairn::layout_group::SlotId::Center, 0);
+        }
         session::restore_kiro_tabs(
             &mut desktop,
             &sess.kiro_sessions,

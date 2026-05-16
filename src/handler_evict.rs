@@ -47,8 +47,6 @@ pub fn try_insert_tab(
         }
         // Unregister from broker before removing
         if let Some(tab_title) = desktop.panel(slot).tab_title(lru_idx).map(String::from) {
-            let full_path = state.root_dir.join(&tab_title);
-            state.broker.close(&full_path.to_string_lossy());
             state.broker.close(&tab_title);
         }
         desktop.panel_mut(slot).remove_tab(lru_idx);
