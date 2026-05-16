@@ -51,7 +51,7 @@ impl ScriptEngine {
         bridge_lsp::register(&mut interp, commands.clone());
         bridge_git::register(&mut interp, commands.clone());
         bridge_todo::register(&mut interp, commands.clone());
-        bridge_split::register(&mut interp, commands.clone());
+        bridge_split::register(&mut interp, commands.clone(), snapshot.clone());
 
         Self {
             interp,
@@ -122,12 +122,22 @@ impl ScriptEngine {
     }
 
     /// Update the state snapshot (called each tick from handler).
-    pub fn update_snapshot(&self, ctx: &ViewContext, root_dir: &str, selection_text: &str, current_line_text: &str) {
+    pub fn update_snapshot(
+        &self,
+        ctx: &ViewContext,
+        root_dir: &str,
+        selection_text: &str,
+        current_line_text: &str,
+        split_direction: &str,
+        split_linked: bool,
+    ) {
         if let Ok(mut snap) = self.snapshot.lock() {
             snap.context = ctx.clone();
             snap.root_dir = root_dir.to_string();
             snap.selection_text = selection_text.to_string();
             snap.current_line_text = current_line_text.to_string();
+            snap.split_direction = split_direction.to_string();
+            snap.split_linked = split_linked;
         }
     }
 

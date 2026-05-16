@@ -46,11 +46,32 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         vc.mode = mode_for_slot(slot);
     }
 
+    // Determine split state
+    let (split_dir, split_linked) = {
+        let panel = desktop.panel_mut(SlotId::Center);
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(es) = view
+                .as_any_mut()
+                .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
+            {
+                let dir = match es.split.direction {
+                    txv_widgets::split_pane::SplitDirection::Horizontal => "horizontal",
+                    txv_widgets::split_pane::SplitDirection::Vertical => "vertical",
+                };
+                (dir, es.linked_scroll)
+            } else {
+                ("none", false)
+            }
+        } else {
+            ("none", false)
+        }
+    };
+
     // Update script engine snapshot
     let root = state.root_dir.to_string_lossy().to_string();
     state
         .script
-        .update_snapshot(&vc, &root, &selection_text, &current_line_text);
+        .update_snapshot(&vc, &root, &selection_text, &current_line_text, split_dir, split_linked);
 
     ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }

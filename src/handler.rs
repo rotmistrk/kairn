@@ -158,6 +158,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_CLOSE => crate::handler_split::handle_split_close(ctx, state),
         CM_OPEN_IN_SPLIT => crate::handler_split::handle_open_in_split(ctx, state),
         CM_SPLIT_FOCUS => crate::handler_split::handle_split_focus(ctx),
+        CM_SPLIT_LINKED => crate::handler_split::handle_split_linked(ctx),
         CM_DIFF_SPLIT => crate::handler_split::handle_diff_split(ctx, state),
         CM_TOGGLE_THEME => {
             let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
@@ -238,11 +239,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         CM_SET_CONFIRM_CONTEXT => {
-            if let Some(boxed) = ctx.data.as_ref() {
-                if let Some(context) = boxed.downcast_ref::<crate::commands::ConfirmContext>() {
-                    state.confirm_context = Some(context.clone());
-                }
-            }
+            crate::handler_confirm::handle_set_confirm_context(ctx, state);
         }
         CM_CONFIRM_RESPONSE => {
             crate::handler_confirm::handle_confirm_response(ctx, state);

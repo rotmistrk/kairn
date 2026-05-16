@@ -9,6 +9,8 @@ pub struct StateSnapshot {
     pub root_dir: String,
     pub selection_text: String,
     pub current_line_text: String,
+    pub split_direction: String,
+    pub split_linked: bool,
 }
 
 /// Commands produced by Tcl scripts, drained by the handler.
@@ -109,6 +111,9 @@ pub enum ScriptCommand {
     SplitFocus,
     SplitOpen {
         path: String,
+    },
+    SplitLinked {
+        on: bool,
     },
     DiffRevert,
     LspStart {

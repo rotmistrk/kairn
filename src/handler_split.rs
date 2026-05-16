@@ -110,6 +110,26 @@ pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
     es.split.focus_next();
 }
 
+pub(crate) fn handle_split_linked(ctx: &mut CommandContext) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(&on) = boxed.downcast_ref::<bool>() else {
+        return;
+    };
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(view) = panel.active_view_mut() else {
+        return;
+    };
+    let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) else {
+        return;
+    };
+    es.linked_scroll = on;
+}
+
 pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
