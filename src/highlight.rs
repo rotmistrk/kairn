@@ -47,8 +47,9 @@ impl Highlighter {
         let theme = themes
             .themes
             .get(name)
+            .or_else(|| themes.themes.values().next())
             .cloned()
-            .unwrap_or_else(|| themes.themes.values().next().unwrap().clone());
+            .unwrap_or_default();
         Self {
             syntax_set,
             theme,

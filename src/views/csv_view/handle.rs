@@ -83,7 +83,13 @@ fn start_edit(view: &mut CsvView) {
     if view.visible_rows.is_empty() {
         return;
     }
-    let data_idx = view.visible_rows[view.cursor_row];
+    view.cursor_row = view.cursor_row.min(view.visible_rows.len() - 1);
+    let Some(&data_idx) = view.visible_rows.get(view.cursor_row) else {
+        return;
+    };
+    if data_idx >= view.rows.len() {
+        return;
+    }
     let current = view.rows[data_idx].get(view.cursor_col).cloned().unwrap_or_default();
     view.editing = Some(txv_widgets::inline_edit::InlineEditor::new(view.cursor_row, &current));
 }
@@ -92,7 +98,13 @@ fn commit_edit(view: &mut CsvView, text: &str) {
     if view.visible_rows.is_empty() {
         return;
     }
-    let data_idx = view.visible_rows[view.cursor_row];
+    view.cursor_row = view.cursor_row.min(view.visible_rows.len() - 1);
+    let Some(&data_idx) = view.visible_rows.get(view.cursor_row) else {
+        return;
+    };
+    if data_idx >= view.rows.len() {
+        return;
+    }
     // Ensure row has enough columns
     while view.rows[data_idx].len() <= view.cursor_col {
         view.rows[data_idx].push(String::new());

@@ -80,16 +80,16 @@ impl LspRegistry {
         if self.disabled.contains(&language_id.to_string()) {
             return None;
         }
+        let is_dead = self.active.get(language_id).is_some_and(|c| !c.is_alive());
+        if is_dead {
+            self.active.remove(language_id);
+            let err = format!("LSP server for {language_id} died — disabled until restart");
+            log::error!("{}", err);
+            self.last_error = Some(err);
+            self.disabled.push(language_id.to_string());
+            return None;
+        }
         if self.active.contains_key(language_id) {
-            // Check if the server is still alive
-            if !self.active[language_id].is_alive() {
-                self.active.remove(language_id);
-                let err = format!("LSP server for {language_id} died — disabled until restart");
-                log::error!("{}", err);
-                self.last_error = Some(err);
-                self.disabled.push(language_id.to_string());
-                return None;
-            }
             return self.active.get_mut(language_id);
         }
         let config = match self.configs.get(language_id) {

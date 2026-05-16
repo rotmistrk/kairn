@@ -69,8 +69,20 @@ impl EditorView {
                     };
                 }
                 let is_cursor = vi == ds_cursor && self.state.is_focused();
-                let ds = self.diff_state.as_ref().unwrap();
-                let line = &ds.lines[vi];
+                let Some(ds) = self.diff_state.as_ref() else {
+                    return DrawCmd {
+                        kind: DrawKind::Empty,
+                        row: y,
+                        is_cursor: false,
+                    };
+                };
+                let Some(line) = ds.lines.get(vi) else {
+                    return DrawCmd {
+                        kind: DrawKind::Empty,
+                        row: y,
+                        is_cursor: false,
+                    };
+                };
                 let kind = match line {
                     DiffLine::Context { buf_line, base_line } => DrawKind::Context {
                         buf_line: *buf_line,

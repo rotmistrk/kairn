@@ -101,7 +101,7 @@ impl EditorView {
 
         if !buf_lines.is_empty() {
             let first = buf_lines[0];
-            let last = *buf_lines.last().unwrap();
+            let last = buf_lines.last().copied().unwrap_or(first);
             let start_off = buf.line_col_to_offset(first, 0).unwrap_or(0);
             let end_off = if last + 1 < buf.line_count() {
                 buf.line_col_to_offset(last + 1, 0).unwrap_or(buf.content().len())
