@@ -48,6 +48,7 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
     }
 
@@ -76,6 +77,7 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
     }
 
@@ -104,6 +106,7 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
     }
 

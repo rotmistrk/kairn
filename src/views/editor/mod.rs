@@ -45,6 +45,8 @@ pub struct EditorView {
     pub(super) diff_state: Option<diff_model::DiffState>,
     /// Completion popup overlay.
     pub(super) completion_popup: CompletionPopup,
+    /// Buffer identity in the shared registry (assigned on open).
+    pub buffer_id: Option<crate::buffer_registry::BufferId>,
 }
 
 impl View for EditorView {

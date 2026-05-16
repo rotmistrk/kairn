@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::broker::FileBroker;
+use crate::buffer_registry::BufferRegistry;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
@@ -22,6 +23,7 @@ pub struct DeferredLspRequest {
 /// Application state shared across command handler invocations.
 pub struct AppState {
     pub broker: FileBroker,
+    pub buffers: BufferRegistry,
     pub root_dir: PathBuf,
     pub settings: AppSettings,
     pub lsp: LspRegistry,
@@ -70,6 +72,7 @@ impl AppState {
     pub fn new(root_dir: PathBuf) -> Self {
         Self {
             broker: FileBroker::new(),
+            buffers: BufferRegistry::new(),
             root_dir,
             settings: AppSettings::default(),
             lsp: LspRegistry::new(),
@@ -102,6 +105,7 @@ impl AppState {
         let lsp_timeout = settings.lsp_timeout;
         let mut s = Self {
             broker: FileBroker::new(),
+            buffers: BufferRegistry::new(),
             root_dir,
             settings,
             lsp: LspRegistry::new(),

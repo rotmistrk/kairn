@@ -120,6 +120,10 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 if let Some(path) = boxed.downcast_ref::<String>() {
                     state.broker.close(path);
                     state.kiro_registry.remove(path);
+                    let full = state.root_dir.join(path);
+                    if let Some(id) = state.buffers.find_by_path(&full.canonicalize().unwrap_or(full)) {
+                        state.buffers.release(id);
+                    }
                 }
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {

@@ -7,6 +7,7 @@ pub mod app_state;
 pub mod blame;
 pub mod broker;
 pub mod buffer;
+pub mod buffer_registry;
 pub mod build;
 pub mod build_desktop;
 pub mod build_detect;
