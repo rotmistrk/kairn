@@ -52,12 +52,34 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
         SlotId::Bottom => "bottom",
     };
 
+    let (split_direction, split_linked) = {
+        let panel = desktop.panel_mut(SlotId::Center);
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(es) = view
+                .as_any_mut()
+                .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
+            {
+                let dir = match es.split.direction {
+                    txv_widgets::split_pane::SplitDirection::Horizontal => "horizontal",
+                    txv_widgets::split_pane::SplitDirection::Vertical => "vertical",
+                };
+                (dir.to_string(), es.linked_scroll)
+            } else {
+                ("none".to_string(), false)
+            }
+        } else {
+            ("none".to_string(), false)
+        }
+    };
+
     McpSnapshot {
         tabs,
         terminals: Vec::new(),
         focused_slot: slot_name.to_string(),
         messages: Vec::new(),
         tab_contents: collect_center_contents(desktop),
+        split_direction,
+        split_linked,
     }
 }
 

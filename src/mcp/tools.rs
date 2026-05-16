@@ -36,7 +36,7 @@ pub fn handle_tool_call(
         "get_build_errors" => super::tools_write::tool_get_build_errors(cmd_queue, args),
         "search_project" => super::tools_write::tool_search_project(cmd_queue, args),
         "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
-        "split" => tool_split(cmd_queue, args),
+        "split" => tool_split(snapshot, cmd_queue, args),
         "diff_revert" => super::tools_write::tool_diff_revert(cmd_queue, args),
         "lsp_control" => super::tools_write::tool_lsp_control(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
@@ -127,13 +127,27 @@ fn tool_get_tab_content(snapshot: &Arc<Mutex<McpSnapshot>>, args: &Map<String, V
     }
 }
 
-fn tool_split(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+fn tool_split(
+    snapshot: &Arc<Mutex<McpSnapshot>>,
+    cmd_queue: Option<&McpCommandQueue>,
+    args: &Map<String, Value>,
+) -> Result<Value, String> {
     let action = args
         .get("action")
         .and_then(Value::as_str)
         .ok_or("Missing 'action' argument")?;
     let file = args.get("file").and_then(Value::as_str).map(String::from);
+
+    if action == "status" {
+        let snap = snapshot.lock().map_err(|e| e.to_string())?;
+        return Ok(serde_json::json!({
+            "active": snap.split_direction != "none",
+            "direction": snap.split_direction,
+            "linked_scroll": snap.split_linked,
+        }));
+    }
+
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
     let mcp_action = match action {
         "vsplit" => super::commands::McpAction::SplitVertical { file },
         "hsplit" => super::commands::McpAction::SplitHorizontal { file },
@@ -142,6 +156,10 @@ fn tool_split(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) ->
         "open" => {
             let path = file.ok_or("'file' required for 'open' action")?;
             super::commands::McpAction::SplitOpen { path }
+        }
+        "linked" => {
+            let on = args.get("value").and_then(Value::as_bool).unwrap_or(true);
+            super::commands::McpAction::SplitLinked { on }
         }
         other => return Err(format!("Unknown split action: {other}")),
     };

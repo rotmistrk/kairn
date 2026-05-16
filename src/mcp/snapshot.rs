@@ -50,4 +50,7 @@ pub struct McpSnapshot {
     pub messages: Vec<String>,
     /// Content of center-panel tabs (keyed by tab name).
     pub tab_contents: std::collections::HashMap<String, String>,
+    /// Split state: "none", "horizontal", or "vertical".
+    pub split_direction: String,
+    pub split_linked: bool,
 }

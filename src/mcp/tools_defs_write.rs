@@ -129,18 +129,22 @@ pub fn write_tool_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "split",
-            "description": "Manipulate editor split panes: create, close, focus, or open file in other pane",
+            "description": "Manipulate editor split panes: create, close, focus, status, or linked scroll",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["vsplit", "hsplit", "close", "focus", "open"],
+                        "enum": ["vsplit", "hsplit", "close", "focus", "open", "status", "linked"],
                         "description": "Split action to perform"
                     },
                     "file": {
                         "type": "string",
                         "description": "File path (for vsplit/hsplit/open)"
+                    },
+                    "value": {
+                        "type": "boolean",
+                        "description": "Value for linked action (true/false)"
                     }
                 },
                 "required": ["action"]

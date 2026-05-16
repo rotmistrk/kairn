@@ -75,6 +75,8 @@ pub enum McpAction {
     SplitFocus,
     /// Open a file in the other split pane.
     SplitOpen { path: String },
+    /// Set linked scroll on/off.
+    SplitLinked { on: bool },
     /// Revert the diff hunk under cursor in the specified tab.
     DiffRevert { name: String },
     /// LSP control: start/restart/stop/timeout/args.
