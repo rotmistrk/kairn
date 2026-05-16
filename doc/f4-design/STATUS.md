@@ -89,9 +89,9 @@
 | Panic handler | ✅ | Restore terminal on crash |
 | Tree auto-refresh | ✅ | Preserves expanded state |
 | rusticle-tk | ✅ | Production-ready, 79 tests |
-| LSP integration | ❌ | |
-| :split / :vsplit | ❌ | |
-| Session persistence | ❌ | |
+| LSP integration | ✅ | rust-analyzer, gopls, clangd, jdtls, pyright |
+| :split / :vsplit | ⚠️ | Experimental — basic split works, navigation has deficiencies |
+| Session persistence | ✅ | Saves/restores open tabs on restart |
 | MCP server (read tools) | ✅ | Tabs, terminal content, snapshots |
 | MCP server (write tools) | ✅ | Commands, todo operations |
 | Palette system (dark/light) | ✅ | AppPalette + ThemeState + config |

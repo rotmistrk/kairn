@@ -16,7 +16,7 @@ Three-panel TUI with a vim editor, terminal emulator, and file/git/todo tree —
 
 ```bash
 make setup              # enable pre-commit hook (once per clone)
-cargo build --release
+make release
 ./target/release/kairn
 ```
 
@@ -25,7 +25,7 @@ Press `F1` for interactive help. Press `M-x` (Alt-x) for command mode.
 ## Layout
 
 ```
-Wide (>176 cols):        Tall (<176 cols):
+Wide (≥300 cols):        Tall (≤200 cols):
 ┌────┬──────┬─────┐     ┌────┬──────────────┐
 │Tree│Editor│Term │     │Tree│   Editor     │
 │Git │      │     │     │Git ├──────────────┤
@@ -34,7 +34,7 @@ Wide (>176 cols):        Tall (<176 cols):
 ```
 
 Panels: Left (tree/git/todo tabs) · Center (editor) · Right/Bottom (terminal).
-Auto-switches between Wide and Tall based on terminal width.
+Auto-switches between Wide and Tall based on terminal width (configurable thresholds).
 
 ## Key Bindings
 
@@ -119,6 +119,7 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 | `git-stage/unstage/untrack <f>` | Git operations |
 | `git-commit <msg>` | Commit |
 | `tab-rename <name>` | Rename tab |
+| `split` / `vsplit` | Split editor (experimental) |
 | `struct` / `text` | Switch view mode |
 | `tab` | Open current file as CSV/TSV table |
 | *anything else* | Evaluated as Tcl script |
