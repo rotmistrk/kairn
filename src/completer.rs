@@ -28,6 +28,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "lsp-status",
     "messages",
     "next-error",
+    "only",
     "paste",
     "prev-error",
     "quit",
@@ -36,6 +37,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "shell",
     "shrink",
     "shrink-v",
+    "split",
     "struct",
     "tab",
     "tab-rename",
@@ -45,6 +47,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "text",
     "theme",
     "tree",
+    "vsplit",
     "welcome",
 ];
 

@@ -60,6 +60,11 @@ impl EditorView {
                 queue.put_command(CM_SET_GLOBAL, Some(Box::new(opt)));
             }
             EditorAction::Diff(args) => {
+                if let Some((base_content, base_ref)) = self.try_diff_side_by_side(&args) {
+                    let payload = crate::commands::DiffSplitRequest { base_content, base_ref };
+                    queue.put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
+                    return;
+                }
                 self.toggle_diff(&args);
                 if !self.editor.status.is_empty() {
                     let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
