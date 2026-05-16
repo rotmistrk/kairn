@@ -17,9 +17,11 @@ use crate::views::struct_view::StructuredView;
 
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
+        log::warn!("CM_OPEN_FILE with no data");
         return;
     };
     let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
+        log::warn!("CM_OPEN_FILE data is not OpenFileRequest");
         return;
     };
     let path = &req.path;
@@ -28,15 +30,12 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         .unwrap_or(path)
         .to_string_lossy()
         .to_string();
+    log::info!("Open file: {title} (broker check)");
 
     match state.broker.open(&title, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
+            log::info!("Already open: {title}");
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let title = path
-                    .strip_prefix(&state.root_dir)
-                    .unwrap_or(path)
-                    .to_string_lossy()
-                    .to_string();
                 if !desktop.focus_tab_by_title(SlotId::Center, &title) {
                     // Tab was evicted but broker wasn't updated — reopen
                     state.broker.close(&title);
