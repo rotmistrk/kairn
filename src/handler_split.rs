@@ -29,28 +29,43 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     };
     let panel = desktop.panel_mut(SlotId::Center);
 
-    // If already in a split, just change orientation
+    // If already in a split
     if let Some(view) = panel.active_view_mut() {
         if let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) {
-            es.set_direction(direction);
+            if let Some(ref filename) = file {
+                // Open file in the other pane
+                let other_idx = 1 - es.focused_index();
+                if let Some(child) = es.split.child_mut(other_idx) {
+                    if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                        open_into_editor(ev, &state.root_dir.join(filename), 0, 0, state);
+                    }
+                }
+            } else {
+                // No file arg — toggle orientation
+                es.set_direction(direction);
+            }
             return;
         }
     }
 
     // Not split yet — take the current tab and wrap it in a split
+    // New pane goes first (top/left), existing stays second (bottom/right)
     let active_idx = panel.active_index();
     let title = panel.active_title().map(String::from).unwrap_or_default();
-    let Some(mut removed) = panel.take_tab(active_idx) else {
+    let Some(mut existing) = panel.take_tab(active_idx) else {
         return;
     };
 
-    let second: Box<dyn View> = if let Some(ref filename) = file {
+    let new_pane: Box<dyn View> = if let Some(ref filename) = file {
         open_second_file(state, filename)
     } else {
-        open_same_file_shared(&mut removed, state)
+        open_same_file_shared(&mut existing, state)
     };
 
-    let split = EditorSplit::new(direction, removed, second);
+    // new_pane = first (top/left), existing = second (bottom/right)
+    let mut split = EditorSplit::new(direction, new_pane, existing);
+    // Focus the second pane (bottom/right) where the user was editing
+    split.split.focus_next();
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 
