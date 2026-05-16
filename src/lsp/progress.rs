@@ -1,6 +1,7 @@
 //! LSP progress tracking — parses $/progress notifications and tracks per-language state.
 
 use std::collections::HashMap;
+use std::time::Instant;
 
 use serde_json::Value;
 
@@ -19,6 +20,7 @@ pub enum LspServerState {
 /// Tracks LSP server states per language.
 pub struct LspStatusTracker {
     servers: HashMap<String, LspServerState>,
+    started_at: HashMap<String, Instant>,
 }
 
 impl Default for LspStatusTracker {
@@ -31,10 +33,16 @@ impl LspStatusTracker {
     pub fn new() -> Self {
         Self {
             servers: HashMap::new(),
+            started_at: HashMap::new(),
         }
     }
 
     pub fn set_state(&mut self, lang: &str, state: LspServerState) {
+        if state == LspServerState::Starting {
+            self.started_at.entry(lang.to_string()).or_insert_with(Instant::now);
+        } else {
+            self.started_at.remove(lang);
+        }
         self.servers.insert(lang.to_string(), state);
     }
 
@@ -44,12 +52,27 @@ impl LspStatusTracker {
 
     pub fn remove(&mut self, lang: &str) {
         self.servers.remove(lang);
+        self.started_at.remove(lang);
     }
 
-    pub fn snapshot(&self) -> Vec<(String, LspServerState)> {
-        let mut items: Vec<_> = self.servers.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    /// Returns true if any server is in Starting state.
+    pub fn has_starting(&self) -> bool {
+        self.servers.values().any(|s| *s == LspServerState::Starting)
+    }
+
+    pub fn snapshot(&self) -> Vec<(String, LspServerState, Option<u64>)> {
+        let mut items: Vec<_> = self
+            .servers
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone(), self.elapsed_secs(k)))
+            .collect();
         items.sort_by(|a, b| a.0.cmp(&b.0));
         items
+    }
+
+    /// Get elapsed seconds since a language entered Starting state.
+    pub fn elapsed_secs(&self, lang: &str) -> Option<u64> {
+        self.started_at.get(lang).map(|t| t.elapsed().as_secs())
     }
 
     /// Handle a $/progress notification. Returns true if state changed.
@@ -106,19 +129,25 @@ impl LspStatusTracker {
 }
 
 /// Format a compact label for the status bar from a state snapshot.
-pub fn format_status_label(snapshot: &[(String, LspServerState)]) -> String {
+pub fn format_status_label(snapshot: &[(String, LspServerState, Option<u64>)]) -> String {
     if snapshot.is_empty() {
         return String::new();
     }
     let parts: Vec<String> = snapshot
         .iter()
-        .map(|(lang, state)| {
+        .map(|(lang, state, elapsed)| {
             let short = short_name(lang);
             match state {
-                LspServerState::Starting => format!("{short} …"),
+                LspServerState::Starting => {
+                    if let Some(secs) = elapsed.filter(|&s| s >= 3) {
+                        format!("{short} …{secs}s")
+                    } else {
+                        format!("{short} …")
+                    }
+                }
                 LspServerState::Indexing { percent: Some(p), .. } => format!("{short} {p}%"),
                 LspServerState::Indexing { .. } => format!("{short} ⟳"),
-                LspServerState::Ready => format!("{short} ✓"),
+                LspServerState::Ready => short.to_string(),
                 LspServerState::Error => format!("{short} ✗"),
             }
         })
@@ -144,10 +173,13 @@ mod tests {
     fn state_transitions() {
         let mut tracker = LspStatusTracker::new();
         tracker.set_state("rust", LspServerState::Starting);
-        assert_eq!(tracker.snapshot(), vec![("rust".into(), LspServerState::Starting)]);
+        let snap = tracker.snapshot();
+        assert_eq!(snap[0].0, "rust");
+        assert_eq!(snap[0].1, LspServerState::Starting);
 
         tracker.set_state("rust", LspServerState::Ready);
-        assert_eq!(tracker.snapshot(), vec![("rust".into(), LspServerState::Ready)]);
+        let snap = tracker.snapshot();
+        assert_eq!(snap[0].1, LspServerState::Ready);
     }
 
     #[test]
@@ -179,17 +211,18 @@ mod tests {
     #[test]
     fn format_label_multiple_languages() {
         let snapshot = vec![
-            ("go".into(), LspServerState::Ready),
+            ("go".into(), LspServerState::Ready, None),
             (
                 "rust".into(),
                 LspServerState::Indexing {
                     percent: Some(42),
                     message: None,
                 },
+                None,
             ),
         ];
         let label = format_status_label(&snapshot);
-        assert!(label.contains("go ✓"));
+        assert!(label.contains("go"));
         assert!(label.contains("rust 42%"));
     }
 

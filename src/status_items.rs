@@ -199,7 +199,7 @@ impl ActiveItem for LspStatusItem {
             if *id == crate::commands::CM_LSP_STATUS_UPDATE {
                 if let Some(snapshot) = data
                     .as_ref()
-                    .and_then(|d| d.downcast_ref::<Vec<(String, crate::lsp::progress::LspServerState)>>())
+                    .and_then(|d| d.downcast_ref::<Vec<(String, crate::lsp::progress::LspServerState, Option<u64>)>>())
                 {
                     self.label = crate::lsp::progress::format_status_label(snapshot);
                     return HandleResult::Consumed;

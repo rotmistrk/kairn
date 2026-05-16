@@ -134,9 +134,12 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
         use super::progress::LspServerState;
         if state.lsp_status.get(lang).is_none() {
             state.lsp_status.set_state(lang, LspServerState::Starting);
-            let snapshot = state.lsp_status.snapshot();
-            sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
         }
+    }
+    // Refresh status bar while any server is starting (shows elapsed time)
+    if state.lsp_status.has_starting() {
+        let snapshot = state.lsp_status.snapshot();
+        sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
 
     // Expire deferred requests older than 10s
