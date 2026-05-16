@@ -33,7 +33,21 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .unwrap_or(path)
                     .to_string_lossy()
                     .to_string();
-                desktop.focus_tab_by_title(SlotId::Center, &title);
+                if !desktop.focus_tab_by_title(SlotId::Center, &title) {
+                    // Tab was evicted but broker wasn't updated — reopen
+                    state.broker.close(&path_str);
+                    let view: Box<dyn View> =
+                        try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
+                    crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
+                    if focus_center {
+                        desktop.focus_slot(SlotId::Center);
+                    }
+                    ctx.sink.push_command(
+                        txv_widgets::CM_STATUS_MESSAGE,
+                        Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
+                    );
+                    return;
+                }
                 if let (Some(line), Some(col)) = (req.line, req.col) {
                     if let Some(view) = desktop.active_view_mut(SlotId::Center) {
                         if let Some(editor) = view

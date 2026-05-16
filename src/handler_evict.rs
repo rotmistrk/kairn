@@ -35,6 +35,22 @@ pub fn try_insert_tab(
         }
     };
     if desktop.panel(slot).can_close_tab(lru_idx) == CloseResult::Ok {
+        // Save if autosave is on and buffer is dirty
+        if state.settings.editor_defaults.autosave {
+            if let Some(view) = desktop.panel_mut(slot).view_at_mut(lru_idx) {
+                if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                    if editor.editor.buf().is_dirty() {
+                        let _ = editor.save();
+                    }
+                }
+            }
+        }
+        // Unregister from broker before removing
+        if let Some(tab_title) = desktop.panel(slot).tab_title(lru_idx).map(String::from) {
+            let full_path = state.root_dir.join(&tab_title);
+            state.broker.close(&full_path.to_string_lossy());
+            state.broker.close(&tab_title);
+        }
         desktop.panel_mut(slot).remove_tab(lru_idx);
         desktop.insert_tab(slot, &title, view);
         return true;
