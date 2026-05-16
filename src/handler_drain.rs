@@ -13,8 +13,8 @@ pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(err) = gs.take_error() {
         let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "grep", err);
-        ctx.queue
-            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        ctx.sink
+            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = gs.take_entries();
     let done = gs.is_done();
@@ -42,8 +42,8 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(err) = task.take_error() {
         let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "build", err);
-        ctx.queue
-            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        ctx.sink
+            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = task.take_entries();
     let done = task.is_done();
@@ -86,8 +86,8 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
         crate::completer::refresh_commands(&state.command_list, &state.script);
         for w in warnings {
             let msg = txv_core::message::Message::warn("plugin", w);
-            ctx.queue
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ctx.sink
+                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -137,7 +137,7 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         Ok(editor) => Box::new(editor),
         Err(_) => Box::new(crate::views::editor::EditorView::new_file(&note_file, defaults)),
     };
-    crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Center, title.to_string(), view);
+    crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
     desktop.focus_tab_by_title(SlotId::Center, title);
     desktop.focus_slot(SlotId::Center);
 }

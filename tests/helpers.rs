@@ -89,36 +89,19 @@ impl TestHarness {
     }
 
     /// Directly dispatch a command through the handler (bypasses event loop).
+    /// Follow-up commands are left in the sink for run_cycles to process
+    /// through the full group dispatch (status bar + desktop).
     pub fn dispatch_command(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
         use txv_core::program::CommandContext;
-        use txv_core::view::EventQueue;
-        let mut queue = EventQueue::new();
+        let sink = self.program.sink().clone();
         let desktop = self.program.desktop_mut();
         let mut ctx = CommandContext {
             command: id,
             data: &data,
-            queue: &mut queue,
+            sink: &sink,
             desktop,
         };
         handle_command(&mut ctx, &mut self.state);
-        // Process any follow-up commands through the group (status bar) first
-        let events = queue.drain();
-        for ev in events {
-            let mut q2 = EventQueue::new();
-            if self.program.group_dispatch(&ev, &mut q2) == txv_core::view::HandleResult::Consumed {
-                continue;
-            }
-            if let txv_core::event::Event::Command { id, data } = ev {
-                let desktop = self.program.desktop_mut();
-                let mut ctx2 = CommandContext {
-                    command: id,
-                    data: &data,
-                    queue: &mut q2,
-                    desktop,
-                };
-                handle_command(&mut ctx2, &mut self.state);
-            }
-        }
     }
 
     pub fn screen_text(&self) -> String {

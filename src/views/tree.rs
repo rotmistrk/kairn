@@ -83,7 +83,7 @@ impl View for FileTreeView {
         Some(self)
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
             self.refresh_counter += 1;
             // Immediate on watcher signal (git index/refs changed)
@@ -106,30 +106,28 @@ impl View for FileTreeView {
         if let Event::Key(key) = event {
             self.last_key_was_right = key.code == KeyCode::Right;
         }
-        let result = self.inner.handle(event, queue);
-        let events = queue.drain();
-        for ev in events {
-            if let Event::Command { id, data } = &ev {
-                if *id == CM_OK {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                            let path = self.inner.data.path(node_id).to_path_buf();
-                            if !path.is_dir() {
-                                let cmd = if self.last_key_was_right {
-                                    CM_OPEN_FILE_FOCUS
-                                } else {
-                                    CM_OPEN_FILE
-                                };
-                                queue.put_command(cmd, Some(Box::new(OpenFileRequest::new(path))));
-                            }
-                            continue;
+        // Intercept CM_OK from inner TreeView (re-dispatched)
+        if let Event::Command { id, data } = event {
+            if *id == CM_OK {
+                if let Some(boxed) = data.as_ref() {
+                    if let Some(&node_id) = boxed.downcast_ref::<usize>() {
+                        let path = self.inner.data.path(node_id).to_path_buf();
+                        if !path.is_dir() {
+                            let cmd = if self.last_key_was_right {
+                                CM_OPEN_FILE_FOCUS
+                            } else {
+                                CM_OPEN_FILE
+                            };
+                            self.inner
+                                .state
+                                .put_command(cmd, Some(Box::new(OpenFileRequest::new(path))));
                         }
+                        return HandleResult::Consumed;
                     }
                 }
             }
-            queue.put(ev);
         }
-        result
+        self.inner.handle(event)
     }
 }
 
@@ -147,27 +145,26 @@ mod tests {
         std::fs::create_dir(&sub).unwrap();
         std::fs::write(sub.join("file.txt"), "hello").unwrap();
 
+        let sink = EventSink::new();
         let mut view = FileTreeView::new(tmp.path().to_path_buf(), None);
         view.set_bounds(Rect::new(0, 0, 40, 10));
-
-        let mut queue = EventQueue::new();
+        view.set_sink(sink.clone());
 
         // First Right arrow expands the directory
         let right = Event::Key(KeyEvent {
             code: KeyCode::Right,
             modifiers: KeyMod::default(),
         });
-        view.handle(&right, &mut queue);
+        view.handle(&right);
         // Should not emit CM_OPEN_FILE (just expanded)
-        let events: Vec<_> = queue.drain();
+        let events = sink.drain();
         assert!(!events
             .iter()
             .any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)));
 
         // Second Right arrow on already-expanded dir should NOT emit CM_OPEN_FILE
-        let mut queue = EventQueue::new();
-        view.handle(&right, &mut queue);
-        let events: Vec<_> = queue.drain();
+        view.handle(&right);
+        let events = sink.drain();
         assert!(
             !events
                 .iter()

@@ -65,7 +65,7 @@ impl TodoTreeView {
         }
         self.inner.data.save();
         self.inner.data.rebuild_flat();
-        self.inner.state.mark_dirty();
+        self.inner.mark_dirty();
         Ok(json!({"ok": true}))
     }
 }

@@ -7,15 +7,16 @@ use crate::structured::NodeKind;
 use super::{ColFocus, StructuredView};
 
 /// Draw the structured view as a three-column tree-table.
-pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
-    let b = view.state.bounds();
-    if b.w == 0 || b.h == 0 {
+pub fn draw_struct_view(view: &mut StructuredView) {
+    let w = view.state.buf.width();
+    let h = view.state.buf.height();
+    if w == 0 || h == 0 {
         return;
     }
-    let w = b.w as usize;
-    let key_w = w * 40 / 100;
-    let val_w = w * 40 / 100;
-    let meta_w = w.saturating_sub(key_w + val_w + 2);
+    let ww = w as usize;
+    let key_w = ww * 40 / 100;
+    let val_w = ww * 40 / 100;
+    let meta_w = ww.saturating_sub(key_w + val_w + 2);
 
     let normal = Style::default();
     let pal = txv_core::palette::palette();
@@ -29,24 +30,44 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
     let sep_style = pal.base.dim.to_style();
     let edit_style = pal.interactive.edit_overlay.to_style();
 
-    for row in 0..b.h as usize {
+    // Pre-collect row data to avoid borrow issues
+    struct RowData {
+        node_id: crate::structured::NodeId,
+        is_cursor: bool,
+    }
+    let rows: Vec<RowData> = (0..h as usize)
+        .map(|row| {
+            let idx = view.scroll + row;
+            RowData {
+                node_id: if idx < view.visible_nodes.len() {
+                    view.visible_nodes[idx]
+                } else {
+                    crate::structured::NodeId(0)
+                },
+                is_cursor: idx == view.cursor,
+            }
+        })
+        .collect();
+
+    #[allow(clippy::needless_range_loop)]
+    for row in 0..h as usize {
         let idx = view.scroll + row;
-        let y = b.y + row as u16;
+        let y = row as u16;
 
         if idx >= view.visible_nodes.len() {
-            surface.hline(b.x, y, b.w, ' ', normal);
+            view.state.buf.hline(0, y, w, ' ', normal);
             continue;
         }
 
-        let node_id = view.visible_nodes[idx];
-        let is_cursor = idx == view.cursor;
+        let node_id = rows[row].node_id;
+        let is_cursor = rows[row].is_cursor;
         let base = if is_cursor {
             cursor_row_style
         } else {
             normal
         };
 
-        surface.hline(b.x, y, b.w, ' ', base);
+        view.state.buf.hline(0, y, w, ' ', base);
 
         // Key column
         let key_text = build_key_text(view, node_id);
@@ -56,29 +77,29 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
             base
         };
         let truncated_key = truncate(&key_text, key_w);
-        surface.print(b.x, y, &truncated_key, col_style);
+        view.state.buf.print(0, y, &truncated_key, col_style);
 
         // Separator 1
-        let sep1_x = b.x + key_w as u16;
-        surface.print(sep1_x, y, "│", sep_style);
+        let sep1_x = key_w as u16;
+        view.state.buf.print(sep1_x, y, "│", sep_style);
 
         // Value column
-        let val_text = view.doc.value_display(node_id);
+        let val_text = view.doc.value_display(node_id).to_owned();
         let col_style = if is_cursor && view.col_focus == ColFocus::Value {
             cursor_style
         } else {
             base
         };
         let val_x = sep1_x + 1;
-        let truncated_val = truncate(val_text, val_w);
-        surface.print(val_x, y, &truncated_val, col_style);
+        let truncated_val = truncate(&val_text, val_w);
+        view.state.buf.print(val_x, y, &truncated_val, col_style);
 
         // Separator 2
         let sep2_x = val_x + val_w as u16;
-        surface.print(sep2_x, y, "│", sep_style);
+        view.state.buf.print(sep2_x, y, "│", sep_style);
 
         // Meta column
-        let meta_text = view.doc.meta(node_id);
+        let meta_text = view.doc.meta(node_id).to_owned();
         let col_style = if is_cursor && view.col_focus == ColFocus::Meta {
             cursor_style
         } else {
@@ -86,19 +107,19 @@ pub fn draw_struct_view(view: &StructuredView, surface: &mut Surface) {
         };
         let meta_x = sep2_x + 1;
         if !meta_text.is_empty() && meta_w > 0 {
-            let truncated_meta = truncate(meta_text, meta_w);
-            surface.print(meta_x, y, &truncated_meta, col_style);
+            let truncated_meta = truncate(&meta_text, meta_w);
+            view.state.buf.print(meta_x, y, &truncated_meta, col_style);
         }
 
         // Render InlineEditor overlay if editing this row
         if let Some(ref editor) = view.editing {
             if editor.row == idx {
                 let (col_x, col_w) = match view.col_focus {
-                    ColFocus::Key => (b.x, key_w as u16),
+                    ColFocus::Key => (0u16, key_w as u16),
                     ColFocus::Value => (val_x, val_w as u16),
                     ColFocus::Meta => (meta_x, meta_w as u16),
                 };
-                editor.draw(surface, col_x, y, col_w, edit_style);
+                editor.draw(&mut view.state.buf, col_x, y, col_w, edit_style);
             }
         }
     }

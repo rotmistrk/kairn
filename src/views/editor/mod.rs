@@ -50,7 +50,7 @@ pub struct EditorView {
 }
 
 impl View for EditorView {
-    delegate_view_state!(state, override { title, needs_redraw });
+    delegate_view_state!(state, override { title, needs_redraw, draw });
 
     fn title(&self) -> &str {
         &self.display_title
@@ -60,17 +60,17 @@ impl View for EditorView {
         self.state.is_dirty()
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        self.draw_editor(surface);
-        self.draw_blame_gutter(surface);
-        self.draw_diagnostics(surface);
-        self.completion_popup.draw(surface);
+    fn draw(&mut self) {
+        self.draw_editor();
+        self.draw_blame_gutter();
+        self.draw_diagnostics();
+        self.completion_popup.draw(&mut self.state.buf);
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         // Tick: autosave check + completion trigger
         if let Event::Tick = event {
-            self.handle_tick(queue);
+            self.handle_tick();
             return HandleResult::Ignored;
         }
 
@@ -98,20 +98,23 @@ impl View for EditorView {
                     // Side-by-side: create a split with base content on the left
                     if let Some((base_content, base_ref)) = self.try_diff_side_by_side(args) {
                         let payload = crate::commands::DiffSplitRequest { base_content, base_ref };
-                        queue.put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
+                        self.state
+                            .put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
                         return HandleResult::Consumed;
                     }
                     self.toggle_diff(args);
                     if !self.editor.status.is_empty() {
                         let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
-                        queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                        self.state
+                            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                     }
                     let mode = if self.in_diff_mode() {
                         "DIFF"
                     } else {
                         "NOR"
                     };
-                    queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
+                    self.state
+                        .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
                     return HandleResult::Consumed;
                 }
                 if *id == crate::commands::CM_BLAME {
@@ -188,13 +191,14 @@ impl View for EditorView {
                 self.editor.cursor_line as u32,
                 self.editor.cursor_col as u32,
             );
-            queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
+            self.state
+                .put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
             return HandleResult::Consumed;
         }
 
         // Diff mode: intercept keys for navigation
         if self.in_diff_mode() {
-            return self.handle_diff_key(key, queue);
+            return self.handle_diff_key(key);
         }
 
         let old_mode = self.editor.mode;
@@ -204,8 +208,8 @@ impl View for EditorView {
         if old_mode == crate::editor::keymap::EditorMode::Command
             || old_mode == crate::editor::keymap::EditorMode::Search
         {
-            let result = self.handle_command_input(key, queue);
-            self.emit_status_changes(old_mode, old_line, old_col, queue);
+            let result = self.handle_command_input(key);
+            self.emit_status_changes(old_mode, old_line, old_col);
             return result;
         }
 
@@ -221,7 +225,7 @@ impl View for EditorView {
             self.last_edit_tick = self.tick_counter;
             self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line);
             // Emit hook triggers for char-inserted / word-completed
-            self.emit_hook_triggers(&cmd, queue);
+            self.emit_hook_triggers(&cmd);
         }
         // Clear highlights on cursor move or content change, except search navigation
         if !is_search_nav
@@ -232,10 +236,10 @@ impl View for EditorView {
         {
             self.editor.highlight = None;
         }
-        self.handle_action(action, queue);
+        self.handle_action(action);
         self.ensure_cursor_visible();
         self.state.mark_dirty();
-        self.emit_status_changes(old_mode, old_line, old_col, queue);
+        self.emit_status_changes(old_mode, old_line, old_col);
         self.sync_title();
         HandleResult::Consumed
     }

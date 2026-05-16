@@ -13,11 +13,7 @@ pub(super) fn is_search_navigation(cmd: &crate::editor::command::Command) -> boo
 }
 
 impl EditorView {
-    pub(super) fn handle_command_input(
-        &mut self,
-        key: &txv_core::event::KeyEvent,
-        queue: &mut EventQueue,
-    ) -> HandleResult {
+    pub(super) fn handle_command_input(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         use txv_core::event::KeyCode;
         // Ctrl+C cancels command/search mode; other Ctrl+keys pass through
         if key.modifiers.ctrl {
@@ -44,11 +40,11 @@ impl EditorView {
                 if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                     let action = self.editor.execute(crate::editor::command::Command::SearchForward(buf));
-                    self.handle_action(action, queue);
+                    self.handle_action(action);
                 } else {
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                     let action = self.editor.execute(crate::editor::command::Command::ExCommand(buf));
-                    self.handle_action(action, queue);
+                    self.handle_action(action);
                 }
                 self.editor.command_buf.clear();
             }
@@ -93,7 +89,6 @@ impl EditorView {
         old_mode: crate::editor::keymap::EditorMode,
         old_line: usize,
         old_col: usize,
-        queue: &mut EventQueue,
     ) {
         use crate::commands::{CM_CURSOR_MOVED, CM_MODE_CHANGED};
         use txv_widgets::CursorPos;
@@ -106,19 +101,21 @@ impl EditorView {
                 crate::editor::keymap::EditorMode::Command => "CMD",
                 crate::editor::keymap::EditorMode::Search => "CMD",
             };
-            queue.put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
+            self.state
+                .put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
         }
         if self.editor.cursor_line != old_line || self.editor.cursor_col != old_col {
             let pos = CursorPos {
                 line: (self.editor.cursor_line + 1) as u32,
                 col: (self.editor.cursor_col + 1) as u32,
             };
-            queue.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
+            self.state.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
         }
         // Emit diagnostic message if cursor is on a diagnostic line
         if self.editor.cursor_line != old_line {
             let msg = self.diagnostic_at_cursor().map(|s| s.to_string()).unwrap_or_default();
-            queue.put_command(crate::commands::CM_DIAGNOSTIC, Some(Box::new(msg)));
+            self.state
+                .put_command(crate::commands::CM_DIAGNOSTIC, Some(Box::new(msg)));
         }
     }
 
@@ -133,15 +130,17 @@ impl EditorView {
     }
 
     /// Emit hook triggers for char-inserted and word-completed events.
-    pub(super) fn emit_hook_triggers(&self, cmd: &crate::editor::command::Command, queue: &mut EventQueue) {
+    pub(super) fn emit_hook_triggers(&self, cmd: &crate::editor::command::Command) {
         use crate::editor::command::Command;
         if let Command::InsertChar(ch) = cmd {
-            queue.put_command(crate::commands::CM_CHAR_INSERTED, Some(Box::new(*ch)));
+            self.state
+                .put_command(crate::commands::CM_CHAR_INSERTED, Some(Box::new(*ch)));
             // Check for word-completed: space/punctuation after a word
             if ch.is_whitespace() || ch.is_ascii_punctuation() {
                 // Look back for the word that just ended
                 if let Some(word) = self.word_before_cursor() {
-                    queue.put_command(crate::commands::CM_WORD_COMPLETED, Some(Box::new(word)));
+                    self.state
+                        .put_command(crate::commands::CM_WORD_COMPLETED, Some(Box::new(word)));
                 }
             }
         }

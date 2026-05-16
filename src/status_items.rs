@@ -26,7 +26,7 @@ impl CtxPositionItem {
 }
 
 impl ActiveItem for CtxPositionItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == CM_CURSOR_MOVED {
                 if let Some(pos) = data.as_ref().and_then(|d| d.downcast_ref::<CursorPos>()) {
@@ -73,7 +73,7 @@ impl CtxModeItem {
 }
 
 impl ActiveItem for CtxModeItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == CM_MODE_CHANGED {
                 if let Some(mode) = data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
@@ -115,7 +115,7 @@ impl CtxLangItem {
 }
 
 impl ActiveItem for CtxLangItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == CM_CONTEXT_UPDATE {
                 if let Some(vc) = data.as_ref().and_then(|d| d.downcast_ref::<ViewContext>()) {
@@ -150,7 +150,7 @@ impl CtxModifiedItem {
 }
 
 impl ActiveItem for CtxModifiedItem {
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
         if let Event::Command { id, data } = event {
             if *id == CM_CONTEXT_UPDATE {
                 if let Some(vc) = data.as_ref().and_then(|d| d.downcast_ref::<ViewContext>()) {

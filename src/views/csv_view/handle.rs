@@ -6,7 +6,7 @@ use txv_widgets::inline_edit::InlineEditResult;
 use super::CsvView;
 use crate::csv_parse::ColType;
 
-pub fn handle_csv_event(view: &mut CsvView, event: &Event, queue: &mut EventQueue) -> HandleResult {
+pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
         return HandleResult::Ignored;
     };
@@ -64,7 +64,7 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event, queue: &mut EventQueu
             }
             view.refilter();
         }
-        KeyCode::Char('f') => handle_filter_start(view, queue),
+        KeyCode::Char('f') => handle_filter_start(view),
         KeyCode::Char('F') => {
             if view.cursor_col < view.filters.len() {
                 view.filters[view.cursor_col].clear();
@@ -72,7 +72,7 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event, queue: &mut EventQueu
             }
         }
         KeyCode::Char(':') => {
-            queue.put_command(crate::commands::CM_COMMAND_MODE, None);
+            view.state.put_command(crate::commands::CM_COMMAND_MODE, None);
         }
         _ => return HandleResult::Ignored,
     }
@@ -141,7 +141,7 @@ fn handle_sort(view: &mut CsvView) {
     view.cursor_row = 0;
 }
 
-fn handle_filter_start(view: &mut CsvView, _queue: &mut EventQueue) {
+fn handle_filter_start(view: &mut CsvView) {
     view.editing = Some(txv_widgets::inline_edit::InlineEditor::new(
         view.cursor_row,
         &view.filters[view.cursor_col],

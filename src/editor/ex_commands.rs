@@ -116,6 +116,26 @@ const CMD_TABLE: &[CmdEntry] = &[
     },
 ];
 
+/// Full command names for Tab completion in ex mode.
+pub const CMD_TABLE_NAMES: &[&str] = &[
+    "delete",
+    "diff",
+    "edit",
+    "nodiff",
+    "nohlsearch",
+    "only",
+    "quit",
+    "set",
+    "setglobal",
+    "split",
+    "substitute",
+    "vsplit",
+    "write",
+    "wq",
+    "x",
+    "yank",
+];
+
 /// Look up a command name by unambiguous prefix.
 /// Returns None if no match or ambiguous.
 pub fn lookup_command(input: &str) -> Option<ExCmdId> {

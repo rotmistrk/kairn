@@ -19,11 +19,10 @@ fn make_tree() -> TreeView<FileTreeData> {
 fn focused_cursor_has_blue_bg() {
     let mut tv = make_tree();
     tv.select(); // focused = true
-    let mut surface = Surface::new(30, 10);
-    tv.draw(&mut surface);
+    tv.draw();
 
     // Cursor row (row 0) should have bg = Ansi(4)
-    let cell = surface.cell(0, 0);
+    let cell = tv.buffer().cell(0, 0);
     assert_eq!(
         cell.style.bg,
         Color::Ansi(4),
@@ -36,11 +35,10 @@ fn focused_cursor_has_blue_bg() {
 fn unfocused_cursor_has_subtle_bg() {
     let mut tv = make_tree();
     tv.unselect(); // focused = false
-    let mut surface = Surface::new(30, 10);
-    tv.draw(&mut surface);
+    tv.draw();
 
     // Cursor row (row 0) should have bg = Ansi(8) (subtle gray)
-    let cell = surface.cell(0, 0);
+    let cell = tv.buffer().cell(0, 0);
     assert_eq!(
         cell.style.bg,
         Color::Ansi(8),
@@ -53,10 +51,9 @@ fn unfocused_cursor_has_subtle_bg() {
 fn focused_cursor_has_underline() {
     let mut tv = make_tree();
     tv.select();
-    let mut surface = Surface::new(30, 10);
-    tv.draw(&mut surface);
+    tv.draw();
 
-    let cell = surface.cell(0, 0);
+    let cell = tv.buffer().cell(0, 0);
     assert!(cell.style.attrs.underline, "focused cursor should be underlined");
 }
 
@@ -64,9 +61,8 @@ fn focused_cursor_has_underline() {
 fn unfocused_cursor_no_underline() {
     let mut tv = make_tree();
     tv.unselect();
-    let mut surface = Surface::new(30, 10);
-    tv.draw(&mut surface);
+    tv.draw();
 
-    let cell = surface.cell(0, 0);
+    let cell = tv.buffer().cell(0, 0);
     assert!(!cell.style.attrs.underline, "unfocused cursor should not be underlined");
 }

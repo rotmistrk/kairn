@@ -4,7 +4,6 @@ use txv_core::cell::Style;
 use txv_core::prelude::*;
 
 use super::CsvView;
-use crate::csv_parse::ColType;
 
 /// Styles needed for rendering a CSV grid.
 struct DrawStyles {
@@ -14,9 +13,10 @@ struct DrawStyles {
     cursor_row: Style,
 }
 
-pub fn draw_csv_view(view: &CsvView, surface: &mut Surface) {
-    let b = view.state.bounds();
-    if b.w == 0 || b.h == 0 {
+pub fn draw_csv_view(view: &mut CsvView) {
+    let w = view.state.buf.width();
+    let h = view.state.buf.height();
+    if w == 0 || h == 0 {
         return;
     }
     let pal = txv_core::palette::palette();
@@ -31,12 +31,24 @@ pub fn draw_csv_view(view: &CsvView, surface: &mut Surface) {
         cursor_row: pal.base.dim.to_style(),
     };
 
-    let mut y = b.y;
-    let avail_h = b.h as usize;
+    let mut y: u16 = 0;
+    let avail_h = h as usize;
 
     // Header row (frozen)
     if let Some(ref hdrs) = view.headers {
-        draw_row(surface, b.x, y, b.w, hdrs, view, styles.header, usize::MAX, &styles);
+        let hdrs = hdrs.clone();
+        draw_row(
+            &mut view.state.buf,
+            0,
+            y,
+            w,
+            &hdrs,
+            &view.col_widths,
+            view.scroll_col,
+            styles.header,
+            usize::MAX,
+            &styles,
+        );
         y += 1;
     }
 
@@ -50,7 +62,7 @@ pub fn draw_csv_view(view: &CsvView, surface: &mut Surface) {
         let vis_idx = view.scroll_row + row_offset;
         let screen_y = y + row_offset as u16;
         if vis_idx >= view.visible_rows.len() {
-            surface.hline(b.x, screen_y, b.w, ' ', styles.normal);
+            view.state.buf.hline(0, screen_y, w, ' ', styles.normal);
             continue;
         }
         let data_idx = view.visible_rows[vis_idx];
@@ -65,13 +77,15 @@ pub fn draw_csv_view(view: &CsvView, surface: &mut Surface) {
         } else {
             usize::MAX
         };
+        let row_data = view.rows[data_idx].clone();
         draw_row(
-            surface,
-            b.x,
+            &mut view.state.buf,
+            0,
             screen_y,
-            b.w,
-            &view.rows[data_idx],
-            view,
+            w,
+            &row_data,
+            &view.col_widths,
+            view.scroll_col,
             base,
             cursor_col,
             &styles,
@@ -81,21 +95,22 @@ pub fn draw_csv_view(view: &CsvView, surface: &mut Surface) {
 
 #[allow(clippy::too_many_arguments)]
 fn draw_row(
-    surface: &mut Surface,
+    buf: &mut Buffer,
     x: u16,
     y: u16,
     max_w: u16,
     cells: &[String],
-    view: &CsvView,
+    col_widths: &[u16],
+    scroll_col: usize,
     base: Style,
     cursor_col: usize,
     styles: &DrawStyles,
 ) {
-    surface.hline(x, y, max_w, ' ', base);
+    buf.hline(x, y, max_w, ' ', base);
     let sep_style = styles.cursor_row;
     let mut cx = x;
-    for (col_idx, &width) in view.col_widths.iter().enumerate() {
-        if col_idx < view.scroll_col {
+    for (col_idx, &width) in col_widths.iter().enumerate() {
+        if col_idx < scroll_col {
             continue;
         }
         if cx >= x + max_w {
@@ -109,23 +124,20 @@ fn draw_row(
             base
         };
         let cell_text = cells.get(col_idx).map(|s| s.as_str()).unwrap_or("");
-        let formatted = format_cell(cell_text, col_w, &view.col_types, col_idx);
-        surface.print(cx, y, &formatted, style);
+        let formatted = format_cell(cell_text, col_w, col_widths, col_idx);
+        buf.print(cx, y, &formatted, style);
         cx += col_w as u16 + 1;
         if cx <= x + max_w {
-            surface.print(cx - 1, y, "│", sep_style);
+            buf.print(cx - 1, y, "│", sep_style);
         }
     }
 }
 
-fn format_cell(text: &str, width: usize, col_types: &[ColType], col_idx: usize) -> String {
+fn format_cell(text: &str, width: usize, _col_widths: &[u16], _col_idx: usize) -> String {
     let truncated = if text.len() > width {
         &text[..width]
     } else {
         text
     };
-    match col_types.get(col_idx) {
-        Some(ColType::Numeric { .. }) => format!("{:>width$}", truncated, width = width),
-        _ => format!("{:<width$}", truncated, width = width),
-    }
+    format!("{:<width$}", truncated, width = width)
 }

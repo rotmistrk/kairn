@@ -49,7 +49,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                 }
             }
             if req.diff {
-                ctx.queue.put_command(CM_DIFF, Some(Box::new(String::new())));
+                ctx.sink.push_command(CM_DIFF, Some(Box::new(String::new())));
             }
         }
         OpenResult::Opened => {
@@ -61,11 +61,11 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     .to_string_lossy()
                     .to_string();
                 let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Center, title.clone(), view);
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
                 if focus_center {
                     desktop.focus_slot(SlotId::Center);
                 }
-                ctx.queue.put_command(
+                ctx.sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
                 );
@@ -74,7 +74,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
     }
 }
 
-pub(crate) fn handle_edit_file(desktop: &mut dyn View, queue: &mut EventQueue, state: &mut AppState, arg: &str) {
+pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
     let path_str = path.to_string_lossy().to_string();
     match state.broker.open(&path_str, SlotId::Center, 0) {
@@ -97,7 +97,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, queue: &mut EventQueue, s
                 Box::new(editor)
             });
             if let Some(d) = downcast_desktop(desktop) {
-                crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
+                crate::handler_evict::try_insert_tab(d, state, sink, SlotId::Center, title, view);
             }
         }
     }
@@ -115,7 +115,7 @@ pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState
         crate::handler_evict::try_insert_tab(
             desktop,
             state,
-            ctx.queue,
+            ctx.sink,
             SlotId::Center,
             "[cmd output]".into(),
             Box::new(view),
@@ -132,19 +132,14 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = crate::views::results::ResultsView::new(title, entries.clone()).with_root(&state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, title.clone(), Box::new(view));
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, title.clone(), Box::new(view));
         desktop.focus_slot(SlotId::Right);
     }
 }
 
 /// Toggle the active center tab between structured and text view.
 /// `to_structured`: true = switch to structured, false = switch to text.
-pub(crate) fn toggle_view_mode(
-    desktop: &mut dyn View,
-    queue: &mut EventQueue,
-    state: &mut AppState,
-    to_structured: bool,
-) {
+pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, to_structured: bool) {
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
@@ -179,7 +174,7 @@ pub(crate) fn toggle_view_mode(
         ed.buffer_id = Some(state.buffers.register(Some(canon)));
         Box::new(ed)
     };
-    crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
+    crate::handler_evict::try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }
 
 /// Try to open a file as a structured view (JSON/JSONC/JSONL/CSV/TSV). Returns None if not applicable or parse fails.
@@ -224,7 +219,7 @@ fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileRequest) -> Box<
 }
 
 /// Open the current file as a CSV table view.
-pub(crate) fn open_as_csv(desktop: &mut dyn View, queue: &mut EventQueue, state: &mut AppState) {
+pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState) {
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
@@ -242,5 +237,5 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, queue: &mut EventQueue, state:
     state.broker.close(&path.to_string_lossy());
     let _ = state.broker.open(&path.to_string_lossy(), SlotId::Center, 0);
     let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
-    crate::handler_evict::try_insert_tab(d, state, queue, SlotId::Center, title, view);
+    crate::handler_evict::try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

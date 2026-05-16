@@ -27,16 +27,16 @@ fn long_title_gets_truncated_with_ellipsis() {
     h.run_cycles(1);
     // Open the file
     h.inject_key(KeyCode::Enter, KeyMod::default());
-    h.run_cycles(1);
+    h.run_cycles(2);
 
-    // The full 70-char name should NOT appear (max 60)
-    let screen = h.screen_text();
+    // The full 70-char name should NOT appear in the chrome bar (max 60)
+    let chrome = h.row(0);
     assert!(
-        !screen.contains(&long_name),
+        !chrome.contains(&long_name),
         "long title should be truncated, not shown in full"
     );
     // But the truncated version with ellipsis should appear
-    assert!(screen.contains('…'), "truncated title should have ellipsis: {screen}");
+    assert!(chrome.contains('…'), "truncated title should have ellipsis: {chrome}");
 }
 
 #[test]

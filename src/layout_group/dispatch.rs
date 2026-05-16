@@ -10,7 +10,6 @@ impl LayoutGroup {
         &mut self,
         id: CommandId,
         data: &Option<Box<dyn std::any::Any + Send>>,
-        queue: &mut EventQueue,
     ) -> HandleResult {
         match id {
             CM_FOCUS_LEFT => {
@@ -59,7 +58,7 @@ impl LayoutGroup {
                 let slot = self.focused_slot();
                 let title = self.panel(slot).active_title().map(String::from);
                 self.panel_mut(slot).close_active();
-                queue.put_command(
+                self.group.view.put_command(
                     CM_FILE_CLOSED,
                     title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
                 );

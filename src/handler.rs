@@ -32,7 +32,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // LSP: send didOpen on file open
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
-    crate::lsp::handler::poll_lsp(state, ctx.queue);
+    crate::lsp::handler::poll_lsp(state, ctx.sink);
 
     // Drain background tasks (grep, build)
     crate::handler_drain::drain_grep(ctx, state);
@@ -78,7 +78,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
-                        ctx.queue,
+                        ctx.sink,
                         SlotId::Center,
                         "Help".into(),
                         Box::new(help),
@@ -95,7 +95,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
-                        ctx.queue,
+                        ctx.sink,
                         SlotId::Right,
                         "Messages".into(),
                         Box::new(messages),
@@ -108,8 +108,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, name.clone(), term);
-                ctx.queue.put_command(
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, name.clone(), term);
+                ctx.sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("shell", format!("Started: {name}")))),
                 );

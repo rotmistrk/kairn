@@ -88,6 +88,10 @@ impl View for EditorSplit {
         self.split.set_bounds(r);
     }
 
+    fn set_sink(&mut self, sink: EventSink) {
+        self.split.set_sink(sink);
+    }
+
     fn options(&self) -> ViewOptions {
         self.split.options()
     }
@@ -108,11 +112,11 @@ impl View for EditorSplit {
         self.split.needs_redraw()
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        self.split.draw(surface);
+    fn draw(&mut self) {
+        self.split.draw();
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         // Intercept Ctrl-W w to switch focus between panes
         if let Event::Key(ke) = event {
             if ke.code == KeyCode::Char('w')
@@ -127,7 +131,7 @@ impl View for EditorSplit {
                 return HandleResult::Consumed;
             }
         }
-        let result = self.split.handle(event, queue);
+        let result = self.split.handle(event);
         if self.linked_scroll {
             self.sync_scroll();
         }
@@ -136,5 +140,9 @@ impl View for EditorSplit {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
+    }
+
+    fn buffer(&self) -> &Buffer {
+        self.split.buffer()
     }
 }

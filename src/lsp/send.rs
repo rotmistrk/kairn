@@ -23,7 +23,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     let lang = protocol::language_id(path);
     if state.lsp.is_initializing(lang) {
         use txv_core::message::{Message, MsgLevel};
-        ctx.queue.put_command(
+        ctx.sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::new(
                 MsgLevel::Info,
@@ -45,7 +45,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );
@@ -86,7 +86,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let lang = protocol::language_id(path);
     if state.lsp.is_initializing(lang) {
         use txv_core::message::{Message, MsgLevel};
-        ctx.queue.put_command(
+        ctx.sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::new(
                 MsgLevel::Info,
@@ -107,7 +107,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );
@@ -137,7 +137,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );
@@ -164,7 +164,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );
@@ -190,7 +190,7 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(&lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );
@@ -209,7 +209,7 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(client) = state.lsp.get_or_start(&lang, &root) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
-            ctx.queue.put_command(
+            ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
             );

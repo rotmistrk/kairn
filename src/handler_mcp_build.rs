@@ -1,5 +1,7 @@
 //! MCP build/search handlers — Tier 5 operations.
 
+use txv_core::prelude::*;
+
 use crate::handler::AppState;
 
 pub fn mcp_get_build_errors(state: &AppState) -> Result<serde_json::Value, String> {
@@ -53,11 +55,7 @@ pub fn mcp_search_project(state: &AppState, pattern: &str) -> Result<serde_json:
     Ok(serde_json::json!({"matches": results, "truncated": false}))
 }
 
-pub fn mcp_run_build(
-    state: &mut AppState,
-    queue: &mut txv_core::view::EventQueue,
-    command: &str,
-) -> Result<serde_json::Value, String> {
+pub fn mcp_run_build(state: &mut AppState, sink: &EventSink, command: &str) -> Result<serde_json::Value, String> {
     let cmd = if command.is_empty() {
         crate::build_detect::detect(&state.root_dir)
             .map(|bs| bs.build.to_string())
@@ -68,7 +66,7 @@ pub fn mcp_run_build(
     let waker = state.waker.clone().unwrap_or_else(txv_core::run::Waker::noop);
     let task = crate::build::run_async(&cmd, &state.root_dir, waker);
     state.build_pending = Some((cmd.clone(), task, state.root_dir.clone()));
-    queue.put_command(
+    sink.push_command(
         txv_widgets::CM_STATUS_MESSAGE,
         Some(Box::new(txv_core::message::Message::info(
             "build",

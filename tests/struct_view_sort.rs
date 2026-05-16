@@ -153,8 +153,7 @@ fn save_writes_file() {
         id: kairn::commands::CM_SAVE,
         data: None,
     };
-    let mut queue = txv_core::view::EventQueue::new();
-    h.program.group_dispatch(&event, &mut queue);
+    h.backend.inject(event);
     h.run_cycles(1);
     // Read file and verify
     let content = std::fs::read_to_string(dir.path().join("save.json")).unwrap();

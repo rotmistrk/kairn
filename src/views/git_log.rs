@@ -97,9 +97,10 @@ impl View for GitLogView {
         "Log"
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -112,16 +113,16 @@ impl View for GitLogView {
         };
 
         if !self.done {
-            surface.print(b.x, b.y, "Loading...", dim);
+            self.state.buf.print(0, 0, "Loading...", dim);
             return;
         }
 
-        let h = b.h as usize;
-        for row in 0..h {
+        let rows = h as usize;
+        for row in 0..rows {
             let idx = self.scroll + row;
-            let y = b.y + row as u16;
+            let y = row as u16;
             if idx >= self.entries.len() {
-                surface.hline(b.x, y, b.w, ' ', normal);
+                self.state.buf.hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.cursor {
@@ -129,13 +130,13 @@ impl View for GitLogView {
             } else {
                 normal
             };
-            let line = Self::format_entry(&self.entries[idx], b.w as usize);
-            surface.hline(b.x, y, b.w, ' ', style);
-            surface.print(b.x, y, &line, style);
+            let line = Self::format_entry(&self.entries[idx], w as usize);
+            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buf.print(0, y, &line, style);
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
             self.sync_from_shared();
             return HandleResult::Ignored;
@@ -159,7 +160,7 @@ impl View for GitLogView {
                 HandleResult::Consumed
             }
             KeyCode::Char('q') => {
-                queue.put_command(crate::commands::CM_TAB_CLOSE, None);
+                self.state.put_command(crate::commands::CM_TAB_CLOSE, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

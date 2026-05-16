@@ -49,7 +49,7 @@ impl PendingRequests {
         self.map.remove(&id).map(|(k, _)| k)
     }
 
-    pub(crate) fn remove_timed_out(&mut self, queue: &mut EventQueue) {
+    pub(crate) fn remove_timed_out(&mut self, sink: &EventSink) {
         let timeout = std::time::Duration::from_secs(self.timeout_secs);
         let expired: Vec<u64> = self
             .map
@@ -61,7 +61,7 @@ impl PendingRequests {
             if let Some((kind, _)) = self.map.remove(&id) {
                 let msg = format!("{kind:?}: no response after {}s", self.timeout_secs);
                 log::warn!("LSP timeout: {msg}");
-                queue.put_command(
+                sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::error("lsp", msg))),
                 );
@@ -104,13 +104,13 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 /// Poll all LSP servers and dispatch notifications/responses.
-pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
-    state.lsp_pending.remove_timed_out(queue);
+pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
+    state.lsp_pending.remove_timed_out(sink);
     // Expire deferred requests older than 10s
     let timeout = std::time::Duration::from_secs(10);
     state.deferred_lsp.retain(|r| {
         if r.created.elapsed() > timeout {
-            queue.put_command(
+            sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::error("lsp", "LSP not ready — request timed out"))),
             );
@@ -125,7 +125,7 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
             LspMessage::Notification { method, params } => {
                 if method == "textDocument/publishDiagnostics" {
                     if let Some((uri, diags)) = diagnostics::parse_publish_diagnostics(&params) {
-                        queue.put_command(CM_DIAGNOSTIC, Some(Box::new((uri, diags))));
+                        sink.push_command(CM_DIAGNOSTIC, Some(Box::new((uri, diags))));
                     }
                 }
             }
@@ -135,7 +135,7 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                     if let Some(err) = error {
                         let msg = format!("LSP init failed for {lang}: {}", err.message);
                         log::error!("{msg}");
-                        queue.put_command(
+                        sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::error("lsp", msg))),
                         );
@@ -146,7 +146,7 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                         if let Some(client) = state.lsp.get_client_mut(&lang) {
                             super::protocol::initialized(client);
                         }
-                        queue.put_command(
+                        sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
                         );
@@ -155,12 +155,12 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                         let mut remaining = Vec::new();
                         for req in state.deferred_lsp.drain(..) {
                             if req.created.elapsed() > std::time::Duration::from_secs(10) {
-                                queue.put_command(
+                                sink.push_command(
                                     txv_widgets::CM_STATUS_MESSAGE,
                                     Some(Box::new(Message::error("lsp", "Deferred request timed out"))),
                                 );
                             } else if req.language == ready_lang {
-                                queue.put_command(req.command, Some(req.data));
+                                sink.push_command(req.command, Some(req.data));
                             } else {
                                 remaining.push(req);
                             }
@@ -172,11 +172,11 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
                 if let Some(kind) = state.lsp_pending.take(id) {
                     log::info!("LSP response: {kind:?} (id={id})");
                     if let Some(result) = result {
-                        handle_response(kind, &result, queue);
+                        handle_response(kind, &result, sink);
                     } else if let Some(err) = error {
                         let msg = format!("{kind:?}: {}", err.message);
                         log::error!("LSP error: {msg}");
-                        queue.put_command(
+                        sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::error("lsp", msg))),
                         );
@@ -189,8 +189,8 @@ pub fn poll_lsp(state: &mut AppState, queue: &mut EventQueue) {
     }
 }
 
-fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut EventQueue) {
-    super::response::handle_response(kind, result, queue);
+fn handle_response(kind: PendingKind, result: &serde_json::Value, sink: &EventSink) {
+    super::response::handle_response(kind, result, sink);
 }
 
 fn uri_to_path(uri: &str) -> String {

@@ -102,7 +102,7 @@ impl CsvView {
 }
 
 impl View for CsvView {
-    delegate_view_state!(state, override { title, needs_redraw });
+    delegate_view_state!(state, override { title, needs_redraw, draw });
 
     fn title(&self) -> &str {
         &self.display_title
@@ -112,12 +112,12 @@ impl View for CsvView {
         true
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        draw::draw_csv_view(self, surface);
+    fn draw(&mut self) {
+        draw::draw_csv_view(self);
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        handle::handle_csv_event(self, event, queue)
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        handle::handle_csv_event(self, event)
     }
 }
 

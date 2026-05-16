@@ -41,9 +41,9 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
                                     match crate::editor::save::save_file(editor.path(), &content) {
                                         Ok(()) => {
                                             editor.editor.buf().mark_saved();
-                                            ctx.queue.put_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
+                                            ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
                                             if state.pending_tab.is_none() {
-                                                ctx.queue.put_command(CM_TAB_CLOSE, None);
+                                                ctx.sink.push_command(CM_TAB_CLOSE, None);
                                             }
                                         }
                                         Err(e) => {
@@ -51,8 +51,8 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
                                                 "editor",
                                                 format!("Save failed: {e}"),
                                             );
-                                            ctx.queue
-                                                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                                            ctx.sink
+                                                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                                         }
                                     }
                                     break;
@@ -73,9 +73,9 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
                             if let Some(editor) = any.downcast_mut::<EditorView>() {
                                 if editor.path().to_string_lossy() == path {
                                     editor.editor.buf().mark_saved();
-                                    ctx.queue.put_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
+                                    ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
                                     if state.pending_tab.is_none() {
-                                        ctx.queue.put_command(CM_TAB_CLOSE, None);
+                                        ctx.sink.push_command(CM_TAB_CLOSE, None);
                                     }
                                     break;
                                 }

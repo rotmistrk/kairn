@@ -37,9 +37,10 @@ impl View for WelcomeView {
         "Welcome"
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -76,29 +77,28 @@ impl View for WelcomeView {
             }
         }
 
-        let start_y = b.y + b.h.saturating_sub(lines.len() as u16) / 2;
-        for row in 0..b.h {
-            let y = b.y + row;
-            let line_i = (y as i32) - (start_y as i32);
+        let start_y = h.saturating_sub(lines.len() as u16) / 2;
+        for row in 0..h {
+            let line_i = (row as i32) - (start_y as i32);
             if line_i >= 0 && (line_i as usize) < lines.len() {
                 let (ref text, style) = lines[line_i as usize];
-                let pad_left = b.w.saturating_sub(display_width(text, 1)) / 2;
+                let pad_left = w.saturating_sub(display_width(text, 1)) / 2;
                 let left_spaces: String = " ".repeat(pad_left as usize);
                 let centered = format!("{}{}", left_spaces, text);
-                surface.print_line(b.x, y, &centered, b.w, style);
+                self.state.buf.print_line(0, row, &centered, w, style);
             } else {
-                surface.print_line(b.x, y, "", b.w, Style::default());
+                self.state.buf.print_line(0, row, "", w, Style::default());
             }
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         // Lazy detection on first event (draw is &self, so we do it here)
         self.ensure_tools();
 
         if let Event::Key(key) = event {
             if key.code == KeyCode::Char(':') {
-                queue.put_command(crate::commands::CM_COMMAND_MODE, None);
+                self.state.put_command(crate::commands::CM_COMMAND_MODE, None);
                 return HandleResult::Consumed;
             }
         }

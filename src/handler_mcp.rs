@@ -1,5 +1,6 @@
 //! MCP command drain — dispatches MCP write requests to app state.
 
+use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 use crate::handler::{downcast_desktop, AppState};
@@ -22,9 +23,9 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
     };
     for req in requests {
         let result = match &req.action {
-            crate::mcp::commands::McpAction::OpenFile { path } => mcp_open_file(desktop, state, ctx.queue, path),
+            crate::mcp::commands::McpAction::OpenFile { path } => mcp_open_file(desktop, state, ctx.sink, path),
             crate::mcp::commands::McpAction::CreateFile { path, content } => {
-                mcp_create_file(desktop, state, ctx.queue, path, content)
+                mcp_create_file(desktop, state, ctx.sink, path, content)
             }
             crate::mcp::commands::McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
             crate::mcp::commands::McpAction::EditBuffer {
@@ -48,16 +49,16 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                 crate::handler_mcp_build::mcp_search_project(state, pattern)
             }
             crate::mcp::commands::McpAction::RunBuild { command } => {
-                crate::handler_mcp_build::mcp_run_build(state, ctx.queue, command)
+                crate::handler_mcp_build::mcp_run_build(state, ctx.sink, command)
             }
-            crate::mcp::commands::McpAction::SplitVertical { file } => mcp_split(ctx.queue, true, file.clone()),
-            crate::mcp::commands::McpAction::SplitHorizontal { file } => mcp_split(ctx.queue, false, file.clone()),
+            crate::mcp::commands::McpAction::SplitVertical { file } => mcp_split(ctx.sink, true, file.clone()),
+            crate::mcp::commands::McpAction::SplitHorizontal { file } => mcp_split(ctx.sink, false, file.clone()),
             crate::mcp::commands::McpAction::SplitClose => {
-                ctx.queue.put_command(crate::commands::CM_SPLIT_CLOSE, None);
+                ctx.sink.push_command(crate::commands::CM_SPLIT_CLOSE, None);
                 Ok(serde_json::json!({"split": "closed"}))
             }
             crate::mcp::commands::McpAction::SplitFocus => {
-                ctx.queue.put_command(crate::commands::CM_SPLIT_FOCUS, None);
+                ctx.sink.push_command(crate::commands::CM_SPLIT_FOCUS, None);
                 Ok(serde_json::json!({"split": "focus_switched"}))
             }
             crate::mcp::commands::McpAction::SplitOpen { path } => {
@@ -67,8 +68,8 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                     col: None,
                     diff: false,
                 };
-                ctx.queue
-                    .put_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+                ctx.sink
+                    .push_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
                 Ok(serde_json::json!({"split": "opened"}))
             }
             _ => {
@@ -90,7 +91,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
 fn mcp_open_file(
     desktop: &mut crate::layout_group::LayoutGroup,
     state: &mut AppState,
-    queue: &mut txv_core::view::EventQueue,
+    sink: &EventSink,
     rel_path: &str,
 ) -> Result<serde_json::Value, String> {
     let path = state.root_dir.join(rel_path);
@@ -114,7 +115,7 @@ fn mcp_open_file(
                     }
                     Err(_) => Box::new(crate::views::editor::EditorView::new_file(&path, defaults)),
                 };
-            crate::handler_evict::try_insert_tab(desktop, state, queue, SlotId::Center, title, view);
+            crate::handler_evict::try_insert_tab(desktop, state, sink, SlotId::Center, title, view);
         }
     }
     Ok(serde_json::json!({"opened": rel_path}))
@@ -123,7 +124,7 @@ fn mcp_open_file(
 fn mcp_create_file(
     desktop: &mut crate::layout_group::LayoutGroup,
     state: &mut AppState,
-    queue: &mut txv_core::view::EventQueue,
+    sink: &EventSink,
     rel_path: &str,
     content: &str,
 ) -> Result<serde_json::Value, String> {
@@ -132,7 +133,7 @@ fn mcp_create_file(
         std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create dirs: {e}"))?;
     }
     std::fs::write(&path, content).map_err(|e| format!("Cannot write file: {e}"))?;
-    mcp_open_file(desktop, state, queue, rel_path)?;
+    mcp_open_file(desktop, state, sink, rel_path)?;
     Ok(serde_json::json!({"created": rel_path}))
 }
 
@@ -149,13 +150,9 @@ fn mcp_close_tab(
     }
 }
 
-fn mcp_split(
-    queue: &mut txv_core::view::EventQueue,
-    vertical: bool,
-    file: Option<String>,
-) -> Result<serde_json::Value, String> {
+fn mcp_split(sink: &EventSink, vertical: bool, file: Option<String>) -> Result<serde_json::Value, String> {
     let req = crate::commands::SplitRequest { vertical, file };
-    queue.put_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+    sink.push_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
     let dir = if vertical {
         "vertical"
     } else {

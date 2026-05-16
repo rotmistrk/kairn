@@ -71,8 +71,8 @@ impl CompletionPopup {
         Some(item.insert_text.as_deref().unwrap_or(&item.label))
     }
 
-    /// Draw the popup as an overlay on the surface.
-    pub fn draw(&self, surface: &mut Surface) {
+    /// Draw the popup as an overlay on the buffer.
+    pub fn draw(&self, buf: &mut Buffer) {
         if !self.visible || self.items.is_empty() {
             return;
         }
@@ -101,13 +101,13 @@ impl CompletionPopup {
             } else {
                 normal
             };
-            surface.hline(x, row, max_width, ' ', style);
+            buf.hline(x, row, max_width, ' ', style);
             let label = if item.label.len() > max_width as usize - 1 {
                 &item.label[..max_width as usize - 1]
             } else {
                 &item.label
             };
-            surface.print(x + 1, row, label, style);
+            buf.print(x + 1, row, label, style);
         }
     }
 }
@@ -156,10 +156,10 @@ mod tests {
     fn draw_renders_items() {
         let mut popup = CompletionPopup::new();
         popup.show(items(&["hello", "world"]), 0, 0);
-        let mut surface = Surface::new(20, 5);
-        popup.draw(&mut surface);
+        let mut buf = Buffer::new(20, 5);
+        popup.draw(&mut buf);
         // First item at row 1 (anchor_y + 1)
-        let cell = surface.cell(1, 1);
+        let cell = buf.cell(1, 1);
         assert_eq!(cell.ch, 'h');
     }
 }

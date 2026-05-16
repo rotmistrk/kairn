@@ -6,14 +6,15 @@ use super::{draw_style::char_style, EditorView};
 use crate::highlight::HlSpan;
 
 impl EditorView {
-    pub(super) fn draw_editor(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    pub(super) fn draw_editor(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
 
         if self.in_diff_mode() {
-            self.draw_diff(surface);
+            self.draw_diff();
             return;
         }
 
@@ -33,7 +34,7 @@ impl EditorView {
 
         let scroll = self.editor.viewport_scroll;
         let visual_range = self.editor.visual_range();
-        let avail = b.w.saturating_sub(gutter_w) as usize;
+        let avail = w.saturating_sub(gutter_w) as usize;
         let wrap = self.editor.options.wrap;
         let tab_width = self.editor.options.tab_width;
         let highlight = self.editor.highlight.as_ref();
@@ -43,7 +44,7 @@ impl EditorView {
 
         // Pre-compute highlighted spans for the visible viewport using cached state.
         let total_lines = self.editor.buf().line_count();
-        let viewport_end = (scroll + b.h as usize).min(total_lines);
+        let viewport_end = (scroll + h as usize).min(total_lines);
         let viewport_spans = {
             let mut cache = self.hl_cache.borrow_mut();
             cache.highlight_viewport(
@@ -76,14 +77,14 @@ impl EditorView {
             Vec::new()
         };
 
-        while row < b.h as usize && line_idx < viewport_end {
-            let y = b.y + row as u16;
-            let text_x = b.x + gutter_w;
+        while row < h as usize && line_idx < viewport_end {
+            let y = row as u16;
+            let text_x = gutter_w;
 
             // --- Gutter ---
             if gutter_w > 0 {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                surface.print(b.x, y, &num, gutter_style);
+                self.state.buf.print(0, y, &num, gutter_style);
             }
 
             // --- Line content: write char-by-char, then pad to full width ---
@@ -116,11 +117,11 @@ impl EditorView {
                             hl_other_bg,
                         );
                         for ti in 0..tab_width {
-                            if col_offset >= avail || visual_row >= b.h as usize {
+                            if col_offset >= avail || visual_row >= h as usize {
                                 break;
                             }
                             let x = text_x + col_offset as u16;
-                            let vy = b.y + visual_row as u16;
+                            let vy = visual_row as u16;
                             if self.editor.options.list {
                                 let ls = app.editor.list_chars.resolve(&st);
                                 let c = if ti == tab_width - 1 {
@@ -128,9 +129,9 @@ impl EditorView {
                                 } else {
                                     '\u{2500}'
                                 };
-                                surface.put(x, vy, c, ls);
+                                self.state.buf.put(x, vy, c, ls);
                             } else {
-                                surface.put(x, vy, ' ', st);
+                                self.state.buf.put(x, vy, ' ', st);
                             }
                             col_offset += 1;
                         }
@@ -141,18 +142,18 @@ impl EditorView {
 
                     if wrap {
                         if col_offset >= avail {
-                            let vy = b.y + visual_row as u16;
+                            let vy = visual_row as u16;
                             for pad_col in col_offset..avail {
-                                surface.put(text_x + pad_col as u16, vy, ' ', normal);
+                                self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
                             }
                             col_offset = 0;
                             visual_row += 1;
-                            if visual_row >= b.h as usize {
+                            if visual_row >= h as usize {
                                 break;
                             }
                             if gutter_w > 0 {
-                                let wy = b.y + visual_row as u16;
-                                surface.print_line(b.x, wy, "", gutter_w, gutter_style);
+                                let wy = visual_row as u16;
+                                self.state.buf.print_line(0, wy, "", gutter_w, gutter_style);
                             }
                         }
                     } else if col_offset >= avail {
@@ -161,7 +162,7 @@ impl EditorView {
                         continue;
                     }
 
-                    if visual_row >= b.h as usize {
+                    if visual_row >= h as usize {
                         break;
                     }
                     let x = text_x + col_offset as u16;
@@ -185,7 +186,7 @@ impl EditorView {
                         (ch, style)
                     };
 
-                    let vy = b.y + visual_row as u16;
+                    let vy = visual_row as u16;
                     let display_style = super::draw_style::bracket_overlay(
                         display_style,
                         line_idx,
@@ -195,33 +196,41 @@ impl EditorView {
                         &matchparen_style,
                         &rainbow_map,
                     );
-                    surface.put(x, vy, display_ch, display_style);
+                    self.state.buf.put(x, vy, display_ch, display_style);
                     col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
                 }
-                if visual_row >= b.h as usize {
+                if visual_row >= h as usize {
                     break;
                 }
             }
 
             // End-of-line marker in list mode
-            if self.editor.options.list && col_offset < avail && visual_row < b.h as usize {
+            if self.editor.options.list && col_offset < avail && visual_row < h as usize {
                 let list_style = app.editor.list_chars.to_style();
-                let vy = b.y + visual_row as u16;
+                let vy = visual_row as u16;
                 let x = text_x + col_offset as u16;
-                surface.put(x, vy, '$', list_style);
+                self.state.buf.put(x, vy, '$', list_style);
                 col_offset += 1;
             }
 
             // --- PAD remainder + indent guides ---
-            if visual_row < b.h as usize {
-                let vy = b.y + visual_row as u16;
+            if visual_row < h as usize {
+                let vy = visual_row as u16;
                 for pad_col in col_offset..avail {
-                    surface.put(text_x + pad_col as u16, vy, ' ', normal);
+                    self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
                 }
                 if self.editor.options.guides {
-                    super::draw_style::draw_indent_guides(surface, &line, text_x, vy, tab_width, avail, gutter_style);
+                    super::draw_style::draw_indent_guides(
+                        &mut self.state.buf,
+                        &line,
+                        text_x,
+                        vy,
+                        tab_width,
+                        avail,
+                        gutter_style,
+                    );
                 }
             }
 
@@ -237,11 +246,11 @@ impl EditorView {
                         .map(|(vcol, _, _)| *vcol as usize)
                         .unwrap_or(col_offset)
                 };
-                if visual_row < b.h as usize && cursor_visual_col < avail {
+                if visual_row < h as usize && cursor_visual_col < avail {
                     let cx = text_x + cursor_visual_col as u16;
-                    let cy = b.y + visual_row as u16;
-                    let under = surface.cell(cx, cy).ch;
-                    surface.put(cx, cy, under, cursor_style);
+                    let cy = visual_row as u16;
+                    let under = self.state.buf.cell(cx, cy).ch;
+                    self.state.buf.put(cx, cy, under, cursor_style);
                 }
             }
 
@@ -250,6 +259,6 @@ impl EditorView {
         }
 
         // Fill remaining rows + prompt
-        self.draw_footer(surface, b, row, gutter_style);
+        self.draw_footer(row, gutter_style);
     }
 }

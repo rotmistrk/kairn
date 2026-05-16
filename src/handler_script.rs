@@ -45,10 +45,9 @@ pub fn handle_script_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppState) {
-    let queue = &mut *ctx.queue;
     match cmd {
         ScriptCommand::OpenFile { path, line, col } => {
-            crate::handler_open::handle_edit_file(ctx.desktop, queue, state, &path);
+            crate::handler_open::handle_edit_file(ctx.desktop, ctx.sink, state, &path);
             // Focus center after opening
             if let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) {
                 desktop.focus_slot(SlotId::Center);
@@ -70,18 +69,19 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                     if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                         if let Err(e) = editor.save() {
                             let msg = txv_core::message::Message::error("editor", e);
-                            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                            ctx.sink
+                                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                         }
                     }
                 }
             }
-            queue.put_command(CM_SAVE, None);
+            ctx.sink.push_command(CM_SAVE, None);
         }
         ScriptCommand::SaveAll => {
             // Save-all: emit save for current (handler saves all open editors)
-            queue.put_command(CM_SAVE, None);
+            ctx.sink.push_command(CM_SAVE, None);
         }
-        ScriptCommand::Close => queue.put_command(CM_TAB_CLOSE, None),
+        ScriptCommand::Close => ctx.sink.push_command(CM_TAB_CLOSE, None),
         ScriptCommand::Goto { line, col } => {
             // Tcl uses 1-indexed; goto() uses 0-indexed
             let l = line.saturating_sub(1);
@@ -95,13 +95,13 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                             line: l + 1,
                             col: c + 1,
                         };
-                        queue.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
+                        ctx.sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
                     }
                 }
             }
         }
         ScriptCommand::Insert { text } => {
-            queue.put_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+            ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
         }
         ScriptCommand::Undo => {} // Handled directly in editor
         ScriptCommand::Redo => {} // Handled directly in editor
@@ -112,11 +112,13 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                 "warn" => txv_core::message::Message::warn("tcl", full_text),
                 _ => txv_core::message::Message::info("tcl", full_text),
             };
-            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ctx.sink
+                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         ScriptCommand::StatusFlash { text } => {
             let msg = txv_core::message::Message::info("tcl", text);
-            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ctx.sink
+                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         ScriptCommand::FocusSlot { slot } => {
             let cmd_id = match slot.as_str() {
@@ -125,35 +127,35 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                 "right" => CM_FOCUS_RIGHT,
                 _ => return,
             };
-            queue.put_command(cmd_id, None);
+            ctx.sink.push_command(cmd_id, None);
         }
         ScriptCommand::RunBuild { command } => {
-            queue.put_command(CM_BUILD, command.map(|c| Box::new(c) as _));
+            ctx.sink.push_command(CM_BUILD, command.map(|c| Box::new(c) as _));
         }
         ScriptCommand::RunTest { command } => {
-            queue.put_command(CM_TEST, command.map(|c| Box::new(c) as _));
+            ctx.sink.push_command(CM_TEST, command.map(|c| Box::new(c) as _));
         }
         ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {
             // Key bindings are applied at config load time, not at runtime dispatch
         }
-        ScriptCommand::LspHover => queue.put_command(CM_LSP_HOVER, None),
-        ScriptCommand::LspDefinition => queue.put_command(CM_LSP_GOTO_DEF, None),
-        ScriptCommand::LspReferences => queue.put_command(CM_LSP_FIND_REFS, None),
+        ScriptCommand::LspHover => ctx.sink.push_command(CM_LSP_HOVER, None),
+        ScriptCommand::LspDefinition => ctx.sink.push_command(CM_LSP_GOTO_DEF, None),
+        ScriptCommand::LspReferences => ctx.sink.push_command(CM_LSP_FIND_REFS, None),
         ScriptCommand::LspRename { new_name } => {
-            queue.put_command(CM_LSP_RENAME, Some(Box::new(new_name)));
+            ctx.sink.push_command(CM_LSP_RENAME, Some(Box::new(new_name)));
         }
         ScriptCommand::LspFormat => {} // No CM_LSP_FORMAT yet
         ScriptCommand::GitStage { file } => {
-            queue.put_command(CM_GIT_STAGE, Some(Box::new(file)));
+            ctx.sink.push_command(CM_GIT_STAGE, Some(Box::new(file)));
         }
         ScriptCommand::GitUnstage { file } => {
-            queue.put_command(CM_GIT_UNSTAGE, Some(Box::new(file)));
+            ctx.sink.push_command(CM_GIT_UNSTAGE, Some(Box::new(file)));
         }
         ScriptCommand::GitCommit { message } => {
-            queue.put_command(CM_GIT_COMMIT, Some(Box::new(message)));
+            ctx.sink.push_command(CM_GIT_COMMIT, Some(Box::new(message)));
         }
         ScriptCommand::GitBlame => {
-            queue.put_command(crate::commands::CM_BLAME, None);
+            ctx.sink.push_command(crate::commands::CM_BLAME, None);
         }
         ScriptCommand::TodoAdd { .. } | ScriptCommand::TodoRemove { .. } | ScriptCommand::TodoComplete { .. } => {
             // Todo commands handled via direct tree manipulation
@@ -162,33 +164,33 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             // Read operations — handled via snapshot, no command needed
         }
         ScriptCommand::ReplaceSelection { text } => {
-            queue.put_command(CM_EDITOR_REPLACE_SELECTION, Some(Box::new(text)));
+            ctx.sink.push_command(CM_EDITOR_REPLACE_SELECTION, Some(Box::new(text)));
         }
         ScriptCommand::DeleteLine { line } => {
-            queue.put_command(CM_EDITOR_DELETE_LINE, Some(Box::new(line)));
+            ctx.sink.push_command(CM_EDITOR_DELETE_LINE, Some(Box::new(line)));
         }
         ScriptCommand::ReplaceWord { text } => {
-            queue.put_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text)));
+            ctx.sink.push_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text)));
         }
         ScriptCommand::Search { pattern } => {
-            queue.put_command(CM_EDITOR_SEARCH, Some(Box::new(pattern)));
+            ctx.sink.push_command(CM_EDITOR_SEARCH, Some(Box::new(pattern)));
         }
         ScriptCommand::ClearHighlight => {
-            queue.put_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
+            ctx.sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
         }
         ScriptCommand::SplitVertical { file } => {
             let req = crate::commands::SplitRequest { vertical: true, file };
-            queue.put_command(CM_SPLIT, Some(Box::new(req)));
+            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
         }
         ScriptCommand::SplitHorizontal { file } => {
             let req = crate::commands::SplitRequest { vertical: false, file };
-            queue.put_command(CM_SPLIT, Some(Box::new(req)));
+            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
         }
         ScriptCommand::SplitClose => {
-            queue.put_command(CM_SPLIT_CLOSE, None);
+            ctx.sink.push_command(CM_SPLIT_CLOSE, None);
         }
         ScriptCommand::SplitFocus => {
-            queue.put_command(CM_SPLIT_FOCUS, None);
+            ctx.sink.push_command(CM_SPLIT_FOCUS, None);
         }
         ScriptCommand::SplitOpen { path } => {
             let req = crate::commands::OpenFileRequest {
@@ -197,7 +199,7 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                 col: None,
                 diff: false,
             };
-            queue.put_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+            ctx.sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
         }
     }
 }

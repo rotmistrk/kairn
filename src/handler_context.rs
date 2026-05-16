@@ -52,7 +52,7 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         .script
         .update_snapshot(&vc, &root, &selection_text, &current_line_text);
 
-    ctx.queue.put_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
+    ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }
 
 fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext) {

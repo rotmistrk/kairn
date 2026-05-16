@@ -6,7 +6,6 @@ use helpers::{temp_project, TestHarness};
 use kairn::commands::{CM_LSP_COMPLETION, CM_OPEN_FILE};
 use kairn::lsp::requests::CompletionItem;
 use txv_core::event::{Event, KeyCode, KeyMod};
-use txv_core::view::EventQueue;
 
 fn none() -> KeyMod {
     KeyMod::default()
@@ -27,8 +26,8 @@ fn open_file(h: &mut TestHarness, path: std::path::PathBuf) {
 /// Send a command event directly to the focused view (bypasses main handler).
 fn send_to_view(h: &mut TestHarness, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
     let event = Event::Command { id, data };
-    let mut queue = EventQueue::new();
-    h.program.group_dispatch(&event, &mut queue);
+    h.backend.inject(event);
+    h.run_cycles(1);
 }
 
 /// Test 1: Completion prefix removal — accepting "println" when prefix is "pri"

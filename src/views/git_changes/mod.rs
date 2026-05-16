@@ -60,7 +60,7 @@ impl View for GitChangesView {
         CloseResult::Denied("permanent tab".to_string())
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
             self.tick_counter = self.tick_counter.wrapping_add(1);
             let poll = self.tick_counter.is_multiple_of(60);
@@ -68,60 +68,55 @@ impl View for GitChangesView {
             if changed {
                 self.needs_rebuild = false;
                 self.inner.data.rebuild(&self.root);
-                self.inner.state.mark_dirty();
+                self.inner.mark_dirty();
             }
             return HandleResult::Ignored;
+        }
+        // Intercept CM_OK from TreeView (re-dispatched after Enter/Right)
+        if let Event::Command { id, data } = event {
+            if *id == CM_OK {
+                if let Some(boxed) = data.as_ref() {
+                    if let Some(&node_id) = boxed.downcast_ref::<usize>() {
+                        if let Some(path) = self.inner.data.file_path(node_id) {
+                            let cmd = if self.last_key_was_right {
+                                CM_OPEN_FILE_FOCUS
+                            } else {
+                                CM_OPEN_FILE
+                            };
+                            let req = OpenFileRequest::with_diff(path.to_path_buf());
+                            self.inner.state.put_command(cmd, Some(Box::new(req)));
+                            return HandleResult::Consumed;
+                        }
+                    }
+                }
+            }
         }
         // Handle git-specific keys before passing to TreeView
         if let Event::Key(key) = event {
             if *key == self.keys.stage {
                 if let Some(rel) = self.selected_rel_path() {
-                    queue.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
+                    self.inner.state.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
                 }
                 return HandleResult::Consumed;
             }
             if *key == self.keys.unstage {
                 if let Some(rel) = self.selected_rel_path() {
-                    queue.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
+                    self.inner.state.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
                 }
                 return HandleResult::Consumed;
             }
             if *key == self.keys.untrack {
                 if let Some(rel) = self.selected_rel_path() {
-                    queue.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
+                    self.inner.state.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
                 }
                 return HandleResult::Consumed;
             }
             if *key == self.keys.commit {
-                queue.put_command(CM_GIT_COMMIT_PROMPT, None);
+                self.inner.state.put_command(CM_GIT_COMMIT_PROMPT, None);
                 return HandleResult::Consumed;
             }
             self.last_key_was_right = key.code == KeyCode::Right;
         }
-        let result = self.inner.handle(event, queue);
-        // Intercept CM_OK from TreeView (Enter/Right on a node)
-        let events = queue.drain();
-        for ev in events {
-            if let Event::Command { id, data } = &ev {
-                if *id == CM_OK {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                            if let Some(path) = self.inner.data.file_path(node_id) {
-                                let cmd = if self.last_key_was_right {
-                                    CM_OPEN_FILE_FOCUS
-                                } else {
-                                    CM_OPEN_FILE
-                                };
-                                let req = OpenFileRequest::with_diff(path.to_path_buf());
-                                queue.put_command(cmd, Some(Box::new(req)));
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-            queue.put(ev);
-        }
-        result
+        self.inner.handle(event)
     }
 }
