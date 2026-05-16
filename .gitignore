@@ -6,3 +6,4 @@
 .kairn.*
 .idea/
 .kiro/agents/
+.cargo/

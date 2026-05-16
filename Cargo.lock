@@ -492,7 +492,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "duir-core"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/duir.git#1782beec7f55d4b07e656d2d698ee3c825de72d9"
+source = "git+https://github.com/rotmistrk/duir.git#1a579e6a221bb517db8fd73ac246cc2f42e2eda8"
 dependencies = [
  "age",
  "base64 0.22.1",
@@ -567,9 +567,9 @@ dependencies = [
 
 [[package]]
 name = "filetime"
-version = "0.2.28"
+version = "0.2.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d5b2eef6fafbf69f877e55509ce5b11a760690ac9700a2921be067aa6afaef6"
+checksum = "5c287a33c7f0a620c38e641e7f60827713987b3c0f26e8ddc9462cc69cf75759"
 dependencies = [
  "cfg-if",
  "libc",
@@ -1245,9 +1245,9 @@ dependencies = [
  "similar",
  "syntect",
  "tempfile",
- "txv-core 0.1.0",
- "txv-render 0.1.0",
- "txv-widgets 0.1.0",
+ "txv-core",
+ "txv-render",
+ "txv-widgets",
 ]
 
 [[package]]
@@ -1262,9 +1262,9 @@ dependencies = [
 
 [[package]]
 name = "kqueue-sys"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "285efcf12ef41bec907b3000d5ffaeb54191d4d9d83c0d6157e6cbc2db255e64"
+checksum = "07293a4e297ac234359b510362495713f75ea345d5307140414f20c69ffeb087"
 dependencies = [
  "bitflags 2.11.1",
  "libc",
@@ -1823,19 +1823,6 @@ name = "rusticle"
 version = "0.1.0"
 
 [[package]]
-name = "rusticle-tk"
-version = "0.1.0"
-dependencies = [
- "crossterm",
- "ignore",
- "log",
- "rusticle",
- "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
- "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
- "txv-widgets 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
-]
-
-[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2248,16 +2235,7 @@ dependencies = [
 [[package]]
 name = "txv-core"
 version = "0.1.0"
-dependencies = [
- "libc",
- "log",
- "unicode-width",
-]
-
-[[package]]
-name = "txv-core"
-version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
+source = "git+https://github.com/rotmistrk/txv.git#bbd1c58206cbceb914b67cc0f0c90a78ce24c968"
 dependencies = [
  "libc",
  "log",
@@ -2267,24 +2245,12 @@ dependencies = [
 [[package]]
 name = "txv-render"
 version = "0.1.0"
+source = "git+https://github.com/rotmistrk/txv.git#bbd1c58206cbceb914b67cc0f0c90a78ce24c968"
 dependencies = [
  "crossterm",
  "libc",
  "log",
- "txv-core 0.1.0",
- "unicode-width",
- "vte",
-]
-
-[[package]]
-name = "txv-render"
-version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
-dependencies = [
- "crossterm",
- "libc",
- "log",
- "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-core",
  "unicode-width",
  "vte",
 ]
@@ -2292,26 +2258,14 @@ dependencies = [
 [[package]]
 name = "txv-widgets"
 version = "0.1.0"
+source = "git+https://github.com/rotmistrk/txv.git#bbd1c58206cbceb914b67cc0f0c90a78ce24c968"
 dependencies = [
  "ignore",
  "libc",
  "log",
  "portable-pty",
- "txv-core 0.1.0",
- "txv-render 0.1.0",
-]
-
-[[package]]
-name = "txv-widgets"
-version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
-dependencies = [
- "ignore",
- "libc",
- "log",
- "portable-pty",
- "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
- "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-core",
+ "txv-render",
 ]
 
 [[package]]
@@ -2579,7 +2533,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2961,9 +2915,9 @@ dependencies = [
 
 [[package]]
 name = "zerofrom"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69faa1f2a1ea75661980b013019ed6687ed0e83d069bc1114e2cc74c6c04c4df"
+checksum = "0ec05a11813ea801ff6d75110ad09cd0824ddba17dfe17128ea0d5f68e6c5272"
 dependencies = [
  "zerofrom-derive",
 ]
