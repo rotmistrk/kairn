@@ -72,6 +72,17 @@ pub fn help_editor() -> String {
   :diff -U5        Diff with 5 context lines
   :diff -w         Diff ignoring whitespace
   :diff --base <r> Diff vs branch/commit/remote
+  :revert          Revert hunk under cursor (in diff mode)
+
+─── Editor — Diff Mode ───────────────────────────────
+  j / k           Move down / up
+  n / N           Next / previous hunk
+  g / G           Jump to start / end
+  R               Revert hunk under cursor
+  Enter           Exit diff, jump to line
+  Esc             Exit diff mode
+  /               Search
+  :revert / :rev  Revert hunk (ex command)
 
 ─── Editor — Insert Mode ─────────────────────────────
   Esc             Return to normal mode

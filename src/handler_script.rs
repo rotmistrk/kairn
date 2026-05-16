@@ -176,6 +176,9 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::ClearHighlight => {
             queue.put_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
         }
+        ScriptCommand::DiffRevert => {
+            queue.put_command(CM_DIFF_REVERT, None);
+        }
     }
 }
 

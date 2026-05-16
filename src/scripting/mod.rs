@@ -122,6 +122,7 @@ pub enum ScriptCommand {
         pattern: Option<String>,
     },
     ClearHighlight,
+    DiffRevert,
 }
 
 /// The scripting engine: interpreter + command queue + state snapshot.

@@ -48,6 +48,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
             crate::mcp::commands::McpAction::RunBuild { command } => {
                 crate::handler_mcp_build::mcp_run_build(state, ctx.queue, command)
             }
+            crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel
@@ -244,4 +245,10 @@ fn mcp_get_diagnostics(
         }
     }
     Ok(serde_json::json!({"diagnostics": all_diags}))
+}
+
+fn mcp_diff_revert(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    let msg = editor.revert_hunk()?;
+    Ok(serde_json::json!({"result": msg}))
 }

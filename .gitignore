@@ -3,10 +3,6 @@
 *.swo
 *~
 .DS_Store
-.kairn.state
-.kairn.panic.state
-.kairn.capture
-.kairn.log
+.kairn.*
 .idea/
-.kairn.todo
 .kiro/agents/

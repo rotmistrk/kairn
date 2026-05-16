@@ -12,6 +12,7 @@ pub enum ExCmdId {
     Edit,
     NoDiff,
     NoHighlight,
+    Revert,
     Quit,
     QuitForce,
     Set,
@@ -60,6 +61,11 @@ const CMD_TABLE: &[CmdEntry] = &[
         full: "quit",
         min_abbrev: 1,
         id: ExCmdId::Quit,
+    },
+    CmdEntry {
+        full: "revert",
+        min_abbrev: 3,
+        id: ExCmdId::Revert,
     },
     CmdEntry {
         full: "set",

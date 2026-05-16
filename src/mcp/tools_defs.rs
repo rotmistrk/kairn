@@ -219,6 +219,17 @@ pub fn tool_definitions() -> Value {
                     "command": {"type": "string", "description": "Shell command (default: auto-detected build)"}
                 }
             }
+        },
+        {
+            "name": "diff_revert",
+            "description": "Revert the diff hunk under cursor (requires diff mode active)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Tab name"}
+                },
+                "required": ["name"]
+            }
         }
     ])
 }

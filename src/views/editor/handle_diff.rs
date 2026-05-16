@@ -55,6 +55,13 @@ impl EditorView {
                 let h = self.state.bounds().h as i32;
                 self.diff_move(-(h - 1));
             }
+            KeyCode::Char('R') => {
+                let msg = match self.revert_hunk() {
+                    Ok(m) => txv_core::message::Message::info("editor", m),
+                    Err(e) => txv_core::message::Message::error("editor", e),
+                };
+                queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            }
             KeyCode::Char('/') => {
                 self.editor.mode = crate::editor::keymap::EditorMode::Search;
                 self.editor.command_buf.clear();

@@ -65,6 +65,8 @@ pub enum McpAction {
     SearchProject { pattern: String },
     /// Trigger a build command.
     RunBuild { command: String },
+    /// Revert the diff hunk under cursor in the specified tab.
+    DiffRevert { name: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

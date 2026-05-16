@@ -69,9 +69,21 @@ Visual: extend selection, `d/c/y/>/<`, `:` for ex commands
 
 Search: `/pattern`, `n/N`, `*/#`
 
-Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:e <path>`
+Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:revert`, `:e <path>`
 
 Insert: `Esc` to exit, `Ctrl-N/P` for completion
+
+### Diff Mode
+
+| Key | Action |
+|-----|--------|
+| `j/k` | Move down/up |
+| `n/N` | Next/previous hunk |
+| `g/G` | Jump to start/end |
+| `R` | Revert hunk under cursor |
+| `Enter` | Exit diff, jump to line |
+| `Esc` | Exit diff mode |
+| `/` | Search |
 
 ### File Tree
 
@@ -139,7 +151,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 
 | Namespace | Operations |
 |-----------|-----------|
-| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word |
+| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
 | `view` | focus, message, status |
 | `build` | run, test |
 | `lsp` | hover, definition, references, rename, format |
@@ -192,6 +204,7 @@ Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 - List/switch tabs
 - Open/save files
 - Read editor state (cursor, selection, diagnostics)
+- Revert diff hunk under cursor (`diff_revert`)
 - Add todo items (including batch `add_subtree`)
 
 ## Tech Stack

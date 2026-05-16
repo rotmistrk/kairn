@@ -44,6 +44,7 @@ pub enum EditorAction {
     SetGlobal(String),
     Diff(String),
     NoDiff,
+    Revert,
     LspGotoDefinition,
     LspFindReferences,
     LspHover,
