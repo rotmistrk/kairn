@@ -23,9 +23,9 @@ impl Editor {
     pub fn visual_range(&self) -> Option<(usize, usize)> {
         let (al, ac) = self.visual_anchor?;
         let (cl, cc) = (self.cursor_line, self.cursor_col);
-        let anchor_off = self.buffer.line_col_to_offset(al, ac)?;
-        let cursor_off = self.buffer.line_col_to_offset(cl, cc)?;
-        let content = self.buffer.content();
+        let anchor_off = self.buf().line_col_to_offset(al, ac)?;
+        let cursor_off = self.buf().line_col_to_offset(cl, cc)?;
+        let content = self.buf().content();
         let end_extra = content[cursor_off..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
         if anchor_off <= cursor_off {
             Some((anchor_off, cursor_off + end_extra))
@@ -45,26 +45,27 @@ impl Editor {
     pub(super) fn visual_delete(&mut self) {
         if self.mode == EditorMode::VisualLine {
             if let Some((start_line, end_line)) = self.visual_line_range() {
-                let start = self.buffer.line_col_to_offset(start_line, 0).unwrap_or(0);
-                let end = if end_line + 1 < self.buffer.line_count() {
-                    self.buffer.line_col_to_offset(end_line + 1, 0).unwrap_or(start)
+                let start = self.buf().line_col_to_offset(start_line, 0).unwrap_or(0);
+                let end = if end_line + 1 < self.buf().line_count() {
+                    self.buf().line_col_to_offset(end_line + 1, 0).unwrap_or(start)
                 } else {
-                    self.buffer.content().len()
+                    self.buf().content().len()
                 };
                 if end > start {
-                    let content = self.buffer.content();
+                    let content = self.buf().content();
                     self.yank(content[start..end].to_string());
-                    self.buffer.delete(start, end);
+                    self.buf().delete(start, end);
                 }
-                self.cursor_line = start_line.min(self.buffer.line_count().saturating_sub(1));
+                let target = start_line.min(self.buf().line_count().saturating_sub(1));
+                self.cursor_line = target;
                 self.cursor_col = 0;
             }
         } else if let Some((start, end)) = self.visual_range() {
             if end > start {
-                let content = self.buffer.content();
+                let content = self.buf().content();
                 self.yank(content[start..end].to_string());
-                self.buffer.delete(start, end);
-                let (l, c) = self.buffer.offset_to_line_col(start);
+                self.buf().delete(start, end);
+                let (l, c) = self.buf().offset_to_line_col(start);
                 self.cursor_line = l;
                 self.cursor_col = c;
             }
@@ -75,17 +76,17 @@ impl Editor {
     pub(super) fn visual_yank(&mut self) {
         if self.mode == EditorMode::VisualLine {
             if let Some((start_line, end_line)) = self.visual_line_range() {
-                let start = self.buffer.line_col_to_offset(start_line, 0).unwrap_or(0);
-                let end = if end_line + 1 < self.buffer.line_count() {
-                    self.buffer.line_col_to_offset(end_line + 1, 0).unwrap_or(start)
+                let start = self.buf().line_col_to_offset(start_line, 0).unwrap_or(0);
+                let end = if end_line + 1 < self.buf().line_count() {
+                    self.buf().line_col_to_offset(end_line + 1, 0).unwrap_or(start)
                 } else {
-                    self.buffer.content().len()
+                    self.buf().content().len()
                 };
-                let content = self.buffer.content();
+                let content = self.buf().content();
                 self.yank(content[start..end].to_string());
             }
         } else if let Some((start, end)) = self.visual_range() {
-            let content = self.buffer.content();
+            let content = self.buf().content();
             self.yank(content[start..end].to_string());
         }
         self.exit_visual();
@@ -93,7 +94,7 @@ impl Editor {
     }
 
     pub(super) fn visual_change(&mut self) {
-        self.buffer.begin_group();
+        self.buf().begin_group();
         self.visual_delete();
         self.mode = EditorMode::Insert;
     }
@@ -113,8 +114,9 @@ impl Editor {
             }
         };
         for line in (start_line..=end_line).rev() {
-            if let Some(offset) = self.buffer.line_col_to_offset(line, 0) {
-                self.buffer.insert(offset, "    ");
+            let offset = self.buf().line_col_to_offset(line, 0);
+            if let Some(offset) = offset {
+                self.buf().insert(offset, "    ");
             }
         }
         self.exit_visual();
@@ -129,7 +131,7 @@ impl Editor {
             }
         };
         for line in (start_line..=end_line).rev() {
-            let text = self.buffer.line(line).unwrap_or_default();
+            let text = self.buf().line(line).unwrap_or_default();
             let remove = if text.starts_with("    ") {
                 4
             } else if text.starts_with('\t') {
@@ -138,9 +140,9 @@ impl Editor {
                 text.chars().take_while(|c| c.is_whitespace()).count().min(4)
             };
             if remove > 0 {
-                let start = self.buffer.line_col_to_offset(line, 0).unwrap_or(0);
-                let end = self.buffer.line_col_to_offset(line, remove).unwrap_or(start);
-                self.buffer.delete(start, end);
+                let start = self.buf().line_col_to_offset(line, 0).unwrap_or(0);
+                let end = self.buf().line_col_to_offset(line, remove).unwrap_or(start);
+                self.buf().delete(start, end);
             }
         }
         self.exit_visual();

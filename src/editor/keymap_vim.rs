@@ -202,6 +202,7 @@ impl VimKeymap {
                 }
             }
             ('g', 'd') => Command::GotoDefinition,
+            ('g', 's') => Command::GotoShow,
             ('g', 'r') => Command::FindReferences,
             ('g', 'R') => Command::LspRename,
             ('>', '>') => Command::Indent,

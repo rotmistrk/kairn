@@ -62,7 +62,8 @@ impl Editor {
                 EditorAction::CursorMoved
             }
             Command::MoveFileEnd => {
-                self.cursor_line = self.buffer.line_count().saturating_sub(1);
+                let last = self.buf().line_count().saturating_sub(1);
+                self.cursor_line = last;
                 self.cursor_col = 0;
                 EditorAction::CursorMoved
             }
@@ -118,10 +119,11 @@ impl Editor {
             Command::Save => EditorAction::SaveRequested,
             Command::CloseBuffer => EditorAction::CloseRequested,
             Command::GotoDefinition => EditorAction::LspGotoDefinition,
+            Command::GotoShow => EditorAction::LspGotoShow,
             Command::FindReferences => EditorAction::LspFindReferences,
             Command::Hover => EditorAction::LspHover,
             Command::LspRename => {
-                let word = motions::word_at(&self.buffer, self.cursor_line, self.cursor_col).unwrap_or_default();
+                let word = motions::word_at(&self.buf(), self.cursor_line, self.cursor_col).unwrap_or_default();
                 self.mode = EditorMode::Command;
                 self.command_buf = format!("lsp-rename {word}");
                 EditorAction::ModeChanged

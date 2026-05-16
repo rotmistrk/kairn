@@ -30,9 +30,9 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         if let Some(any) = view.as_any_mut() {
             if let Some(editor) = any.downcast_ref::<EditorView>() {
                 fill_from_editor(editor, state, &mut vc);
-                current_line_text = editor.editor.buffer.line(editor.editor.cursor_line).unwrap_or_default();
+                current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
                 if let Some((start, end)) = editor.editor.visual_range() {
-                    let content = editor.editor.buffer.content();
+                    let content = editor.editor.buf().content();
                     if end <= content.len() {
                         selection_text = content[start..end].to_string();
                     }
@@ -60,7 +60,7 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
     vc.line = e.cursor_line as u32 + 1;
     vc.col = e.cursor_col as u32 + 1;
     vc.mode = e.keymap.mode_label(e.mode).to_string();
-    vc.modified = e.buffer.is_dirty();
+    vc.modified = e.buf().is_dirty();
     vc.language = editor.language().to_string();
     vc.file = Some(
         editor
@@ -75,8 +75,8 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
         crate::editor::keymap::EditorMode::Visual | crate::editor::keymap::EditorMode::VisualLine
     ) {
         if let Some((start, end)) = e.visual_range() {
-            let sl = e.buffer.offset_to_line_col(start).0;
-            let el = e.buffer.offset_to_line_col(end).0;
+            let sl = e.buf().offset_to_line_col(start).0;
+            let el = e.buf().offset_to_line_col(end).0;
             vc.selection_lines = (el - sl + 1) as u32;
         }
     }

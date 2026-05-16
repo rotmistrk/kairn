@@ -79,10 +79,10 @@ impl View for EditorView {
             if let Event::Paste(text) = event {
                 let offset = self
                     .editor
-                    .buffer
+                    .buf()
                     .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
                     .unwrap_or(0);
-                self.editor.buffer.insert(offset, text);
+                self.editor.buf().insert(offset, text);
                 self.last_edit_tick = self.tick_counter;
                 self.state.mark_dirty();
                 return HandleResult::Consumed;
@@ -95,6 +95,12 @@ impl View for EditorView {
                         .and_then(|b| b.downcast_ref::<String>())
                         .map(|s| s.as_str())
                         .unwrap_or("");
+                    // Side-by-side: create a split with base content on the left
+                    if let Some((base_content, base_ref)) = self.try_diff_side_by_side(args) {
+                        let payload = crate::commands::DiffSplitRequest { base_content, base_ref };
+                        queue.put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
+                        return HandleResult::Consumed;
+                    }
                     self.toggle_diff(args);
                     if !self.editor.status.is_empty() {
                         let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
@@ -125,10 +131,10 @@ impl View for EditorView {
                         if let Some(text) = boxed.downcast_ref::<String>() {
                             let offset = self
                                 .editor
-                                .buffer
+                                .buf()
                                 .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
                                 .unwrap_or(0);
-                            self.editor.buffer.insert(offset, text);
+                            self.editor.buf().insert(offset, text);
                             self.last_edit_tick = self.tick_counter;
                             self.state.mark_dirty();
                             return HandleResult::Consumed;
@@ -235,7 +241,7 @@ impl View for EditorView {
     }
 
     fn can_close(&self) -> CloseResult {
-        if !self.editor.buffer.is_dirty() {
+        if !self.editor.buf().is_dirty() {
             return CloseResult::Ok;
         }
         if self.settings.autosave {

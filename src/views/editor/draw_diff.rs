@@ -14,7 +14,7 @@ impl EditorView {
         };
 
         let max_base = self.max_base_line(ds);
-        let max_buf = self.editor.buffer.line_count();
+        let max_buf = self.editor.buf().line_count();
         let dw = digit_width(max_base.max(max_buf));
         // Two gutter columns: "NNN NNN " (dw + space + dw + space)
         let gutter_w = if self.editor.options.number {
@@ -56,7 +56,7 @@ impl EditorView {
             match line {
                 DiffLine::Context { buf_line, base_line } => {
                     self.draw_diff_gutter(surface, b.x, y, dw, Some(*base_line), Some(*buf_line));
-                    let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
+                    let text = self.editor.buf().line(*buf_line).unwrap_or_default();
                     let st = if is_cursor {
                         cursor_style
                     } else {
@@ -66,7 +66,7 @@ impl EditorView {
                 }
                 DiffLine::Added { buf_line } => {
                     self.draw_diff_gutter(surface, b.x, y, dw, None, Some(*buf_line));
-                    let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
+                    let text = self.editor.buf().line(*buf_line).unwrap_or_default();
                     let st = if is_cursor {
                         cursor_style
                     } else {

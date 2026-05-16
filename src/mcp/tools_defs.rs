@@ -219,6 +219,25 @@ pub fn tool_definitions() -> Value {
                     "command": {"type": "string", "description": "Shell command (default: auto-detected build)"}
                 }
             }
+        },
+        {
+            "name": "split",
+            "description": "Manipulate editor split panes: create, close, focus, or open file in other pane",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["vsplit", "hsplit", "close", "focus", "open"],
+                        "description": "Split action to perform"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "File path (for vsplit/hsplit/open)"
+                    }
+                },
+                "required": ["action"]
+            }
         }
     ])
 }

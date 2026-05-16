@@ -42,33 +42,41 @@ impl EditorView {
         let mut line_idx = scroll;
 
         // Pre-compute highlighted spans for the visible viewport using cached state.
-        let viewport_end = (scroll + b.h as usize).min(self.editor.buffer.line_count());
+        let total_lines = self.editor.buf().line_count();
+        let viewport_end = (scroll + b.h as usize).min(total_lines);
         let viewport_spans = {
             let mut cache = self.hl_cache.borrow_mut();
             cache.highlight_viewport(
                 scroll,
                 viewport_end,
-                self.editor.buffer.line_count(),
-                |i| self.editor.buffer.line(i).unwrap_or_default(),
+                total_lines,
+                |i| self.editor.buf().line(i).unwrap_or_default(),
                 self.highlighter.syntax_set(),
                 self.highlighter.theme(),
             )
         };
 
         // Matchparen: find matching bracket for cursor position.
-        let matchparen_pos = if self.editor.options.matchparen {
-            crate::editor::motions::match_bracket(&self.editor.buffer, self.editor.cursor_line, self.editor.cursor_col)
-        } else {
-            None
-        };
+        let matchparen_pos = self
+            .editor
+            .options
+            .matchparen
+            .then(|| {
+                crate::editor::motions::match_bracket(
+                    &self.editor.buf(),
+                    self.editor.cursor_line,
+                    self.editor.cursor_col,
+                )
+            })
+            .flatten();
         let matchparen_style = app.editor.matchparen;
         let rainbow_map = if self.editor.options.rainbow {
-            super::draw_style::rainbow_brackets(&self.editor.buffer.line(self.editor.cursor_line).unwrap_or_default())
+            super::draw_style::rainbow_brackets(&self.editor.buf().line(self.editor.cursor_line).unwrap_or_default())
         } else {
             Vec::new()
         };
 
-        while row < b.h as usize && line_idx < self.editor.buffer.line_count() {
+        while row < b.h as usize && line_idx < viewport_end {
             let y = b.y + row as u16;
             let text_x = b.x + gutter_w;
 
@@ -79,8 +87,8 @@ impl EditorView {
             }
 
             // --- Line content: write char-by-char, then pad to full width ---
-            let line = self.editor.buffer.line(line_idx).unwrap_or_default();
-            let line_start_off = self.editor.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
+            let line = self.editor.buf().line(line_idx).unwrap_or_default();
+            let line_start_off = self.editor.buf().line_col_to_offset(line_idx, 0).unwrap_or(0);
             let default_spans;
             let spans: &[HlSpan] = match viewport_spans.get(line_idx - scroll) {
                 Some(s) => s,
@@ -222,7 +230,7 @@ impl EditorView {
                 let cursor_visual_col = if self.editor.cursor_col >= char_idx {
                     col_offset
                 } else {
-                    let line_ref = self.editor.buffer.line(line_idx).unwrap_or_default();
+                    let line_ref = self.editor.buf().line(line_idx).unwrap_or_default();
                     let positions = visual_positions(&line_ref, tab_width);
                     positions
                         .get(self.editor.cursor_col)
@@ -241,34 +249,7 @@ impl EditorView {
             line_idx += 1;
         }
 
-        // Fill remaining rows with ~ (full-width)
-        while row < b.h as usize {
-            let y = b.y + row as u16;
-            let mut tilde = String::with_capacity(b.w as usize);
-            tilde.push('~');
-            surface.print_line(b.x, y, &tilde, b.w, gutter_style);
-            row += 1;
-        }
-
-        // Command/search prompt (full-width)
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
-        {
-            let prompt_y = b.y + b.h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
-            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
-                "/"
-            } else {
-                ":"
-            };
-            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
-            surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
-        }
+        // Fill remaining rows + prompt
+        self.draw_footer(surface, b, row, gutter_style);
     }
 }

@@ -1,7 +1,7 @@
 //! Style helpers for editor draw — computes per-character style overlays.
 
 use txv_core::palette::PaletteStyle;
-use txv_core::prelude::{Color, Style};
+use txv_core::prelude::{Attrs, Color, Rect, Style, Surface};
 
 /// Compute the effective style for a character at `byte_pos`, applying
 /// visual selection and search highlight overlays.
@@ -103,6 +103,36 @@ pub(super) fn rainbow_brackets(line: &str) -> Vec<(usize, Color)> {
         }
     }
     result
+}
+
+impl super::EditorView {
+    /// Draw tilde fill and command/search prompt at the bottom.
+    pub(super) fn draw_footer(&self, surface: &mut Surface, b: Rect, mut row: usize, gutter_style: Style) {
+        while row < b.h as usize {
+            let y = b.y + row as u16;
+            surface.print_line(b.x, y, "~", b.w, gutter_style);
+            row += 1;
+        }
+        if self.editor.mode == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        {
+            let prompt_y = b.y + b.h.saturating_sub(1);
+            let prompt_style = Style {
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            };
+            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+                "/"
+            } else {
+                ":"
+            };
+            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
+            surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
+        }
+    }
 }
 
 #[cfg(test)]

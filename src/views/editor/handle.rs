@@ -125,7 +125,7 @@ impl EditorView {
     /// Update display_title based on dirty state.
     pub fn sync_title(&mut self) {
         let name = self.path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
-        if self.editor.buffer.is_dirty() {
+        if self.editor.buf().is_dirty() {
             self.display_title = format!("*{name}");
         } else {
             self.display_title = name.to_string();
@@ -149,7 +149,7 @@ impl EditorView {
 
     /// Get the word immediately before the cursor (before the just-typed char).
     fn word_before_cursor(&self) -> Option<String> {
-        let line = self.editor.buffer.line(self.editor.cursor_line)?;
+        let line = self.editor.buf().line(self.editor.cursor_line)?;
         let chars: Vec<char> = line.chars().collect();
         // cursor_col points after the just-inserted char, so word ends at col-2
         let end = self.editor.cursor_col.checked_sub(1)?;
@@ -181,10 +181,10 @@ impl EditorView {
             self.editor.highlight = None;
             return;
         }
-        let content = self.editor.buffer.content();
+        let content = self.editor.buf().content();
         let cursor_off = self
             .editor
-            .buffer
+            .buf()
             .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
             .unwrap_or(0);
         self.editor.highlight = crate::editor::highlight_state::HighlightState::build(pattern, &content, cursor_off);

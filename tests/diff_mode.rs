@@ -30,7 +30,7 @@ fn diff_does_not_modify_content() {
     let mut view = EditorView::from_text("hello\nworld\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
-    assert_eq!(view.editor.buffer.content(), "hello\nworld\n");
+    assert_eq!(view.editor.buf().content(), "hello\nworld\n");
 }
 
 #[test]

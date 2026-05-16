@@ -8,6 +8,7 @@ fn no_changes() {
         base: "HEAD".into(),
         context: usize::MAX,
         ignore_ws: false,
+        side_by_side: false,
     };
     let lines = build_diff_lines("a\nb\n", "a\nb\n", &opts);
     assert_eq!(lines.len(), 2);
@@ -26,6 +27,7 @@ fn added_line() {
         base: "HEAD".into(),
         context: usize::MAX,
         ignore_ws: false,
+        side_by_side: false,
     };
     let lines = build_diff_lines("a\n", "a\nb\n", &opts);
     assert_eq!(lines.len(), 2);
@@ -38,6 +40,7 @@ fn deleted_line() {
         base: "HEAD".into(),
         context: usize::MAX,
         ignore_ws: false,
+        side_by_side: false,
     };
     let lines = build_diff_lines("a\nb\n", "a\n", &opts);
     assert_eq!(lines.len(), 2);
@@ -55,6 +58,7 @@ fn fold_hides_distant_context() {
         base: "HEAD".into(),
         context: 1,
         ignore_ws: false,
+        side_by_side: false,
     };
     let base = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
     let current = "1\n2\n3\n4\n5\nNEW\n6\n7\n8\n9\n10\n";
@@ -136,6 +140,7 @@ fn parse_args() {
     assert_eq!(opts.base, "main");
     assert_eq!(opts.context, 5);
     assert!(opts.ignore_ws);
+    assert!(!opts.side_by_side);
 }
 
 #[test]
@@ -144,9 +149,21 @@ fn ignore_whitespace() {
         base: "HEAD".into(),
         context: usize::MAX,
         ignore_ws: true,
+        side_by_side: false,
     };
     let lines = build_diff_lines("a  b\n", "a b\n", &opts);
     // Should be context (whitespace ignored)
     assert_eq!(lines.len(), 1);
     assert!(matches!(lines[0], DiffLine::Context { .. }));
+}
+
+#[test]
+fn parse_args_side_by_side() {
+    let opts = parse_diff_args("-y");
+    assert!(opts.side_by_side);
+    assert_eq!(opts.base, "HEAD");
+
+    let opts2 = parse_diff_args("-y main");
+    assert!(opts2.side_by_side);
+    assert_eq!(opts2.base, "main");
 }

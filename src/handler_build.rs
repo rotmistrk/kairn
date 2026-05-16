@@ -111,7 +111,7 @@ fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
                     let line = editor.editor.cursor_line;
                     // Walk backwards from cursor to find fn name
                     for i in (0..=line).rev() {
-                        let text = editor.editor.buffer.line(i).unwrap_or_default();
+                        let text = editor.editor.buf().line(i).unwrap_or_default();
                         if let Some(name) = extract_test_fn_name(&text) {
                             return name;
                         }

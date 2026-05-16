@@ -58,6 +58,23 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     state.lsp_pending.insert(id, PendingKind::GotoDefinition);
 }
 
+pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
+        return;
+    };
+    let lang = protocol::language_id(path);
+    let root = state.root_dir.clone();
+    let Some(client) = state.lsp.get_or_start(lang, &root) else {
+        return;
+    };
+    let uri = protocol::path_to_uri(path);
+    let id = requests::goto_definition(client, &uri, *line, *col);
+    state.lsp_pending.insert(id, PendingKind::GotoShow);
+}
+
 pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;

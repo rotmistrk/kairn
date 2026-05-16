@@ -21,9 +21,9 @@ pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
         return;
     };
     if let Some((start, end)) = editor.editor.visual_range() {
-        editor.editor.buffer.delete(start, end);
-        editor.editor.buffer.insert(start, text);
-        let (l, c) = editor.editor.buffer.offset_to_line_col(start + text.len());
+        editor.editor.buf().delete(start, end);
+        editor.editor.buf().insert(start, text);
+        let (l, c) = editor.editor.buf().offset_to_line_col(start + text.len());
         editor.editor.cursor_line = l;
         editor.editor.cursor_col = c;
         editor.editor.mode = crate::editor::keymap::EditorMode::Normal;
@@ -52,15 +52,15 @@ pub fn handle_delete_line(ctx: &mut CommandContext, _state: &AppState) {
     let target = line
         .map(|n| n.saturating_sub(1) as usize)
         .unwrap_or(editor.editor.cursor_line);
-    let start = editor.editor.buffer.line_col_to_offset(target, 0);
-    let end = if target + 1 < editor.editor.buffer.line_count() {
-        editor.editor.buffer.line_col_to_offset(target + 1, 0)
+    let start = editor.editor.buf().line_col_to_offset(target, 0);
+    let end = if target + 1 < editor.editor.buf().line_count() {
+        editor.editor.buf().line_col_to_offset(target + 1, 0)
     } else {
-        Some(editor.editor.buffer.len())
+        Some(editor.editor.buf().len())
     };
     if let (Some(s), Some(e)) = (start, end) {
         if e > s {
-            editor.editor.buffer.delete(s, e);
+            editor.editor.buf().delete(s, e);
             editor.editor.clamp_cursor();
         }
     }
@@ -81,7 +81,7 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    let line_content = editor.editor.buffer.line(editor.editor.cursor_line).unwrap_or_default();
+    let line_content = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
     let chars: Vec<char> = line_content.chars().collect();
     let col = editor.editor.cursor_col;
     if col >= chars.len() || !chars[col].is_alphanumeric() && chars[col] != '_' {
@@ -89,14 +89,11 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
     }
     let start = col - (0..col).rev().take_while(|&i| is_word(chars[i])).count();
     let end = col + (col..chars.len()).take_while(|&i| is_word(chars[i])).count();
-    let line_start = editor
-        .editor
-        .buffer
-        .line_col_to_offset(editor.editor.cursor_line, start);
-    let line_end = editor.editor.buffer.line_col_to_offset(editor.editor.cursor_line, end);
+    let line_start = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line, start);
+    let line_end = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line, end);
     if let (Some(s), Some(e)) = (line_start, line_end) {
-        editor.editor.buffer.delete(s, e);
-        editor.editor.buffer.insert(s, text);
+        editor.editor.buf().delete(s, e);
+        editor.editor.buf().insert(s, text);
         editor.editor.cursor_col = start + text.chars().count();
     }
 }

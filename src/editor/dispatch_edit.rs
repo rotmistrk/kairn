@@ -10,7 +10,7 @@ impl Editor {
     pub(super) fn dispatch_edit(&mut self, cmd: Command) -> Option<EditorAction> {
         Some(match cmd {
             Command::EnterInsertMode => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.mode = EditorMode::Insert;
                 EditorAction::ModeChanged
             }
@@ -19,16 +19,17 @@ impl Editor {
                 EditorAction::ModeChanged
             }
             Command::EnterInsertLineEnd => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.mode = EditorMode::Insert;
                 self.move_line_end();
                 self.cursor_col += 1;
                 EditorAction::ModeChanged
             }
             Command::EnterInsertLineStart => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.mode = EditorMode::Insert;
-                self.cursor_col = super::motions::first_non_blank(&self.buffer, self.cursor_line);
+                let col = super::motions::first_non_blank(&self.buf(), self.cursor_line);
+                self.cursor_col = col;
                 EditorAction::ModeChanged
             }
             Command::EnterInsertBelow | Command::NewlineBelow => {
@@ -80,7 +81,7 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             Command::ChangeWord => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.delete_word();
                 self.mode = EditorMode::Insert;
                 EditorAction::ContentChanged
@@ -90,13 +91,13 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             Command::ChangeToEnd => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.delete_to_end();
                 self.mode = EditorMode::Insert;
                 EditorAction::ContentChanged
             }
             Command::Substitute => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.delete_char_forward();
                 self.mode = EditorMode::Insert;
                 EditorAction::ContentChanged
@@ -130,27 +131,29 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             Command::OperatorChange => {
-                self.buffer.begin_group();
+                self.buf().begin_group();
                 self.delete_word();
                 self.mode = EditorMode::Insert;
                 EditorAction::ContentChanged
             }
             Command::OperatorYank => {
-                self.yank(self.buffer.line(self.cursor_line).unwrap_or_default());
+                let line = self.buf().line(self.cursor_line).unwrap_or_default();
+                self.yank(line);
                 EditorAction::None
             }
             Command::Undo => {
-                self.buffer.undo();
+                self.buf().undo();
                 self.clamp_cursor();
                 EditorAction::ContentChanged
             }
             Command::Redo => {
-                self.buffer.redo();
+                self.buf().redo();
                 self.clamp_cursor();
                 EditorAction::ContentChanged
             }
             Command::YankLine => {
-                self.yank(self.buffer.line(self.cursor_line).unwrap_or_default());
+                let line = self.buf().line(self.cursor_line).unwrap_or_default();
+                self.yank(line);
                 EditorAction::None
             }
             Command::YankWord => {

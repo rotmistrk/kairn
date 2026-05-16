@@ -6,11 +6,15 @@ mod bridge_git;
 mod bridge_hook;
 mod bridge_keymap;
 mod bridge_lsp;
+mod bridge_split;
 mod bridge_system;
 mod bridge_todo;
 mod bridge_view;
+mod commands;
 pub mod hooks;
 pub mod plugins;
+
+pub use self::commands::{ScriptCommand, StateSnapshot};
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -22,107 +26,6 @@ use rusticle::value::TclValue;
 use crate::commands::ViewContext;
 
 use self::hooks::HookRegistry;
-
-/// Read-only snapshot of app state, updated each tick for Tcl queries.
-#[derive(Clone, Default)]
-pub struct StateSnapshot {
-    pub context: ViewContext,
-    pub root_dir: String,
-    pub selection_text: String,
-    pub current_line_text: String,
-}
-
-/// Commands produced by Tcl scripts, drained by the handler.
-#[derive(Debug)]
-pub enum ScriptCommand {
-    OpenFile {
-        path: String,
-        line: Option<u32>,
-        col: Option<u32>,
-    },
-    Save,
-    SaveAll,
-    Close,
-    Goto {
-        line: u32,
-        col: u32,
-    },
-    Insert {
-        text: String,
-    },
-    Undo,
-    Redo,
-    ShowMessage {
-        level: String,
-        origin: String,
-        text: String,
-    },
-    StatusFlash {
-        text: String,
-    },
-    FocusSlot {
-        slot: String,
-    },
-    RunBuild {
-        command: Option<String>,
-    },
-    RunTest {
-        command: Option<String>,
-    },
-    SetKeyBinding {
-        key: String,
-        command: String,
-    },
-    UnbindKey {
-        key: String,
-    },
-    LspHover,
-    LspDefinition,
-    LspReferences,
-    LspRename {
-        new_name: String,
-    },
-    LspFormat,
-    GitStage {
-        file: String,
-    },
-    GitUnstage {
-        file: String,
-    },
-    GitCommit {
-        message: String,
-    },
-    GitBlame,
-    TodoAdd {
-        text: String,
-        parent: Option<String>,
-    },
-    TodoRemove {
-        path: String,
-    },
-    TodoComplete {
-        path: String,
-    },
-    // Editor selection/text operations (Feature 2)
-    GetSelection,
-    ReplaceSelection {
-        text: String,
-    },
-    GetLine {
-        line: Option<u32>,
-    },
-    DeleteLine {
-        line: Option<u32>,
-    },
-    ReplaceWord {
-        text: String,
-    },
-    // Search highlighting (None pattern = clear)
-    Search {
-        pattern: Option<String>,
-    },
-    ClearHighlight,
-}
 
 /// The scripting engine: interpreter + command queue + state snapshot.
 pub struct ScriptEngine {
@@ -148,6 +51,7 @@ impl ScriptEngine {
         bridge_lsp::register(&mut interp, commands.clone());
         bridge_git::register(&mut interp, commands.clone());
         bridge_todo::register(&mut interp, commands.clone());
+        bridge_split::register(&mut interp, commands.clone());
 
         Self {
             interp,

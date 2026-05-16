@@ -12,6 +12,7 @@ use super::requests;
 pub(super) fn handle_response(kind: PendingKind, result: &serde_json::Value, queue: &mut EventQueue) {
     match kind {
         PendingKind::GotoDefinition => handle_goto_def(result, queue),
+        PendingKind::GotoShow => handle_goto_show(result, queue),
         PendingKind::FindReferences { symbol } => handle_references(result, queue, &symbol),
         PendingKind::Hover => handle_hover(result, queue),
         PendingKind::Completion => handle_completion(result, queue),
@@ -39,6 +40,20 @@ fn handle_goto_def(result: &serde_json::Value, queue: &mut EventQueue) {
             let req = OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
             queue.put_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
         }
+    } else {
+        queue.put_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("lsp", "No definition found"))),
+        );
+    }
+}
+
+fn handle_goto_show(result: &serde_json::Value, queue: &mut EventQueue) {
+    let locs = requests::parse_locations(result);
+    if let Some(loc) = locs.into_iter().next() {
+        let path = uri_to_path(&loc.uri);
+        let req = OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
+        queue.put_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
     } else {
         queue.put_command(
             txv_widgets::CM_STATUS_MESSAGE,

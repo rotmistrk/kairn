@@ -31,6 +31,7 @@ impl Default for PendingRequests {
 #[derive(Debug, Clone)]
 pub(crate) enum PendingKind {
     GotoDefinition,
+    GotoShow,
     FindReferences { symbol: String },
     Hover,
     Completion,
@@ -92,6 +93,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
             send::send_goto_def(ctx, state);
         }
+        CM_LSP_GOTO_SHOW => send::send_goto_show(ctx, state),
         CM_LSP_FIND_REFS => send::send_find_refs(ctx, state),
         CM_LSP_HOVER => send::send_hover(ctx, state),
         CM_LSP_COMPLETION => send::send_completion(ctx, state),

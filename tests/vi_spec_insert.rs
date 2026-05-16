@@ -10,9 +10,9 @@ fn paste_is_undoable() {
     let mut ed = Editor::from_text("line1\nline2");
     ed.execute(Command::YankLine);
     ed.execute(Command::Paste);
-    assert!(ed.buffer.content().contains("line1\nline1"));
+    assert!(ed.buf().content().contains("line1\nline1"));
     ed.execute(Command::Undo);
-    assert_eq!(ed.buffer.content(), "line1\nline2");
+    assert_eq!(ed.buf().content(), "line1\nline2");
 }
 
 // === Insert mode features ===
@@ -23,7 +23,7 @@ fn insert_enter_creates_newline() {
     ed.mode = EditorMode::Insert;
     ed.cursor_col = 3;
     ed.execute(Command::InsertNewline);
-    assert_eq!(ed.buffer.content(), "hel\nlo");
+    assert_eq!(ed.buf().content(), "hel\nlo");
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn insert_delete_forward() {
     let mut ed = Editor::from_text("hello");
     ed.mode = EditorMode::Insert;
     ed.execute(Command::DeleteCharForward);
-    assert_eq!(ed.buffer.content(), "ello");
+    assert_eq!(ed.buf().content(), "ello");
 }
 
 // === 3J join 3 lines ===
@@ -40,7 +40,7 @@ fn insert_delete_forward() {
 fn count_3j_joins_3_lines() {
     let mut ed = Editor::from_text("a\nb\nc\nd");
     ed.execute(Command::Repeat(3, Box::new(Command::JoinLines)));
-    assert_eq!(ed.buffer.content(), "a b c d");
+    assert_eq!(ed.buf().content(), "a b c d");
 }
 
 // === Keymap integration: count prefix through keymap ===
@@ -98,7 +98,7 @@ fn a_inserts_after_cursor() {
     ed.cursor_col = 1; // on 'b'
     ed.execute(Command::EnterInsertAfter);
     ed.execute(Command::InsertChar('X'));
-    assert_eq!(ed.buffer.content(), "abXc");
+    assert_eq!(ed.buf().content(), "abXc");
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn big_i_inserts_at_line_start() {
     ed.execute(Command::EnterInsertLineStart);
     ed.execute(Command::InsertChar('X'));
     // I inserts before first non-blank (col 2)
-    assert_eq!(ed.buffer.content(), "  Xhello");
+    assert_eq!(ed.buf().content(), "  Xhello");
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn big_a_inserts_at_line_end() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::EnterInsertLineEnd);
     ed.execute(Command::InsertChar('!'));
-    assert_eq!(ed.buffer.content(), "hello!");
+    assert_eq!(ed.buf().content(), "hello!");
 }
 
 #[test]
@@ -125,7 +125,7 @@ fn o_opens_line_below() {
     ed.execute(Command::EnterInsertBelow);
     ed.execute(Command::InsertChar('X'));
     assert_eq!(ed.mode, EditorMode::Insert);
-    assert!(ed.buffer.content().contains("line1\nX\nline2"));
+    assert!(ed.buf().content().contains("line1\nX\nline2"));
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn big_o_opens_line_above() {
     ed.execute(Command::EnterInsertAbove);
     ed.execute(Command::InsertChar('X'));
     assert_eq!(ed.mode, EditorMode::Insert);
-    assert!(ed.buffer.content().contains("line1\nX\nline2"));
+    assert!(ed.buf().content().contains("line1\nX\nline2"));
 }
 
 #[test]

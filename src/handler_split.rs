@@ -40,14 +40,14 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     // Not split yet — take the current tab and wrap it in a split
     let active_idx = panel.active_index();
     let title = panel.active_title().map(String::from).unwrap_or_default();
-    let Some(removed) = panel.take_tab(active_idx) else {
+    let Some(mut removed) = panel.take_tab(active_idx) else {
         return;
     };
 
     let second: Box<dyn View> = if let Some(ref filename) = file {
         open_second_file(state, filename)
     } else {
-        open_same_file(state, &title)
+        open_same_file_shared(&mut removed, state)
     };
 
     let split = EditorSplit::new(direction, removed, second);
@@ -81,6 +81,50 @@ pub(crate) fn handle_split_close(ctx: &mut CommandContext, _state: &mut AppState
     panel.insert_tab_at(active_idx, &title, child);
 }
 
+pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(view) = panel.active_view_mut() else {
+        return;
+    };
+    let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) else {
+        return;
+    };
+    es.split.focus_next();
+}
+
+pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(req) = boxed.downcast_ref::<crate::commands::DiffSplitRequest>() else {
+        return;
+    };
+    let base_content = req.base_content.clone();
+    let base_ref = req.base_ref.clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let panel = desktop.panel_mut(SlotId::Center);
+    let active_idx = panel.active_index();
+    let title = panel.active_title().map(String::from).unwrap_or_default();
+    let Some(current_view) = panel.take_tab(active_idx) else {
+        return;
+    };
+
+    // Create a read-only editor with the base content
+    let mut base_ev = EditorView::from_text(&base_content);
+    base_ev.editor.status = format!("[{base_ref}]");
+
+    let mut split = EditorSplit::new(SplitDirection::Horizontal, Box::new(base_ev), current_view);
+    split.linked_scroll = true;
+    // Focus the right (current) pane
+    split.split.focus_next();
+    panel.insert_tab_at(active_idx, &title, Box::new(split));
+}
+
 fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
     let path = state.root_dir.join(filename);
     let syntax_theme = state.current_syntax_theme().to_string();
@@ -93,17 +137,67 @@ fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
     Box::new(ed)
 }
 
-fn open_same_file(state: &mut AppState, title: &str) -> Box<dyn View> {
-    let path = state.root_dir.join(title);
+fn open_same_file_shared(first: &mut Box<dyn View>, state: &mut AppState) -> Box<dyn View> {
+    let first_ev = first.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>());
+    let Some(first_ev) = first_ev else {
+        return Box::new(EditorView::from_text(""));
+    };
+    let defaults = state.settings.editor_defaults.clone();
+    let syntax_theme = state.current_syntax_theme().to_string();
+    let buf_id = first_ev.buffer_id;
+    let shared_buf = first_ev.editor.buffer.clone();
+    let file_path = first_ev.editor.buf().file_path.clone();
+    let mut ed = EditorView::from_arc_buffer(shared_buf, file_path, &defaults, &syntax_theme);
+    ed.set_root_dir(state.root_dir.clone());
+    ed.buffer_id = buf_id;
+    Box::new(ed)
+}
+
+pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
+        return;
+    };
+    let path = req.path.clone();
+    let line = req.line.unwrap_or(0);
+    let col = req.col.unwrap_or(0);
+
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let panel = desktop.panel_mut(SlotId::Center);
+
+    // If already in a split, navigate the unfocused pane
+    if let Some(view) = panel.active_view_mut() {
+        if let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) {
+            let other_idx = 1 - es.focused_index();
+            if let Some(child) = es.split.child_mut(other_idx) {
+                if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                    open_into_editor(ev, &path, line, col, state);
+                    return;
+                }
+            }
+        }
+    }
+
+    // Not in a split — create one with the target file in the second pane
+    let file_str = path.to_string_lossy().to_string();
+    let split_req = crate::commands::SplitRequest {
+        vertical: true,
+        file: Some(file_str),
+    };
+    ctx.queue
+        .put_command(crate::commands::CM_SPLIT, Some(Box::new(split_req)));
+}
+
+fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line: u32, col: u32, state: &mut AppState) {
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let mut ed = EditorView::open_with_theme(&path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(&path, &defaults));
-    ed.set_root_dir(state.root_dir.clone());
-    let canon = path.canonicalize().unwrap_or(path);
-    if let Some(buf_id) = state.buffers.find_by_path(&canon) {
-        state.buffers.add_ref(buf_id);
-        ed.buffer_id = Some(buf_id);
-    }
-    Box::new(ed)
+    let new_ev = EditorView::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    *ev = new_ev;
+    ev.set_root_dir(state.root_dir.clone());
+    ev.goto(line, col);
 }

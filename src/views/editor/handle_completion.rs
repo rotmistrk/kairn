@@ -41,18 +41,18 @@ impl EditorView {
             let prefix_len = self.word_prefix_len();
             let offset = self
                 .editor
-                .buffer
+                .buf()
                 .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
                 .unwrap_or(0);
             // Delete the prefix
             if prefix_len > 0 {
                 let start = offset - prefix_len;
-                self.editor.buffer.delete(start, prefix_len);
+                self.editor.buf().delete(start, prefix_len);
                 self.editor.cursor_col -= prefix_len;
             }
             // Insert completion text
             let insert_offset = offset - prefix_len;
-            self.editor.buffer.insert(insert_offset, &text);
+            self.editor.buf().insert(insert_offset, &text);
             self.editor.cursor_col += text.len();
             self.last_edit_tick = self.tick_counter;
         }
@@ -61,7 +61,7 @@ impl EditorView {
 
     /// Get the length of the word prefix before the cursor (identifier chars).
     fn word_prefix_len(&self) -> usize {
-        let line = self.editor.buffer.line(self.editor.cursor_line).unwrap_or_default();
+        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
         let col = self.editor.cursor_col;
         let before = &line[..col.min(line.len())];
         before
@@ -78,7 +78,7 @@ impl EditorView {
         if self.last_edit_tick > 0 && self.tick_counter - self.last_edit_tick == 3 {
             let changed = crate::commands::ContentChanged {
                 path: self.path.clone(),
-                content: self.editor.buffer.content(),
+                content: self.editor.buf().content(),
             };
             queue.put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
         }
@@ -99,7 +99,7 @@ impl EditorView {
             && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
         {
             self.last_edit_tick = 0;
-            if self.editor.buffer.is_dirty() && self.save_buffer() {
+            if self.editor.buf().is_dirty() && self.save_buffer() {
                 self.sync_title();
             }
         }
@@ -107,9 +107,9 @@ impl EditorView {
 
     /// Save buffer to disk. Returns true on success.
     pub(super) fn save_buffer(&mut self) -> bool {
-        let content = self.editor.buffer.content();
+        let content = self.editor.buf().content();
         if crate::editor::save::save_file(&self.path, &content).is_ok() {
-            self.editor.buffer.mark_saved();
+            self.editor.buf().mark_saved();
             true
         } else {
             false

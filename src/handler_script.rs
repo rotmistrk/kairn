@@ -176,6 +176,29 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::ClearHighlight => {
             queue.put_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
         }
+        ScriptCommand::SplitVertical { file } => {
+            let req = crate::commands::SplitRequest { vertical: true, file };
+            queue.put_command(CM_SPLIT, Some(Box::new(req)));
+        }
+        ScriptCommand::SplitHorizontal { file } => {
+            let req = crate::commands::SplitRequest { vertical: false, file };
+            queue.put_command(CM_SPLIT, Some(Box::new(req)));
+        }
+        ScriptCommand::SplitClose => {
+            queue.put_command(CM_SPLIT_CLOSE, None);
+        }
+        ScriptCommand::SplitFocus => {
+            queue.put_command(CM_SPLIT_FOCUS, None);
+        }
+        ScriptCommand::SplitOpen { path } => {
+            let req = crate::commands::OpenFileRequest {
+                path: std::path::PathBuf::from(path),
+                line: None,
+                col: None,
+                diff: false,
+            };
+            queue.put_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+        }
     }
 }
 

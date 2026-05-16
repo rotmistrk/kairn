@@ -11,12 +11,15 @@ use crate::views::editor::EditorView;
 /// A split editor view — two EditorViews side by side or stacked.
 pub struct EditorSplit {
     pub split: SplitPane,
+    /// When true, scrolling in one pane scrolls the other.
+    pub linked_scroll: bool,
 }
 
 impl EditorSplit {
     pub fn new(direction: SplitDirection, first: Box<dyn View>, second: Box<dyn View>) -> Self {
         Self {
             split: SplitPane::new(direction, first, second),
+            linked_scroll: false,
         }
     }
 
@@ -54,6 +57,25 @@ impl EditorSplit {
     pub fn take_focused(&mut self) -> Option<Box<dyn View>> {
         let idx = self.split.focused_index();
         Some(self.split.remove_child(idx))
+    }
+
+    /// Sync scroll position from focused pane to the other pane.
+    fn sync_scroll(&mut self) {
+        let focused = self.split.focused_index();
+        let other = 1 - focused;
+        let scroll = self
+            .split
+            .child_mut(focused)
+            .and_then(|v| v.as_any_mut())
+            .and_then(|a| a.downcast_ref::<EditorView>())
+            .map(|ev| ev.editor.viewport_scroll);
+        if let Some(scroll_top) = scroll {
+            if let Some(other_view) = self.split.child_mut(other) {
+                if let Some(ev) = other_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                    ev.editor.viewport_scroll = scroll_top;
+                }
+            }
+        }
     }
 }
 
@@ -105,7 +127,11 @@ impl View for EditorSplit {
                 return HandleResult::Consumed;
             }
         }
-        self.split.handle(event, queue)
+        let result = self.split.handle(event, queue);
+        if self.linked_scroll {
+            self.sync_scroll();
+        }
+        result
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {

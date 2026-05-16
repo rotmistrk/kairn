@@ -24,7 +24,7 @@ impl EditorView {
                 }
             }
             EditorAction::CloseRequested => {
-                if self.editor.buffer.is_dirty() && !self.settings.autosave {
+                if self.editor.buf().is_dirty() && !self.settings.autosave {
                     self.eviction_close = false;
                     let path = self.path.to_string_lossy().to_string();
                     let ctx = crate::commands::ConfirmContext::EditorClose(path);
@@ -35,7 +35,7 @@ impl EditorView {
                     );
                     self.state.mark_dirty();
                 } else {
-                    if self.settings.autosave && self.editor.buffer.is_dirty() {
+                    if self.settings.autosave && self.editor.buf().is_dirty() {
                         self.save_buffer();
                     }
                     let p = self.path.to_string_lossy().to_string();
@@ -44,7 +44,7 @@ impl EditorView {
                 }
             }
             EditorAction::ForceCloseRequested => {
-                self.editor.buffer.mark_saved();
+                self.editor.buf().mark_saved();
                 let p = self.path.to_string_lossy().to_string();
                 queue.put_command(crate::commands::CM_FILE_CLOSED, Some(Box::new(p)));
                 queue.put_command(CM_TAB_CLOSE, None);
@@ -83,6 +83,14 @@ impl EditorView {
                     self.editor.cursor_col as u32,
                 );
                 queue.put_command(crate::commands::CM_LSP_GOTO_DEF, Some(Box::new(data)));
+            }
+            EditorAction::LspGotoShow => {
+                let data = (
+                    self.path.clone(),
+                    self.editor.cursor_line as u32,
+                    self.editor.cursor_col as u32,
+                );
+                queue.put_command(crate::commands::CM_LSP_GOTO_SHOW, Some(Box::new(data)));
             }
             EditorAction::LspFindReferences => {
                 let word = self.editor.word_under_cursor().unwrap_or_default();

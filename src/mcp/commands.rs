@@ -65,6 +65,16 @@ pub enum McpAction {
     SearchProject { pattern: String },
     /// Trigger a build command.
     RunBuild { command: String },
+    /// Create a vertical split (optionally with a file in the new pane).
+    SplitVertical { file: Option<String> },
+    /// Create a horizontal split.
+    SplitHorizontal { file: Option<String> },
+    /// Close split, keep focused pane.
+    SplitClose,
+    /// Switch focus to the other split pane.
+    SplitFocus,
+    /// Open a file in the other split pane.
+    SplitOpen { path: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

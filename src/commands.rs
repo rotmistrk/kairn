@@ -84,6 +84,7 @@ pub const CM_MODE_CHANGED: CommandId = 141;
 pub const CM_CURSOR_MOVED: CommandId = 142;
 pub const CM_DIAGNOSTIC: CommandId = 143;
 pub const CM_LSP_GOTO_DEF: CommandId = 144;
+pub const CM_LSP_GOTO_SHOW: CommandId = 243;
 pub const CM_LSP_FIND_REFS: CommandId = 145;
 pub const CM_LSP_HOVER: CommandId = 146;
 pub const CM_LSP_COMPLETION: CommandId = 147;
@@ -175,6 +176,9 @@ pub const CM_TODO_NOTE_OPEN: CommandId = 230;
 // Split view
 pub const CM_SPLIT: CommandId = 240;
 pub const CM_SPLIT_CLOSE: CommandId = 241;
+pub const CM_OPEN_IN_SPLIT: CommandId = 242;
+pub const CM_SPLIT_FOCUS: CommandId = 243;
+pub const CM_DIFF_SPLIT: CommandId = 244;
 
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]
@@ -183,6 +187,13 @@ pub struct SplitRequest {
     pub vertical: bool,
     /// Optional file to open in the new pane (None = same file).
     pub file: Option<String>,
+}
+
+/// Payload for CM_DIFF_SPLIT — side-by-side diff.
+#[derive(Debug, Clone)]
+pub struct DiffSplitRequest {
+    pub base_content: String,
+    pub base_ref: String,
 }
 
 /// Context collected from the active view each tick.

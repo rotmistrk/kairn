@@ -14,6 +14,28 @@ impl EditorView {
         self.enter_diff(args);
     }
 
+    /// Returns Some(base_content, base_ref) if -y was requested, for the handler to create a split.
+    pub fn try_diff_side_by_side(&mut self, args: &str) -> Option<(String, String)> {
+        let opts = parse_diff_args(args);
+        if !opts.side_by_side {
+            return None;
+        }
+        let rel_path = self
+            .path
+            .strip_prefix(&self.root_dir)
+            .unwrap_or(&self.path)
+            .to_string_lossy()
+            .to_string();
+        match git_file_content(&self.root_dir, &rel_path, &opts.base) {
+            Ok(content) => Some((content, opts.base)),
+            Err(e) => {
+                self.editor.status = format!("diff: {e}");
+                self.state.mark_dirty();
+                None
+            }
+        }
+    }
+
     /// Exit diff mode, restore normal editor.
     pub(super) fn exit_diff(&mut self) {
         self.diff_state = None;
@@ -37,6 +59,9 @@ impl EditorView {
 
     fn enter_diff(&mut self, args: &str) {
         let opts = parse_diff_args(args);
+        if opts.side_by_side {
+            return; // Handled by the view's command handler
+        }
 
         let rel_path = self
             .path
@@ -54,7 +79,7 @@ impl EditorView {
             }
         };
 
-        let current = self.editor.buffer.content();
+        let current = self.editor.buf().content();
         let lines = build_diff_lines(&base_content, &current, &opts);
         let has_changes = lines.iter().any(is_change);
         let base_ref = opts.base.clone();
