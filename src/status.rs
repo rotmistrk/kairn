@@ -11,7 +11,7 @@ use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
-use crate::status_items::{CtxLangItem, CtxModeItem, CtxModifiedItem, CtxPositionItem};
+use crate::status_items::{CtxLangItem, CtxModeItem, CtxModifiedItem, CtxPositionItem, LspStatusItem};
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
@@ -117,6 +117,7 @@ pub fn build_status_bar(
     bar.add(CtxPositionItem::new());
     bar.add(CtxModeItem::new());
     bar.add(CtxLangItem::new());
+    bar.add(LspStatusItem::new());
     bar.add_visible_only(BranchItem::new(root_dir));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar

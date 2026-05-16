@@ -175,3 +175,46 @@ impl VisibleItem for CtxModifiedItem {
         Gravity::Right
     }
 }
+
+/// Displays per-language LSP server state: "rust ✓ go ⟳"
+pub struct LspStatusItem {
+    label: String,
+}
+
+impl Default for LspStatusItem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LspStatusItem {
+    pub fn new() -> Self {
+        Self { label: String::new() }
+    }
+}
+
+impl ActiveItem for LspStatusItem {
+    fn handle(&mut self, event: &Event, _sink: &EventSink) -> HandleResult {
+        if let Event::Command { id, data } = event {
+            if *id == crate::commands::CM_LSP_STATUS_UPDATE {
+                if let Some(snapshot) = data
+                    .as_ref()
+                    .and_then(|d| d.downcast_ref::<Vec<(String, crate::lsp::progress::LspServerState)>>())
+                {
+                    self.label = crate::lsp::progress::format_status_label(snapshot);
+                    return HandleResult::Consumed;
+                }
+            }
+        }
+        HandleResult::Ignored
+    }
+}
+
+impl VisibleItem for LspStatusItem {
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn gravity(&self) -> Gravity {
+        Gravity::Right
+    }
+}

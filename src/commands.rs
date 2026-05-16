@@ -180,6 +180,7 @@ pub const CM_SPLIT_CLOSE: CommandId = 241;
 pub const CM_OPEN_IN_SPLIT: CommandId = 242;
 pub const CM_SPLIT_FOCUS: CommandId = 243;
 pub const CM_DIFF_SPLIT: CommandId = 244;
+pub const CM_LSP_STATUS_UPDATE: CommandId = 245;
 
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]

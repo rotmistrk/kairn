@@ -60,10 +60,14 @@ pub struct AppState {
     pub pending_hooks: Vec<HookTrigger>,
     /// Dynamic command list for completions (shared with completer).
     pub command_list: crate::completer::CommandList,
+    /// Known LSP language IDs for completions (shared with completer).
+    pub lsp_languages: crate::completer::LspLanguageList,
     /// Plugin hot-reload manager.
     pub plugins: crate::scripting::plugins::PluginManager,
     /// Deferred LSP requests waiting for server initialization.
     pub deferred_lsp: Vec<DeferredLspRequest>,
+    /// LSP server status tracker (per-language state for status bar).
+    pub lsp_status: crate::lsp::progress::LspStatusTracker,
     /// Path of the todo item whose note is currently open in the Notes tab.
     pub todo_note_path: Option<Vec<usize>>,
 }
@@ -95,8 +99,10 @@ impl AppState {
             script: ScriptEngine::new(),
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
+            lsp_languages: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
         }
     }
@@ -128,8 +134,10 @@ impl AppState {
             script: ScriptEngine::new(),
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
+            lsp_languages: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
