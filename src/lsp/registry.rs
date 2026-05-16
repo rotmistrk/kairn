@@ -22,6 +22,8 @@ pub struct LspRegistry {
     pub last_error: Option<String>,
     /// Maps initialize request IDs to language IDs so we can send `initialized` on response.
     pub(super) pending_init: HashMap<u64, String>,
+    /// Files to send didOpen for after initialization completes.
+    pub(super) pending_opens: Vec<(String, std::path::PathBuf)>,
 }
 
 impl LspRegistry {
@@ -43,6 +45,7 @@ impl LspRegistry {
             timeouts: HashMap::new(),
             last_error: None,
             pending_init: HashMap::new(),
+            pending_opens: Vec::new(),
         }
     }
 

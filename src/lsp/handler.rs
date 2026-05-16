@@ -100,6 +100,7 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         );
                         // Drop deferred requests for this language
                         state.deferred_lsp.retain(|r| r.language != lang);
+                        state.lsp.pending_opens.retain(|(l, _)| l != &lang);
                     } else {
                         log::info!("LSP initialized for {lang}");
                         state
@@ -108,6 +109,22 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         if let Some(client) = state.lsp.get_client_mut(&lang) {
                             super::protocol::initialized(client);
                         }
+                        // Replay pending didOpen notifications
+                        let mut remaining = Vec::new();
+                        let opens: Vec<_> = state.lsp.pending_opens.drain(..).collect();
+                        for (l, path) in opens {
+                            if l == lang {
+                                if let Some(client) = state.lsp.get_client_mut(&l) {
+                                    let uri = super::protocol::path_to_uri(&path);
+                                    let lid = super::protocol::language_id(&path);
+                                    let text = std::fs::read_to_string(&path).unwrap_or_default();
+                                    super::protocol::did_open(client, &uri, lid, &text);
+                                }
+                            } else {
+                                remaining.push((l, path));
+                            }
+                        }
+                        state.lsp.pending_opens = remaining;
                         sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
