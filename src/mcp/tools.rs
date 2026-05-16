@@ -38,6 +38,7 @@ pub fn handle_tool_call(
         "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
         "split" => tool_split(cmd_queue, args),
         "diff_revert" => super::tools_write::tool_diff_revert(cmd_queue, args),
+        "lsp_control" => super::tools_write::tool_lsp_control(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

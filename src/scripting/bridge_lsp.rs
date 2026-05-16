@@ -34,6 +34,33 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::LspFormat);
                 Ok(TclValue::Str(String::new()))
             }
+            "start" => {
+                let pattern = super::arg_str(args, 1).unwrap_or_else(|_| "*".to_string());
+                push(&cmds, ScriptCommand::LspStart { pattern });
+                Ok(TclValue::Str(String::new()))
+            }
+            "restart" => {
+                let pattern = super::arg_str(args, 1).unwrap_or_else(|_| "*".to_string());
+                push(&cmds, ScriptCommand::LspRestart { pattern });
+                Ok(TclValue::Str(String::new()))
+            }
+            "stop" => {
+                let pattern = super::arg_str(args, 1).unwrap_or_else(|_| "*".to_string());
+                push(&cmds, ScriptCommand::LspStop { pattern });
+                Ok(TclValue::Str(String::new()))
+            }
+            "timeout" => {
+                let pattern = super::arg_str(args, 1)?;
+                let secs = super::arg_str(args, 2).ok().and_then(|s| s.parse::<u64>().ok());
+                push(&cmds, ScriptCommand::LspTimeout { pattern, secs });
+                Ok(TclValue::Str(String::new()))
+            }
+            "args" => {
+                let pattern = super::arg_str(args, 1)?;
+                let command = super::arg_str(args, 2)?;
+                push(&cmds, ScriptCommand::LspArgs { pattern, command });
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("lsp: unknown subcommand '{other}'"))),
         }
     });

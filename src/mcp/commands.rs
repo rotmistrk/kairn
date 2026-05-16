@@ -77,6 +77,8 @@ pub enum McpAction {
     SplitOpen { path: String },
     /// Revert the diff hunk under cursor in the specified tab.
     DiffRevert { name: String },
+    /// LSP control: start/restart/stop/timeout/args.
+    LspControl { command: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

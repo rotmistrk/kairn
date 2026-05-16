@@ -122,3 +122,12 @@ pub fn tool_diff_revert(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
     let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
     queue.send(McpAction::DiffRevert { name: name.to_string() })
 }
+
+pub fn tool_lsp_control(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let action = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
+    let lang = args.get("lang").and_then(Value::as_str).unwrap_or("*");
+    let value = args.get("value").and_then(Value::as_str).unwrap_or("");
+    let command = format!("{action} {lang} {value}").trim().to_string();
+    queue.send(McpAction::LspControl { command })
+}

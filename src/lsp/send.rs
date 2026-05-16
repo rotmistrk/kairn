@@ -55,7 +55,9 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
 
     log::info!("LSP: textDocument/definition at {uri}:{line}:{col}");
     let id = requests::goto_definition(client, &uri, *line, *col);
-    state.lsp_pending.insert(id, PendingKind::GotoDefinition);
+    state
+        .lsp_pending
+        .insert_with_lang(id, PendingKind::GotoDefinition, lang);
 }
 
 pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
@@ -72,7 +74,7 @@ pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::goto_definition(client, &uri, *line, *col);
-    state.lsp_pending.insert(id, PendingKind::GotoShow);
+    state.lsp_pending.insert_with_lang(id, PendingKind::GotoShow, lang);
 }
 
 pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
@@ -147,7 +149,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
 
     log::info!("LSP: textDocument/hover at {uri}:{line}:{col}");
     let id = requests::hover(client, &uri, *line, *col);
-    state.lsp_pending.insert(id, PendingKind::Hover);
+    state.lsp_pending.insert_with_lang(id, PendingKind::Hover, lang);
 }
 
 pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
@@ -174,7 +176,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
 
     log::info!("LSP: textDocument/completion at {uri}:{line}:{col}");
     let id = requests::completion(client, &uri, *line, *col);
-    state.lsp_pending.insert(id, PendingKind::Completion);
+    state.lsp_pending.insert_with_lang(id, PendingKind::Completion, lang);
 }
 
 pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
@@ -200,7 +202,7 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
 
     let (line, col) = state.cursor_pos;
     let id = requests::rename(client, &uri, line, col, new_name);
-    state.lsp_pending.insert(id, PendingKind::Rename);
+    state.lsp_pending.insert_with_lang(id, PendingKind::Rename, &lang);
 }
 
 pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
@@ -219,7 +221,7 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
 
     let (line, col) = state.cursor_pos;
     let id = requests::code_action(client, &uri, line, col);
-    state.lsp_pending.insert(id, PendingKind::CodeAction);
+    state.lsp_pending.insert_with_lang(id, PendingKind::CodeAction, &lang);
 }
 
 pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {
@@ -229,12 +231,13 @@ pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {
     };
     let params = serde_json::json!({ "uri": jdt.uri });
     let id = client.send_request("java/classFileContents", params);
-    state.lsp_pending.insert(
+    state.lsp_pending.insert_with_lang(
         id,
         PendingKind::JdtClassContents {
             line: jdt.line,
             character: jdt.character,
         },
+        "java",
     );
 }
 

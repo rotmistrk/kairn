@@ -111,4 +111,21 @@ pub enum ScriptCommand {
         path: String,
     },
     DiffRevert,
+    LspStart {
+        pattern: String,
+    },
+    LspRestart {
+        pattern: String,
+    },
+    LspStop {
+        pattern: String,
+    },
+    LspTimeout {
+        pattern: String,
+        secs: Option<u64>,
+    },
+    LspArgs {
+        pattern: String,
+        command: String,
+    },
 }

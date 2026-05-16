@@ -18,6 +18,7 @@ pub struct LspRegistry {
     configs: HashMap<String, ServerConfig>,
     active: HashMap<String, LspClient>,
     disabled: Vec<String>,
+    timeouts: HashMap<String, u64>,
     pub last_error: Option<String>,
     /// Maps initialize request IDs to language IDs so we can send `initialized` on response.
     pub(super) pending_init: HashMap<u64, String>,
@@ -39,6 +40,7 @@ impl LspRegistry {
             configs,
             active: HashMap::new(),
             disabled: Vec::new(),
+            timeouts: HashMap::new(),
             last_error: None,
             pending_init: HashMap::new(),
         }
@@ -147,6 +149,52 @@ impl LspRegistry {
         self.active.clear();
     }
 
+    /// Stop a single language server.
+    pub fn stop(&mut self, language_id: &str) -> bool {
+        if let Some(mut client) = self.active.remove(language_id) {
+            client.send_request("shutdown", serde_json::json!(null));
+            client.send_notification("exit", serde_json::json!(null));
+            self.pending_init.retain(|_, lang| lang != language_id);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Stop and re-enable a language (allows get_or_start to spawn again).
+    pub fn restart(&mut self, language_id: &str) {
+        self.stop(language_id);
+        self.disabled.retain(|l| l != language_id);
+    }
+
+    /// Set per-language timeout (seconds). 0 means use global default.
+    pub fn set_timeout(&mut self, language_id: &str, secs: u64) {
+        self.timeouts.insert(language_id.to_string(), secs);
+    }
+
+    /// Get per-language timeout, or None for global default.
+    pub fn timeout(&self, language_id: &str) -> Option<u64> {
+        self.timeouts.get(language_id).copied().filter(|&t| t > 0)
+    }
+
+    /// Return languages matching a glob pattern (e.g. "rust", "type*", "*").
+    pub fn matching_languages(&self, pattern: &str) -> Vec<String> {
+        let all: Vec<&str> = self
+            .configs
+            .keys()
+            .map(|s| s.as_str())
+            .chain(self.active.keys().map(|s| s.as_str()))
+            .collect();
+        let mut matched: Vec<String> = all
+            .into_iter()
+            .filter(|lang| glob_match(pattern, lang))
+            .map(|s| s.to_string())
+            .collect();
+        matched.sort();
+        matched.dedup();
+        matched
+    }
+
     /// List active server languages.
     pub fn active_languages(&self) -> Vec<&str> {
         self.active.keys().map(|s| s.as_str()).collect()
@@ -156,6 +204,20 @@ impl LspRegistry {
     pub fn has_config(&self, language_id: &str) -> bool {
         self.configs.contains_key(language_id)
     }
+}
+
+/// Simple glob matching: supports `*` (any chars) and `?` (single char).
+fn glob_match(pattern: &str, text: &str) -> bool {
+    if pattern == "*" {
+        return true;
+    }
+    if let Some(prefix) = pattern.strip_suffix('*') {
+        return text.starts_with(prefix);
+    }
+    if let Some(suffix) = pattern.strip_prefix('*') {
+        return text.ends_with(suffix);
+    }
+    pattern == text
 }
 
 impl Default for LspRegistry {

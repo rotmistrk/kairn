@@ -73,6 +73,10 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                 Ok(serde_json::json!({"split": "opened"}))
             }
             crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
+            crate::mcp::commands::McpAction::LspControl { command } => {
+                let msg = crate::handler_lsp_cmd::handle_lsp_command(command, state);
+                Ok(serde_json::json!({"result": msg}))
+            }
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel

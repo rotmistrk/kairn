@@ -132,6 +132,13 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
             let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
             ctx.sink.push_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
         }
+        "lsp" if !arg.is_empty() => {
+            let msg = crate::handler_lsp_cmd::handle_lsp_command(arg, state);
+            ctx.sink.push_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(txv_core::message::Message::info("lsp", msg))),
+            );
+        }
         "build" => ctx.sink.push_command(CM_BUILD, None),
         "run" => ctx.sink.push_command(CM_RUN, None),
         "test" => ctx.sink.push_command(CM_TEST, None),

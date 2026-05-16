@@ -151,6 +151,7 @@ fn main() -> anyhow::Result<()> {
         log::warn!("plugin: {w}");
     }
     kairn::completer::refresh_commands(&app_state.command_list, &app_state.script);
+    kairn::handler_lsp_cmd::refresh_lsp_languages(&app_state);
     // Initialize theme
     let theme_mode = match app_state.settings.theme_mode.as_str() {
         "dark" => txv_core::palette::ThemeMode::Dark,
@@ -192,8 +193,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Build status bar
+    let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list.clone());
+    completer.lsp_languages = app_state.lsp_languages.clone();
     let status = build_status_bar(
-        Box::new(AppCompleter::new(root_dir.clone(), app_state.command_list.clone())),
+        Box::new(completer),
         app_state.settings.clock_interval,
         root_dir.clone(),
         &app_state.settings.status_keys,

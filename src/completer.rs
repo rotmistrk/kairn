@@ -24,6 +24,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "help",
     "kiro",
     "log",
+    "lsp",
     "lsp-rename",
     "lsp-status",
     "messages",
@@ -54,6 +55,9 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
 /// Shared command list that can be updated at runtime (e.g. from plugins).
 pub type CommandList = Arc<Mutex<Vec<String>>>;
 
+/// Shared list of known LSP language IDs for completions.
+pub type LspLanguageList = Arc<Mutex<Vec<String>>>;
+
 /// Create a new command list pre-populated with built-in commands.
 pub fn new_command_list() -> CommandList {
     Arc::new(Mutex::new(BUILTIN_COMMANDS.iter().map(|s| s.to_string()).collect()))
@@ -63,11 +67,16 @@ pub fn new_command_list() -> CommandList {
 pub struct AppCompleter {
     root: PathBuf,
     commands: CommandList,
+    pub lsp_languages: LspLanguageList,
 }
 
 impl AppCompleter {
     pub fn new(root: PathBuf, commands: CommandList) -> Self {
-        Self { root, commands }
+        Self {
+            root,
+            commands,
+            lsp_languages: Arc::new(Mutex::new(Vec::new())),
+        }
     }
 }
 
@@ -84,6 +93,10 @@ impl Completer for AppCompleter {
         // Theme sub-commands
         if let Some(sub) = trimmed.strip_prefix("theme ") {
             return complete_theme(sub);
+        }
+        // LSP sub-commands
+        if let Some(sub) = trimmed.strip_prefix("lsp ") {
+            return complete_lsp(sub, &self.lsp_languages);
         }
         // Otherwise complete command names
         let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
@@ -142,6 +155,38 @@ fn complete_theme(sub: &str) -> Vec<Completion> {
 }
 
 /// Complete filesystem paths relative to root dir.
+/// LSP sub-argument completions.
+fn complete_lsp(sub: &str, langs: &LspLanguageList) -> Vec<Completion> {
+    const LSP_SUBS: &[&str] = &["args", "restart", "start", "status", "stop", "timeout"];
+
+    // Check if we're past the subcommand (e.g. "start ru")
+    if let Some((subcmd, partial)) = sub.split_once(' ') {
+        if LSP_SUBS.contains(&subcmd) && subcmd != "status" {
+            let languages = langs.lock().unwrap_or_else(|e| e.into_inner());
+            return languages
+                .iter()
+                .filter(|l| l.starts_with(partial))
+                .map(|l| Completion {
+                    text: format!("lsp {subcmd} {l}"),
+                    display: l.clone(),
+                    kind: "lang",
+                })
+                .collect();
+        }
+        return Vec::new();
+    }
+    // Complete subcommand names
+    LSP_SUBS
+        .iter()
+        .filter(|s| s.starts_with(sub))
+        .map(|s| Completion {
+            text: format!("lsp {s}"),
+            display: s.to_string(),
+            kind: "command",
+        })
+        .collect()
+}
+
 fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
     let (search_dir, prefix, dir_prefix) = if partial.is_empty() {
         (root.to_path_buf(), "", String::new())

@@ -157,5 +157,28 @@ pub fn write_tool_definitions() -> Vec<Value> {
                 "required": ["name"]
             }
         }),
+        json!({
+            "name": "lsp_control",
+            "description": "Control LSP servers: start, restart, stop, set timeout, configure args",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["start", "restart", "stop", "timeout", "args", "status"],
+                        "description": "Action to perform"
+                    },
+                    "lang": {
+                        "type": "string",
+                        "description": "Language glob pattern (e.g. 'rust', 'type*', '*')"
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Value for timeout (seconds) or args (command + args)"
+                    }
+                },
+                "required": ["action"]
+            }
+        }),
     ]
 }

@@ -204,6 +204,19 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::DiffRevert => {
             ctx.sink.push_command(CM_DIFF_REVERT, None);
         }
+        ScriptCommand::LspStart { pattern } => lsp_cmd(ctx, state, &format!("start {pattern}")),
+        ScriptCommand::LspRestart { pattern } => lsp_cmd(ctx, state, &format!("restart {pattern}")),
+        ScriptCommand::LspStop { pattern } => lsp_cmd(ctx, state, &format!("stop {pattern}")),
+        ScriptCommand::LspTimeout { pattern, secs } => {
+            let arg = match secs {
+                Some(s) => format!("timeout {pattern} {s}"),
+                None => format!("timeout {pattern}"),
+            };
+            lsp_cmd(ctx, state, &arg);
+        }
+        ScriptCommand::LspArgs { pattern, command } => {
+            lsp_cmd(ctx, state, &format!("args {pattern} {command}"));
+        }
     }
 }
 
@@ -235,4 +248,12 @@ pub fn fire_hooks_for_event(
             dispatch_script_commands(cmds, ctx, state);
         }
     }
+}
+
+fn lsp_cmd(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let msg = crate::handler_lsp_cmd::handle_lsp_command(arg, state);
+    ctx.sink.push_command(
+        txv_widgets::CM_STATUS_MESSAGE,
+        Some(Box::new(txv_core::message::Message::info("lsp", msg))),
+    );
 }
