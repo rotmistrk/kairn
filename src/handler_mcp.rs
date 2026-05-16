@@ -1,5 +1,6 @@
 //! MCP command drain — dispatches MCP write requests to app state.
 
+use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 use crate::handler::{downcast_desktop, AppState};
@@ -22,9 +23,9 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
     };
     for req in requests {
         let result = match &req.action {
-            crate::mcp::commands::McpAction::OpenFile { path } => mcp_open_file(desktop, state, ctx.queue, path),
+            crate::mcp::commands::McpAction::OpenFile { path } => mcp_open_file(desktop, state, ctx.sink, path),
             crate::mcp::commands::McpAction::CreateFile { path, content } => {
-                mcp_create_file(desktop, state, ctx.queue, path, content)
+                mcp_create_file(desktop, state, ctx.sink, path, content)
             }
             crate::mcp::commands::McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
             crate::mcp::commands::McpAction::EditBuffer {
@@ -32,21 +33,49 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                 start_line,
                 end_line,
                 text,
-            } => mcp_edit_buffer(desktop, name, *start_line, *end_line, text),
+            } => crate::handler_mcp_edit::mcp_edit_buffer(desktop, name, *start_line, *end_line, text),
             crate::mcp::commands::McpAction::InsertText { name, line, col, text } => {
-                mcp_insert_text(desktop, name, *line, *col, text)
+                crate::handler_mcp_edit::mcp_insert_text(desktop, name, *line, *col, text)
             }
             crate::mcp::commands::McpAction::SetCursor { name, line, col } => {
-                mcp_set_cursor(desktop, name, *line, *col)
+                crate::handler_mcp_edit::mcp_set_cursor(desktop, name, *line, *col)
             }
-            crate::mcp::commands::McpAction::SaveFile { name } => mcp_save_file(desktop, name),
-            crate::mcp::commands::McpAction::GetDiagnostics { name } => mcp_get_diagnostics(desktop, name),
+            crate::mcp::commands::McpAction::SaveFile { name } => crate::handler_mcp_edit::mcp_save_file(desktop, name),
+            crate::mcp::commands::McpAction::GetDiagnostics { name } => {
+                crate::handler_mcp_edit::mcp_get_diagnostics(desktop, name)
+            }
             crate::mcp::commands::McpAction::GetBuildErrors => crate::handler_mcp_build::mcp_get_build_errors(state),
             crate::mcp::commands::McpAction::SearchProject { pattern } => {
                 crate::handler_mcp_build::mcp_search_project(state, pattern)
             }
             crate::mcp::commands::McpAction::RunBuild { command } => {
-                crate::handler_mcp_build::mcp_run_build(state, ctx.queue, command)
+                crate::handler_mcp_build::mcp_run_build(state, ctx.sink, command)
+            }
+            crate::mcp::commands::McpAction::SplitVertical { file } => mcp_split(ctx.sink, true, file.clone()),
+            crate::mcp::commands::McpAction::SplitHorizontal { file } => mcp_split(ctx.sink, false, file.clone()),
+            crate::mcp::commands::McpAction::SplitClose => {
+                ctx.sink.push_command(crate::commands::CM_SPLIT_CLOSE, None);
+                Ok(serde_json::json!({"split": "closed"}))
+            }
+            crate::mcp::commands::McpAction::SplitFocus => {
+                ctx.sink.push_command(crate::commands::CM_SPLIT_FOCUS, None);
+                Ok(serde_json::json!({"split": "focus_switched"}))
+            }
+            crate::mcp::commands::McpAction::SplitOpen { path } => {
+                let req = crate::commands::OpenFileRequest {
+                    path: std::path::PathBuf::from(path),
+                    line: None,
+                    col: None,
+                    diff: false,
+                };
+                ctx.sink
+                    .push_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+                Ok(serde_json::json!({"split": "opened"}))
+            }
+            crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
+            crate::mcp::commands::McpAction::LspControl { command } => {
+                let msg = crate::handler_lsp_cmd::handle_lsp_command(command, state);
+                Ok(serde_json::json!({"result": msg}))
             }
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
@@ -67,7 +96,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
 fn mcp_open_file(
     desktop: &mut crate::layout_group::LayoutGroup,
     state: &mut AppState,
-    queue: &mut txv_core::view::EventQueue,
+    sink: &EventSink,
     rel_path: &str,
 ) -> Result<serde_json::Value, String> {
     let path = state.root_dir.join(rel_path);
@@ -91,7 +120,7 @@ fn mcp_open_file(
                     }
                     Err(_) => Box::new(crate::views::editor::EditorView::new_file(&path, defaults)),
                 };
-            crate::handler_evict::try_insert_tab(desktop, state, queue, SlotId::Center, title, view);
+            crate::handler_evict::try_insert_tab(desktop, state, sink, SlotId::Center, title, view);
         }
     }
     Ok(serde_json::json!({"opened": rel_path}))
@@ -100,7 +129,7 @@ fn mcp_open_file(
 fn mcp_create_file(
     desktop: &mut crate::layout_group::LayoutGroup,
     state: &mut AppState,
-    queue: &mut txv_core::view::EventQueue,
+    sink: &EventSink,
     rel_path: &str,
     content: &str,
 ) -> Result<serde_json::Value, String> {
@@ -109,7 +138,7 @@ fn mcp_create_file(
         std::fs::create_dir_all(parent).map_err(|e| format!("Cannot create dirs: {e}"))?;
     }
     std::fs::write(&path, content).map_err(|e| format!("Cannot write file: {e}"))?;
-    mcp_open_file(desktop, state, queue, rel_path)?;
+    mcp_open_file(desktop, state, sink, rel_path)?;
     Ok(serde_json::json!({"created": rel_path}))
 }
 
@@ -126,7 +155,17 @@ fn mcp_close_tab(
     }
 }
 
-/// Find an editor view by tab name in the center panel.
+fn mcp_split(sink: &EventSink, vertical: bool, file: Option<String>) -> Result<serde_json::Value, String> {
+    let req = crate::commands::SplitRequest { vertical, file };
+    sink.push_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+    let dir = if vertical {
+        "vertical"
+    } else {
+        "horizontal"
+    };
+    Ok(serde_json::json!({"split": dir}))
+}
+
 fn find_editor<'a>(
     desktop: &'a mut crate::layout_group::LayoutGroup,
     name: &str,
@@ -144,104 +183,8 @@ fn find_editor<'a>(
     Err(format!("Tab not found: {name}"))
 }
 
-fn mcp_edit_buffer(
-    desktop: &mut crate::layout_group::LayoutGroup,
-    name: &str,
-    start_line: usize,
-    end_line: usize,
-    text: &str,
-) -> Result<serde_json::Value, String> {
+fn mcp_diff_revert(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
-    let buf = &mut editor.editor.buffer;
-    let line_count = buf.line_count();
-    let start = start_line.min(line_count);
-    let end = end_line.min(line_count);
-    if start > end {
-        return Err("start_line > end_line".to_string());
-    }
-    // Delete the range, then insert new text
-    let start_offset = buf.line_col_to_offset(start, 0).unwrap_or(0);
-    let end_offset = if end >= line_count {
-        buf.content().len()
-    } else {
-        buf.line_col_to_offset(end, 0).unwrap_or(buf.content().len())
-    };
-    if end_offset > start_offset {
-        buf.delete(start_offset, end_offset);
-    }
-    if !text.is_empty() {
-        let insert_at = buf.line_col_to_offset(start, 0).unwrap_or(0);
-        buf.insert(insert_at, text);
-    }
-    Ok(serde_json::json!({"edited": name}))
-}
-
-fn mcp_insert_text(
-    desktop: &mut crate::layout_group::LayoutGroup,
-    name: &str,
-    line: usize,
-    col: usize,
-    text: &str,
-) -> Result<serde_json::Value, String> {
-    let editor = find_editor(desktop, name)?;
-    editor.editor.buffer.insert_at(line, col, text);
-    Ok(serde_json::json!({"inserted": text.len()}))
-}
-
-fn mcp_set_cursor(
-    desktop: &mut crate::layout_group::LayoutGroup,
-    name: &str,
-    line: usize,
-    col: usize,
-) -> Result<serde_json::Value, String> {
-    let editor = find_editor(desktop, name)?;
-    editor.goto(line as u32, col as u32);
-    Ok(serde_json::json!({"cursor": {"line": line, "col": col}}))
-}
-
-fn mcp_save_file(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
-    let editor = find_editor(desktop, name)?;
-    editor.save().map_err(|e| format!("Save failed: {e}"))?;
-    Ok(serde_json::json!({"saved": name}))
-}
-
-fn mcp_get_diagnostics(
-    desktop: &mut crate::layout_group::LayoutGroup,
-    name: &str,
-) -> Result<serde_json::Value, String> {
-    let panel = desktop.panel_mut(SlotId::Center);
-    let mut all_diags = Vec::new();
-    for i in 0..panel.tab_count() {
-        let title = panel.tab_title(i).unwrap_or_default().to_string();
-        if !name.is_empty() && title != name {
-            continue;
-        }
-        let Some(view) = panel.view_at_mut(i) else {
-            continue;
-        };
-        let Some(any) = view.as_any_mut() else {
-            continue;
-        };
-        let Some(editor) = any.downcast_ref::<crate::views::editor::EditorView>() else {
-            continue;
-        };
-        if let Some(diags) = &editor.diagnostics {
-            for d in diags {
-                let severity = match d.severity {
-                    crate::lsp::diagnostics::Severity::Error => "error",
-                    crate::lsp::diagnostics::Severity::Warning => "warning",
-                    crate::lsp::diagnostics::Severity::Info => "info",
-                    crate::lsp::diagnostics::Severity::Hint => "hint",
-                };
-                all_diags.push(serde_json::json!({
-                    "file": title,
-                    "line": d.line,
-                    "col": d.col_start,
-                    "severity": severity,
-                    "message": d.message,
-                }));
-            }
-        }
-    }
-    Ok(serde_json::json!({"diagnostics": all_diags}))
+    let msg = editor.revert_hunk()?;
+    Ok(serde_json::json!({"result": msg}))
 }

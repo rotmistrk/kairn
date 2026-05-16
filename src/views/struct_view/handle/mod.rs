@@ -10,7 +10,7 @@ use crate::structured::NodeKind;
 use super::{ColFocus, EditTarget, StructuredView};
 
 /// Handle CM_SAVE command for the structured view.
-pub fn handle_save_command(view: &mut StructuredView, queue: &mut EventQueue) -> HandleResult {
+pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
     match view.save() {
         Ok(()) => {
             let name = view
@@ -19,18 +19,20 @@ pub fn handle_save_command(view: &mut StructuredView, queue: &mut EventQueue) ->
                 .map(|f| f.to_string_lossy().to_string())
                 .unwrap_or_default();
             let msg = txv_core::message::Message::info("struct", format!("Saved: {name}"));
-            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            view.state
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
             let msg = txv_core::message::Message::error("struct", format!("Save failed: {e}"));
-            queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            view.state
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
     HandleResult::Consumed
 }
 
 /// Handle a key event for the structured view.
-pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, queue: &mut EventQueue) -> HandleResult {
+pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
     // Route to inline editor first when active
     if let Some(ref mut editor) = view.editing {
         match editor.handle_key(key) {
@@ -55,7 +57,8 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, queue: &mut 
                     view.save_undo_point();
                     if let Some(err) = view.commit_edit() {
                         let msg = txv_core::message::Message::error("struct", err);
-                        queue.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                        view.state
+                            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                     }
                 }
             }
@@ -210,7 +213,8 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent, queue: &mut 
             HandleResult::Consumed
         }
         KeyCode::Char(':') => {
-            queue.put_command(crate::commands::CM_COMMAND_PREFILL, Some(Box::new(String::new())));
+            view.state
+                .put_command(crate::commands::CM_COMMAND_PREFILL, Some(Box::new(String::new())));
             HandleResult::Consumed
         }
         _ => HandleResult::Ignored,

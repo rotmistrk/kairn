@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::broker::FileBroker;
+use crate::buffer_registry::BufferRegistry;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
@@ -22,6 +23,7 @@ pub struct DeferredLspRequest {
 /// Application state shared across command handler invocations.
 pub struct AppState {
     pub broker: FileBroker,
+    pub buffers: BufferRegistry,
     pub root_dir: PathBuf,
     pub settings: AppSettings,
     pub lsp: LspRegistry,
@@ -36,6 +38,7 @@ pub struct AppState {
     pub kiro_registry: KiroTabRegistry,
     /// LSP document version counters (keyed by file path string).
     pub doc_versions: std::collections::HashMap<String, i64>,
+    pub lsp_opened_files: std::collections::HashSet<String>,
     /// MCP snapshot (updated periodically for MCP server reads).
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     /// MCP command queue for write operations from MCP tools.
@@ -58,10 +61,14 @@ pub struct AppState {
     pub pending_hooks: Vec<HookTrigger>,
     /// Dynamic command list for completions (shared with completer).
     pub command_list: crate::completer::CommandList,
+    /// Known LSP language IDs for completions (shared with completer).
+    pub lsp_languages: crate::completer::LspLanguageList,
     /// Plugin hot-reload manager.
     pub plugins: crate::scripting::plugins::PluginManager,
     /// Deferred LSP requests waiting for server initialization.
     pub deferred_lsp: Vec<DeferredLspRequest>,
+    /// LSP server status tracker (per-language state for status bar).
+    pub lsp_status: crate::lsp::progress::LspStatusTracker,
     /// Path of the todo item whose note is currently open in the Notes tab.
     pub todo_note_path: Option<Vec<usize>>,
 }
@@ -70,6 +77,7 @@ impl AppState {
     pub fn new(root_dir: PathBuf) -> Self {
         Self {
             broker: FileBroker::new(),
+            buffers: BufferRegistry::new(),
             root_dir,
             settings: AppSettings::default(),
             lsp: LspRegistry::new(),
@@ -80,6 +88,7 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            lsp_opened_files: std::collections::HashSet::new(),
             mcp_snapshot: None,
             mcp_commands: None,
             mcp_tick: 0,
@@ -92,8 +101,10 @@ impl AppState {
             script: ScriptEngine::new(),
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
+            lsp_languages: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
         }
     }
@@ -102,6 +113,7 @@ impl AppState {
         let lsp_timeout = settings.lsp_timeout;
         let mut s = Self {
             broker: FileBroker::new(),
+            buffers: BufferRegistry::new(),
             root_dir,
             settings,
             lsp: LspRegistry::new(),
@@ -112,6 +124,7 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            lsp_opened_files: std::collections::HashSet::new(),
             mcp_snapshot: None,
             mcp_commands: None,
             mcp_tick: 0,
@@ -124,8 +137,10 @@ impl AppState {
             script: ScriptEngine::new(),
             pending_hooks: Vec::new(),
             command_list: crate::completer::new_command_list(),
+            lsp_languages: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
             plugins: crate::scripting::plugins::PluginManager::new(),
             deferred_lsp: Vec::new(),
+            lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
         };
         s.lsp_pending.timeout_secs = lsp_timeout;

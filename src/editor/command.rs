@@ -108,6 +108,7 @@ pub enum Command {
 
     // LSP
     GotoDefinition,
+    GotoShow,
     FindReferences,
     Hover,
     LspRename,

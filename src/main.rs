@@ -1,6 +1,7 @@
 //! kairn — TUI IDE entry point.
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use clap::Parser;
 use txv_core::program::Program;
@@ -12,8 +13,12 @@ use kairn::build_desktop::build_desktop;
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
 use kairn::handler::{handle_command, AppState};
+use kairn::message_ring::MessageRing;
 use kairn::session;
 use kairn::status::build_status_bar;
+
+/// Global message ring — allows panic hook to report to the user.
+static PANIC_MESSAGES: OnceLock<Arc<Mutex<MessageRing>>> = OnceLock::new();
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
@@ -46,20 +51,35 @@ struct Cli {
 fn main() -> anyhow::Result<()> {
     // Layer 3: Global panic handler — restore terminal before crashing
     std::panic::set_hook(Box::new(|info| {
-        // Restore terminal state
-        let _ = crossterm::terminal::disable_raw_mode();
-        let _ = crossterm::execute!(
-            std::io::stderr(),
-            crossterm::terminal::LeaveAlternateScreen,
-            crossterm::cursor::Show
-        );
-        // Print panic info
-        eprintln!("\n\x1b[1;31mkairn panicked!\x1b[0m");
-        eprintln!("{info}");
-        if let Some(loc) = info.location() {
-            eprintln!("  at {}:{}:{}", loc.file(), loc.line(), loc.column());
+        let is_main = std::thread::current().name() == Some("main");
+        if is_main {
+            // Restore terminal state only on main thread
+            let _ = crossterm::terminal::disable_raw_mode();
+            let _ = crossterm::execute!(
+                std::io::stderr(),
+                crossterm::terminal::LeaveAlternateScreen,
+                crossterm::cursor::Show
+            );
+            eprintln!("\n\x1b[1;31mkairn panicked!\x1b[0m");
+            eprintln!("{info}");
+            if let Some(loc) = info.location() {
+                eprintln!("  at {}:{}:{}", loc.file(), loc.line(), loc.column());
+            }
+            eprintln!("\nPlease report this bug.");
+        } else {
+            // Background thread panic — report to user via Messages panel
+            log::error!("panic on thread {:?}: {info}", std::thread::current().name());
+            if let Some(ring) = PANIC_MESSAGES.get() {
+                if let Ok(mut r) = ring.lock() {
+                    use txv_core::message::Message;
+                    let msg = format!(
+                        "Background thread crashed: {:?}. File watching may be degraded.",
+                        std::thread::current().name()
+                    );
+                    r.push(Message::error("panic", msg));
+                }
+            }
         }
-        eprintln!("\nPlease report this bug.");
     }));
 
     let cli = Cli::parse();
@@ -122,6 +142,7 @@ fn main() -> anyhow::Result<()> {
     let git_keys = settings.git_keys.clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
     app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
+    let _ = PANIC_MESSAGES.set(app_state.messages.clone());
     // Load Tcl config files (plugins may define new commands)
     app_state.script.load_config(&root_dir);
     app_state.plugins.add_plugin_dir(root_dir.join(".kairn/plugins"));
@@ -130,6 +151,7 @@ fn main() -> anyhow::Result<()> {
         log::warn!("plugin: {w}");
     }
     kairn::completer::refresh_commands(&app_state.command_list, &app_state.script);
+    kairn::handler_lsp_cmd::refresh_lsp_languages(&app_state);
     // Initialize theme
     let theme_mode = match app_state.settings.theme_mode.as_str() {
         "dark" => txv_core::palette::ThemeMode::Dark,
@@ -162,6 +184,10 @@ fn main() -> anyhow::Result<()> {
             &app_state.settings.editor_defaults,
             app_state.current_syntax_theme(),
         );
+        // Register restored tabs with broker
+        for tab in &sess.editor_tabs {
+            app_state.broker.open(&tab.path, kairn::layout_group::SlotId::Center, 0);
+        }
         session::restore_kiro_tabs(
             &mut desktop,
             &sess.kiro_sessions,
@@ -171,8 +197,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Build status bar
+    let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list.clone());
+    completer.lsp_languages = app_state.lsp_languages.clone();
     let status = build_status_bar(
-        Box::new(AppCompleter::new(root_dir.clone(), app_state.command_list.clone())),
+        Box::new(completer),
         app_state.settings.clock_interval,
         root_dir.clone(),
         &app_state.settings.status_keys,

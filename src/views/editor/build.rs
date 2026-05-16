@@ -48,7 +48,40 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
+    }
+
+    pub fn from_arc_buffer(
+        buf: std::sync::Arc<std::sync::Mutex<crate::buffer::piece_table::PieceTable>>,
+        file_path: Option<String>,
+        settings: &EditorSettings,
+        syntax_theme: &str,
+    ) -> Self {
+        let path = file_path.as_deref().map(PathBuf::from).unwrap_or_default();
+        let file_ext = highlight::extension_from_path(&path).to_string();
+        let display_title = path.file_name().and_then(|n| n.to_str()).unwrap_or("split").to_string();
+        let mut view = Self {
+            state: ViewState::default(),
+            editor: Editor::with_arc(buf),
+            path: path.clone(),
+            root_dir: path.parent().unwrap_or(Path::new(".")).to_path_buf(),
+            highlighter: Highlighter::with_theme(syntax_theme),
+            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
+            file_ext,
+            settings: settings.clone(),
+            last_edit_tick: 0,
+            tick_counter: 0,
+            eviction_close: false,
+            display_title,
+            diagnostics: None,
+            blame_state: None,
+            diff_state: None,
+            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
+        };
+        view.apply_settings();
+        view
     }
 
     fn build(editor: Editor, path: &Path, settings: &EditorSettings) -> Self {
@@ -76,6 +109,7 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
     }
 
@@ -104,6 +138,7 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            buffer_id: None,
         }
     }
 
@@ -132,21 +167,21 @@ impl EditorView {
     }
 
     pub fn save(&mut self) -> Result<(), String> {
-        let content = self.editor.buffer.content();
+        let content = self.editor.buf().content();
         crate::editor::save::save_file(&self.path, &content).map_err(|e| e.to_string())?;
-        self.editor.buffer.mark_saved();
+        self.editor.buf().mark_saved();
         Ok(())
     }
 
     pub fn request_close(&mut self) {
-        if self.editor.buffer.is_dirty() && !self.settings.autosave {
+        if self.editor.buf().is_dirty() && !self.settings.autosave {
             self.eviction_close = true;
             self.state.mark_dirty();
         }
     }
 
     pub fn goto(&mut self, line: u32, col: u32) {
-        let max_line = self.editor.buffer.line_count().saturating_sub(1);
+        let max_line = self.editor.buf().line_count().saturating_sub(1);
         self.editor.cursor_line = (line as usize).min(max_line);
         self.editor.cursor_col = col as usize;
         self.ensure_cursor_visible();
@@ -160,7 +195,7 @@ impl EditorView {
         if !self.editor.options.number {
             return 0;
         }
-        let lines = self.editor.buffer.line_count();
+        let lines = self.editor.buf().line_count();
         let digits = if lines == 0 {
             1
         } else {

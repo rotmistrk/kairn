@@ -21,6 +21,7 @@ mod search;
 mod visual;
 
 use std::path::Path;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
 
@@ -44,17 +45,25 @@ pub enum EditorAction {
     SetGlobal(String),
     Diff(String),
     NoDiff,
+    Revert,
     LspGotoDefinition,
+    LspGotoShow,
     LspFindReferences,
     LspHover,
     LspCompletion,
     /// Forward unrecognized : command to app-level M-x dispatch.
     AppCommand(String),
+    /// :split [file] — horizontal split
+    Split(String),
+    /// :vsplit [file] — vertical split
+    Vsplit(String),
+    /// :only — close split
+    Only,
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.
 pub struct Editor {
-    pub buffer: PieceTable,
+    pub buffer: Arc<Mutex<PieceTable>>,
     pub cursor_line: usize,
     pub cursor_col: usize,
     pub mode: EditorMode,
@@ -112,6 +121,10 @@ impl Editor {
     }
 
     fn with_buffer(buffer: PieceTable) -> Self {
+        Self::with_arc(Arc::new(Mutex::new(buffer)))
+    }
+
+    pub fn with_arc(buffer: Arc<Mutex<PieceTable>>) -> Self {
         Self {
             buffer,
             cursor_line: 0,
@@ -136,8 +149,12 @@ impl Editor {
 
 // --- Utility methods ---
 impl Editor {
+    pub fn buf(&self) -> MutexGuard<'_, PieceTable> {
+        self.buffer.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
     pub fn clamp_col(&mut self) {
-        let line_len = self.buffer.line_len(self.cursor_line);
+        let line_len = self.buf().line_len(self.cursor_line);
         let max = if self.mode == EditorMode::Insert {
             line_len
         } else {
@@ -149,7 +166,7 @@ impl Editor {
     }
 
     pub fn clamp_cursor(&mut self) {
-        let max_line = self.buffer.line_count().saturating_sub(1);
+        let max_line = self.buf().line_count().saturating_sub(1);
         if self.cursor_line > max_line {
             self.cursor_line = max_line;
         }
@@ -158,7 +175,7 @@ impl Editor {
 
     /// Get the word under the cursor (alphanumeric + underscore).
     pub fn word_under_cursor(&self) -> Option<String> {
-        let line = self.buffer.line(self.cursor_line)?;
+        let line = self.buf().line(self.cursor_line)?;
         let chars: Vec<char> = line.chars().collect();
         let col = self.cursor_col;
         if col >= chars.len() || !is_word_char(chars[col]) {

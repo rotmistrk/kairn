@@ -41,8 +41,9 @@ fn clean_editor_allows_close() {
     h.run_cycles(1);
     // :q should close (file is clean)
     h.inject_key(KeyCode::Char(':'), KeyMod::default());
-    h.inject_str("q\n");
     h.run_cycles(1);
+    h.inject_str("q\n");
+    h.run_cycles(2);
     // Should show Welcome (center empty after close)
     assert!(h.contains("Welcome") || !h.contains("hello"));
 }

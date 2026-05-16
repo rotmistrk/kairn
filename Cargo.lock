@@ -666,6 +666,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fsevent-sys"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1236,9 +1245,9 @@ dependencies = [
  "similar",
  "syntect",
  "tempfile",
- "txv-core",
- "txv-render",
- "txv-widgets",
+ "txv-core 0.1.0",
+ "txv-render 0.1.0",
+ "txv-widgets 0.1.0",
 ]
 
 [[package]]
@@ -1423,6 +1432,7 @@ checksum = "6205bd8bb1e454ad2e27422015fb5e4f2bcc7e08fa8f27058670d208324a4d2d"
 dependencies = [
  "bitflags 2.11.1",
  "filetime",
+ "fsevent-sys",
  "inotify",
  "kqueue",
  "libc",
@@ -1820,9 +1830,9 @@ dependencies = [
  "ignore",
  "log",
  "rusticle",
- "txv-core",
- "txv-render",
- "txv-widgets",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-widgets 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
 ]
 
 [[package]]
@@ -2238,6 +2248,15 @@ dependencies = [
 [[package]]
 name = "txv-core"
 version = "0.1.0"
+dependencies = [
+ "libc",
+ "log",
+ "unicode-width",
+]
+
+[[package]]
+name = "txv-core"
+version = "0.1.0"
 source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
 dependencies = [
  "libc",
@@ -2248,14 +2267,38 @@ dependencies = [
 [[package]]
 name = "txv-render"
 version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "libc",
+ "log",
+ "txv-core 0.1.0",
+ "unicode-width",
+ "vte",
+]
+
+[[package]]
+name = "txv-render"
+version = "0.1.0"
 source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
 dependencies = [
  "crossterm",
  "libc",
  "log",
- "txv-core",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
  "unicode-width",
  "vte",
+]
+
+[[package]]
+name = "txv-widgets"
+version = "0.1.0"
+dependencies = [
+ "ignore",
+ "libc",
+ "log",
+ "portable-pty",
+ "txv-core 0.1.0",
+ "txv-render 0.1.0",
 ]
 
 [[package]]
@@ -2267,8 +2310,8 @@ dependencies = [
  "libc",
  "log",
  "portable-pty",
- "txv-core",
- "txv-render",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
 ]
 
 [[package]]

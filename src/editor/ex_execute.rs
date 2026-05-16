@@ -25,7 +25,7 @@ impl Editor {
             }
         }
 
-        let total = self.buffer.line_count();
+        let total = self.buf().line_count();
         let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) else {
             return EditorAction::AppCommand(trimmed.to_string());
         };
@@ -33,7 +33,7 @@ impl Editor {
         match ex_cmd {
             ex::ExCommand::Save => EditorAction::SaveRequested,
             ex::ExCommand::Quit => {
-                if self.buffer.is_dirty() {
+                if self.buf().is_dirty() {
                     self.status = "No write since last change (use :q! to override)".to_string();
                     EditorAction::None
                 } else {
@@ -68,10 +68,14 @@ impl Editor {
             }
             ex::ExCommand::Diff(args) => EditorAction::Diff(args),
             ex::ExCommand::NoDiff => EditorAction::NoDiff,
+            ex::ExCommand::Revert => EditorAction::Revert,
             ex::ExCommand::NoHighlight => {
                 self.highlight = None;
                 EditorAction::None
             }
+            ex::ExCommand::Split(arg) => EditorAction::Split(arg),
+            ex::ExCommand::Vsplit(arg) => EditorAction::Vsplit(arg),
+            ex::ExCommand::Only => EditorAction::Only,
             ex::ExCommand::Delete { start, end } => {
                 self.ex_delete(start, end);
                 EditorAction::ContentChanged
@@ -98,51 +102,52 @@ impl Editor {
     }
 
     fn ex_delete(&mut self, start: usize, end: usize) {
-        let total = self.buffer.line_count();
+        let total = self.buf().line_count();
         let end = end.min(total.saturating_sub(1));
-        let start_off = self.buffer.line_col_to_offset(start, 0).unwrap_or(0);
+        let start_off = self.buf().line_col_to_offset(start, 0).unwrap_or(0);
         let end_off = if end + 1 < total {
-            self.buffer.line_col_to_offset(end + 1, 0).unwrap_or(start_off)
+            self.buf().line_col_to_offset(end + 1, 0).unwrap_or(start_off)
         } else {
-            self.buffer.content().len()
+            self.buf().content().len()
         };
         if end_off > start_off {
-            let content = self.buffer.content();
+            let content = self.buf().content();
             self.yank(content[start_off..end_off].to_string());
-            self.buffer.delete(start_off, end_off);
+            self.buf().delete(start_off, end_off);
         }
-        self.cursor_line = start.min(self.buffer.line_count().saturating_sub(1));
+        let target = start.min(self.buf().line_count().saturating_sub(1));
+        self.cursor_line = target;
         self.cursor_col = 0;
         let count = end - start + 1;
         self.status = format!("{count} line(s) deleted");
     }
 
     fn ex_yank(&mut self, start: usize, end: usize) {
-        let total = self.buffer.line_count();
+        let total = self.buf().line_count();
         let end = end.min(total.saturating_sub(1));
-        let start_off = self.buffer.line_col_to_offset(start, 0).unwrap_or(0);
+        let start_off = self.buf().line_col_to_offset(start, 0).unwrap_or(0);
         let end_off = if end + 1 < total {
-            self.buffer.line_col_to_offset(end + 1, 0).unwrap_or(start_off)
+            self.buf().line_col_to_offset(end + 1, 0).unwrap_or(start_off)
         } else {
-            self.buffer.content().len()
+            self.buf().content().len()
         };
-        let content = self.buffer.content();
+        let content = self.buf().content();
         self.yank(content[start_off..end_off].to_string());
         let count = end - start + 1;
         self.status = format!("{count} line(s) yanked");
     }
 
     fn ex_substitute(&mut self, start: usize, end: usize, pattern: &str, replacement: &str, global: bool) {
-        let total = self.buffer.line_count();
+        let total = self.buf().line_count();
         let end = end.min(total.saturating_sub(1));
         let Ok(re) = regex::Regex::new(pattern) else {
             self.status = format!("Invalid regex: {pattern}");
             return;
         };
-        self.buffer.begin_group();
+        self.buf().begin_group();
         let mut count = 0usize;
         for line_idx in (start..=end).rev() {
-            let line = self.buffer.line(line_idx).unwrap_or_default();
+            let line = self.buf().line(line_idx).unwrap_or_default();
             let new_line = if global {
                 re.replace_all(&line, replacement).to_string()
             } else {
@@ -150,25 +155,25 @@ impl Editor {
             };
             if new_line != line {
                 count += 1;
-                let line_start = self.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
+                let line_start = self.buf().line_col_to_offset(line_idx, 0).unwrap_or(0);
                 let line_end = self
-                    .buffer
+                    .buf()
                     .line_col_to_offset(line_idx, line.chars().count())
                     .unwrap_or(line_start);
-                self.buffer.delete(line_start, line_end);
-                self.buffer.insert(line_start, &new_line);
+                self.buf().delete(line_start, line_end);
+                self.buf().insert(line_start, &new_line);
             }
         }
-        self.buffer.end_group();
+        self.buf().end_group();
         self.status = format!("{count} substitution(s)");
     }
 
     fn ex_shell(&mut self, start: usize, end: usize, command: &str) {
-        let total = self.buffer.line_count();
+        let total = self.buf().line_count();
         let end = end.min(total.saturating_sub(1));
         let mut input_lines = Vec::new();
         for i in start..=end {
-            input_lines.push(self.buffer.line(i).unwrap_or_default());
+            input_lines.push(self.buf().line(i).unwrap_or_default());
         }
         let input = input_lines.join("\n");
 
@@ -200,26 +205,26 @@ impl Editor {
             }
         };
 
-        self.buffer.begin_group();
-        let start_off = self.buffer.line_col_to_offset(start, 0).unwrap_or(0);
+        self.buf().begin_group();
+        let start_off = self.buf().line_col_to_offset(start, 0).unwrap_or(0);
         let end_off = if end + 1 < total {
-            self.buffer.line_col_to_offset(end + 1, 0).unwrap_or(start_off)
+            self.buf().line_col_to_offset(end + 1, 0).unwrap_or(start_off)
         } else {
-            self.buffer.content().len()
+            self.buf().content().len()
         };
         if end_off > start_off {
-            self.buffer.delete(start_off, end_off);
+            self.buf().delete(start_off, end_off);
         }
         let trimmed_output = output.trim_end_matches('\n');
         if !trimmed_output.is_empty() {
-            let insert_text = if start_off < self.buffer.content().len() || start_off == 0 {
+            let insert_text = if start_off < self.buf().content().len() || start_off == 0 {
                 format!("{trimmed_output}\n")
             } else {
                 format!("\n{trimmed_output}")
             };
-            self.buffer.insert(start_off, &insert_text);
+            self.buf().insert(start_off, &insert_text);
         }
-        self.buffer.end_group();
+        self.buf().end_group();
         self.cursor_line = start;
         self.cursor_col = 0;
     }

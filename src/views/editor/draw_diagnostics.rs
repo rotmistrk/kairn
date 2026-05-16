@@ -7,32 +7,41 @@ use crate::lsp::diagnostics::{Diagnostic, Severity};
 use super::EditorView;
 
 impl EditorView {
-    /// Overlay diagnostic underlines on the surface for visible lines.
-    pub(super) fn draw_diagnostics(&self, surface: &mut Surface) {
+    /// Overlay diagnostic underlines on the buffer for visible lines.
+    pub(super) fn draw_diagnostics(&mut self) {
         let diagnostics = match &self.diagnostics {
             Some(diags) => diags,
             None => return,
         };
-        let b = self.state.bounds();
+        let w = self.state.buf.width();
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
-        let visible_lines = b.h as usize;
+        let visible_lines = self.state.buf.height() as usize;
+
+        // Collect overlay operations to avoid borrow issues
+        struct Overlay {
+            x: u16,
+            y: u16,
+            ch: char,
+            style: Style,
+        }
+        let mut overlays = Vec::new();
 
         for diag in diagnostics {
             if diag.line < scroll || diag.line >= scroll + visible_lines {
                 continue;
             }
             let row = (diag.line - scroll) as u16;
-            let y = b.y + row;
-            let text_x = b.x + gutter_w;
+            let y = row;
+            let text_x = gutter_w;
             let style = diag_style(diag.severity);
 
             let start = text_x + diag.col_start as u16;
             let end = text_x + diag.col_end as u16;
-            let max_x = b.x + b.w;
+            let max_x = w;
 
             for x in start..end.min(max_x) {
-                let cell = surface.cell(x, y);
+                let cell = self.state.buf.cell(x, y);
                 let merged = Style {
                     fg: style.fg,
                     bg: cell.style.bg,
@@ -41,8 +50,17 @@ impl EditorView {
                         ..cell.style.attrs
                     },
                 };
-                surface.put(x, y, cell.ch, merged);
+                overlays.push(Overlay {
+                    x,
+                    y,
+                    ch: cell.ch,
+                    style: merged,
+                });
             }
+        }
+
+        for ov in overlays {
+            self.state.buf.put(ov.x, ov.y, ov.ch, ov.style);
         }
     }
 

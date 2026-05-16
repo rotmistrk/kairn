@@ -19,7 +19,8 @@ pub fn initialize(client: &mut LspClient, root_uri: &str) -> u64 {
                 "definition": { "dynamicRegistration": false },
                 "references": { "dynamicRegistration": false },
                 "publishDiagnostics": { "relatedInformation": false }
-            }
+            },
+            "window": { "workDoneProgress": true }
         }
     });
     client.send_request("initialize", params)
@@ -27,6 +28,7 @@ pub fn initialize(client: &mut LspClient, root_uri: &str) -> u64 {
 
 /// Send the `initialized` notification (after receiving initialize response).
 pub fn initialized(client: &mut LspClient) {
+    log::info!("Sending initialized notification to server");
     client.send_notification("initialized", json!({}));
 }
 

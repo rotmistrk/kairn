@@ -26,12 +26,23 @@ impl LspClient {
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .ok()?;
 
         let stdin = child.stdin.take()?;
         let stdout = child.stdout.take()?;
+
+        // Log stderr in background
+        if let Some(stderr) = child.stderr.take() {
+            let cmd_name = cmd.to_string();
+            thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().map_while(Result::ok) {
+                    log::warn!("LSP stderr [{cmd_name}]: {line}");
+                }
+            });
+        }
 
         let write_tx = Self::start_writer(stdin);
         let msg_rx = Self::start_reader(stdout);
@@ -59,9 +70,17 @@ impl LspClient {
 
     /// Send a notification (no response expected).
     pub fn send_notification(&mut self, method: &str, params: Value) {
+        log::debug!("LSP send notification: {method}");
         let data = messages::encode_notification(method, params);
         if self.write_tx.send(data).is_err() {
             log::error!("LSP send_notification failed: server connection lost");
+            self.dead = true;
+        }
+    }
+
+    /// Send pre-encoded data (for responding to server requests).
+    pub fn send_raw(&mut self, data: Vec<u8>) {
+        if self.write_tx.send(data).is_err() {
             self.dead = true;
         }
     }
@@ -72,10 +91,22 @@ impl LspClient {
     }
 
     /// Poll for incoming messages (non-blocking). Returns all available.
-    pub fn poll(&self) -> Vec<LspMessage> {
+    pub fn poll(&mut self) -> Vec<LspMessage> {
         let mut msgs = Vec::new();
-        while let Ok(msg) = self.msg_rx.try_recv() {
-            msgs.push(msg);
+        loop {
+            match self.msg_rx.try_recv() {
+                Ok(msg) => msgs.push(msg),
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.dead = true;
+                    match self.child.try_wait() {
+                        Ok(Some(status)) => log::error!("LSP process exited: {status}"),
+                        Ok(None) => log::error!("LSP process stdout closed but still running"),
+                        Err(e) => log::error!("LSP process wait error: {e}"),
+                    }
+                    break;
+                }
+            }
         }
         msgs
     }
@@ -85,12 +116,15 @@ impl LspClient {
         thread::spawn(move || {
             while let Ok(data) = rx.recv() {
                 if stdin.write_all(&data).is_err() {
+                    log::error!("LSP writer: write_all failed");
                     break;
                 }
                 if stdin.flush().is_err() {
+                    log::error!("LSP writer: flush failed");
                     break;
                 }
             }
+            log::debug!("LSP writer thread exiting");
         });
         tx
     }
@@ -99,9 +133,11 @@ impl LspClient {
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
-            while let Some(msg) = read_message(&mut reader) {
-                if tx.send(msg).is_err() {
-                    break;
+            while let Some(json) = read_message_json(&mut reader) {
+                if let Some(msg) = messages::parse_message(&json) {
+                    if tx.send(msg).is_err() {
+                        break;
+                    }
                 }
             }
         });
@@ -109,8 +145,8 @@ impl LspClient {
     }
 }
 
-/// Read one LSP message from a buffered reader (Content-Length framing).
-fn read_message(reader: &mut BufReader<std::process::ChildStdout>) -> Option<LspMessage> {
+/// Read one LSP JSON message from a buffered reader (Content-Length framing).
+fn read_message_json(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Value> {
     let mut content_length: usize = 0;
     loop {
         let mut line = String::new();
@@ -151,7 +187,7 @@ fn read_message(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Lsp
             return None;
         }
     };
-    messages::parse_message(&json)
+    Some(json)
 }
 
 #[cfg(test)]
@@ -179,7 +215,7 @@ mod tests {
     #[test]
     fn poll_empty_when_no_response() {
         let client = LspClient::spawn("cat", &[]);
-        if let Some(c) = client {
+        if let Some(mut c) = client {
             let msgs = c.poll();
             assert!(msgs.is_empty());
         }

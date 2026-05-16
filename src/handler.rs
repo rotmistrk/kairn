@@ -32,7 +32,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // LSP: send didOpen on file open
     crate::lsp::handler::handle_lsp_command(ctx, state);
     // LSP: poll servers for notifications
-    crate::lsp::handler::poll_lsp(state, ctx.queue);
+    crate::lsp::handler::poll_lsp(state, ctx.sink);
 
     // Drain background tasks (grep, build)
     crate::handler_drain::drain_grep(ctx, state);
@@ -78,7 +78,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
-                        ctx.queue,
+                        ctx.sink,
                         SlotId::Center,
                         "Help".into(),
                         Box::new(help),
@@ -95,7 +95,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
-                        ctx.queue,
+                        ctx.sink,
                         SlotId::Right,
                         "Messages".into(),
                         Box::new(messages),
@@ -108,8 +108,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, name.clone(), term);
-                ctx.queue.put_command(
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, name.clone(), term);
+                ctx.sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("shell", format!("Started: {name}")))),
                 );
@@ -120,6 +120,10 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
                 if let Some(path) = boxed.downcast_ref::<String>() {
                     state.broker.close(path);
                     state.kiro_registry.remove(path);
+                    let full = state.root_dir.join(path);
+                    if let Some(id) = state.buffers.find_by_path(&full.canonicalize().unwrap_or(full)) {
+                        state.buffers.release(id);
+                    }
                 }
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
@@ -150,7 +154,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_GIT_UNTRACK => crate::handler_git::handle_git_untrack(ctx, state),
         CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
-        CM_DIFF => {} // Handled by the focused editor view directly
+        CM_SPLIT => crate::handler_split::handle_split(ctx, state),
+        CM_SPLIT_CLOSE => crate::handler_split::handle_split_close(ctx, state),
+        CM_OPEN_IN_SPLIT => crate::handler_split::handle_open_in_split(ctx, state),
+        CM_SPLIT_FOCUS => crate::handler_split::handle_split_focus(ctx),
+        CM_DIFF_SPLIT => crate::handler_split::handle_diff_split(ctx, state),
         CM_TOGGLE_THEME => {
             let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
             if let Some(ref ts) = state.theme_state {
@@ -248,12 +256,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         | CM_WORD_COMPLETED => {
             crate::handler_script::handle_script_command(ctx, state);
         }
-        CM_SAVE => {
-            crate::handler_drain::sync_todo_note(state);
-        }
-        CM_TODO_NOTE_OPEN => {
-            crate::handler_drain::open_todo_note(ctx, state);
-        }
+        CM_SAVE => crate::handler_drain::sync_todo_note(state),
+        CM_TODO_NOTE_OPEN => crate::handler_drain::open_todo_note(ctx, state),
         _ => {}
     }
 }

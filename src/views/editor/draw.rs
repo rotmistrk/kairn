@@ -6,14 +6,15 @@ use super::{draw_style::char_style, EditorView};
 use crate::highlight::HlSpan;
 
 impl EditorView {
-    pub(super) fn draw_editor(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    pub(super) fn draw_editor(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
 
         if self.in_diff_mode() {
-            self.draw_diff(surface);
+            self.draw_diff();
             return;
         }
 
@@ -33,7 +34,7 @@ impl EditorView {
 
         let scroll = self.editor.viewport_scroll;
         let visual_range = self.editor.visual_range();
-        let avail = b.w.saturating_sub(gutter_w) as usize;
+        let avail = w.saturating_sub(gutter_w) as usize;
         let wrap = self.editor.options.wrap;
         let tab_width = self.editor.options.tab_width;
         let highlight = self.editor.highlight.as_ref();
@@ -42,45 +43,53 @@ impl EditorView {
         let mut line_idx = scroll;
 
         // Pre-compute highlighted spans for the visible viewport using cached state.
-        let viewport_end = (scroll + b.h as usize).min(self.editor.buffer.line_count());
+        let total_lines = self.editor.buf().line_count();
+        let viewport_end = (scroll + h as usize).min(total_lines);
         let viewport_spans = {
             let mut cache = self.hl_cache.borrow_mut();
             cache.highlight_viewport(
                 scroll,
                 viewport_end,
-                self.editor.buffer.line_count(),
-                |i| self.editor.buffer.line(i).unwrap_or_default(),
+                total_lines,
+                |i| self.editor.buf().line(i).unwrap_or_default(),
                 self.highlighter.syntax_set(),
                 self.highlighter.theme(),
             )
         };
 
         // Matchparen: find matching bracket for cursor position.
-        let matchparen_pos = if self.editor.options.matchparen {
-            crate::editor::motions::match_bracket(&self.editor.buffer, self.editor.cursor_line, self.editor.cursor_col)
-        } else {
-            None
-        };
+        let matchparen_pos = self
+            .editor
+            .options
+            .matchparen
+            .then(|| {
+                crate::editor::motions::match_bracket(
+                    &self.editor.buf(),
+                    self.editor.cursor_line,
+                    self.editor.cursor_col,
+                )
+            })
+            .flatten();
         let matchparen_style = app.editor.matchparen;
         let rainbow_map = if self.editor.options.rainbow {
-            super::draw_style::rainbow_brackets(&self.editor.buffer.line(self.editor.cursor_line).unwrap_or_default())
+            super::draw_style::rainbow_brackets(&self.editor.buf().line(self.editor.cursor_line).unwrap_or_default())
         } else {
             Vec::new()
         };
 
-        while row < b.h as usize && line_idx < self.editor.buffer.line_count() {
-            let y = b.y + row as u16;
-            let text_x = b.x + gutter_w;
+        while row < h as usize && line_idx < viewport_end {
+            let y = row as u16;
+            let text_x = gutter_w;
 
             // --- Gutter ---
             if gutter_w > 0 {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                surface.print(b.x, y, &num, gutter_style);
+                self.state.buf.print(0, y, &num, gutter_style);
             }
 
             // --- Line content: write char-by-char, then pad to full width ---
-            let line = self.editor.buffer.line(line_idx).unwrap_or_default();
-            let line_start_off = self.editor.buffer.line_col_to_offset(line_idx, 0).unwrap_or(0);
+            let line = self.editor.buf().line(line_idx).unwrap_or_default();
+            let line_start_off = self.editor.buf().line_col_to_offset(line_idx, 0).unwrap_or(0);
             let default_spans;
             let spans: &[HlSpan] = match viewport_spans.get(line_idx - scroll) {
                 Some(s) => s,
@@ -108,11 +117,11 @@ impl EditorView {
                             hl_other_bg,
                         );
                         for ti in 0..tab_width {
-                            if col_offset >= avail || visual_row >= b.h as usize {
+                            if col_offset >= avail || visual_row >= h as usize {
                                 break;
                             }
                             let x = text_x + col_offset as u16;
-                            let vy = b.y + visual_row as u16;
+                            let vy = visual_row as u16;
                             if self.editor.options.list {
                                 let ls = app.editor.list_chars.resolve(&st);
                                 let c = if ti == tab_width - 1 {
@@ -120,9 +129,9 @@ impl EditorView {
                                 } else {
                                     '\u{2500}'
                                 };
-                                surface.put(x, vy, c, ls);
+                                self.state.buf.put(x, vy, c, ls);
                             } else {
-                                surface.put(x, vy, ' ', st);
+                                self.state.buf.put(x, vy, ' ', st);
                             }
                             col_offset += 1;
                         }
@@ -133,18 +142,18 @@ impl EditorView {
 
                     if wrap {
                         if col_offset >= avail {
-                            let vy = b.y + visual_row as u16;
+                            let vy = visual_row as u16;
                             for pad_col in col_offset..avail {
-                                surface.put(text_x + pad_col as u16, vy, ' ', normal);
+                                self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
                             }
                             col_offset = 0;
                             visual_row += 1;
-                            if visual_row >= b.h as usize {
+                            if visual_row >= h as usize {
                                 break;
                             }
                             if gutter_w > 0 {
-                                let wy = b.y + visual_row as u16;
-                                surface.print_line(b.x, wy, "", gutter_w, gutter_style);
+                                let wy = visual_row as u16;
+                                self.state.buf.print_line(0, wy, "", gutter_w, gutter_style);
                             }
                         }
                     } else if col_offset >= avail {
@@ -153,7 +162,7 @@ impl EditorView {
                         continue;
                     }
 
-                    if visual_row >= b.h as usize {
+                    if visual_row >= h as usize {
                         break;
                     }
                     let x = text_x + col_offset as u16;
@@ -177,7 +186,7 @@ impl EditorView {
                         (ch, style)
                     };
 
-                    let vy = b.y + visual_row as u16;
+                    let vy = visual_row as u16;
                     let display_style = super::draw_style::bracket_overlay(
                         display_style,
                         line_idx,
@@ -187,33 +196,41 @@ impl EditorView {
                         &matchparen_style,
                         &rainbow_map,
                     );
-                    surface.put(x, vy, display_ch, display_style);
+                    self.state.buf.put(x, vy, display_ch, display_style);
                     col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
                 }
-                if visual_row >= b.h as usize {
+                if visual_row >= h as usize {
                     break;
                 }
             }
 
             // End-of-line marker in list mode
-            if self.editor.options.list && col_offset < avail && visual_row < b.h as usize {
+            if self.editor.options.list && col_offset < avail && visual_row < h as usize {
                 let list_style = app.editor.list_chars.to_style();
-                let vy = b.y + visual_row as u16;
+                let vy = visual_row as u16;
                 let x = text_x + col_offset as u16;
-                surface.put(x, vy, '$', list_style);
+                self.state.buf.put(x, vy, '$', list_style);
                 col_offset += 1;
             }
 
             // --- PAD remainder + indent guides ---
-            if visual_row < b.h as usize {
-                let vy = b.y + visual_row as u16;
+            if visual_row < h as usize {
+                let vy = visual_row as u16;
                 for pad_col in col_offset..avail {
-                    surface.put(text_x + pad_col as u16, vy, ' ', normal);
+                    self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
                 }
                 if self.editor.options.guides {
-                    super::draw_style::draw_indent_guides(surface, &line, text_x, vy, tab_width, avail, gutter_style);
+                    super::draw_style::draw_indent_guides(
+                        &mut self.state.buf,
+                        &line,
+                        text_x,
+                        vy,
+                        tab_width,
+                        avail,
+                        gutter_style,
+                    );
                 }
             }
 
@@ -222,18 +239,18 @@ impl EditorView {
                 let cursor_visual_col = if self.editor.cursor_col >= char_idx {
                     col_offset
                 } else {
-                    let line_ref = self.editor.buffer.line(line_idx).unwrap_or_default();
+                    let line_ref = self.editor.buf().line(line_idx).unwrap_or_default();
                     let positions = visual_positions(&line_ref, tab_width);
                     positions
                         .get(self.editor.cursor_col)
                         .map(|(vcol, _, _)| *vcol as usize)
                         .unwrap_or(col_offset)
                 };
-                if visual_row < b.h as usize && cursor_visual_col < avail {
+                if visual_row < h as usize && cursor_visual_col < avail {
                     let cx = text_x + cursor_visual_col as u16;
-                    let cy = b.y + visual_row as u16;
-                    let under = surface.cell(cx, cy).ch;
-                    surface.put(cx, cy, under, cursor_style);
+                    let cy = visual_row as u16;
+                    let under = self.state.buf.cell(cx, cy).ch;
+                    self.state.buf.put(cx, cy, under, cursor_style);
                 }
             }
 
@@ -241,34 +258,7 @@ impl EditorView {
             line_idx += 1;
         }
 
-        // Fill remaining rows with ~ (full-width)
-        while row < b.h as usize {
-            let y = b.y + row as u16;
-            let mut tilde = String::with_capacity(b.w as usize);
-            tilde.push('~');
-            surface.print_line(b.x, y, &tilde, b.w, gutter_style);
-            row += 1;
-        }
-
-        // Command/search prompt (full-width)
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
-        {
-            let prompt_y = b.y + b.h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
-            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
-                "/"
-            } else {
-                ":"
-            };
-            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
-            surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
-        }
+        // Fill remaining rows + prompt
+        self.draw_footer(row, gutter_style);
     }
 }

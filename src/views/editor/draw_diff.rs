@@ -6,15 +6,16 @@ use super::diff_model::DiffLine;
 use super::EditorView;
 
 impl EditorView {
-    pub(super) fn draw_diff(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
+    pub(super) fn draw_diff(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
         let ds = match &self.diff_state {
             Some(ds) => ds,
             None => return,
         };
 
         let max_base = self.max_base_line(ds);
-        let max_buf = self.editor.buffer.line_count();
+        let max_buf = self.editor.buf().line_count();
         let dw = digit_width(max_base.max(max_buf));
         // Two gutter columns: "NNN NNN " (dw + space + dw + space)
         let gutter_w = if self.editor.options.number {
@@ -22,8 +23,8 @@ impl EditorView {
         } else {
             0
         };
-        let text_x = b.x + gutter_w;
-        let avail = b.w.saturating_sub(gutter_w) as usize;
+        let text_x = gutter_w;
+        let avail = w.saturating_sub(gutter_w) as usize;
 
         let app = crate::app_palette::app_palette();
         let pal = txv_core::palette::palette();
@@ -37,60 +38,114 @@ impl EditorView {
             pal.interactive.cursor_unfocused.to_style()
         };
 
-        let height = b.h as usize;
+        let height = h as usize;
         let scroll = ds.scroll;
+        let ds_cursor = ds.cursor;
+        let ds_lines_len = ds.lines.len();
 
-        for row in 0..height {
-            let vi = scroll + row; // virtual line index
-            let y = b.y + row as u16;
+        // Collect draw commands to avoid borrow issues with self.diff_state
+        struct DrawCmd {
+            kind: DrawKind,
+            row: u16,
+            is_cursor: bool,
+        }
+        enum DrawKind {
+            Empty,
+            Context { buf_line: usize, base_line: usize },
+            Added { buf_line: usize },
+            Deleted { text: String, base_line: usize },
+            Folded { count: usize },
+        }
 
-            if vi >= ds.lines.len() {
-                // Fill with ~
-                surface.print_line(b.x, y, "~", b.w, context_style);
-                continue;
-            }
+        let cmds: Vec<DrawCmd> = (0..height)
+            .map(|row| {
+                let vi = scroll + row;
+                let y = row as u16;
+                if vi >= ds_lines_len {
+                    return DrawCmd {
+                        kind: DrawKind::Empty,
+                        row: y,
+                        is_cursor: false,
+                    };
+                }
+                let is_cursor = vi == ds_cursor && self.state.is_focused();
+                let Some(ds) = self.diff_state.as_ref() else {
+                    return DrawCmd {
+                        kind: DrawKind::Empty,
+                        row: y,
+                        is_cursor: false,
+                    };
+                };
+                let Some(line) = ds.lines.get(vi) else {
+                    return DrawCmd {
+                        kind: DrawKind::Empty,
+                        row: y,
+                        is_cursor: false,
+                    };
+                };
+                let kind = match line {
+                    DiffLine::Context { buf_line, base_line } => DrawKind::Context {
+                        buf_line: *buf_line,
+                        base_line: *base_line,
+                    },
+                    DiffLine::Added { buf_line } => DrawKind::Added { buf_line: *buf_line },
+                    DiffLine::Deleted { text, base_line } => DrawKind::Deleted {
+                        text: text.clone(),
+                        base_line: *base_line,
+                    },
+                    DiffLine::Folded { count } => DrawKind::Folded { count: *count },
+                };
+                DrawCmd {
+                    kind,
+                    row: y,
+                    is_cursor,
+                }
+            })
+            .collect();
 
-            let is_cursor = vi == ds.cursor && self.state.is_focused();
-            let line = &ds.lines[vi];
-
-            match line {
-                DiffLine::Context { buf_line, base_line } => {
-                    self.draw_diff_gutter(surface, b.x, y, dw, Some(*base_line), Some(*buf_line));
-                    let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
-                    let st = if is_cursor {
+        for cmd in &cmds {
+            let y = cmd.row;
+            match &cmd.kind {
+                DrawKind::Empty => {
+                    self.state.buf.print_line(0, y, "~", w, context_style);
+                }
+                DrawKind::Context { buf_line, base_line } => {
+                    self.draw_diff_gutter(0, y, dw, Some(*base_line), Some(*buf_line));
+                    let text = self.editor.buf().line(*buf_line).unwrap_or_default();
+                    let st = if cmd.is_cursor {
                         cursor_style
                     } else {
                         context_style
                     };
-                    self.draw_diff_text(surface, text_x, y, avail, &text, st);
+                    self.draw_diff_text(text_x, y, avail, &text, st);
                 }
-                DiffLine::Added { buf_line } => {
-                    self.draw_diff_gutter(surface, b.x, y, dw, None, Some(*buf_line));
-                    let text = self.editor.buffer.line(*buf_line).unwrap_or_default();
-                    let st = if is_cursor {
+                DrawKind::Added { buf_line } => {
+                    self.draw_diff_gutter(0, y, dw, None, Some(*buf_line));
+                    let text = self.editor.buf().line(*buf_line).unwrap_or_default();
+                    let st = if cmd.is_cursor {
                         cursor_style
                     } else {
                         added_style
                     };
-                    self.draw_diff_text(surface, text_x, y, avail, &text, st);
+                    self.draw_diff_text(text_x, y, avail, &text, st);
                 }
-                DiffLine::Deleted { text, base_line } => {
-                    self.draw_diff_gutter(surface, b.x, y, dw, Some(*base_line), None);
-                    let st = if is_cursor {
+                DrawKind::Deleted { text, base_line } => {
+                    self.draw_diff_gutter(0, y, dw, Some(*base_line), None);
+                    let st = if cmd.is_cursor {
                         cursor_style
                     } else {
                         deleted_style
                     };
-                    self.draw_diff_text(surface, text_x, y, avail, text, st);
+                    self.draw_diff_text(text_x, y, avail, text, st);
                 }
-                DiffLine::Folded { count } => {
+                DrawKind::Folded { count } => {
                     let label = format!("--- {} lines ---", count);
-                    let st = if is_cursor {
+                    let st = if cmd.is_cursor {
                         cursor_style
                     } else {
                         fold_style
                     };
-                    surface.print_line(b.x, y, &label, b.w, st);
+                    self.state.buf.print_line(0, y, &label, w, st);
                 }
             }
         }
@@ -99,7 +154,7 @@ impl EditorView {
         if self.editor.mode == crate::editor::keymap::EditorMode::Command
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
-            let prompt_y = b.y + b.h.saturating_sub(1);
+            let prompt_y = h.saturating_sub(1);
             let prompt_style = Style {
                 attrs: Attrs {
                     reverse: true,
@@ -113,19 +168,11 @@ impl EditorView {
                 ":"
             };
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
-            surface.print_line(b.x, prompt_y, &prompt_text, b.w, prompt_style);
+            self.state.buf.print_line(0, prompt_y, &prompt_text, w, prompt_style);
         }
     }
 
-    fn draw_diff_gutter(
-        &self,
-        surface: &mut Surface,
-        x: u16,
-        y: u16,
-        dw: usize,
-        base_line: Option<usize>,
-        buf_line: Option<usize>,
-    ) {
+    fn draw_diff_gutter(&mut self, x: u16, y: u16, dw: usize, base_line: Option<usize>, buf_line: Option<usize>) {
         if !self.editor.options.number {
             return;
         }
@@ -139,10 +186,10 @@ impl EditorView {
             None => " ".repeat(dw),
         };
         let gutter = format!("{} {} ", left, right);
-        surface.print(x, y, &gutter, gs);
+        self.state.buf.print(x, y, &gutter, gs);
     }
 
-    fn draw_diff_text(&self, surface: &mut Surface, x: u16, y: u16, avail: usize, text: &str, style: Style) {
+    fn draw_diff_text(&mut self, x: u16, y: u16, avail: usize, text: &str, style: Style) {
         use txv_core::text::display_char_width;
         let tab_w = self.editor.options.tab_width;
         let mut col = 0usize;
@@ -156,17 +203,17 @@ impl EditorView {
                     if col >= avail {
                         break;
                     }
-                    surface.put(x + col as u16, y, ' ', style);
+                    self.state.buf.put(x + col as u16, y, ' ', style);
                     col += 1;
                 }
             } else {
-                surface.put(x + col as u16, y, ch, style);
+                self.state.buf.put(x + col as u16, y, ch, style);
                 col += display_char_width(ch) as usize;
             }
         }
         // Pad remainder
         while col < avail {
-            surface.put(x + col as u16, y, ' ', style);
+            self.state.buf.put(x + col as u16, y, ' ', style);
             col += 1;
         }
     }

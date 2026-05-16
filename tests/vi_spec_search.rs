@@ -63,9 +63,9 @@ fn search_word_backward() {
 fn dot_repeats_last_edit() {
     let mut ed = Editor::from_text("aaa\nbbb\nccc");
     ed.execute(Command::DeleteLine);
-    assert_eq!(ed.buffer.line(0).unwrap(), "bbb");
+    assert_eq!(ed.buf().line(0).unwrap(), "bbb");
     ed.execute(Command::DotRepeat);
-    assert_eq!(ed.buffer.line(0).unwrap(), "ccc");
+    assert_eq!(ed.buf().line(0).unwrap(), "ccc");
 }
 
 // === Substitute ===
@@ -75,7 +75,7 @@ fn s_substitutes_char() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::Substitute);
     assert_eq!(ed.mode, EditorMode::Insert);
-    assert_eq!(ed.buffer.content(), "ello");
+    assert_eq!(ed.buf().content(), "ello");
 }
 
 #[test]
@@ -84,9 +84,7 @@ fn big_s_substitutes_line() {
     ed.execute(Command::SubstituteLine);
     assert_eq!(ed.mode, EditorMode::Insert);
     // Line content cleared, newline preserved
-    assert!(
-        ed.buffer.content().starts_with('\n') || ed.buffer.content() == "world" || ed.buffer.content() == "\nworld"
-    );
+    assert!(ed.buf().content().starts_with('\n') || ed.buf().content() == "world" || ed.buf().content() == "\nworld");
 }
 
 // === Toggle case ===
@@ -95,7 +93,7 @@ fn big_s_substitutes_line() {
 fn tilde_toggles_case() {
     let mut ed = Editor::from_text("Hello");
     ed.execute(Command::ToggleCase);
-    assert_eq!(ed.buffer.line(0).unwrap().chars().next(), Some('h'));
+    assert_eq!(ed.buf().line(0).unwrap().chars().next(), Some('h'));
 }
 
 // === Replace char ===
@@ -104,7 +102,7 @@ fn tilde_toggles_case() {
 fn r_replaces_char() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::ReplaceChar('X'));
-    assert_eq!(ed.buffer.content(), "Xello");
+    assert_eq!(ed.buf().content(), "Xello");
     assert_eq!(ed.mode, EditorMode::Normal); // stays in normal
 }
 
@@ -114,21 +112,21 @@ fn r_replaces_char() {
 fn ex_substitute_first_on_line() {
     let mut ed = Editor::from_text("foo foo foo");
     ed.execute(Command::ExCommand("s/foo/bar/".to_string()));
-    assert_eq!(ed.buffer.content(), "bar foo foo");
+    assert_eq!(ed.buf().content(), "bar foo foo");
 }
 
 #[test]
 fn ex_substitute_all_on_line() {
     let mut ed = Editor::from_text("foo foo foo");
     ed.execute(Command::ExCommand("s/foo/bar/g".to_string()));
-    assert_eq!(ed.buffer.content(), "bar bar bar");
+    assert_eq!(ed.buf().content(), "bar bar bar");
 }
 
 #[test]
 fn ex_substitute_all_in_file() {
     let mut ed = Editor::from_text("foo\nfoo\nfoo");
     ed.execute(Command::ExCommand("%s/foo/bar/g".to_string()));
-    assert_eq!(ed.buffer.content(), "bar\nbar\nbar");
+    assert_eq!(ed.buf().content(), "bar\nbar\nbar");
 }
 
 #[test]
@@ -145,9 +143,9 @@ fn ex_goto_line() {
 fn undo_reverses_delete_line() {
     let mut ed = Editor::from_text("a\nb\nc");
     ed.execute(Command::DeleteLine);
-    assert_eq!(ed.buffer.line(0).unwrap(), "b");
+    assert_eq!(ed.buf().line(0).unwrap(), "b");
     ed.execute(Command::Undo);
-    assert_eq!(ed.buffer.line(0).unwrap(), "a");
+    assert_eq!(ed.buf().line(0).unwrap(), "a");
 }
 
 // === P (paste before) ===
@@ -159,5 +157,5 @@ fn big_p_pastes_before() {
     ed.execute(Command::YankLine);
     ed.execute(Command::PasteBefore);
     // Should paste "line2" above current line
-    assert_eq!(ed.buffer.line(1).unwrap(), "line2");
+    assert_eq!(ed.buf().line(1).unwrap(), "line2");
 }

@@ -17,11 +17,10 @@ fn diagnostic_underlines_error_range() {
         message: "not found".into(),
     }]);
 
-    let mut surface = Surface::new(40, 5);
-    view.draw(&mut surface);
+    view.draw();
 
     // Check that cells in the diagnostic range have underline + red fg
-    let cell = surface.cell(12, 1);
+    let cell = view.buffer().cell(12, 1);
     assert!(cell.style.attrs.underline, "diagnostic range should be underlined");
     assert_eq!(cell.style.fg, Color::Ansi(1), "error should be red");
 }
@@ -52,7 +51,6 @@ fn no_diagnostics_no_crash() {
     view.editor.options.number = false;
     view.set_bounds(Rect::new(0, 0, 20, 3));
 
-    let mut surface = Surface::new(20, 3);
     // Should not crash with no diagnostics set
-    view.draw(&mut surface);
+    view.draw();
 }

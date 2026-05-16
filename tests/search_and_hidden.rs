@@ -63,13 +63,16 @@ fn text_area_slash_key_activates_search() {
         w: 40,
         h: 10,
     });
-    let mut queue = EventQueue::new();
+
+    let sink = EventSink::new();
+    ta.set_sink(sink.clone());
+
     // Press /
     let slash = Event::Key(KeyEvent {
         code: KeyCode::Char('/'),
         modifiers: KeyMod::default(),
     });
-    let result = ta.handle(&slash, &mut queue);
+    let result = ta.handle(&slash);
     assert_eq!(result, HandleResult::Consumed);
     // Type "beta"
     for ch in "beta".chars() {
@@ -77,14 +80,14 @@ fn text_area_slash_key_activates_search() {
             code: KeyCode::Char(ch),
             modifiers: KeyMod::default(),
         });
-        ta.handle(&ev, &mut queue);
+        ta.handle(&ev);
     }
     // Press Enter to confirm
     let enter = Event::Key(KeyEvent {
         code: KeyCode::Enter,
         modifiers: KeyMod::default(),
     });
-    ta.handle(&enter, &mut queue);
+    ta.handle(&enter);
     assert_eq!(ta.search_matches, vec![1]);
     assert_eq!(ta.search_query, "beta");
 }
@@ -99,25 +102,28 @@ fn text_area_search_esc_cancels() {
         w: 40,
         h: 10,
     });
-    let mut queue = EventQueue::new();
+
+    let sink = EventSink::new();
+    ta.set_sink(sink.clone());
+
     // Activate search
     let slash = Event::Key(KeyEvent {
         code: KeyCode::Char('/'),
         modifiers: KeyMod::default(),
     });
-    ta.handle(&slash, &mut queue);
+    ta.handle(&slash);
     // Type something
     let ev = Event::Key(KeyEvent {
         code: KeyCode::Char('x'),
         modifiers: KeyMod::default(),
     });
-    ta.handle(&ev, &mut queue);
+    ta.handle(&ev);
     // Esc cancels
     let esc = Event::Key(KeyEvent {
         code: KeyCode::Esc,
         modifiers: KeyMod::default(),
     });
-    ta.handle(&esc, &mut queue);
+    ta.handle(&esc);
     // No search performed
     assert!(ta.search_matches.is_empty());
 }

@@ -32,7 +32,7 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     crate::handler_evict::try_insert_tab(
         desktop,
         state,
-        ctx.queue,
+        ctx.sink,
         SlotId::Right,
         "Log".to_string(),
         Box::new(view),

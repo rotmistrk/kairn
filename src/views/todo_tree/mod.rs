@@ -54,7 +54,7 @@ impl TodoTreeView {
                 model::propagate_completion(&mut self.inner.data.file, &path);
                 self.inner.data.save();
                 self.inner.data.rebuild_flat();
-                self.inner.state.mark_dirty();
+                self.inner.mark_dirty();
             }
         }
     }
@@ -82,7 +82,7 @@ impl TodoTreeView {
         }
         self.inner.data.save();
         self.inner.data.rebuild_flat();
-        self.inner.state.mark_dirty();
+        self.inner.mark_dirty();
     }
 
     fn start_edit(&mut self) {
@@ -91,7 +91,7 @@ impl TodoTreeView {
             let id = self.inner.data.visible_id(row);
             let label = self.inner.data.label(id).to_owned();
             self.editing = Some(InlineEditor::new(row, &label));
-            self.inner.state.mark_dirty();
+            self.inner.mark_dirty();
         }
     }
 
@@ -101,7 +101,7 @@ impl TodoTreeView {
             let id = self.inner.data.visible_id(row);
             let label = self.inner.data.label(id).to_owned();
             self.editing = Some(InlineEditor::new_selected(row, &label));
-            self.inner.state.mark_dirty();
+            self.inner.mark_dirty();
         }
     }
 
@@ -120,11 +120,11 @@ impl TodoTreeView {
                 self.editing = None;
             }
         }
-        self.inner.state.mark_dirty();
+        self.inner.mark_dirty();
         HandleResult::Consumed
     }
 
-    fn apply_action(&mut self, action: HandleAction, queue: &mut EventQueue) {
+    fn apply_action(&mut self, action: HandleAction) {
         match action {
             HandleAction::Stay => {}
             HandleAction::MoveDown => {
@@ -148,25 +148,31 @@ impl TodoTreeView {
             }
             HandleAction::CryptoEncrypt(path) => {
                 self.crypto_pending = Some(CryptoPending::Encrypt(path));
-                queue.put_command(
+                self.inner.state.put_command(
                     crate::commands::CM_SET_CONFIRM_CONTEXT,
                     Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
                 );
-                queue.put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
+                self.inner
+                    .state
+                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
             }
             HandleAction::CryptoDecrypt(path) => {
                 self.crypto_pending = Some(CryptoPending::Decrypt(path));
-                queue.put_command(
+                self.inner.state.put_command(
                     crate::commands::CM_SET_CONFIRM_CONTEXT,
                     Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
                 );
-                queue.put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
+                self.inner
+                    .state
+                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
             }
             HandleAction::OpenNote(path, note) => {
-                queue.put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note))));
+                self.inner
+                    .state
+                    .put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note))));
             }
         }
-        self.inner.state.mark_dirty();
+        self.inner.mark_dirty();
     }
 }
 
@@ -185,13 +191,13 @@ impl View for TodoTreeView {
         CloseResult::Denied("permanent tab".to_string())
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        self.draw_tree(surface);
+    fn draw(&mut self) {
+        self.draw_tree();
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         let Event::Key(key) = event else {
-            return self.inner.handle(event, queue);
+            return self.inner.handle(event);
         };
         // Filter editor takes priority
         if self.filter_editor.is_some() {
@@ -201,13 +207,13 @@ impl View for TodoTreeView {
                 self.inner.data.rebuild_flat();
                 self.inner.cursor = 0;
                 self.filter_editor = None;
-                self.inner.state.mark_dirty();
+                self.inner.mark_dirty();
                 return HandleResult::Consumed;
             }
             // Enter commits filter (keeps text, exits editor)
             if key.code == KeyCode::Enter {
                 self.filter_editor = None;
-                self.inner.state.mark_dirty();
+                self.inner.mark_dirty();
                 return HandleResult::Consumed;
             }
             // Pass to filter editor
@@ -216,7 +222,7 @@ impl View for TodoTreeView {
                 self.inner.data.filter_text = editor.buffer.clone();
                 self.inner.data.rebuild_flat();
                 self.inner.cursor = 0;
-                self.inner.state.mark_dirty();
+                self.inner.mark_dirty();
             }
             return HandleResult::Consumed;
         }
@@ -234,21 +240,21 @@ impl View for TodoTreeView {
         }
         let cursor = self.inner.cursor;
         if self.inner.data.visible_count() > 0 {
-            if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor, queue) {
+            if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor) {
                 if matches!(action, HandleAction::ConfirmDelete) {
-                    queue.put_command(
+                    self.inner.state.put_command(
                         crate::commands::CM_SET_CONFIRM_CONTEXT,
                         Some(Box::new(crate::commands::ConfirmContext::TodoDelete)),
                     );
-                    queue.put_command(
+                    self.inner.state.put_command(
                         crate::commands::CM_CONFIRM,
                         Some(Box::new("Delete item? [y]es [Esc]cancel".to_string())),
                     );
                 }
-                self.apply_action(action, queue);
+                self.apply_action(action);
                 return HandleResult::Consumed;
             }
         }
-        self.inner.handle(event, queue)
+        self.inner.handle(event)
     }
 }

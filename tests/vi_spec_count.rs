@@ -28,14 +28,14 @@ fn count_3w_moves_3_words() {
 fn count_5x_deletes_5_chars() {
     let mut ed = Editor::from_text("abcdefgh");
     ed.execute(Command::Repeat(5, Box::new(Command::DeleteCharForward)));
-    assert_eq!(ed.buffer.content(), "fgh");
+    assert_eq!(ed.buf().content(), "fgh");
 }
 
 #[test]
 fn count_3dd_deletes_3_lines() {
     let mut ed = Editor::from_text("line1\nline2\nline3\nline4\nline5");
     ed.execute(Command::Repeat(3, Box::new(Command::DeleteLine)));
-    assert_eq!(ed.buffer.content(), "line4\nline5");
+    assert_eq!(ed.buf().content(), "line4\nline5");
 }
 
 #[test]
@@ -53,14 +53,14 @@ fn count_3cc_changes_3_lines() {
     ed.execute(Command::Repeat(3, Box::new(Command::ChangeLine)));
     // 3 lines deleted, in insert mode
     assert_eq!(ed.mode, EditorMode::Insert);
-    assert_eq!(ed.buffer.content(), "\nline4");
+    assert_eq!(ed.buf().content(), "\nline4");
 }
 
 #[test]
 fn count_3_indent() {
     let mut ed = Editor::from_text("a\nb\nc\nd");
     ed.execute(Command::Repeat(3, Box::new(Command::Indent)));
-    let content = ed.buffer.content();
+    let content = ed.buf().content();
     assert!(content.starts_with("    a\n    b\n    c\nd"), "got: {:?}", content);
 }
 
@@ -80,7 +80,7 @@ fn db_deletes_word_backward() {
     ed.cursor_col = 6; // at 'w' of "world"
     ed.execute(Command::DeleteWordBackward);
     // db from 'w' goes back to start of previous word "hello" → deletes "hello "
-    assert_eq!(ed.buffer.content(), "world");
+    assert_eq!(ed.buf().content(), "world");
     assert_eq!(ed.cursor_col, 0);
 }
 
@@ -89,7 +89,7 @@ fn d0_deletes_to_line_start() {
     let mut ed = Editor::from_text("hello world");
     ed.cursor_col = 6;
     ed.execute(Command::DeleteToStart);
-    assert_eq!(ed.buffer.content(), "world");
+    assert_eq!(ed.buf().content(), "world");
     assert_eq!(ed.cursor_col, 0);
 }
 
@@ -98,7 +98,7 @@ fn big_d_deletes_to_end() {
     let mut ed = Editor::from_text("hello world");
     ed.cursor_col = 5;
     ed.execute(Command::DeleteToEnd);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn big_c_changes_to_end() {
     let mut ed = Editor::from_text("hello world");
     ed.cursor_col = 5;
     ed.execute(Command::ChangeToEnd);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
     assert_eq!(ed.mode, EditorMode::Insert);
 }
 
@@ -136,7 +136,7 @@ fn visual_c_changes_selection() {
     }
     ed.execute(Command::VisualChange);
     assert_eq!(ed.mode, EditorMode::Insert);
-    assert_eq!(ed.buffer.content(), " world");
+    assert_eq!(ed.buf().content(), " world");
 }
 
 #[test]

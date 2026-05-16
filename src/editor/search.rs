@@ -28,18 +28,18 @@ impl Editor {
         if self.search_pattern.is_empty() {
             return;
         }
-        let content = self.buffer.content();
+        let content = self.buf().content();
         let start_offset = self
-            .buffer
+            .buf()
             .line_col_to_offset(self.cursor_line, self.cursor_col)
             .unwrap_or(0);
         let search_from = start_offset + 1;
         if let Some(pos) = content[search_from..].find(&self.search_pattern) {
-            let (l, c) = self.buffer.offset_to_line_col(search_from + pos);
+            let (l, c) = self.buf().offset_to_line_col(search_from + pos);
             self.cursor_line = l;
             self.cursor_col = c;
         } else if let Some(pos) = content[..start_offset].find(&self.search_pattern) {
-            let (l, c) = self.buffer.offset_to_line_col(pos);
+            let (l, c) = self.buf().offset_to_line_col(pos);
             self.cursor_line = l;
             self.cursor_col = c;
             self.status = "search wrapped".to_string();
@@ -51,17 +51,17 @@ impl Editor {
         if self.search_pattern.is_empty() {
             return;
         }
-        let content = self.buffer.content();
+        let content = self.buf().content();
         let start_offset = self
-            .buffer
+            .buf()
             .line_col_to_offset(self.cursor_line, self.cursor_col)
             .unwrap_or(0);
         if let Some(pos) = content[..start_offset].rfind(&self.search_pattern) {
-            let (l, c) = self.buffer.offset_to_line_col(pos);
+            let (l, c) = self.buf().offset_to_line_col(pos);
             self.cursor_line = l;
             self.cursor_col = c;
         } else if let Some(pos) = content[start_offset + 1..].rfind(&self.search_pattern) {
-            let (l, c) = self.buffer.offset_to_line_col(start_offset + 1 + pos);
+            let (l, c) = self.buf().offset_to_line_col(start_offset + 1 + pos);
             self.cursor_line = l;
             self.cursor_col = c;
             self.status = "search wrapped".to_string();
@@ -70,7 +70,8 @@ impl Editor {
     }
 
     pub(super) fn search_word(&mut self, forward: bool) {
-        if let Some(word) = motions::word_at(&self.buffer, self.cursor_line, self.cursor_col) {
+        let word = motions::word_at(&self.buf(), self.cursor_line, self.cursor_col);
+        if let Some(word) = word {
             self.search_pattern = word;
             self.search_direction_forward = forward;
             if forward {
@@ -83,9 +84,9 @@ impl Editor {
 
     /// Rebuild highlight state from current search_pattern and cursor position.
     pub fn update_highlight(&mut self) {
-        let content = self.buffer.content();
+        let content = self.buf().content();
         let cursor_off = self
-            .buffer
+            .buf()
             .line_col_to_offset(self.cursor_line, self.cursor_col)
             .unwrap_or(0);
         self.highlight = HighlightState::build(&self.search_pattern, &content, cursor_off);

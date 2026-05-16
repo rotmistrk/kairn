@@ -12,11 +12,15 @@ pub enum ExCmdId {
     Edit,
     NoDiff,
     NoHighlight,
+    Only,
+    Revert,
     Quit,
     QuitForce,
     Set,
     SetGlobal,
+    Split,
     Substitute,
+    Vsplit,
     Write,
     WriteQuit,
     Exit,
@@ -57,9 +61,19 @@ const CMD_TABLE: &[CmdEntry] = &[
         id: ExCmdId::NoHighlight,
     },
     CmdEntry {
+        full: "only",
+        min_abbrev: 2,
+        id: ExCmdId::Only,
+    },
+    CmdEntry {
         full: "quit",
         min_abbrev: 1,
         id: ExCmdId::Quit,
+    },
+    CmdEntry {
+        full: "revert",
+        min_abbrev: 3,
+        id: ExCmdId::Revert,
     },
     CmdEntry {
         full: "set",
@@ -72,9 +86,19 @@ const CMD_TABLE: &[CmdEntry] = &[
         id: ExCmdId::SetGlobal,
     },
     CmdEntry {
+        full: "split",
+        min_abbrev: 2,
+        id: ExCmdId::Split,
+    },
+    CmdEntry {
         full: "substitute",
         min_abbrev: 1,
         id: ExCmdId::Substitute,
+    },
+    CmdEntry {
+        full: "vsplit",
+        min_abbrev: 2,
+        id: ExCmdId::Vsplit,
     },
     CmdEntry {
         full: "write",
@@ -96,6 +120,26 @@ const CMD_TABLE: &[CmdEntry] = &[
         min_abbrev: 1,
         id: ExCmdId::Yank,
     },
+];
+
+/// Full command names for Tab completion in ex mode.
+pub const CMD_TABLE_NAMES: &[&str] = &[
+    "delete",
+    "diff",
+    "edit",
+    "nodiff",
+    "nohlsearch",
+    "only",
+    "quit",
+    "set",
+    "setglobal",
+    "split",
+    "substitute",
+    "vsplit",
+    "write",
+    "wq",
+    "x",
+    "yank",
 ];
 
 /// Look up a command name by unambiguous prefix.
@@ -128,160 +172,5 @@ pub fn split_cmd_word(input: &str) -> (&str, &str) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    // --- Exact and minimum abbreviation tests ---
-
-    #[test]
-    fn delete_abbreviations() {
-        assert_eq!(lookup_command("d"), Some(ExCmdId::Delete));
-        assert_eq!(lookup_command("de"), Some(ExCmdId::Delete));
-        assert_eq!(lookup_command("del"), Some(ExCmdId::Delete));
-        assert_eq!(lookup_command("dele"), Some(ExCmdId::Delete));
-        assert_eq!(lookup_command("delet"), Some(ExCmdId::Delete));
-        assert_eq!(lookup_command("delete"), Some(ExCmdId::Delete));
-    }
-
-    #[test]
-    fn diff_abbreviations() {
-        assert_eq!(lookup_command("dif"), Some(ExCmdId::Diff));
-        assert_eq!(lookup_command("diff"), Some(ExCmdId::Diff));
-    }
-
-    #[test]
-    fn di_is_no_match() {
-        // "di" is NOT a prefix of "delete" (de...) and "diff" requires min 3
-        assert_eq!(lookup_command("di"), None);
-    }
-
-    #[test]
-    fn edit_abbreviations() {
-        assert_eq!(lookup_command("e"), Some(ExCmdId::Edit));
-        assert_eq!(lookup_command("ed"), Some(ExCmdId::Edit));
-        assert_eq!(lookup_command("edi"), Some(ExCmdId::Edit));
-        assert_eq!(lookup_command("edit"), Some(ExCmdId::Edit));
-    }
-
-    #[test]
-    fn nodiff_abbreviations() {
-        assert_eq!(lookup_command("nod"), Some(ExCmdId::NoDiff));
-        assert_eq!(lookup_command("nodi"), Some(ExCmdId::NoDiff));
-        assert_eq!(lookup_command("nodif"), Some(ExCmdId::NoDiff));
-        assert_eq!(lookup_command("nodiff"), Some(ExCmdId::NoDiff));
-    }
-
-    #[test]
-    fn quit_abbreviations() {
-        assert_eq!(lookup_command("q"), Some(ExCmdId::Quit));
-        assert_eq!(lookup_command("qu"), Some(ExCmdId::Quit));
-        assert_eq!(lookup_command("qui"), Some(ExCmdId::Quit));
-        assert_eq!(lookup_command("quit"), Some(ExCmdId::Quit));
-        assert_eq!(lookup_command("q!"), Some(ExCmdId::QuitForce));
-    }
-
-    #[test]
-    fn set_abbreviations() {
-        assert_eq!(lookup_command("se"), Some(ExCmdId::Set));
-        assert_eq!(lookup_command("set"), Some(ExCmdId::Set));
-    }
-
-    #[test]
-    fn setglobal_abbreviations() {
-        assert_eq!(lookup_command("setg"), Some(ExCmdId::SetGlobal));
-        assert_eq!(lookup_command("setgl"), Some(ExCmdId::SetGlobal));
-        assert_eq!(lookup_command("setglobal"), Some(ExCmdId::SetGlobal));
-    }
-
-    #[test]
-    fn substitute_abbreviations() {
-        assert_eq!(lookup_command("s"), Some(ExCmdId::Substitute));
-        assert_eq!(lookup_command("su"), Some(ExCmdId::Substitute));
-        assert_eq!(lookup_command("sub"), Some(ExCmdId::Substitute));
-        assert_eq!(lookup_command("substitute"), Some(ExCmdId::Substitute));
-    }
-
-    #[test]
-    fn s_is_not_ambiguous_with_set() {
-        // "s" → substitute (min 1), "set" (min 2) requires 2 chars
-        assert_eq!(lookup_command("s"), Some(ExCmdId::Substitute));
-    }
-
-    #[test]
-    fn write_abbreviations() {
-        assert_eq!(lookup_command("w"), Some(ExCmdId::Write));
-        assert_eq!(lookup_command("wr"), Some(ExCmdId::Write));
-        assert_eq!(lookup_command("wri"), Some(ExCmdId::Write));
-        assert_eq!(lookup_command("write"), Some(ExCmdId::Write));
-    }
-
-    #[test]
-    fn wq_exact() {
-        assert_eq!(lookup_command("wq"), Some(ExCmdId::WriteQuit));
-    }
-
-    #[test]
-    fn exit_abbreviation() {
-        assert_eq!(lookup_command("x"), Some(ExCmdId::Exit));
-    }
-
-    #[test]
-    fn yank_abbreviations() {
-        assert_eq!(lookup_command("y"), Some(ExCmdId::Yank));
-        assert_eq!(lookup_command("ya"), Some(ExCmdId::Yank));
-        assert_eq!(lookup_command("yan"), Some(ExCmdId::Yank));
-        assert_eq!(lookup_command("yank"), Some(ExCmdId::Yank));
-    }
-
-    // --- Ambiguity / no-match tests ---
-
-    #[test]
-    fn unknown_command() {
-        assert_eq!(lookup_command("foo"), None);
-        assert_eq!(lookup_command("z"), None);
-    }
-
-    #[test]
-    fn empty_input() {
-        assert_eq!(lookup_command(""), None);
-    }
-
-    #[test]
-    fn no_is_ambiguous_with_nodiff() {
-        // "no" is 2 chars, nodiff requires 3 → no match
-        assert_eq!(lookup_command("no"), None);
-    }
-
-    #[test]
-    fn se_vs_setglobal() {
-        // "se" matches "set" (min 2) but not "setglobal" (min 4)
-        assert_eq!(lookup_command("se"), Some(ExCmdId::Set));
-        // "set" matches "set" (len == full.len()) but not "setglobal" (min 4)
-        assert_eq!(lookup_command("set"), Some(ExCmdId::Set));
-        // "setg" matches only "setglobal" (min 4), not "set" (len > full.len())
-        assert_eq!(lookup_command("setg"), Some(ExCmdId::SetGlobal));
-    }
-
-    #[test]
-    fn w_vs_wq() {
-        // "w" matches "write" (min 1) but not "wq" (min 2)
-        assert_eq!(lookup_command("w"), Some(ExCmdId::Write));
-    }
-
-    #[test]
-    fn e_is_edit_not_exit() {
-        // "x" is its own command, "e" is unambiguously "edit"
-        assert_eq!(lookup_command("e"), Some(ExCmdId::Edit));
-        assert_eq!(lookup_command("x"), Some(ExCmdId::Exit));
-    }
-
-    // --- split_cmd_word tests ---
-
-    #[test]
-    fn split_simple() {
-        assert_eq!(split_cmd_word("diff HEAD"), ("diff", " HEAD"));
-        assert_eq!(split_cmd_word("d"), ("d", ""));
-        assert_eq!(split_cmd_word("s/foo/bar/"), ("s", "/foo/bar/"));
-        assert_eq!(split_cmd_word(""), ("", ""));
-    }
-}
+#[path = "ex_commands_tests.rs"]
+mod tests;

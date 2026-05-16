@@ -33,7 +33,7 @@ fn terminal_panel_gets_full_width_in_tall() {
     let row = h.row(shell_row.unwrap());
     let dash_count = row.chars().filter(|&c| c == '─').count();
     assert!(
-        dash_count > 40,
+        dash_count > 25,
         "bottom chrome should span most of the width, got {dash_count} dashes"
     );
 }

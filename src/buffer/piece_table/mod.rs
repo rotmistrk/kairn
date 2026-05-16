@@ -86,7 +86,11 @@ impl PieceTable {
                 Source::Original => &self.original,
                 Source::Add => &self.add_buf,
             };
-            s.push_str(&buf[p.start..p.start + p.len]);
+            let end = p.start + p.len;
+            debug_assert!(end <= buf.len(), "piece exceeds buffer: {end} > {}", buf.len());
+            if end <= buf.len() {
+                s.push_str(&buf[p.start..end]);
+            }
         }
         s
     }
@@ -109,6 +113,9 @@ impl PieceTable {
             .line_start(line_num + 1)
             .map(|e| e.saturating_sub(1))
             .unwrap_or(content.len());
+        if start > content.len() || end > content.len() || start > end {
+            return None;
+        }
         Some(content[start..end].to_string())
     }
 

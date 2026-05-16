@@ -254,21 +254,21 @@ impl View for StructuredView {
         &self.display_title
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        draw::draw_struct_view(self, surface);
+    fn draw(&mut self) {
+        draw::draw_struct_view(self);
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Command { id, .. } = event {
             if *id == crate::commands::CM_SAVE {
-                return handle::handle_save_command(self, queue);
+                return handle::handle_save_command(self);
             }
             return HandleResult::Ignored;
         }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        handle::handle_struct_key(self, key, queue)
+        handle::handle_struct_key(self, key)
     }
 
     fn can_close(&self) -> CloseResult {

@@ -11,7 +11,7 @@ impl Editor {
     }
 
     pub(super) fn move_right(&mut self) {
-        let line_len = self.buffer.line_len(self.cursor_line);
+        let line_len = self.buf().line_len(self.cursor_line);
         let max = if self.mode == EditorMode::Insert {
             line_len
         } else {
@@ -30,48 +30,49 @@ impl Editor {
     }
 
     pub(super) fn move_down(&mut self) {
-        if self.cursor_line + 1 < self.buffer.line_count() {
+        if self.cursor_line + 1 < self.buf().line_count() {
             self.cursor_line += 1;
             self.clamp_col();
         }
     }
 
     pub(super) fn move_word_forward(&mut self) {
-        let (l, c) = motions::word_forward(&self.buffer, self.cursor_line, self.cursor_col);
+        let (l, c) = motions::word_forward(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
     }
 
     pub(super) fn move_word_backward(&mut self) {
-        let (l, c) = motions::word_backward(&self.buffer, self.cursor_line, self.cursor_col);
+        let (l, c) = motions::word_backward(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
     }
 
     pub(super) fn move_word_end(&mut self) {
-        let (l, c) = motions::word_end(&self.buffer, self.cursor_line, self.cursor_col);
+        let (l, c) = motions::word_end(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
     }
 
     pub(super) fn move_line_end(&mut self) {
-        let len = self.buffer.line_len(self.cursor_line);
+        let len = self.buf().line_len(self.cursor_line);
         self.cursor_col = len.saturating_sub(1);
     }
 
     pub(super) fn move_first_non_blank(&mut self) {
-        self.cursor_col = motions::first_non_blank(&self.buffer, self.cursor_line);
+        let col = motions::first_non_blank(&self.buf(), self.cursor_line);
+        self.cursor_col = col;
     }
 
     pub(super) fn goto_line(&mut self, n: usize) {
-        let target = n.saturating_sub(1).min(self.buffer.line_count().saturating_sub(1));
+        let target = n.saturating_sub(1).min(self.buf().line_count().saturating_sub(1));
         self.cursor_line = target;
         self.cursor_col = 0;
     }
 
     pub(super) fn half_page_down(&mut self) {
         let half = self.viewport_height / 2;
-        let max_line = self.buffer.line_count().saturating_sub(1);
+        let max_line = self.buf().line_count().saturating_sub(1);
         self.cursor_line = (self.cursor_line + half).min(max_line);
         self.clamp_col();
     }
@@ -84,7 +85,7 @@ impl Editor {
 
     pub(super) fn page_down(&mut self) {
         let page = self.viewport_height.saturating_sub(2);
-        let max_line = self.buffer.line_count().saturating_sub(1);
+        let max_line = self.buf().line_count().saturating_sub(1);
         self.cursor_line = (self.cursor_line + page).min(max_line);
         self.clamp_col();
     }
@@ -96,7 +97,8 @@ impl Editor {
     }
 
     pub(super) fn match_bracket(&mut self) {
-        if let Some((l, c)) = motions::match_bracket(&self.buffer, self.cursor_line, self.cursor_col) {
+        let result = motions::match_bracket(&self.buf(), self.cursor_line, self.cursor_col);
+        if let Some((l, c)) = result {
             self.cursor_line = l;
             self.cursor_col = c;
         }
@@ -109,11 +111,11 @@ impl Editor {
 
     pub(super) fn execute_find(&mut self, cmd: char, target: char) {
         let result = match cmd {
-            'f' => motions::find_char(&self.buffer, self.cursor_line, self.cursor_col, target),
-            'F' => motions::find_char_back(&self.buffer, self.cursor_line, self.cursor_col, target),
-            't' => motions::find_char(&self.buffer, self.cursor_line, self.cursor_col, target)
+            'f' => motions::find_char(&self.buf(), self.cursor_line, self.cursor_col, target),
+            'F' => motions::find_char_back(&self.buf(), self.cursor_line, self.cursor_col, target),
+            't' => motions::find_char(&self.buf(), self.cursor_line, self.cursor_col, target)
                 .map(|c| c.saturating_sub(1).max(self.cursor_col + 1)),
-            'T' => motions::find_char_back(&self.buffer, self.cursor_line, self.cursor_col, target)
+            'T' => motions::find_char_back(&self.buf(), self.cursor_line, self.cursor_col, target)
                 .map(|c| (c + 1).min(self.cursor_col.saturating_sub(1))),
             _ => None,
         };

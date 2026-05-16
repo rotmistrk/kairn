@@ -25,7 +25,7 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         desktop.close_tab_by_title(SlotId::Right, "Run");
         let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.queue, SlotId::Right, "Run".into(), term);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, "Run".into(), term);
         desktop.focus_slot(SlotId::Right);
     }
 }
@@ -76,7 +76,7 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
         crate::handler_evict::try_insert_tab(
             desktop,
             state,
-            ctx.queue,
+            ctx.sink,
             SlotId::Right,
             title.to_string(),
             Box::new(view),
@@ -88,8 +88,8 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
 fn report_no_cmd(ctx: &mut CommandContext, what: &str) {
     use txv_core::message::Message;
     let msg = Message::error("build", format!("No {what} command configured"));
-    ctx.queue
-        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+    ctx.sink
+        .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }
 
 fn detect_run_command(root: &std::path::Path) -> String {
@@ -111,7 +111,7 @@ fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
                     let line = editor.editor.cursor_line;
                     // Walk backwards from cursor to find fn name
                     for i in (0..=line).rev() {
-                        let text = editor.editor.buffer.line(i).unwrap_or_default();
+                        let text = editor.editor.buf().line(i).unwrap_or_default();
                         if let Some(name) = extract_test_fn_name(&text) {
                             return name;
                         }
@@ -163,6 +163,6 @@ fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
     let err = &state.build_errors[state.build_error_idx];
     let path = state.root_dir.join(&err.file);
     let req = crate::commands::OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
-    ctx.queue
-        .put_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+    ctx.sink
+        .push_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }

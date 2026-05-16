@@ -16,7 +16,7 @@ Three-panel TUI with a vim editor, terminal emulator, and file/git/todo tree —
 
 ```bash
 make setup              # enable pre-commit hook (once per clone)
-cargo build --release
+make release
 ./target/release/kairn
 ```
 
@@ -25,7 +25,7 @@ Press `F1` for interactive help. Press `M-x` (Alt-x) for command mode.
 ## Layout
 
 ```
-Wide (>176 cols):        Tall (<176 cols):
+Wide (≥300 cols):        Tall (≤200 cols):
 ┌────┬──────┬─────┐     ┌────┬──────────────┐
 │Tree│Editor│Term │     │Tree│   Editor     │
 │Git │      │     │     │Git ├──────────────┤
@@ -34,7 +34,7 @@ Wide (>176 cols):        Tall (<176 cols):
 ```
 
 Panels: Left (tree/git/todo tabs) · Center (editor) · Right/Bottom (terminal).
-Auto-switches between Wide and Tall based on terminal width.
+Auto-switches between Wide and Tall based on terminal width (configurable thresholds).
 
 ## Key Bindings
 
@@ -69,9 +69,21 @@ Visual: extend selection, `d/c/y/>/<`, `:` for ex commands
 
 Search: `/pattern`, `n/N`, `*/#`
 
-Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:e <path>`
+Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:revert`, `:e <path>`
 
 Insert: `Esc` to exit, `Ctrl-N/P` for completion
+
+### Diff Mode
+
+| Key | Action |
+|-----|--------|
+| `j/k` | Move down/up |
+| `n/N` | Next/previous hunk |
+| `g/G` | Jump to start/end |
+| `R` | Revert hunk under cursor |
+| `Enter` | Exit diff, jump to line |
+| `Esc` | Exit diff mode |
+| `/` | Search |
 
 ### File Tree
 
@@ -107,6 +119,7 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 | `git-stage/unstage/untrack <f>` | Git operations |
 | `git-commit <msg>` | Commit |
 | `tab-rename <name>` | Rename tab |
+| `split` / `vsplit` | Split editor (experimental) |
 | `struct` / `text` | Switch view mode |
 | `tab` | Open current file as CSV/TSV table |
 | *anything else* | Evaluated as Tcl script |
@@ -139,7 +152,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 
 | Namespace | Operations |
 |-----------|-----------|
-| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word |
+| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
 | `view` | focus, message, status |
 | `build` | run, test |
 | `lsp` | hover, definition, references, rename, format |
@@ -192,6 +205,7 @@ Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 - List/switch tabs
 - Open/save files
 - Read editor state (cursor, selection, diagnostics)
+- Revert diff hunk under cursor (`diff_revert`)
 - Add todo items (including batch `add_subtree`)
 
 ## Tech Stack

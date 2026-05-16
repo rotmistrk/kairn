@@ -102,10 +102,10 @@ impl ResultsView {
         }
     }
 
-    fn open_current(&self, queue: &mut EventQueue) {
+    fn open_current(&self) {
         if let Some(entry) = self.entries.get(self.cursor) {
             let req = OpenFileRequest::at(entry.path.clone(), entry.line, entry.col);
-            queue.put_command(CM_OPEN_FILE, Some(Box::new(req)));
+            self.state.put_command(CM_OPEN_FILE, Some(Box::new(req)));
         }
     }
 }
@@ -117,9 +117,10 @@ impl View for ResultsView {
         &self.title
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let pal = txv_core::palette::palette();
@@ -131,13 +132,13 @@ impl View for ResultsView {
             pal.interactive.cursor_unfocused.to_style()
         };
 
-        let content_h = b.h.saturating_sub(1) as usize;
+        let content_h = h.saturating_sub(1) as usize;
 
         for row in 0..content_h {
             let idx = self.scroll + row;
-            let y = b.y + row as u16;
+            let y = row as u16;
             if idx >= self.entries.len() {
-                surface.hline(b.x, y, b.w, ' ', normal);
+                self.state.buf.hline(0, y, w, ' ', normal);
                 continue;
             }
             let entry = &self.entries[idx];
@@ -146,7 +147,7 @@ impl View for ResultsView {
             } else {
                 normal
             };
-            surface.hline(b.x, y, b.w, ' ', style);
+            self.state.buf.hline(0, y, w, ' ', style);
 
             let path_str = entry
                 .path
@@ -154,8 +155,8 @@ impl View for ResultsView {
                 .unwrap_or(&entry.path)
                 .to_string_lossy();
             let loc = format!("{}:{}:", path_str, entry.line + 1);
-            surface.print(
-                b.x,
+            self.state.buf.print(
+                0,
                 y,
                 &loc,
                 if idx == self.cursor {
@@ -164,14 +165,14 @@ impl View for ResultsView {
                     dim
                 },
             );
-            let text_x = b.x + loc.len().min(b.w as usize) as u16;
-            if text_x < b.x + b.w {
-                surface.print(text_x, y, &entry.text, style);
+            let text_x = loc.len().min(w as usize) as u16;
+            if text_x < w {
+                self.state.buf.print(text_x, y, &entry.text, style);
             }
         }
 
         // Status line at bottom
-        let status_y = b.y + b.h - 1;
+        let status_y = h - 1;
         let status = if !self.done {
             format!("⟳ Searching... ({} found)", self.entries.len())
         } else if self.entries.is_empty() {
@@ -186,11 +187,11 @@ impl View for ResultsView {
         } else {
             pal.state.success.to_style()
         };
-        surface.hline(b.x, status_y, b.w, ' ', status_style);
-        surface.print(b.x, status_y, &status, status_style);
+        self.state.buf.hline(0, status_y, w, ' ', status_style);
+        self.state.buf.print(0, status_y, &status, status_style);
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         log::error!("RESULTS_HANDLE event={:?}", std::mem::discriminant(event));
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
@@ -205,26 +206,26 @@ impl View for ResultsView {
                 HandleResult::Consumed
             }
             KeyCode::Enter => {
-                self.open_current(queue);
+                self.open_current();
                 HandleResult::Consumed
             }
             KeyCode::Right => {
-                self.open_current(queue);
-                queue.put_command(crate::commands::CM_FOCUS_CENTER, None);
+                self.open_current();
+                self.state.put_command(crate::commands::CM_FOCUS_CENTER, None);
                 HandleResult::Consumed
             }
             KeyCode::Char('n') => {
                 self.next();
-                self.open_current(queue);
+                self.open_current();
                 HandleResult::Consumed
             }
             KeyCode::Char('p') => {
                 self.prev();
-                self.open_current(queue);
+                self.open_current();
                 HandleResult::Consumed
             }
             KeyCode::Char('q') | KeyCode::Esc => {
-                queue.put_command(crate::commands::CM_TAB_CLOSE, None);
+                self.state.put_command(crate::commands::CM_TAB_CLOSE, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,

@@ -13,6 +13,8 @@ pub enum LspMessage {
     },
     /// Server-initiated notification (no id).
     Notification { method: String, params: Value },
+    /// Server-initiated request (has id + method, needs response).
+    ServerRequest { id: u64, method: String },
 }
 
 /// JSON-RPC error object.
@@ -43,6 +45,16 @@ pub fn encode_notification(method: &str, params: Value) -> Vec<u8> {
     encode_body(&body)
 }
 
+/// Encode a JSON-RPC response (null result) to a server request.
+pub fn encode_response(id: u64) -> Vec<u8> {
+    let body = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": null,
+    });
+    encode_body(&body)
+}
+
 fn encode_body(body: &Value) -> Vec<u8> {
     let json = match serde_json::to_string(body) {
         Ok(s) => s,
@@ -58,9 +70,11 @@ fn encode_body(body: &Value) -> Vec<u8> {
 pub fn parse_message(json: &Value) -> Option<LspMessage> {
     if let Some(id) = json.get("id").and_then(|v| v.as_u64()) {
         // It has an id — could be a response (has result/error) or a request from server
-        if json.get("method").is_some() {
-            // Server request (we ignore these for now)
-            return None;
+        if let Some(method) = json.get("method").and_then(|v| v.as_str()) {
+            return Some(LspMessage::ServerRequest {
+                id,
+                method: method.to_string(),
+            });
         }
         let result = json.get("result").cloned();
         let error = json.get("error").and_then(|e| {

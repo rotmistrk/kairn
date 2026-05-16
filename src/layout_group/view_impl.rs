@@ -28,34 +28,57 @@ impl View for LayoutGroup {
         self.apply_layout(r);
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.group.view.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.group.view.buf.width();
+        let h = self.group.view.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
+        self.group.view.buf.fill(' ', Style::default());
+        let my_bounds = self.group.view.bounds();
         if let Some(z) = self.zoomed {
             // Zoomed panel is on top — draw it with chrome
-            if let Some(c) = self.group.child(z) {
-                c.draw(surface);
+            if let Some(c) = self.group.child_mut(z) {
+                c.draw();
             }
-            self.draw_zoomed_chrome(surface, z);
+            // Blit zoomed child
+            let cb = self.group.child(z).map(|c| c.bounds()).unwrap_or_default();
+            let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+            if let Some(c) = self.group.child(z) {
+                let dx = cb.x.saturating_sub(my_bounds.x);
+                let dy = cb.y.saturating_sub(my_bounds.y);
+                unsafe { (*buf_ptr).blit(c.buffer(), dx, dy) };
+            }
+            self.draw_zoomed_chrome(z);
             return;
         }
-        for child in self.group.children_iter() {
+        for child in self.group.children_iter_mut() {
             let pb = child.bounds();
             if pb.w > 0 && pb.h > 0 {
-                child.draw(surface);
+                child.draw();
+            }
+        }
+        // Blit all children
+        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child(i) {
+                let cb = child.bounds();
+                if cb.w > 0 && cb.h > 0 {
+                    let dx = cb.x.saturating_sub(my_bounds.x);
+                    let dy = cb.y.saturating_sub(my_bounds.y);
+                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
+                }
             }
         }
         // Chrome overwrites TabGroup's plain chrome with Powerline visuals
-        self.draw_chrome(surface);
-        self.draw_dividers(surface, b);
+        self.draw_chrome();
+        self.draw_dividers();
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         // Commands handled by LayoutGroup itself
         if let Event::Command { id, data } = event {
-            let r = self.handle_command(*id, data, queue);
+            let r = self.handle_command(*id, data);
             if r == HandleResult::Consumed {
                 return r;
             }
@@ -63,17 +86,18 @@ impl View for LayoutGroup {
         // Tick goes to ALL slots (background tabs need it for PTY poll, git refresh)
         if matches!(event, Event::Tick) {
             for child in self.group.children_iter_mut() {
-                child.handle(event, queue);
+                child.handle(event);
             }
             return HandleResult::Ignored;
         }
         // All other events: delegate to focused child via GroupState 3-phase dispatch
-        self.group.dispatch(event, queue)
+        self.group.dispatch(event)
     }
 }
 
 impl LayoutGroup {
-    fn draw_dividers(&self, surface: &mut Surface, b: Rect) {
+    fn draw_dividers(&mut self) {
+        let b = self.group.view.bounds();
         let cs = txv_core::palette::palette().chrome.bar.to_style();
         let rects = self.compute_rects(b);
         let left_r = rects[SlotId::Left as usize];
@@ -81,12 +105,12 @@ impl LayoutGroup {
         let right_r = rects[SlotId::Right as usize];
         // Vertical dividers (below chrome row)
         if left_r.w > 0 && center_r.w > 0 {
-            let x = left_r.x + left_r.w;
-            surface.vline(x, b.y + 1, left_r.h.saturating_sub(1), '│', cs);
+            let x = (left_r.x + left_r.w).saturating_sub(b.x);
+            self.group.view.buf.vline(x, 1, left_r.h.saturating_sub(1), '│', cs);
         }
         if center_r.w > 0 && right_r.w > 0 {
-            let x = right_r.x.saturating_sub(1);
-            surface.vline(x, b.y + 1, right_r.h.saturating_sub(1), '│', cs);
+            let x = right_r.x.saturating_sub(1).saturating_sub(b.x);
+            self.group.view.buf.vline(x, 1, right_r.h.saturating_sub(1), '│', cs);
         }
     }
 }

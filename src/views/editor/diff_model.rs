@@ -28,15 +28,19 @@ pub struct DiffOpts {
     pub base: String,
     pub context: usize,
     pub ignore_ws: bool,
+    pub side_by_side: bool,
 }
 
 pub fn parse_diff_args(args: &str) -> DiffOpts {
     let mut base = "HEAD".to_string();
     let mut context = 2;
     let mut ignore_ws = false;
+    let mut side_by_side = false;
     for arg in args.split_whitespace() {
         if arg == "-w" {
             ignore_ws = true;
+        } else if arg == "-y" {
+            side_by_side = true;
         } else if let Some(n) = arg.strip_prefix("-U") {
             context = n.parse().unwrap_or(3);
         } else if !arg.starts_with('-') {
@@ -47,6 +51,7 @@ pub fn parse_diff_args(args: &str) -> DiffOpts {
         base,
         context,
         ignore_ws,
+        side_by_side,
     }
 }
 

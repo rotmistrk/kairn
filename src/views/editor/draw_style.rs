@@ -1,7 +1,7 @@
 //! Style helpers for editor draw — computes per-character style overlays.
 
 use txv_core::palette::PaletteStyle;
-use txv_core::prelude::{Color, Style};
+use txv_core::prelude::{Attrs, Color, Style};
 
 /// Compute the effective style for a character at `byte_pos`, applying
 /// visual selection and search highlight overlays.
@@ -55,7 +55,7 @@ pub(super) fn bracket_overlay(
 
 /// Draw indent guides for a line. Draws `│` at each tab_width column within the indent.
 pub(super) fn draw_indent_guides(
-    surface: &mut txv_core::surface::Surface,
+    buf: &mut txv_core::buffer::Buffer,
     line: &str,
     text_x: u16,
     vy: u16,
@@ -71,7 +71,7 @@ pub(super) fn draw_indent_guides(
     };
     let mut g = tab_width;
     while g < indent_visual && g < avail {
-        surface.put(text_x + g as u16, vy, '\u{2502}', style);
+        buf.put(text_x + g as u16, vy, '\u{2502}', style);
         g += tab_width;
     }
 }
@@ -105,6 +105,38 @@ pub(super) fn rainbow_brackets(line: &str) -> Vec<(usize, Color)> {
     result
 }
 
+impl super::EditorView {
+    /// Draw tilde fill and command/search prompt at the bottom.
+    pub(super) fn draw_footer(&mut self, mut row: usize, gutter_style: Style) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        while row < h as usize {
+            let y = row as u16;
+            self.state.buf.print_line(0, y, "~", w, gutter_style);
+            row += 1;
+        }
+        if self.editor.mode == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        {
+            let prompt_y = h.saturating_sub(1);
+            let prompt_style = Style {
+                attrs: Attrs {
+                    reverse: true,
+                    ..Attrs::default()
+                },
+                ..Style::default()
+            };
+            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+                "/"
+            } else {
+                ":"
+            };
+            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
+            self.state.buf.print_line(0, prompt_y, &prompt_text, w, prompt_style);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,11 +149,11 @@ mod tests {
         let mut view = EditorView::from_text("A✅B");
         view.editor.options.number = false;
         view.set_bounds(Rect::new(0, 0, 20, 1));
-        let mut surface = Surface::new(20, 1);
-        view.draw(&mut surface);
-        assert_eq!(surface.cell(0, 0).ch, 'A');
-        assert_eq!(surface.cell(1, 0).ch, '✅');
-        assert_eq!(surface.cell(3, 0).ch, 'B');
+        view.draw();
+        let buf = view.buffer();
+        assert_eq!(buf.cell(0, 0).ch, 'A');
+        assert_eq!(buf.cell(1, 0).ch, '✅');
+        assert_eq!(buf.cell(3, 0).ch, 'B');
     }
 
     #[test]
@@ -132,10 +164,10 @@ mod tests {
         view.editor.options.matchparen = true;
         view.editor.cursor_col = 3; // on '('
         view.set_bounds(Rect::new(0, 0, 20, 1));
-        let mut surface = Surface::new(20, 1);
-        view.draw(&mut surface);
+        view.draw();
+        let buf = view.buffer();
         // The matching ')' at col 7 should have bold attrs (matchparen style).
-        let cell = surface.cell(7, 0);
+        let cell = buf.cell(7, 0);
         assert_eq!(cell.ch, ')');
         assert!(cell.style.attrs.bold, "matching paren should be bold");
     }
@@ -157,9 +189,9 @@ mod tests {
         view.editor.options.number = false;
         view.editor.options.guides = true;
         view.set_bounds(Rect::new(0, 0, 20, 1));
-        let mut surface = Surface::new(20, 1);
-        view.draw(&mut surface);
+        view.draw();
+        let buf = view.buffer();
         // 8 spaces = 2 indent levels at tab_width=4, guides at col 4.
-        assert_eq!(surface.cell(4, 0).ch, '\u{2502}');
+        assert_eq!(buf.cell(4, 0).ch, '\u{2502}');
     }
 }

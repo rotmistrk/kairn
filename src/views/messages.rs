@@ -31,9 +31,10 @@ impl View for MessagesView {
         "Messages"
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        let b = self.state.bounds();
-        if b.w == 0 || b.h == 0 {
+    fn draw(&mut self) {
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        if w == 0 || h == 0 {
             return;
         }
         let ring = match self.ring.lock() {
@@ -41,46 +42,50 @@ impl View for MessagesView {
             Err(_) => return,
         };
         let entries = ring.entries();
-        let rows = b.h as usize;
+        let rows = h as usize;
         let total = entries.len();
         let start = if total > rows + self.scroll {
             total - rows - self.scroll
         } else {
             0
         };
-        for row in 0..rows {
-            let y = b.y + row as u16;
-            if let Some(msg) = entries.get(start + row) {
-                // Local time from epoch via libc
-                let t = msg.timestamp as i64;
-                let (hrs, mins, secs) = epoch_to_local_hms(t);
-                let suffix = if msg.count > 1 {
-                    format!(" (×{})", msg.count)
+        let lines: Vec<(String, Style)> = (0..rows)
+            .map(|row| {
+                if let Some(msg) = entries.get(start + row) {
+                    let t = msg.timestamp as i64;
+                    let (hrs, mins, secs) = epoch_to_local_hms(t);
+                    let suffix = if msg.count > 1 {
+                        format!(" (×{})", msg.count)
+                    } else {
+                        String::new()
+                    };
+                    let line = format!(
+                        "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
+                        msg.level.label(),
+                        msg.origin,
+                        msg.text,
+                        suffix,
+                    );
+                    let app = crate::app_palette::app_palette();
+                    let style = match msg.level {
+                        MsgLevel::Error => app.msg.error.to_style(),
+                        MsgLevel::Warn => app.msg.warning.to_style(),
+                        MsgLevel::Debug => app.msg.debug.to_style(),
+                        MsgLevel::Info => app.msg.info.to_style(),
+                    };
+                    (line, style)
                 } else {
-                    String::new()
-                };
-                let line = format!(
-                    "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
-                    msg.level.label(),
-                    msg.origin,
-                    msg.text,
-                    suffix,
-                );
-                let app = crate::app_palette::app_palette();
-                let style = match msg.level {
-                    MsgLevel::Error => app.msg.error.to_style(),
-                    MsgLevel::Warn => app.msg.warning.to_style(),
-                    MsgLevel::Debug => app.msg.debug.to_style(),
-                    MsgLevel::Info => app.msg.info.to_style(),
-                };
-                surface.print_line(b.x, y, &line, b.w, style);
-            } else {
-                surface.print_line(b.x, y, "", b.w, Style::default());
-            }
+                    (String::new(), Style::default())
+                }
+            })
+            .collect();
+        drop(ring);
+        for (row, (line, style)) in lines.iter().enumerate() {
+            self.state.buf.print_line(0, row as u16, line, w, *style);
         }
     }
 
-    fn handle(&mut self, event: &Event, _queue: &mut EventQueue) -> HandleResult {
+    fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
             Event::Key(key) => match key.code {
                 KeyCode::Up | KeyCode::Char('k') => {

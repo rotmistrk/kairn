@@ -108,22 +108,19 @@ impl txv_core::view::View for FallbackTerminal {
         &self.title
     }
 
-    fn draw(&self, surface: &mut txv_core::surface::Surface) {
-        let b = self.state.bounds();
+    fn draw(&mut self) {
         let style = txv_core::cell::Style::default();
         let err_style = txv_core::palette::palette().state.error.resolve(&style);
-        surface.print(b.x, b.y, &format!("[{}]", self.title), style);
+        self.state.buf.print(0, 0, &format!("[{}]", self.title), style);
         if !self.message.is_empty() {
-            surface.print(b.x, b.y + 1, &self.message, err_style);
-            surface.print(b.x, b.y + 2, "Check that the command is installed and in PATH.", style);
+            self.state.buf.print(0, 1, &self.message, err_style);
+            self.state
+                .buf
+                .print(0, 2, "Check that the command is installed and in PATH.", style);
         }
     }
 
-    fn handle(
-        &mut self,
-        _event: &txv_core::event::Event,
-        _queue: &mut txv_core::view::EventQueue,
-    ) -> txv_core::view::HandleResult {
+    fn handle(&mut self, _event: &txv_core::event::Event) -> txv_core::view::HandleResult {
         txv_core::view::HandleResult::Ignored
     }
 }

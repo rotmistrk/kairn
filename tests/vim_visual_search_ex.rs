@@ -33,7 +33,7 @@ fn visual_delete_chars() {
     }
     ed.execute(Command::VisualDelete);
     assert_eq!(ed.mode, EditorMode::Normal);
-    assert_eq!(ed.buffer.content(), " world");
+    assert_eq!(ed.buf().content(), " world");
     assert_eq!(ed.register, "hello");
 }
 
@@ -46,7 +46,7 @@ fn visual_delete_across_lines() {
     // Should delete from (0,0) to (1,0) inclusive
     assert_eq!(ed.mode, EditorMode::Normal);
     // The exact result depends on selection range
-    assert!(!ed.buffer.content().starts_with("abc"));
+    assert!(!ed.buf().content().starts_with("abc"));
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn visual_line_delete() {
     ed.execute(Command::MoveDown); // select line1 and line2
     ed.execute(Command::VisualDelete);
     assert_eq!(ed.mode, EditorMode::Normal);
-    assert_eq!(ed.buffer.content(), "line3");
+    assert_eq!(ed.buf().content(), "line3");
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn visual_yank() {
     assert_eq!(ed.mode, EditorMode::Normal);
     assert_eq!(ed.register, "hello");
     // Buffer unchanged
-    assert_eq!(ed.buffer.content(), "hello world");
+    assert_eq!(ed.buf().content(), "hello world");
 }
 
 #[test]
@@ -79,9 +79,9 @@ fn visual_indent() {
     ed.execute(Command::EnterVisualLine);
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualIndent);
-    assert!(ed.buffer.content().contains("    line1"));
-    assert!(ed.buffer.content().contains("    line2"));
-    assert!(!ed.buffer.content().contains("    line3"));
+    assert!(ed.buf().content().contains("    line1"));
+    assert!(ed.buf().content().contains("    line2"));
+    assert!(!ed.buf().content().contains("    line3"));
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn visual_unindent() {
     ed.execute(Command::EnterVisualLine);
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualUnindent);
-    let content = ed.buffer.content();
+    let content = ed.buf().content();
     assert!(content.starts_with("line1\nline2\n"));
 }
 
@@ -154,21 +154,21 @@ fn ex_goto_line() {
 fn ex_substitute_single() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::ExCommand("%s/world/rust/".to_string()));
-    assert_eq!(ed.buffer.content(), "hello rust");
+    assert_eq!(ed.buf().content(), "hello rust");
 }
 
 #[test]
 fn ex_substitute_global() {
     let mut ed = Editor::from_text("aaa bbb aaa");
     ed.execute(Command::ExCommand("%s/aaa/xxx/g".to_string()));
-    assert_eq!(ed.buffer.content(), "xxx bbb xxx");
+    assert_eq!(ed.buf().content(), "xxx bbb xxx");
 }
 
 #[test]
 fn ex_substitute_range() {
     let mut ed = Editor::from_text("foo\nfoo\nfoo");
     ed.execute(Command::ExCommand("1,2s/foo/bar/".to_string()));
-    let content = ed.buffer.content();
+    let content = ed.buf().content();
     assert!(content.starts_with("bar\nbar\n"));
     assert!(content.ends_with("foo"));
 }
@@ -177,7 +177,7 @@ fn ex_substitute_range() {
 fn ex_delete_lines() {
     let mut ed = Editor::from_text("line1\nline2\nline3");
     ed.execute(Command::ExCommand("2d".to_string()));
-    assert_eq!(ed.buffer.content(), "line1\nline3");
+    assert_eq!(ed.buf().content(), "line1\nline3");
 }
 
 #[test]
@@ -208,39 +208,39 @@ fn ex_quit_returns_action() {
 fn dot_repeat_works() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::DeleteCharForward); // deletes 'h'
-    assert_eq!(ed.buffer.content(), "ello");
+    assert_eq!(ed.buf().content(), "ello");
     ed.execute(Command::DotRepeat); // deletes 'e'
-    assert_eq!(ed.buffer.content(), "llo");
+    assert_eq!(ed.buf().content(), "llo");
 }
 
 #[test]
 fn replace_char() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::ReplaceChar('X'));
-    assert_eq!(ed.buffer.content(), "Xello");
+    assert_eq!(ed.buf().content(), "Xello");
 }
 
 #[test]
 fn toggle_case() {
     let mut ed = Editor::from_text("Hello");
     ed.execute(Command::ToggleCase);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
 }
 
 #[test]
 fn join_lines() {
     let mut ed = Editor::from_text("hello\n  world");
     ed.execute(Command::JoinLines);
-    assert_eq!(ed.buffer.content(), "hello world");
+    assert_eq!(ed.buf().content(), "hello world");
 }
 
 #[test]
 fn indent_unindent() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::Indent);
-    assert_eq!(ed.buffer.content(), "    hello");
+    assert_eq!(ed.buf().content(), "    hello");
     ed.execute(Command::Unindent);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
 }
 
 #[test]

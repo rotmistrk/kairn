@@ -6,7 +6,7 @@ use txv_core::prelude::*;
 use super::EditorView;
 
 impl EditorView {
-    pub(super) fn handle_diff_key(&mut self, key: &KeyEvent, queue: &mut EventQueue) -> HandleResult {
+    pub(super) fn handle_diff_key(&mut self, key: &KeyEvent) -> HandleResult {
         // Allow : to enter command mode (for :diff -U3, :nodiff, etc.)
         if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
             self.editor.mode = crate::editor::keymap::EditorMode::Command;
@@ -19,7 +19,7 @@ impl EditorView {
         if self.editor.mode == crate::editor::keymap::EditorMode::Command
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
-            let result = self.handle_command_input(key, queue);
+            let result = self.handle_command_input(key);
             self.state.mark_dirty();
             return result;
         }
@@ -27,16 +27,18 @@ impl EditorView {
         match key.code {
             KeyCode::Esc => {
                 self.exit_diff();
-                queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
-                queue.put_command(
+                self.state
+                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+                self.state.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
                 );
             }
             KeyCode::Enter => {
                 self.exit_diff_at_cursor();
-                queue.put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
-                queue.put_command(
+                self.state
+                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+                self.state.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
                 );
@@ -54,6 +56,14 @@ impl EditorView {
             KeyCode::PageUp => {
                 let h = self.state.bounds().h as i32;
                 self.diff_move(-(h - 1));
+            }
+            KeyCode::Char('R') => {
+                let msg = match self.revert_hunk() {
+                    Ok(m) => txv_core::message::Message::info("editor", m),
+                    Err(e) => txv_core::message::Message::error("editor", e),
+                };
+                self.state
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
             KeyCode::Char('/') => {
                 self.editor.mode = crate::editor::keymap::EditorMode::Search;

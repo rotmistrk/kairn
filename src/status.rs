@@ -11,7 +11,7 @@ use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
-use crate::status_items::{CtxLangItem, CtxModeItem, CtxModifiedItem, CtxPositionItem};
+use crate::status_items::{CtxLangItem, CtxModeItem, CtxModifiedItem, CtxPositionItem, LspStatusItem};
 
 const ALT_X: KeyEvent = KeyEvent {
     code: KeyCode::Char('x'),
@@ -67,12 +67,13 @@ pub fn build_status_bar(
     let mut bar = StatusBar::new();
     // Left key labels (from config)
     bar.add(KeyLabelItem::new(keys.help, CM_SHOW_HELP, "F1:Help"));
-    bar.add(KeyLabelItem::new(keys.tree, CM_FOCUS_LEFT, "F2:Tree"));
-    bar.add(KeyLabelItem::new(keys.main, CM_FOCUS_CENTER, "F3:Main"));
-    bar.add(KeyLabelItem::new(keys.term, CM_FOCUS_RIGHT, "F4:Term"));
     bar.add(KeyLabelItem::new(keys.zoom, CM_ZOOM_TOGGLE, "F5:Zoom"));
     bar.add(KeyLabelItem::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"));
     bar.add(KeyLabelItem::new(keys.quit, CM_QUIT, "^Q:Quit"));
+    // Hidden hotkeys (F2/F3/F4 still work, just not shown)
+    bar.add_active_only(KeyLabelItem::hidden(keys.tree, CM_FOCUS_LEFT));
+    bar.add_active_only(KeyLabelItem::hidden(keys.main, CM_FOCUS_CENTER));
+    bar.add_active_only(KeyLabelItem::hidden(keys.term, CM_FOCUS_RIGHT));
     // Hidden hotkeys
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Left), CM_FOCUS_PREV));
     bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Right), CM_FOCUS_NEXT));
@@ -117,6 +118,7 @@ pub fn build_status_bar(
     bar.add(CtxPositionItem::new());
     bar.add(CtxModeItem::new());
     bar.add(CtxLangItem::new());
+    bar.add(LspStatusItem::new());
     bar.add_visible_only(BranchItem::new(root_dir));
     bar.add_visible_only(ClockItem::new(clock_interval));
     bar

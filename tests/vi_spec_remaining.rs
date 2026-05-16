@@ -18,7 +18,7 @@ fn count_5k_moves_up_5() {
 fn dw_deletes_word() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::DeleteWord);
-    assert_eq!(ed.buffer.content(), "world");
+    assert_eq!(ed.buf().content(), "world");
 }
 
 #[test]
@@ -27,21 +27,21 @@ fn cw_changes_word() {
     ed.execute(Command::ChangeWord);
     assert_eq!(ed.mode, EditorMode::Insert);
     // "hello " deleted, cursor at start
-    assert_eq!(ed.buffer.content(), "world");
+    assert_eq!(ed.buf().content(), "world");
 }
 
 #[test]
 fn dedent_removes_spaces() {
     let mut ed = Editor::from_text("    hello");
     ed.execute(Command::Unindent);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
 }
 
 #[test]
 fn count_3_dedent() {
     let mut ed = Editor::from_text("    a\n    b\n    c\nd");
     ed.execute(Command::Repeat(3, Box::new(Command::Unindent)));
-    assert_eq!(ed.buffer.content(), "a\nb\nc\nd");
+    assert_eq!(ed.buf().content(), "a\nb\nc\nd");
 }
 
 #[test]
@@ -51,7 +51,7 @@ fn insert_backspace_deletes_backward() {
     ed.execute(Command::MoveRight);
     ed.execute(Command::MoveRight);
     ed.execute(Command::DeleteCharBackward);
-    assert_eq!(ed.buffer.content(), "hllo");
+    assert_eq!(ed.buf().content(), "hllo");
 }
 
 #[test]
@@ -60,7 +60,7 @@ fn ex_relative_range_delete() {
     ed.cursor_line = 1; // on "b"
     ed.execute(Command::ExCommand(".,+2d".to_string()));
     // Should delete lines 1,2,3 (b,c,d)
-    assert_eq!(ed.buffer.content(), "a\ne");
+    assert_eq!(ed.buf().content(), "a\ne");
 }
 
 #[test]
@@ -114,7 +114,7 @@ fn visual_indent_selection() {
     ed.execute(Command::EnterVisualLine);
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualIndent);
-    assert!(ed.buffer.content().starts_with("    a\n    b\nc"));
+    assert!(ed.buf().content().starts_with("    a\n    b\nc"));
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn visual_unindent_selection() {
     ed.execute(Command::EnterVisualLine);
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualUnindent);
-    assert!(ed.buffer.content().starts_with("a\nb\nc"));
+    assert!(ed.buf().content().starts_with("a\nb\nc"));
 }
 
 #[test]
@@ -137,11 +137,11 @@ fn ex_wq_saves() {
 fn undo_redo_cycle() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::DeleteCharForward);
-    assert_eq!(ed.buffer.content(), "ello");
+    assert_eq!(ed.buf().content(), "ello");
     ed.execute(Command::Undo);
-    assert_eq!(ed.buffer.content(), "hello");
+    assert_eq!(ed.buf().content(), "hello");
     ed.execute(Command::Redo);
-    assert_eq!(ed.buffer.content(), "ello");
+    assert_eq!(ed.buf().content(), "ello");
 }
 
 #[test]

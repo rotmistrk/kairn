@@ -117,7 +117,7 @@ fn discard_evicts_and_opens_new() {
 
     // Press 'n' to discard (ConfirmItem prompt: [y]es [n]o [Esc]cancel)
     h.inject_key(KeyCode::Char('n'), KeyMod::default());
-    h.run_cycles(4);
+    h.run_cycles(8);
 
     // c.rs should now be open
     assert!(h.content_contains("ccc"));

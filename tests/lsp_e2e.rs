@@ -24,7 +24,7 @@ fn spawn_mock() -> LspClient {
     LspClient::spawn(path.to_str().unwrap(), &[]).expect("Failed to spawn mock_lsp")
 }
 
-fn poll_until_response(client: &LspClient, timeout_ms: u64) -> Option<LspMessage> {
+fn poll_until_response(client: &mut LspClient, timeout_ms: u64) -> Option<LspMessage> {
     let deadline = std::time::Instant::now() + Duration::from_millis(timeout_ms);
     loop {
         let msgs = client.poll();
@@ -48,7 +48,7 @@ fn e2e_lsp_initialize() {
         "rootUri": "file:///project"
     });
     let id = client.send_request("initialize", params);
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -68,10 +68,10 @@ fn e2e_lsp_goto_definition() {
     let mut client = spawn_mock();
     // Initialize first
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = requests::goto_definition(&mut client, "file:///src/main.rs", 5, 10);
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -93,10 +93,10 @@ fn e2e_lsp_goto_definition() {
 fn e2e_lsp_find_references() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = requests::find_references(&mut client, "file:///src/main.rs", 5, 0);
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -117,10 +117,10 @@ fn e2e_lsp_find_references() {
 fn e2e_lsp_hover() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = requests::hover(&mut client, "file:///src/main.rs", 3, 5);
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -139,10 +139,10 @@ fn e2e_lsp_hover() {
 fn e2e_lsp_completion() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = requests::completion(&mut client, "file:///src/main.rs", 8, 4);
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -164,10 +164,10 @@ fn e2e_lsp_completion() {
 fn e2e_lsp_rename() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = requests::rename(&mut client, "file:///src/main.rs", 5, 0, "new_name");
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,
@@ -186,7 +186,7 @@ fn e2e_lsp_rename() {
 fn e2e_lsp_did_change_tracked() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     // Send didChange notifications
     client.send_notification(
@@ -209,7 +209,7 @@ fn e2e_lsp_did_change_tracked() {
 
     // Query the mock's didChange counter
     let id = client.send_request("mock/didChangeCount", serde_json::json!({}));
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response { result: Some(r), .. } => {
             assert_eq!(r.as_u64(), Some(2));
@@ -223,10 +223,10 @@ fn e2e_lsp_did_change_tracked() {
 fn e2e_lsp_shutdown() {
     let mut client = spawn_mock();
     client.send_request("initialize", serde_json::json!({}));
-    poll_until_response(&client, 1000);
+    poll_until_response(&mut client, 1000);
 
     let id = client.send_request("shutdown", serde_json::json!(null));
-    let msg = poll_until_response(&client, 2000).expect("No response");
+    let msg = poll_until_response(&mut client, 2000).expect("No response");
     match msg {
         LspMessage::Response {
             id: rid,

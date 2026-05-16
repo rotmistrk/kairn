@@ -7,12 +7,7 @@ use super::data::TodoTreeData;
 use super::model::{self, Completion, TodoItem};
 
 /// Process todo-specific keys. Returns true if consumed.
-pub fn handle_todo_key(
-    key: &KeyEvent,
-    data: &mut TodoTreeData,
-    cursor: usize,
-    queue: &mut EventQueue,
-) -> Option<HandleAction> {
+pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -> Option<HandleAction> {
     let id = data.visible_id(cursor);
     match key.code {
         // Shift+Up — swap up (same as K)
@@ -174,7 +169,6 @@ pub fn handle_todo_key(
             let new_path = model::swap_down(&mut data.file, &path)?;
             data.save();
             data.rebuild_flat();
-            let _ = queue;
             data.row_for_path(&new_path).map(HandleAction::MoveTo)
         }
         // K — swap up (Shift+k)

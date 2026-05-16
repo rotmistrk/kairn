@@ -1,7 +1,5 @@
 //! EditorView completion popup helpers.
 
-use txv_core::prelude::*;
-
 use crate::lsp::requests::CompletionItem;
 
 use super::EditorView;
@@ -41,18 +39,18 @@ impl EditorView {
             let prefix_len = self.word_prefix_len();
             let offset = self
                 .editor
-                .buffer
+                .buf()
                 .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
                 .unwrap_or(0);
             // Delete the prefix
             if prefix_len > 0 {
                 let start = offset - prefix_len;
-                self.editor.buffer.delete(start, prefix_len);
+                self.editor.buf().delete(start, prefix_len);
                 self.editor.cursor_col -= prefix_len;
             }
             // Insert completion text
             let insert_offset = offset - prefix_len;
-            self.editor.buffer.insert(insert_offset, &text);
+            self.editor.buf().insert(insert_offset, &text);
             self.editor.cursor_col += text.len();
             self.last_edit_tick = self.tick_counter;
         }
@@ -61,7 +59,7 @@ impl EditorView {
 
     /// Get the length of the word prefix before the cursor (identifier chars).
     fn word_prefix_len(&self) -> usize {
-        let line = self.editor.buffer.line(self.editor.cursor_line).unwrap_or_default();
+        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
         let col = self.editor.cursor_col;
         let before = &line[..col.min(line.len())];
         before
@@ -72,15 +70,16 @@ impl EditorView {
     }
 
     /// Handle tick event: autosave + completion trigger + LSP didChange.
-    pub(super) fn handle_tick(&mut self, queue: &mut EventQueue) {
+    pub(super) fn handle_tick(&mut self) {
         self.tick_counter += 1;
         // LSP didChange: 3 ticks after last edit (debounced)
         if self.last_edit_tick > 0 && self.tick_counter - self.last_edit_tick == 3 {
             let changed = crate::commands::ContentChanged {
                 path: self.path.clone(),
-                content: self.editor.buffer.content(),
+                content: self.editor.buf().content(),
             };
-            queue.put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
+            self.state
+                .put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
         }
         // Completion trigger: 5 ticks after last edit in insert mode
         if self.editor.mode == crate::editor::keymap::EditorMode::Insert
@@ -92,14 +91,15 @@ impl EditorView {
                 self.editor.cursor_line as u32,
                 self.editor.cursor_col as u32,
             );
-            queue.put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
+            self.state
+                .put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
         }
         if self.settings.autosave
             && self.last_edit_tick > 0
             && self.tick_counter - self.last_edit_tick >= self.settings.autosave_delay as u64
         {
             self.last_edit_tick = 0;
-            if self.editor.buffer.is_dirty() && self.save_buffer() {
+            if self.editor.buf().is_dirty() && self.save_buffer() {
                 self.sync_title();
             }
         }
@@ -107,9 +107,9 @@ impl EditorView {
 
     /// Save buffer to disk. Returns true on success.
     pub(super) fn save_buffer(&mut self) -> bool {
-        let content = self.editor.buffer.content();
+        let content = self.editor.buf().content();
         if crate::editor::save::save_file(&self.path, &content).is_ok() {
-            self.editor.buffer.mark_saved();
+            self.editor.buf().mark_saved();
             true
         } else {
             false
@@ -117,13 +117,33 @@ impl EditorView {
     }
 
     pub(super) fn complete_command_buf(&mut self) {
+        let buf = &self.editor.command_buf;
+
+        // File path completion for :e / :edit
+        if buf.starts_with("e ") || buf.starts_with("edit ") {
+            self.complete_command_path();
+            return;
+        }
+
+        // Command name completion
+        use crate::editor::ex_commands::CMD_TABLE_NAMES;
+        let matches: Vec<&str> = CMD_TABLE_NAMES
+            .iter()
+            .filter(|cmd| cmd.starts_with(buf.as_str()))
+            .copied()
+            .collect();
+        if matches.len() == 1 {
+            self.editor.command_buf = matches[0].to_string();
+        }
+    }
+
+    fn complete_command_path(&mut self) {
         use std::path::Path;
         let buf = &self.editor.command_buf;
-        let partial = buf.strip_prefix("e ").or_else(|| buf.strip_prefix("edit "));
-        let Some(partial) = partial else {
-            return;
-        };
-
+        let partial = buf
+            .strip_prefix("e ")
+            .or_else(|| buf.strip_prefix("edit "))
+            .unwrap_or("");
         let (search_dir, file_prefix, dir_prefix) = if partial.contains('/') {
             let p = Path::new(partial);
             let parent = p.parent().unwrap_or(Path::new(""));
