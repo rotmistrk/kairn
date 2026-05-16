@@ -130,7 +130,9 @@ fn parse_line_styled(
     syntax_set: &SyntaxSet,
     highlighter: &SyntectHighlighter,
 ) -> Vec<HlSpan> {
-    let ops = match parse.parse_line(line, syntax_set) {
+    // syntect newlines mode requires \n to close line-scoped patterns (e.g. // comments).
+    let line_nl = format!("{line}\n");
+    let ops = match parse.parse_line(&line_nl, syntax_set) {
         Ok(ops) => ops,
         Err(_) => {
             return vec![HlSpan {
@@ -141,8 +143,8 @@ fn parse_line_styled(
     };
 
     let mut hl_state = HighlightState::new(highlighter, scope.clone());
-    let iter = syntect::highlighting::HighlightIterator::new(&mut hl_state, &ops, line, highlighter);
-    let spans: Vec<HlSpan> = iter
+    let iter = syntect::highlighting::HighlightIterator::new(&mut hl_state, &ops, &line_nl, highlighter);
+    let mut spans: Vec<HlSpan> = iter
         .map(|(style, text)| {
             let (r, g, b) = ensure_readable(style.foreground.r, style.foreground.g, style.foreground.b);
             HlSpan {
@@ -154,6 +156,16 @@ fn parse_line_styled(
             }
         })
         .collect();
+
+    // Strip the trailing \n we added — it shouldn't appear in rendered output.
+    if let Some(last) = spans.last_mut() {
+        if last.text.ends_with('\n') {
+            last.text.pop();
+            if last.text.is_empty() {
+                spans.pop();
+            }
+        }
+    }
 
     // Apply ops to scope stack for next line.
     for (_idx, op) in &ops {
@@ -195,6 +207,34 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn line_comment_does_not_bleed_to_next_line() {
+        let syntax_set = SyntaxSet::load_defaults_newlines();
+        let themes = syntect::highlighting::ThemeSet::load_defaults();
+        let theme = &themes.themes["base16-eighties.dark"];
+
+        let lines = vec![
+            "// comment".to_string(),
+            "let x = 1;".to_string(),
+            "let y = 2;".to_string(),
+        ];
+        let mut cache = HighlightCache::new("rs");
+        let result = cache.highlight_viewport(0, 3, 3, |i| lines[i].clone(), &syntax_set, theme);
+
+        // Line 1 ("let x = 1;") — "let" should be highlighted as keyword, not comment.
+        // Comments and keywords have different colors; verify line 1 != line 0 color.
+        let comment_color = result[0][0].style.fg;
+        let line1_spans = &result[1];
+        let let_span = line1_spans
+            .iter()
+            .find(|s| s.text.contains("let"))
+            .expect("should have 'let'");
+        assert_ne!(
+            let_span.style.fg, comment_color,
+            "'let' on line after // should not have comment color"
+        );
     }
 
     #[test]
