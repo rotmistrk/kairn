@@ -103,9 +103,13 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         state.lsp.pending_opens.retain(|(l, _)| l != &lang);
                     } else {
                         log::info!("LSP initialized for {lang}");
-                        state
-                            .lsp_status
-                            .set_state(&lang, super::progress::LspServerState::Ready);
+                        state.lsp_status.set_state(
+                            &lang,
+                            super::progress::LspServerState::Indexing {
+                                percent: None,
+                                message: None,
+                            },
+                        );
                         if let Some(client) = state.lsp.get_client_mut(&lang) {
                             super::protocol::initialized(client);
                         }
