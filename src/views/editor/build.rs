@@ -49,6 +49,7 @@ impl EditorView {
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
+            highlight_line: None,
         }
     }
 
@@ -79,6 +80,7 @@ impl EditorView {
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
+            highlight_line: None,
         };
         view.apply_settings();
         view
@@ -110,6 +112,7 @@ impl EditorView {
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
+            highlight_line: None,
         }
     }
 
@@ -139,6 +142,7 @@ impl EditorView {
             diff_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
+            highlight_line: None,
         }
     }
 

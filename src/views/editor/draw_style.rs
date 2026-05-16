@@ -137,6 +137,21 @@ impl super::EditorView {
     }
 }
 
+/// Paint highlight background on a single row (for gs target line).
+pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: u16, to_x: u16) {
+    let Some(bg) = txv_core::palette::palette().interactive.search_match.bg else {
+        return;
+    };
+    let bw = buf.width() as usize;
+    let cells = buf.cells_mut();
+    let base = y as usize * bw;
+    for x in (from_x as usize)..(to_x as usize) {
+        if let Some(c) = cells.get_mut(base + x) {
+            c.style.bg = bg;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

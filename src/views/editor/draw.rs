@@ -12,7 +12,6 @@ impl EditorView {
         if w == 0 || h == 0 {
             return;
         }
-
         if self.in_diff_mode() {
             self.draw_diff();
             return;
@@ -256,6 +255,14 @@ impl EditorView {
 
             row = visual_row + 1;
             line_idx += 1;
+        }
+
+        // Highlight line (gs target) — paint bg after content is drawn
+        if let Some(hl) = self.highlight_line {
+            let vis_row = hl.saturating_sub(scroll);
+            if vis_row < h as usize {
+                super::draw_style::paint_line_bg(&mut self.state.buf, vis_row as u16, gutter_w, w);
+            }
         }
 
         // Fill remaining rows + prompt

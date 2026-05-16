@@ -176,6 +176,7 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
             if let Some(child) = es.split.child_mut(other_idx) {
                 if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                     open_into_editor(ev, &path, line, col, state);
+                    ev.highlight_line = Some(line as usize);
                     return;
                 }
             }

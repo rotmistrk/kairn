@@ -47,6 +47,8 @@ pub struct EditorView {
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
     pub buffer_id: Option<crate::buffer_registry::BufferId>,
+    /// Highlighted line (from gs — clears on next keypress).
+    pub highlight_line: Option<usize>,
 }
 
 impl View for EditorView {
@@ -72,6 +74,11 @@ impl View for EditorView {
         if let Event::Tick = event {
             self.handle_tick();
             return HandleResult::Ignored;
+        }
+
+        // Clear highlight line on any keypress
+        if matches!(event, Event::Key(_)) {
+            self.highlight_line = None;
         }
 
         let Event::Key(key) = event else {
