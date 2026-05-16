@@ -1,8 +1,5 @@
 //! LSP command handler — wires LSP events into the editor.
 
-use std::collections::HashMap;
-use std::time::Instant;
-
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
@@ -11,94 +8,10 @@ use crate::handler::AppState;
 
 use super::diagnostics;
 use super::messages::LspMessage;
+use super::pending::{JdtRequest, PendingKind};
 use super::send;
 
-/// Tracks pending LSP requests so responses can be routed.
-pub struct PendingRequests {
-    map: HashMap<u64, (PendingKind, String, Instant)>,
-    pub timeout_secs: u64,
-}
-
-impl Default for PendingRequests {
-    fn default() -> Self {
-        Self {
-            map: HashMap::new(),
-            timeout_secs: 10,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum PendingKind {
-    GotoDefinition,
-    GotoShow,
-    FindReferences { symbol: String },
-    Hover,
-    Completion,
-    Rename,
-    CodeAction,
-    JdtClassContents { line: u32, character: u32 },
-}
-
-impl PendingRequests {
-    pub(crate) fn insert(&mut self, id: u64, kind: PendingKind) {
-        self.insert_with_lang(id, kind, "");
-    }
-
-    pub(crate) fn insert_with_lang(&mut self, id: u64, kind: PendingKind, lang: &str) {
-        self.map.insert(id, (kind, lang.to_string(), Instant::now()));
-    }
-
-    pub(crate) fn take(&mut self, id: u64) -> Option<PendingKind> {
-        self.map.remove(&id).map(|(k, _, _)| k)
-    }
-
-    pub(crate) fn remove_timed_out(&mut self, sink: &EventSink, registry: &super::registry::LspRegistry) {
-        let global_timeout = self.timeout_secs;
-        let expired: Vec<u64> = self
-            .map
-            .iter()
-            .filter(|(_, (_, lang, t))| {
-                let secs = registry.timeout(lang).unwrap_or(global_timeout);
-                t.elapsed() > std::time::Duration::from_secs(secs)
-            })
-            .map(|(&id, _)| id)
-            .collect();
-        for id in expired {
-            if let Some((kind, lang, _)) = self.map.remove(&id) {
-                let secs = registry.timeout(&lang).unwrap_or(global_timeout);
-                let label = friendly_kind_label(&kind);
-                let msg = format!("{label}: no response after {secs}s");
-                log::warn!("LSP timeout: {msg}");
-                sink.push_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::error("lsp", msg))),
-                );
-            }
-        }
-    }
-}
-
-fn friendly_kind_label(kind: &PendingKind) -> &'static str {
-    match kind {
-        PendingKind::GotoDefinition => "Go to definition",
-        PendingKind::GotoShow => "Go to definition",
-        PendingKind::FindReferences { .. } => "Find references",
-        PendingKind::Hover => "Hover",
-        PendingKind::Completion => "Completion",
-        PendingKind::Rename => "Rename",
-        PendingKind::CodeAction => "Code action",
-        PendingKind::JdtClassContents { .. } => "Class contents",
-    }
-}
-
-/// Request for jdt:// class file contents from jdtls.
-#[derive(Debug, Clone)]
-pub(crate) struct JdtRequest {
-    pub uri: String,
-    pub line: u32,
-    pub character: u32,
-}
+pub use super::pending::PendingRequests;
 
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
@@ -237,6 +150,30 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                 }
             }
         }
+    }
+    // Detect servers that died during initialization
+    let dead_langs: Vec<String> = state
+        .lsp
+        .pending_init
+        .values()
+        .filter(|lang| state.lsp.active.get(lang.as_str()).is_some_and(|c| !c.is_alive()))
+        .cloned()
+        .collect();
+    for lang in &dead_langs {
+        state.lsp.pending_init.retain(|_, v| v != lang);
+        state.lsp.active.remove(lang.as_str());
+        state.lsp_status.set_state(lang, super::progress::LspServerState::Error);
+        let msg = format!("LSP server for {lang} died during startup");
+        log::error!("{msg}");
+        sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::error("lsp", msg))),
+        );
+        state.deferred_lsp.retain(|r| r.language != *lang);
+    }
+    if !dead_langs.is_empty() {
+        let snapshot = state.lsp_status.snapshot();
+        sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
 }
 

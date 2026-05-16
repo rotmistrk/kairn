@@ -6,7 +6,7 @@ use txv_core::prelude::*;
 
 use crate::commands::*;
 
-use super::handler::{JdtRequest, PendingKind};
+use super::pending::{JdtRequest, PendingKind};
 use super::requests;
 
 pub(super) fn handle_response(kind: PendingKind, result: &serde_json::Value, sink: &EventSink) {

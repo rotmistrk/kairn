@@ -217,7 +217,7 @@ fn lsp_client_poll_empty_after_process_exit() {
     use kairn::lsp::client::LspClient;
     // Spawn `true` which exits immediately
     let client = LspClient::spawn("true", &[]);
-    if let Some(c) = client {
+    if let Some(mut c) = client {
         // Give it a moment to exit
         std::thread::sleep(std::time::Duration::from_millis(50));
         // Poll should return empty, not panic

@@ -72,10 +72,17 @@ impl LspClient {
     }
 
     /// Poll for incoming messages (non-blocking). Returns all available.
-    pub fn poll(&self) -> Vec<LspMessage> {
+    pub fn poll(&mut self) -> Vec<LspMessage> {
         let mut msgs = Vec::new();
-        while let Ok(msg) = self.msg_rx.try_recv() {
-            msgs.push(msg);
+        loop {
+            match self.msg_rx.try_recv() {
+                Ok(msg) => msgs.push(msg),
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.dead = true;
+                    break;
+                }
+            }
         }
         msgs
     }
@@ -179,7 +186,7 @@ mod tests {
     #[test]
     fn poll_empty_when_no_response() {
         let client = LspClient::spawn("cat", &[]);
-        if let Some(c) = client {
+        if let Some(mut c) = client {
             let msgs = c.poll();
             assert!(msgs.is_empty());
         }

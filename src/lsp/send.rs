@@ -6,7 +6,7 @@ use txv_core::program::CommandContext;
 
 use crate::handler::AppState;
 
-use super::handler::{JdtRequest, PendingKind};
+use super::pending::{JdtRequest, PendingKind};
 use super::{protocol, requests};
 
 pub(super) use super::send_sync::{send_did_change, send_did_open};

@@ -16,7 +16,7 @@ pub struct ServerConfig {
 /// Registry of LSP servers — one per language.
 pub struct LspRegistry {
     configs: HashMap<String, ServerConfig>,
-    active: HashMap<String, LspClient>,
+    pub(super) active: HashMap<String, LspClient>,
     disabled: Vec<String>,
     timeouts: HashMap<String, u64>,
     pub last_error: Option<String>,
@@ -130,9 +130,9 @@ impl LspRegistry {
     }
 
     /// Poll all active clients for messages.
-    pub fn poll_all(&self) -> Vec<(String, super::messages::LspMessage)> {
+    pub fn poll_all(&mut self) -> Vec<(String, super::messages::LspMessage)> {
         let mut all = Vec::new();
-        for (lang, client) in &self.active {
+        for (lang, client) in &mut self.active {
             for msg in client.poll() {
                 all.push((lang.clone(), msg));
             }
