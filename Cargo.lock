@@ -1236,9 +1236,9 @@ dependencies = [
  "similar",
  "syntect",
  "tempfile",
- "txv-core",
- "txv-render",
- "txv-widgets",
+ "txv-core 0.1.0",
+ "txv-render 0.1.0",
+ "txv-widgets 0.1.0",
 ]
 
 [[package]]
@@ -1820,9 +1820,9 @@ dependencies = [
  "ignore",
  "log",
  "rusticle",
- "txv-core",
- "txv-render",
- "txv-widgets",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-widgets 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
 ]
 
 [[package]]
@@ -2238,6 +2238,15 @@ dependencies = [
 [[package]]
 name = "txv-core"
 version = "0.1.0"
+dependencies = [
+ "libc",
+ "log",
+ "unicode-width",
+]
+
+[[package]]
+name = "txv-core"
+version = "0.1.0"
 source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
 dependencies = [
  "libc",
@@ -2248,14 +2257,38 @@ dependencies = [
 [[package]]
 name = "txv-render"
 version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "libc",
+ "log",
+ "txv-core 0.1.0",
+ "unicode-width",
+ "vte",
+]
+
+[[package]]
+name = "txv-render"
+version = "0.1.0"
 source = "git+https://github.com/rotmistrk/txv.git#98116bf049e0ee04b4e77cc18cb2358e5c521fac"
 dependencies = [
  "crossterm",
  "libc",
  "log",
- "txv-core",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
  "unicode-width",
  "vte",
+]
+
+[[package]]
+name = "txv-widgets"
+version = "0.1.0"
+dependencies = [
+ "ignore",
+ "libc",
+ "log",
+ "portable-pty",
+ "txv-core 0.1.0",
+ "txv-render 0.1.0",
 ]
 
 [[package]]
@@ -2267,8 +2300,8 @@ dependencies = [
  "libc",
  "log",
  "portable-pty",
- "txv-core",
- "txv-render",
+ "txv-core 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
+ "txv-render 0.1.0 (git+https://github.com/rotmistrk/txv.git)",
 ]
 
 [[package]]

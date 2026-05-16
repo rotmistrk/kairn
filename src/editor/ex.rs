@@ -34,6 +34,9 @@ pub enum ExCommand {
     Diff(String),
     NoDiff,
     NoHighlight,
+    Split(String),
+    Vsplit(String),
+    Only,
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
@@ -89,6 +92,9 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
         ExCmdId::Diff => Some(ExCommand::Diff(rest.trim().to_string())),
         ExCmdId::NoDiff => Some(ExCommand::NoDiff),
         ExCmdId::NoHighlight => Some(ExCommand::NoHighlight),
+        ExCmdId::Split => Some(ExCommand::Split(rest.trim().to_string())),
+        ExCmdId::Vsplit => Some(ExCommand::Vsplit(rest.trim().to_string())),
+        ExCmdId::Only => Some(ExCommand::Only),
         ExCmdId::Delete => {
             let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
             Some(ExCommand::Delete { start, end })

@@ -105,6 +105,31 @@ impl EditorView {
             EditorAction::AppCommand(cmd) => {
                 queue.put_command(crate::commands::CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
             }
+            EditorAction::Split(arg) => {
+                let req = crate::commands::SplitRequest {
+                    vertical: false,
+                    file: if arg.is_empty() {
+                        None
+                    } else {
+                        Some(arg)
+                    },
+                };
+                queue.put_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+            }
+            EditorAction::Vsplit(arg) => {
+                let req = crate::commands::SplitRequest {
+                    vertical: true,
+                    file: if arg.is_empty() {
+                        None
+                    } else {
+                        Some(arg)
+                    },
+                };
+                queue.put_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+            }
+            EditorAction::Only => {
+                queue.put_command(crate::commands::CM_SPLIT_CLOSE, None);
+            }
             _ => {}
         }
     }

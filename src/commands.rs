@@ -172,6 +172,19 @@ pub const CM_WORD_COMPLETED: CommandId = 221;
 // Todo operations
 pub const CM_TODO_NOTE_OPEN: CommandId = 230;
 
+// Split view
+pub const CM_SPLIT: CommandId = 240;
+pub const CM_SPLIT_CLOSE: CommandId = 241;
+
+/// Payload for CM_SPLIT.
+#[derive(Debug, Clone)]
+pub struct SplitRequest {
+    /// true = vertical (left|right), false = horizontal (top/bottom)
+    pub vertical: bool,
+    /// Optional file to open in the new pane (None = same file).
+    pub file: Option<String>,
+}
+
 /// Context collected from the active view each tick.
 #[derive(Debug, Clone, Default)]
 pub struct ViewContext {

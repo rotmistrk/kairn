@@ -72,6 +72,9 @@ impl Editor {
                 self.highlight = None;
                 EditorAction::None
             }
+            ex::ExCommand::Split(arg) => EditorAction::Split(arg),
+            ex::ExCommand::Vsplit(arg) => EditorAction::Vsplit(arg),
+            ex::ExCommand::Only => EditorAction::Only,
             ex::ExCommand::Delete { start, end } => {
                 self.ex_delete(start, end);
                 EditorAction::ContentChanged

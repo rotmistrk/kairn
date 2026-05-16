@@ -50,6 +50,12 @@ pub enum EditorAction {
     LspCompletion,
     /// Forward unrecognized : command to app-level M-x dispatch.
     AppCommand(String),
+    /// :split [file] — horizontal split
+    Split(String),
+    /// :vsplit [file] — vertical split
+    Vsplit(String),
+    /// :only — close split
+    Only,
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.

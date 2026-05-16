@@ -154,7 +154,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_GIT_UNTRACK => crate::handler_git::handle_git_untrack(ctx, state),
         CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
-        CM_DIFF => {} // Handled by the focused editor view directly
+        CM_SPLIT => crate::handler_split::handle_split(ctx, state),
+        CM_SPLIT_CLOSE => crate::handler_split::handle_split_close(ctx, state),
         CM_TOGGLE_THEME => {
             let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
             if let Some(ref ts) = state.theme_state {
@@ -252,12 +253,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         | CM_WORD_COMPLETED => {
             crate::handler_script::handle_script_command(ctx, state);
         }
-        CM_SAVE => {
-            crate::handler_drain::sync_todo_note(state);
-        }
-        CM_TODO_NOTE_OPEN => {
-            crate::handler_drain::open_todo_note(ctx, state);
-        }
+        CM_SAVE => crate::handler_drain::sync_todo_note(state),
+        CM_TODO_NOTE_OPEN => crate::handler_drain::open_todo_note(ctx, state),
         _ => {}
     }
 }
