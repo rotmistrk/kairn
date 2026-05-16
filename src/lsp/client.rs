@@ -78,6 +78,13 @@ impl LspClient {
         }
     }
 
+    /// Send pre-encoded data (for responding to server requests).
+    pub fn send_raw(&mut self, data: Vec<u8>) {
+        if self.write_tx.send(data).is_err() {
+            self.dead = true;
+        }
+    }
+
     /// Returns true if the server connection is still alive.
     pub fn is_alive(&self) -> bool {
         !self.dead
@@ -126,9 +133,11 @@ impl LspClient {
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
-            while let Some(msg) = read_message(&mut reader) {
-                if tx.send(msg).is_err() {
-                    break;
+            while let Some(json) = read_message_json(&mut reader) {
+                if let Some(msg) = messages::parse_message(&json) {
+                    if tx.send(msg).is_err() {
+                        break;
+                    }
                 }
             }
         });
@@ -136,8 +145,8 @@ impl LspClient {
     }
 }
 
-/// Read one LSP message from a buffered reader (Content-Length framing).
-fn read_message(reader: &mut BufReader<std::process::ChildStdout>) -> Option<LspMessage> {
+/// Read one LSP JSON message from a buffered reader (Content-Length framing).
+fn read_message_json(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Value> {
     let mut content_length: usize = 0;
     loop {
         let mut line = String::new();
@@ -178,7 +187,7 @@ fn read_message(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Lsp
             return None;
         }
     };
-    messages::parse_message(&json)
+    Some(json)
 }
 
 #[cfg(test)]

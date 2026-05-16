@@ -96,6 +96,25 @@ impl LspRegistry {
         }
     }
 
+    /// Get a mutable reference to the client in any live state (for responding to server requests).
+    pub(super) fn get_client_any_mut(&mut self, language_id: &str) -> Option<&mut LspClient> {
+        match self.servers.get_mut(language_id) {
+            Some(ServerState::Starting { client, .. })
+            | Some(ServerState::WarmingUp { client })
+            | Some(ServerState::Ready { client }) => Some(client),
+            _ => None,
+        }
+    }
+
+    /// Languages currently in Starting state.
+    pub fn starting_languages(&self) -> Vec<String> {
+        self.servers
+            .iter()
+            .filter(|(_, s)| matches!(s, ServerState::Starting { .. }))
+            .map(|(l, _)| l.clone())
+            .collect()
+    }
+
     /// Check if a language server is NOT ready for requests.
     pub fn is_initializing(&self, language_id: &str) -> bool {
         matches!(

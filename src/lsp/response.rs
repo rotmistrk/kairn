@@ -93,7 +93,10 @@ fn handle_references(result: &serde_json::Value, sink: &EventSink, symbol: &str)
     } else {
         sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("lsp", "No references found"))),
+            Some(Box::new(Message::info(
+                "lsp",
+                format!("No references found for `{symbol}`"),
+            ))),
         );
     }
 }

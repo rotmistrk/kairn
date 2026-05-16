@@ -40,6 +40,15 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
     state.lsp_pending.remove_timed_out(sink, &state.lsp);
 
+    // Track Starting servers in progress display
+    for lang in state.lsp.starting_languages() {
+        if state.lsp_status.get(&lang).is_none() {
+            state
+                .lsp_status
+                .set_state(&lang, super::progress::LspServerState::Starting);
+        }
+    }
+
     // Refresh status bar while any server is starting
     if state.lsp_status.has_starting() {
         let snapshot = state.lsp_status.snapshot();
@@ -63,36 +72,46 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
     // Advance WarmingUp → Ready (server had a full tick to process 'initialized')
     let ready_langs = state.lsp.advance_warming_up();
     for lang in &ready_langs {
-        // Replay pending didOpen
-        let mut keep = Vec::new();
-        let opens: Vec<_> = state.lsp.pending_opens.drain(..).collect();
-        for (l, path) in opens {
-            if l == *lang {
-                if let Some(client) = state.lsp.get_client_mut(&l) {
-                    let uri = super::protocol::path_to_uri(&path);
-                    let lid = super::protocol::language_id(&path);
-                    let text = std::fs::read_to_string(&path).unwrap_or_default();
-                    super::protocol::did_open(client, &uri, lid, &text);
-                }
-            } else {
-                keep.push((l, path));
+        // Send didOpen for ALL open files of this language (includes session-restored)
+        let paths: Vec<std::path::PathBuf> = state
+            .broker
+            .open_paths()
+            .iter()
+            .map(|p| std::path::PathBuf::from(*p))
+            .filter(|p| super::protocol::language_id(p) == lang.as_str())
+            .collect();
+        for path in &paths {
+            let key = path.to_string_lossy().to_string();
+            if state.lsp_opened_files.contains(&key) {
+                continue;
+            }
+            if let Some(client) = state.lsp.get_client_mut(lang) {
+                let uri = super::protocol::path_to_uri(path);
+                let lid = super::protocol::language_id(path);
+                let text = std::fs::read_to_string(path).unwrap_or_default();
+                super::protocol::did_open(client, &uri, lid, &text);
+                state.lsp_opened_files.insert(key);
             }
         }
-        state.lsp.pending_opens = keep;
-        // Replay deferred requests
-        let mut keep = Vec::new();
-        for req in state.deferred_lsp.drain(..) {
-            if req.language == *lang {
-                sink.push_command(req.command, Some(req.data));
-            } else {
-                keep.push(req);
-            }
+        // Drop pending_opens for this language (already covered above)
+        state.lsp.pending_opens.retain(|(l, _)| l != lang);
+        // Drop deferred requests — server is ready but still indexing, user can retry
+        let had_deferred = state.deferred_lsp.iter().any(|r| r.language == *lang);
+        state.deferred_lsp.retain(|r| r.language != *lang);
+        if had_deferred {
+            sink.push_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::info(
+                    "lsp",
+                    format!("LSP ready ({lang}) — retry when ✓ appears"),
+                ))),
+            );
+        } else {
+            sink.push_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
+            );
         }
-        state.deferred_lsp = keep;
-        sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
-        );
     }
     if !ready_langs.is_empty() {
         let snapshot = state.lsp_status.snapshot();
@@ -102,20 +121,31 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
     // Poll messages from all servers
     for (lang, msg) in state.lsp.poll_all() {
         match msg {
-            LspMessage::Notification { method, params } => match method.as_str() {
-                "textDocument/publishDiagnostics" => {
-                    if let Some((uri, diags)) = super::diagnostics::parse_publish_diagnostics(&params) {
-                        sink.push_command(CM_DIAGNOSTIC, Some(Box::new((uri, diags))));
-                    }
+            LspMessage::ServerRequest { id, method } => {
+                log::debug!("LSP server request: {method} (id={id})");
+                // Respond with null result (acknowledges window/workDoneProgress/create etc.)
+                if let Some(client) = state.lsp.get_client_any_mut(&lang) {
+                    let resp = super::messages::encode_response(id);
+                    client.send_raw(resp);
                 }
-                "$/progress" => {
-                    if state.lsp_status.handle_progress(&lang, &params) {
-                        let snapshot = state.lsp_status.snapshot();
-                        sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
+            }
+            LspMessage::Notification { method, params } => {
+                log::debug!("LSP notification: {method}");
+                match method.as_str() {
+                    "textDocument/publishDiagnostics" => {
+                        if let Some((uri, diags)) = super::diagnostics::parse_publish_diagnostics(&params) {
+                            sink.push_command(CM_DIAGNOSTIC, Some(Box::new((uri, diags))));
+                        }
                     }
+                    "$/progress" => {
+                        if state.lsp_status.handle_progress(&lang, &params) {
+                            let snapshot = state.lsp_status.snapshot();
+                            sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
+                        }
+                    }
+                    _ => {}
                 }
-                _ => {}
-            },
+            }
             LspMessage::Response { id, result, error } => {
                 // Check if this is an initialize response
                 if let Some(ready_lang) = state.lsp.is_init_response(id) {

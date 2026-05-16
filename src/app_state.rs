@@ -38,6 +38,7 @@ pub struct AppState {
     pub kiro_registry: KiroTabRegistry,
     /// LSP document version counters (keyed by file path string).
     pub doc_versions: std::collections::HashMap<String, i64>,
+    pub lsp_opened_files: std::collections::HashSet<String>,
     /// MCP snapshot (updated periodically for MCP server reads).
     pub mcp_snapshot: Option<Arc<Mutex<crate::mcp::snapshot::McpSnapshot>>>,
     /// MCP command queue for write operations from MCP tools.
@@ -87,6 +88,7 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            lsp_opened_files: std::collections::HashSet::new(),
             mcp_snapshot: None,
             mcp_commands: None,
             mcp_tick: 0,
@@ -122,6 +124,7 @@ impl AppState {
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: std::collections::HashMap::new(),
+            lsp_opened_files: std::collections::HashSet::new(),
             mcp_snapshot: None,
             mcp_commands: None,
             mcp_tick: 0,

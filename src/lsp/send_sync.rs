@@ -35,6 +35,12 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
+    let key = path.to_string_lossy().to_string();
+    if state.lsp_opened_files.contains(&key) {
+        return;
+    }
+    state.lsp_opened_files.insert(key);
+
     let uri = protocol::path_to_uri(path);
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,

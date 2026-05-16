@@ -147,7 +147,7 @@ pub fn format_status_label(snapshot: &[(String, LspServerState, Option<u64>)]) -
                 }
                 LspServerState::Indexing { percent: Some(p), .. } => format!("{short} {p}%"),
                 LspServerState::Indexing { .. } => format!("{short} ⟳"),
-                LspServerState::Ready => short.to_string(),
+                LspServerState::Ready => format!("{short} ✓"),
                 LspServerState::Error => format!("{short} ✗"),
             }
         })
