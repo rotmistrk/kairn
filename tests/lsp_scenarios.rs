@@ -28,12 +28,12 @@ fn lsp_registry_disables_after_spawn_failure() {
     reg.set_config("testlang", "__no_such_binary__", &[]);
 
     // First attempt: fails, should disable
-    let result = reg.get_or_start("testlang", Path::new("/tmp"));
-    assert!(result.is_none());
+    let result = reg.ensure_started("testlang", Path::new("/tmp"));
+    assert!(!result);
 
     // Second attempt: should not retry (disabled)
-    let result = reg.get_or_start("testlang", Path::new("/tmp"));
-    assert!(result.is_none());
+    let result = reg.ensure_started("testlang", Path::new("/tmp"));
+    assert!(!result);
 }
 
 // --- Test 3: goto definition response parsing ---
@@ -237,11 +237,11 @@ fn lsp_registry_no_retry_after_disable() {
     reg.set_config("fakeland", "__nonexistent__", &[]);
 
     // First call: spawn fails → auto-disabled
-    assert!(reg.get_or_start("fakeland", Path::new("/tmp")).is_none());
+    assert!(!reg.ensure_started("fakeland", Path::new("/tmp")));
 
-    // Override with a valid command — but it's disabled, so still None
+    // Override with a valid command — but it's disabled, so still false
     reg.set_config("fakeland", "echo", &[]);
-    assert!(reg.get_or_start("fakeland", Path::new("/tmp")).is_none());
+    assert!(!reg.ensure_started("fakeland", Path::new("/tmp")));
 }
 
 // --- Test: code actions parsing ---

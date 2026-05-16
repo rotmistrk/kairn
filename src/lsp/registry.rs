@@ -1,7 +1,10 @@
-//! LspRegistry — manages LSP server instances per language.
+//! LspRegistry — manages LSP server lifecycle per language via state machine.
+//!
+//! States: Starting → WarmingUp → Ready → Disabled
+//! No out-of-order messages possible: requests only sent in Ready state.
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::client::LspClient;
 use super::protocol;
@@ -13,19 +16,26 @@ pub struct ServerConfig {
     pub args: Vec<String>,
 }
 
+/// Lifecycle state of a single LSP server.
+pub(super) enum ServerState {
+    /// initialize request sent, waiting for response.
+    Starting { client: LspClient, init_id: u64 },
+    /// initialized notification sent, waiting one tick for server to process it.
+    WarmingUp { client: LspClient },
+    /// Server is ready to accept requests.
+    Ready { client: LspClient },
+    /// Server died or was disabled.
+    Disabled,
+}
+
 /// Registry of LSP servers — one per language.
 pub struct LspRegistry {
-    configs: HashMap<String, ServerConfig>,
-    pub(super) active: HashMap<String, LspClient>,
-    disabled: Vec<String>,
-    timeouts: HashMap<String, u64>,
+    pub(super) configs: HashMap<String, ServerConfig>,
+    pub(super) servers: HashMap<String, ServerState>,
+    pub(super) timeouts: HashMap<String, u64>,
     pub last_error: Option<String>,
-    /// Maps initialize request IDs to language IDs so we can send `initialized` on response.
-    pub(super) pending_init: HashMap<u64, String>,
     /// Files to send didOpen for after initialization completes.
-    pub(super) pending_opens: Vec<(String, std::path::PathBuf)>,
-    /// Languages where `initialized` was just sent — block requests for one tick.
-    pub(super) warming_up: Vec<String>,
+    pub(super) pending_opens: Vec<(String, PathBuf)>,
 }
 
 impl LspRegistry {
@@ -42,68 +52,21 @@ impl LspRegistry {
         }
         Self {
             configs,
-            active: HashMap::new(),
-            disabled: Vec::new(),
+            servers: HashMap::new(),
             timeouts: HashMap::new(),
             last_error: None,
-            pending_init: HashMap::new(),
             pending_opens: Vec::new(),
-            warming_up: Vec::new(),
         }
     }
 
-    fn defaults() -> Vec<(&'static str, &'static str, &'static [&'static str])> {
-        vec![
-            ("rust", "rust-analyzer", &[]),
-            ("go", "gopls", &[]),
-            ("typescript", "typescript-language-server", &["--stdio"]),
-            ("javascript", "typescript-language-server", &["--stdio"]),
-            ("c", "clangd", &[]),
-            ("cpp", "clangd", &[]),
-            ("java", "jdtls", &[]),
-            ("python", "pyright-langserver", &["--stdio"]),
-        ]
-    }
-
-    /// Set or override a server config for a language.
-    pub fn set_config(&mut self, language_id: &str, command: &str, args: &[String]) {
-        self.configs.insert(
-            language_id.to_string(),
-            ServerConfig {
-                command: command.to_string(),
-                args: args.to_vec(),
-            },
-        );
-    }
-
-    /// Disable LSP for a language.
-    pub fn disable(&mut self, language_id: &str) {
-        self.disabled.push(language_id.to_string());
-    }
-
-    /// Get or start the LSP client for a language. Returns None if disabled or spawn fails.
-    pub fn get_or_start(&mut self, language_id: &str, root_dir: &Path) -> Option<&mut LspClient> {
-        if self.disabled.contains(&language_id.to_string()) {
-            return None;
-        }
-        let is_dead = self.active.get(language_id).is_some_and(|c| !c.is_alive());
-        if is_dead {
-            self.active.remove(language_id);
-            let err = format!("LSP server for {language_id} died — disabled until restart");
-            log::error!("{}", err);
-            self.last_error = Some(err);
-            self.disabled.push(language_id.to_string());
-            return None;
-        }
-        if self.active.contains_key(language_id) {
-            return self.active.get_mut(language_id);
+    /// Ensure a server is started for a language. Returns true if ready for requests.
+    pub fn ensure_started(&mut self, language_id: &str, root_dir: &Path) -> bool {
+        if let Some(state) = self.servers.get(language_id) {
+            return matches!(state, ServerState::Ready { .. });
         }
         let config = match self.configs.get(language_id) {
             Some(c) => c.clone(),
-            None => {
-                log::debug!("No LSP server configured for {language_id}");
-                return None;
-            }
+            None => return false,
         };
         let args: Vec<&str> = config.args.iter().map(|s| s.as_str()).collect();
         let mut client = match LspClient::spawn(&config.command, &args) {
@@ -111,176 +74,121 @@ impl LspRegistry {
             None => {
                 let hint = crate::tool_check::install_hint(&config.command);
                 let err = format!("LSP: {} not found. Install: {}", config.command, hint);
-                log::error!("{}", err);
+                log::error!("{err}");
                 self.last_error = Some(err);
-                self.disabled.push(language_id.to_string());
-                return None;
+                self.servers.insert(language_id.to_string(), ServerState::Disabled);
+                return false;
             }
         };
         log::info!("LSP started: {} for {language_id}", config.command);
         let root_uri = protocol::path_to_uri(root_dir);
         let init_id = protocol::initialize(&mut client, &root_uri);
-        self.pending_init.insert(init_id, language_id.to_string());
-        self.active.insert(language_id.to_string(), client);
-        self.active.get_mut(language_id)
+        self.servers
+            .insert(language_id.to_string(), ServerState::Starting { client, init_id });
+        false
     }
 
-    /// Get a mutable reference to an active client by language.
+    /// Get a mutable reference to the client, only if Ready.
     pub(super) fn get_client_mut(&mut self, language_id: &str) -> Option<&mut LspClient> {
-        self.active.get_mut(language_id)
+        match self.servers.get_mut(language_id) {
+            Some(ServerState::Ready { client }) => Some(client),
+            _ => None,
+        }
     }
 
-    /// Check if a language server is still in the initialization phase.
+    /// Check if a language server is NOT ready for requests.
     pub fn is_initializing(&self, language_id: &str) -> bool {
-        self.pending_init.values().any(|lang| lang == language_id) || self.warming_up.iter().any(|l| l == language_id)
+        matches!(
+            self.servers.get(language_id),
+            Some(ServerState::Starting { .. }) | Some(ServerState::WarmingUp { .. }) | None
+        )
+    }
+
+    /// Check if a response ID matches a Starting server. Returns the language.
+    pub(super) fn is_init_response(&self, id: u64) -> Option<String> {
+        self.servers.iter().find_map(|(lang, state)| {
+            if let ServerState::Starting { init_id, .. } = state {
+                if *init_id == id {
+                    return Some(lang.clone());
+                }
+            }
+            None
+        })
+    }
+
+    /// Transition Starting → WarmingUp: send initialized notification.
+    pub(super) fn complete_init(&mut self, language_id: &str) {
+        let Some(state) = self.servers.remove(language_id) else {
+            return;
+        };
+        if let ServerState::Starting { mut client, .. } = state {
+            protocol::initialized(&mut client);
+            log::info!("Sent initialized notification for {language_id}");
+            self.servers
+                .insert(language_id.to_string(), ServerState::WarmingUp { client });
+        }
+    }
+
+    /// Transition Starting → Disabled on init failure.
+    pub(super) fn fail_init(&mut self, language_id: &str) {
+        self.servers.insert(language_id.to_string(), ServerState::Disabled);
+    }
+
+    /// Transition WarmingUp → Ready (called at start of next tick).
+    pub(super) fn advance_warming_up(&mut self) -> Vec<String> {
+        let warming: Vec<String> = self
+            .servers
+            .iter()
+            .filter(|(_, s)| matches!(s, ServerState::WarmingUp { .. }))
+            .map(|(l, _)| l.clone())
+            .collect();
+        for lang in &warming {
+            if let Some(ServerState::WarmingUp { client }) = self.servers.remove(lang) {
+                self.servers.insert(lang.clone(), ServerState::Ready { client });
+            }
+        }
+        warming
+    }
+
+    /// Check for dead servers and transition them to Disabled.
+    pub(super) fn detect_dead(&mut self) -> Vec<String> {
+        let dead: Vec<String> = self
+            .servers
+            .iter()
+            .filter(|(_, s)| match s {
+                ServerState::Starting { client, .. }
+                | ServerState::WarmingUp { client }
+                | ServerState::Ready { client } => !client.is_alive(),
+                ServerState::Disabled => false,
+            })
+            .map(|(l, _)| l.clone())
+            .collect();
+        for lang in &dead {
+            self.servers.insert(lang.clone(), ServerState::Disabled);
+        }
+        dead
     }
 
     /// Poll all active clients for messages.
     pub fn poll_all(&mut self) -> Vec<(String, super::messages::LspMessage)> {
         let mut all = Vec::new();
-        for (lang, client) in &mut self.active {
+        for (lang, state) in &mut self.servers {
+            let client = match state {
+                ServerState::Starting { client, .. }
+                | ServerState::WarmingUp { client }
+                | ServerState::Ready { client } => client,
+                ServerState::Disabled => continue,
+            };
             for msg in client.poll() {
                 all.push((lang.clone(), msg));
             }
         }
         all
     }
-
-    /// Shutdown all active servers.
-    pub fn shutdown_all(&mut self) {
-        for client in self.active.values_mut() {
-            client.send_request("shutdown", serde_json::json!(null));
-            client.send_notification("exit", serde_json::json!(null));
-        }
-        self.active.clear();
-    }
-
-    /// Stop a single language server.
-    pub fn stop(&mut self, language_id: &str) -> bool {
-        if let Some(mut client) = self.active.remove(language_id) {
-            client.send_request("shutdown", serde_json::json!(null));
-            client.send_notification("exit", serde_json::json!(null));
-            self.pending_init.retain(|_, lang| lang != language_id);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Stop and re-enable a language (allows get_or_start to spawn again).
-    pub fn restart(&mut self, language_id: &str) {
-        self.stop(language_id);
-        self.disabled.retain(|l| l != language_id);
-    }
-
-    /// Set per-language timeout (seconds). 0 means use global default.
-    pub fn set_timeout(&mut self, language_id: &str, secs: u64) {
-        self.timeouts.insert(language_id.to_string(), secs);
-    }
-
-    /// Get per-language timeout, or None for global default.
-    pub fn timeout(&self, language_id: &str) -> Option<u64> {
-        self.timeouts.get(language_id).copied().filter(|&t| t > 0)
-    }
-
-    /// Return languages matching a glob pattern (e.g. "rust", "type*", "*").
-    pub fn matching_languages(&self, pattern: &str) -> Vec<String> {
-        let all: Vec<&str> = self
-            .configs
-            .keys()
-            .map(|s| s.as_str())
-            .chain(self.active.keys().map(|s| s.as_str()))
-            .collect();
-        let mut matched: Vec<String> = all
-            .into_iter()
-            .filter(|lang| glob_match(pattern, lang))
-            .map(|s| s.to_string())
-            .collect();
-        matched.sort();
-        matched.dedup();
-        matched
-    }
-
-    /// List active server languages.
-    pub fn active_languages(&self) -> Vec<&str> {
-        self.active.keys().map(|s| s.as_str()).collect()
-    }
-
-    /// Check if a config exists for a language.
-    pub fn has_config(&self, language_id: &str) -> bool {
-        self.configs.contains_key(language_id)
-    }
-}
-
-/// Simple glob matching: supports `*` (any chars) and `?` (single char).
-fn glob_match(pattern: &str, text: &str) -> bool {
-    if pattern == "*" {
-        return true;
-    }
-    if let Some(prefix) = pattern.strip_suffix('*') {
-        return text.starts_with(prefix);
-    }
-    if let Some(suffix) = pattern.strip_prefix('*') {
-        return text.ends_with(suffix);
-    }
-    pattern == text
 }
 
 impl Default for LspRegistry {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new_has_defaults() {
-        let reg = LspRegistry::new();
-        assert!(reg.has_config("rust"));
-        assert!(reg.has_config("go"));
-        assert!(reg.has_config("typescript"));
-        assert!(!reg.has_config("haskell"));
-    }
-
-    #[test]
-    fn set_config_overrides() {
-        let mut reg = LspRegistry::new();
-        reg.set_config("rust", "my-analyzer", &["--flag".to_string()]);
-        assert!(reg.has_config("rust"));
-    }
-
-    #[test]
-    fn disable_prevents_start() {
-        let mut reg = LspRegistry::new();
-        reg.disable("rust");
-        let result = reg.get_or_start("rust", Path::new("/tmp"));
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn get_or_start_nonexistent_language() {
-        let mut reg = LspRegistry::new();
-        let result = reg.get_or_start("brainfuck", Path::new("/tmp"));
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn get_or_start_missing_binary() {
-        let mut reg = LspRegistry::new();
-        // rust-analyzer likely not in PATH in test env
-        let result = reg.get_or_start("rust", Path::new("/tmp"));
-        // Either None (not installed) or Some (installed) — both are valid
-        // The key is it doesn't panic
-        let _ = result;
-    }
-
-    #[test]
-    fn shutdown_all_clears_active() {
-        let mut reg = LspRegistry::new();
-        reg.shutdown_all();
-        assert!(reg.active_languages().is_empty());
     }
 }

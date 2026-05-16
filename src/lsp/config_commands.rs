@@ -105,8 +105,8 @@ mod tests {
 
         let mut reg = LspRegistry::new();
         apply_lsp_config(&interp, &mut reg);
-        let result = reg.get_or_start("python", std::path::Path::new("/tmp"));
-        assert!(result.is_none());
+        let result = reg.ensure_started("python", std::path::Path::new("/tmp"));
+        assert!(!result);
     }
 
     #[test]

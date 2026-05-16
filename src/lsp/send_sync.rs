@@ -17,9 +17,14 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
+    state.lsp.ensure_started(lang, &root);
 
-    // Ensure server is started (may be first file for this language)
-    if state.lsp.get_or_start(lang, &root).is_none() {
+    if state.lsp.is_initializing(lang) {
+        state.lsp.pending_opens.push((lang.to_string(), path.clone()));
+        return;
+    }
+
+    let Some(client) = state.lsp.get_client_mut(lang) else {
         if let Some(err) = state.lsp.last_error.take() {
             use txv_core::message::{Message, MsgLevel};
             ctx.sink.push_command(
@@ -28,13 +33,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
             );
         }
         return;
-    }
-
-    // Don't send didOpen before initialized handshake completes
-    if state.lsp.is_initializing(lang) {
-        state.lsp.pending_opens.push((lang.to_string(), path.clone()));
-        return;
-    }
+    };
 
     let uri = protocol::path_to_uri(path);
     let text = match std::fs::read_to_string(path) {
@@ -44,9 +43,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
             String::new()
         }
     };
-    if let Some(client) = state.lsp.get_client_mut(lang) {
-        protocol::did_open(client, &uri, lang, &text);
-    }
+    protocol::did_open(client, &uri, lang, &text);
 }
 
 pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
@@ -59,14 +56,8 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(&changed.path);
     let root = state.root_dir.clone();
-    let Some(client) = state.lsp.get_or_start(lang, &root) else {
-        if let Some(err) = state.lsp.last_error.take() {
-            use txv_core::message::{Message, MsgLevel};
-            ctx.sink.push_command(
-                txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
-            );
-        }
+    state.lsp.ensure_started(lang, &root);
+    let Some(client) = state.lsp.get_client_mut(lang) else {
         return;
     };
 

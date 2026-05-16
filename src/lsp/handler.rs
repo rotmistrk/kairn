@@ -6,16 +6,14 @@ use txv_core::program::CommandContext;
 use crate::commands::*;
 use crate::handler::AppState;
 
-use super::diagnostics;
 use super::messages::LspMessage;
-use super::pending::{JdtRequest, PendingKind};
+use super::pending::JdtRequest;
 use super::send;
 
 pub use super::pending::PendingRequests;
 
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
-    log::debug!("LSP handler: cmd={}", ctx.command);
     match ctx.command {
         CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
         CM_CONTENT_CHANGED => send::send_did_change(ctx, state),
@@ -42,14 +40,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
     state.lsp_pending.remove_timed_out(sink, &state.lsp);
 
-    // Track Starting state for languages in pending_init
-    for lang in state.lsp.pending_init.values() {
-        use super::progress::LspServerState;
-        if state.lsp_status.get(lang).is_none() {
-            state.lsp_status.set_state(lang, LspServerState::Starting);
-        }
-    }
-    // Refresh status bar while any server is starting (shows elapsed time)
+    // Refresh status bar while any server is starting
     if state.lsp_status.has_starting() {
         let snapshot = state.lsp_status.snapshot();
         sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
@@ -69,42 +60,51 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
         }
     });
 
-    // Clear warming_up — server has had a full tick to process 'initialized'
-    state.lsp.warming_up.clear();
-
-    // Replay deferred requests marked ready (from previous tick's initialization)
-    let mut remaining = Vec::new();
-    for req in state.deferred_lsp.drain(..) {
-        if req.language.ends_with(":ready") {
-            sink.push_command(req.command, Some(req.data));
-        } else {
-            remaining.push(req);
-        }
-    }
-    state.deferred_lsp = remaining;
-
-    // Replay pending didOpen marked ready (from previous tick's initialization)
-    let mut open_remaining = Vec::new();
-    let pending: Vec<_> = state.lsp.pending_opens.drain(..).collect();
-    for (l, path) in pending {
-        if let Some(lang) = l.strip_suffix(":ready") {
-            if let Some(client) = state.lsp.get_client_mut(lang) {
-                let uri = super::protocol::path_to_uri(&path);
-                let lid = super::protocol::language_id(&path);
-                let text = std::fs::read_to_string(&path).unwrap_or_default();
-                super::protocol::did_open(client, &uri, lid, &text);
+    // Advance WarmingUp → Ready (server had a full tick to process 'initialized')
+    let ready_langs = state.lsp.advance_warming_up();
+    for lang in &ready_langs {
+        // Replay pending didOpen
+        let mut keep = Vec::new();
+        let opens: Vec<_> = state.lsp.pending_opens.drain(..).collect();
+        for (l, path) in opens {
+            if l == *lang {
+                if let Some(client) = state.lsp.get_client_mut(&l) {
+                    let uri = super::protocol::path_to_uri(&path);
+                    let lid = super::protocol::language_id(&path);
+                    let text = std::fs::read_to_string(&path).unwrap_or_default();
+                    super::protocol::did_open(client, &uri, lid, &text);
+                }
+            } else {
+                keep.push((l, path));
             }
-        } else {
-            open_remaining.push((l, path));
         }
+        state.lsp.pending_opens = keep;
+        // Replay deferred requests
+        let mut keep = Vec::new();
+        for req in state.deferred_lsp.drain(..) {
+            if req.language == *lang {
+                sink.push_command(req.command, Some(req.data));
+            } else {
+                keep.push(req);
+            }
+        }
+        state.deferred_lsp = keep;
+        sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
+        );
     }
-    state.lsp.pending_opens = open_remaining;
+    if !ready_langs.is_empty() {
+        let snapshot = state.lsp_status.snapshot();
+        sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
+    }
+
+    // Poll messages from all servers
     for (lang, msg) in state.lsp.poll_all() {
-        log::trace!("LSP poll: {:?}", &msg);
         match msg {
             LspMessage::Notification { method, params } => match method.as_str() {
                 "textDocument/publishDiagnostics" => {
-                    if let Some((uri, diags)) = diagnostics::parse_publish_diagnostics(&params) {
+                    if let Some((uri, diags)) = super::diagnostics::parse_publish_diagnostics(&params) {
                         sink.push_command(CM_DIAGNOSTIC, Some(Box::new((uri, diags))));
                     }
                 }
@@ -118,62 +118,38 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
             },
             LspMessage::Response { id, result, error } => {
                 // Check if this is an initialize response
-                if let Some(lang) = state.lsp.pending_init.remove(&id) {
+                if let Some(ready_lang) = state.lsp.is_init_response(id) {
                     if let Some(err) = error {
-                        let msg = format!("LSP init failed for {lang}: {}", err.message);
+                        state.lsp.fail_init(&ready_lang);
+                        let msg = format!("LSP init failed for {ready_lang}: {}", err.message);
                         log::error!("{msg}");
                         state
                             .lsp_status
-                            .set_state(&lang, super::progress::LspServerState::Error);
+                            .set_state(&ready_lang, super::progress::LspServerState::Error);
                         sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::error("lsp", msg))),
                         );
-                        // Drop deferred requests for this language
-                        state.deferred_lsp.retain(|r| r.language != lang);
-                        state.lsp.pending_opens.retain(|(l, _)| l != &lang);
+                        state.deferred_lsp.retain(|r| r.language != ready_lang);
+                        state.lsp.pending_opens.retain(|(l, _)| l != &ready_lang);
                     } else {
-                        log::info!("LSP initialized for {lang}");
+                        state.lsp.complete_init(&ready_lang);
+                        log::info!("LSP initialized for {ready_lang}");
                         state.lsp_status.set_state(
-                            &lang,
+                            &ready_lang,
                             super::progress::LspServerState::Indexing {
                                 percent: None,
                                 message: None,
                             },
                         );
-                        if let Some(client) = state.lsp.get_client_mut(&lang) {
-                            super::protocol::initialized(client);
-                            log::info!("Sent initialized notification for {lang}");
-                        } else {
-                            log::error!("Cannot send initialized — client not found for {lang}");
-                        }
-                        state.lsp.warming_up.push(lang.clone());
-                        // Mark pending opens as ready (replayed in next tick)
-                        for (l, _) in &mut state.lsp.pending_opens {
-                            if *l == lang {
-                                *l = format!("{l}:ready");
-                            }
-                        }
-                        sink.push_command(
-                            txv_widgets::CM_STATUS_MESSAGE,
-                            Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
-                        );
-                        // Retry deferred requests for this language
-                        // (processed in next tick to ensure initialized is flushed)
-                        for req in &mut state.deferred_lsp {
-                            if req.language == lang {
-                                req.language = format!("{}:ready", req.language);
-                            }
-                        }
                     }
                     let snapshot = state.lsp_status.snapshot();
                     sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
                     continue;
                 }
                 if let Some(kind) = state.lsp_pending.take(id) {
-                    log::info!("LSP response: {kind:?} (id={id})");
                     if let Some(result) = result {
-                        handle_response(kind, &result, sink);
+                        super::response::handle_response(kind, &result, sink);
                     } else if let Some(err) = error {
                         let msg = format!("{kind:?}: {}", err.message);
                         log::error!("LSP error: {msg}");
@@ -182,42 +158,27 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                             Some(Box::new(Message::error("lsp", msg))),
                         );
                     }
-                } else {
-                    log::warn!("LSP response id={id} doesn't match any pending request");
                 }
             }
         }
     }
-    // Detect servers that died during initialization
-    let dead_langs: Vec<String> = state
-        .lsp
-        .pending_init
-        .values()
-        .filter(|lang| state.lsp.active.get(lang.as_str()).is_some_and(|c| !c.is_alive()))
-        .cloned()
-        .collect();
+
+    // Detect dead servers
+    let dead_langs = state.lsp.detect_dead();
     for lang in &dead_langs {
-        state.lsp.pending_init.retain(|_, v| v != lang);
-        state.lsp.active.remove(lang.as_str());
         state.lsp_status.set_state(lang, super::progress::LspServerState::Error);
-        let msg = format!("LSP server for {lang} died during startup");
-        log::error!("{msg}");
         sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::error("lsp", msg))),
+            Some(Box::new(Message::error(
+                "lsp",
+                format!("LSP server for {lang} died — disabled until restart"),
+            ))),
         );
         state.deferred_lsp.retain(|r| r.language != *lang);
+        state.lsp.pending_opens.retain(|(l, _)| l != lang);
     }
     if !dead_langs.is_empty() {
         let snapshot = state.lsp_status.snapshot();
         sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
-}
-
-fn handle_response(kind: PendingKind, result: &serde_json::Value, sink: &EventSink) {
-    super::response::handle_response(kind, result, sink);
-}
-
-fn uri_to_path(uri: &str) -> String {
-    super::response::uri_to_path(uri)
 }

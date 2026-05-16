@@ -10,6 +10,7 @@ pub(crate) mod pending;
 pub mod progress;
 pub mod protocol;
 pub mod registry;
+mod registry_config;
 pub mod requests;
 pub mod resource_ops;
 mod response;
