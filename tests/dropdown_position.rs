@@ -16,7 +16,7 @@ const CTRL_SHIFT_DOWN: KeyMod = KeyMod {
 #[test]
 fn dropdown_position_wide_layout_right_slot() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     // Focus right slot
     h.inject_key(KeyCode::F(4), KeyMod::default());
     h.run_cycles(1);

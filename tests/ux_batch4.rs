@@ -75,7 +75,7 @@ fn welcome_view_closed_after_opening_file() {
 #[test]
 fn wide_layout_three_columns_at_200_width() {
     let dir = temp_project(&[("a.rs", "wide")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 24);
+    let mut h = TestHarness::with_size(dir.path(), 300, 24);
     h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
     // In wide layout (>=200), all 3 slots are side by side on the same row.

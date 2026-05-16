@@ -8,7 +8,7 @@ use txv_core::event::{KeyCode, KeyMod};
 #[test]
 fn wide_at_200_cols() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     h.run_cycles(1);
 
     // In wide mode, Shell tab should be in the top chrome (right slot visible)
@@ -22,7 +22,7 @@ fn wide_at_200_cols() {
 #[test]
 fn tall_at_176_cols() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    let mut h = TestHarness::with_size(dir.path(), 176, 30);
+    let mut h = TestHarness::with_size(dir.path(), 200, 30);
     h.run_cycles(1);
 
     // In tall mode, Shell tab should NOT be in the top chrome (it's in bottom divider)
@@ -39,37 +39,37 @@ fn tall_at_176_cols() {
 #[test]
 fn hysteresis_stays_in_between() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    // Start wide (200), then resize to 190 (between thresholds)
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    // Start wide (300), then resize to 250 (between thresholds)
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     h.run_cycles(1);
 
     // Verify wide
     let top = h.row(0);
     assert!(top.contains("Shell"), "should start wide");
 
-    // Resize to 190 (between 176 and 200) — should stay wide
-    h.backend.set_size(190, 30);
+    // Resize to 250 (between 200 and 300) — should stay wide
+    h.backend.set_size(250, 30);
     h.run_cycles(1);
 
     let top = h.row(0);
     assert!(
         top.contains("Shell"),
-        "at 190 cols (between thresholds), should stay wide: {top:?}"
+        "at 250 cols (between thresholds), should stay wide: {top:?}"
     );
 }
 
 #[test]
 fn hysteresis_switches_to_tall_at_176() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     h.run_cycles(1);
 
-    // Resize to 176 — should switch to tall
-    h.backend.set_size(176, 30);
+    // Resize to 200 — should switch to tall
+    h.backend.set_size(200, 30);
     h.run_cycles(1);
 
     let top = h.row(0);
-    assert!(!top.contains("Shell"), "at 176 cols, should switch to tall: {top:?}");
+    assert!(!top.contains("Shell"), "at 200 cols, should switch to tall: {top:?}");
 }
 
 #[test]
@@ -79,22 +79,21 @@ fn hysteresis_switches_to_wide_at_200() {
     let mut h = TestHarness::with_size(dir.path(), 80, 30);
     h.run_cycles(1);
 
-    // Resize to 200 — should switch to wide
-    h.backend.set_size(200, 30);
+    // Resize to 300 — should switch to wide
+    h.backend.set_size(300, 30);
     h.run_cycles(1);
 
     let top = h.row(0);
-    assert!(top.contains("Shell"), "at 200 cols, should switch to wide: {top:?}");
+    assert!(top.contains("Shell"), "at 300 cols, should switch to wide: {top:?}");
 }
 
 #[test]
 fn wide_proportional_1_2_2() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     h.run_cycles(1);
 
     // Check that the tree (left) is roughly 1/5 of width
-    // and the divider is around column 39-40
     let row = h.row(1);
     // Find first │ divider position
     let div_pos = row.chars().position(|c| c == '│');
@@ -103,10 +102,10 @@ fn wide_proportional_1_2_2() {
         "should have a vertical divider in wide mode: {row:?}"
     );
     let pos = div_pos.unwrap();
-    // 1/5 of 200 = 40, minus 2 dividers = 198/5 = 39
+    // 1/5 of 300 = 60, minus 2 dividers = 298/5 = 59
     assert!(
-        (35..=45).contains(&pos),
-        "left panel should be ~1/5 width (39), got divider at {pos}: {row:?}"
+        (55..=65).contains(&pos),
+        "left panel should be ~1/5 width (59), got divider at {pos}: {row:?}"
     );
 }
 

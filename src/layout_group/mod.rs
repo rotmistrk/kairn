@@ -23,8 +23,6 @@ pub enum SlotId {
     Bottom = 3,
 }
 
-pub(crate) const WIDE_THRESHOLD: u16 = 200;
-pub(crate) const TALL_THRESHOLD: u16 = 176;
 pub(crate) const PANEL_COUNT: usize = 4;
 
 /// Layout mode for the desktop.
@@ -52,6 +50,10 @@ pub struct LayoutGroup {
     pub right_width: u16,
     pub right_height: u16,
     pub bottom_height: u16,
+    /// Width threshold to switch from tall to wide (Auto mode).
+    pub wide_threshold: u16,
+    /// Width threshold to switch from wide to tall (Auto mode).
+    pub tall_threshold: u16,
     /// Hysteresis: last known tall/wide state for Auto mode.
     was_tall: bool,
     /// Last output timestamp per terminal tab (slot, tab_index).
@@ -79,6 +81,8 @@ impl LayoutGroup {
             right_width: 60,
             right_height: 10,
             bottom_height: 10,
+            wide_threshold: 300,
+            tall_threshold: 200,
             was_tall: true,
             last_output: HashMap::new(),
             badges: HashMap::new(),
@@ -190,9 +194,9 @@ impl LayoutGroup {
             LayoutMode::Tall => true,
             LayoutMode::Auto => {
                 let w = self.group.view.bounds().w;
-                if w >= WIDE_THRESHOLD {
+                if w >= self.wide_threshold {
                     false
-                } else if w <= TALL_THRESHOLD {
+                } else if w <= self.tall_threshold {
                     true
                 } else {
                     self.was_tall // hysteresis: stay in current state

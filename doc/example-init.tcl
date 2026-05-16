@@ -21,6 +21,13 @@ set editor.tabstop 4
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
 
+# ─── Layout ──────────────────────────────────────────────────────────────────
+# Auto-switch thresholds (terminal width in columns):
+#   wide-threshold: switch from tall to wide when width >= this (default: 300)
+#   tall-threshold: switch from wide to tall when width <= this (default: 200)
+# set layout.wide-threshold 300
+# set layout.tall-threshold 200
+
 # ─── Tabs ────────────────────────────────────────────────────────────────────
 set tabs.max 10
 

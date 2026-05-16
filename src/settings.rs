@@ -79,6 +79,10 @@ pub struct AppSettings {
     pub terminal_idle_timeout: u64,
     /// Auto-close terminal tabs on exit.
     pub terminal_auto_close: bool,
+    /// Width threshold to switch from tall to wide layout.
+    pub layout_wide_threshold: u16,
+    /// Width threshold to switch from wide to tall layout.
+    pub layout_tall_threshold: u16,
 }
 
 /// Key bindings for the status bar (visible labels).
@@ -151,6 +155,8 @@ impl Default for AppSettings {
             status_keys: StatusKeys::default(),
             terminal_idle_timeout: 3,
             terminal_auto_close: true,
+            layout_wide_threshold: 300,
+            layout_tall_threshold: 200,
         }
     }
 }

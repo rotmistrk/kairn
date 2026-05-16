@@ -41,7 +41,7 @@ fn terminal_panel_gets_full_width_in_tall() {
 #[test]
 fn resize_wide_to_tall_moves_shell_to_bottom() {
     let dir = temp_project(&[("a.rs", "hello")]);
-    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    let mut h = TestHarness::with_size(dir.path(), 300, 30);
     h.run_cycles(1);
 
     // Wide: Shell in top chrome
