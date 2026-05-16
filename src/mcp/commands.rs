@@ -75,6 +75,8 @@ pub enum McpAction {
     SplitFocus,
     /// Open a file in the other split pane.
     SplitOpen { path: String },
+    /// Revert the diff hunk under cursor in the specified tab.
+    DiffRevert { name: String },
 }
 
 /// Shared command queue + waker for MCP write operations.

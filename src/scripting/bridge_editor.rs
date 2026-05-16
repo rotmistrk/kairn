@@ -118,6 +118,10 @@ pub fn register(
                 push(&cmds, ScriptCommand::Search { pattern: None });
                 Ok(TclValue::Str(String::new()))
             }
+            "diff-revert" => {
+                push(&cmds, ScriptCommand::DiffRevert);
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("editor: unknown subcommand '{other}'"))),
         }
     });

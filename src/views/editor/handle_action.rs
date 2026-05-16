@@ -90,6 +90,14 @@ impl EditorView {
                 self.state
                     .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
             }
+            EditorAction::Revert => {
+                let msg = match self.revert_hunk() {
+                    Ok(m) => txv_core::message::Message::info("editor", m),
+                    Err(e) => txv_core::message::Message::error("editor", e),
+                };
+                self.state
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            }
             EditorAction::LspGotoDefinition => {
                 let data = (
                     self.path.clone(),

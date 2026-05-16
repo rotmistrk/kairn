@@ -37,6 +37,7 @@ pub fn handle_tool_call(
         "search_project" => super::tools_write::tool_search_project(cmd_queue, args),
         "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
         "split" => tool_split(cmd_queue, args),
+        "diff_revert" => super::tools_write::tool_diff_revert(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

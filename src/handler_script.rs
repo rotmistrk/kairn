@@ -201,6 +201,9 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             };
             ctx.sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
         }
+        ScriptCommand::DiffRevert => {
+            ctx.sink.push_command(CM_DIFF_REVERT, None);
+        }
     }
 }
 

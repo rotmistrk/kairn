@@ -37,6 +37,7 @@ pub enum ExCommand {
     Split(String),
     Vsplit(String),
     Only,
+    Revert,
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
@@ -95,6 +96,7 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
         ExCmdId::Split => Some(ExCommand::Split(rest.trim().to_string())),
         ExCmdId::Vsplit => Some(ExCommand::Vsplit(rest.trim().to_string())),
         ExCmdId::Only => Some(ExCommand::Only),
+        ExCmdId::Revert => Some(ExCommand::Revert),
         ExCmdId::Delete => {
             let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
             Some(ExCommand::Delete { start, end })

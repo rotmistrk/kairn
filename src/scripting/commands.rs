@@ -110,4 +110,5 @@ pub enum ScriptCommand {
     SplitOpen {
         path: String,
     },
+    DiffRevert,
 }

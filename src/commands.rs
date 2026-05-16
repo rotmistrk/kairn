@@ -165,6 +165,7 @@ pub const CM_EDITOR_DELETE_LINE: CommandId = 211;
 pub const CM_EDITOR_REPLACE_WORD: CommandId = 212;
 pub const CM_EDITOR_SEARCH: CommandId = 213;
 pub const CM_EDITOR_CLEAR_HIGHLIGHT: CommandId = 214;
+pub const CM_DIFF_REVERT: CommandId = 215;
 
 // Hook triggers from editor
 pub const CM_CHAR_INSERTED: CommandId = 220;

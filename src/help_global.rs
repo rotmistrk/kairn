@@ -109,6 +109,7 @@ pub fn help_global() -> String {
   editor save / save-all / close / undo / redo
   editor goto <line> ?<col>?     Jump to position
   editor insert <text>           Insert at cursor
+  editor diff-revert             Revert diff hunk under cursor
   editor current-file / current-line / current-col
   editor modified? / filetype
 

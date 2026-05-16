@@ -72,6 +72,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                     .push_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
                 Ok(serde_json::json!({"split": "opened"}))
             }
+            crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
             _ => {
                 let panel = desktop.panel_mut(SlotId::Left);
                 let todo_view = panel
@@ -159,4 +160,27 @@ fn mcp_split(sink: &EventSink, vertical: bool, file: Option<String>) -> Result<s
         "horizontal"
     };
     Ok(serde_json::json!({"split": dir}))
+}
+
+fn find_editor<'a>(
+    desktop: &'a mut crate::layout_group::LayoutGroup,
+    name: &str,
+) -> Result<&'a mut crate::views::editor::EditorView, String> {
+    let panel = desktop.panel_mut(SlotId::Center);
+    for i in 0..panel.tab_count() {
+        if panel.tab_title(i) == Some(name) {
+            let view = panel.view_at_mut(i).ok_or("View not accessible")?;
+            let any = view.as_any_mut().ok_or("View has no Any")?;
+            return any
+                .downcast_mut::<crate::views::editor::EditorView>()
+                .ok_or_else(|| format!("Tab '{name}' is not an editor"));
+        }
+    }
+    Err(format!("Tab not found: {name}"))
+}
+
+fn mcp_diff_revert(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+    let editor = find_editor(desktop, name)?;
+    let msg = editor.revert_hunk()?;
+    Ok(serde_json::json!({"result": msg}))
 }

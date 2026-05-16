@@ -116,3 +116,9 @@ pub fn tool_run_build(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Va
         command: command.to_string(),
     })
 }
+
+pub fn tool_diff_revert(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let name = args.get("name").and_then(Value::as_str).ok_or("Missing 'name'")?;
+    queue.send(McpAction::DiffRevert { name: name.to_string() })
+}
