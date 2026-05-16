@@ -27,6 +27,7 @@ pub fn initialize(client: &mut LspClient, root_uri: &str) -> u64 {
 
 /// Send the `initialized` notification (after receiving initialize response).
 pub fn initialized(client: &mut LspClient) {
+    log::info!("Sending initialized notification to server");
     client.send_notification("initialized", json!({}));
 }
 

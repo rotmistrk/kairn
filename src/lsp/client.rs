@@ -70,6 +70,7 @@ impl LspClient {
 
     /// Send a notification (no response expected).
     pub fn send_notification(&mut self, method: &str, params: Value) {
+        log::debug!("LSP send notification: {method}");
         let data = messages::encode_notification(method, params);
         if self.write_tx.send(data).is_err() {
             log::error!("LSP send_notification failed: server connection lost");
@@ -91,6 +92,11 @@ impl LspClient {
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     self.dead = true;
+                    match self.child.try_wait() {
+                        Ok(Some(status)) => log::error!("LSP process exited: {status}"),
+                        Ok(None) => log::error!("LSP process stdout closed but still running"),
+                        Err(e) => log::error!("LSP process wait error: {e}"),
+                    }
                     break;
                 }
             }
@@ -103,12 +109,15 @@ impl LspClient {
         thread::spawn(move || {
             while let Ok(data) = rx.recv() {
                 if stdin.write_all(&data).is_err() {
+                    log::error!("LSP writer: write_all failed");
                     break;
                 }
                 if stdin.flush().is_err() {
+                    log::error!("LSP writer: flush failed");
                     break;
                 }
             }
+            log::debug!("LSP writer thread exiting");
         });
         tx
     }

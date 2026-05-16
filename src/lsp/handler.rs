@@ -79,6 +79,23 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
         }
     }
     state.deferred_lsp = remaining;
+
+    // Replay pending didOpen marked ready (from previous tick's initialization)
+    let mut open_remaining = Vec::new();
+    let pending: Vec<_> = state.lsp.pending_opens.drain(..).collect();
+    for (l, path) in pending {
+        if let Some(lang) = l.strip_suffix(":ready") {
+            if let Some(client) = state.lsp.get_client_mut(lang) {
+                let uri = super::protocol::path_to_uri(&path);
+                let lid = super::protocol::language_id(&path);
+                let text = std::fs::read_to_string(&path).unwrap_or_default();
+                super::protocol::did_open(client, &uri, lid, &text);
+            }
+        } else {
+            open_remaining.push((l, path));
+        }
+    }
+    state.lsp.pending_opens = open_remaining;
     for (lang, msg) in state.lsp.poll_all() {
         log::trace!("LSP poll: {:?}", &msg);
         match msg {
@@ -127,22 +144,12 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         } else {
                             log::error!("Cannot send initialized — client not found for {lang}");
                         }
-                        // Replay pending didOpen notifications
-                        let mut remaining = Vec::new();
-                        let opens: Vec<_> = state.lsp.pending_opens.drain(..).collect();
-                        for (l, path) in opens {
-                            if l == lang {
-                                if let Some(client) = state.lsp.get_client_mut(&l) {
-                                    let uri = super::protocol::path_to_uri(&path);
-                                    let lid = super::protocol::language_id(&path);
-                                    let text = std::fs::read_to_string(&path).unwrap_or_default();
-                                    super::protocol::did_open(client, &uri, lid, &text);
-                                }
-                            } else {
-                                remaining.push((l, path));
+                        // Mark pending opens as ready (replayed in next tick)
+                        for (l, _) in &mut state.lsp.pending_opens {
+                            if *l == lang {
+                                *l = format!("{l}:ready");
                             }
                         }
-                        state.lsp.pending_opens = remaining;
                         sink.push_command(
                             txv_widgets::CM_STATUS_MESSAGE,
                             Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
