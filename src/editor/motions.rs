@@ -39,7 +39,10 @@ pub fn word_backward(buf: &PieceTable, line: usize, col: usize) -> (usize, usize
     }
     let text = buf.line(line).unwrap_or_default();
     let chars: Vec<char> = text.chars().collect();
-    let mut c = col.saturating_sub(1);
+    if chars.is_empty() {
+        return (line, 0);
+    }
+    let mut c = col.saturating_sub(1).min(chars.len() - 1);
     // Skip whitespace backward
     while c > 0 && chars[c].is_whitespace() {
         c -= 1;
@@ -136,6 +139,9 @@ pub fn match_bracket(buf: &PieceTable, line: usize, col: usize) -> Option<(usize
     let content = buf.content();
     let offset = buf.line_col_to_offset(line, col)?;
     let bytes: Vec<char> = content.chars().collect();
+    if offset >= bytes.len() {
+        return None;
+    }
     let mut depth = 0i32;
     if forward {
         for i in offset..bytes.len() {
@@ -228,5 +234,14 @@ mod tests {
         let buf = PieceTable::from_text("(hello)");
         assert_eq!(match_bracket(&buf, 0, 0), Some((0, 6)));
         assert_eq!(match_bracket(&buf, 0, 6), Some((0, 0)));
+    }
+
+    #[test]
+    fn test_match_bracket_offset_past_end() {
+        // Cursor col beyond content length should return None, not panic
+        let buf = PieceTable::from_text("(");
+        assert_eq!(match_bracket(&buf, 0, 0), None); // no matching close
+        assert_eq!(match_bracket(&buf, 0, 5), None); // col past end
+        assert_eq!(match_bracket(&buf, 99, 0), None); // line past end
     }
 }
