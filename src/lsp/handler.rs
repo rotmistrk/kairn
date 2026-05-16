@@ -68,6 +68,17 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
             true
         }
     });
+
+    // Replay deferred requests marked ready (from previous tick's initialization)
+    let mut remaining = Vec::new();
+    for req in state.deferred_lsp.drain(..) {
+        if req.language.ends_with(":ready") {
+            sink.push_command(req.command, Some(req.data));
+        } else {
+            remaining.push(req);
+        }
+    }
+    state.deferred_lsp = remaining;
     for (lang, msg) in state.lsp.poll_all() {
         log::trace!("LSP poll: {:?}", &msg);
         match msg {
@@ -112,6 +123,9 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         );
                         if let Some(client) = state.lsp.get_client_mut(&lang) {
                             super::protocol::initialized(client);
+                            log::info!("Sent initialized notification for {lang}");
+                        } else {
+                            log::error!("Cannot send initialized — client not found for {lang}");
                         }
                         // Replay pending didOpen notifications
                         let mut remaining = Vec::new();
@@ -134,21 +148,12 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                             Some(Box::new(Message::info("lsp", format!("LSP ready: {lang}")))),
                         );
                         // Retry deferred requests for this language
-                        let ready_lang = lang.clone();
-                        let mut remaining = Vec::new();
-                        for req in state.deferred_lsp.drain(..) {
-                            if req.created.elapsed() > std::time::Duration::from_secs(10) {
-                                sink.push_command(
-                                    txv_widgets::CM_STATUS_MESSAGE,
-                                    Some(Box::new(Message::error("lsp", "Deferred request timed out"))),
-                                );
-                            } else if req.language == ready_lang {
-                                sink.push_command(req.command, Some(req.data));
-                            } else {
-                                remaining.push(req);
+                        // (processed in next tick to ensure initialized is flushed)
+                        for req in &mut state.deferred_lsp {
+                            if req.language == lang {
+                                req.language = format!("{}:ready", req.language);
                             }
                         }
-                        state.deferred_lsp = remaining;
                     }
                     let snapshot = state.lsp_status.snapshot();
                     sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
