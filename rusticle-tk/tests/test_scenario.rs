@@ -23,12 +23,13 @@ fn desktop_renders_text_widget() {
     let mut desktop = build_desktop("Hello, world!");
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
-    let mut surface = Surface::new(80, 24);
-    desktop.draw(&mut surface);
+    desktop.draw();
 
+    let child = desktop.get("txt").expect("txt widget");
+    let buf = child.buffer();
     let mut row = String::new();
     for x in 0..80 {
-        row.push(surface.cell(x, 0).ch);
+        row.push(buf.cell(x, 0).ch);
     }
     assert!(
         row.contains("Hello, world!"),
@@ -45,12 +46,11 @@ fn desktop_dispatches_keys_to_focused() {
     desktop.focus("input");
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
-    let mut queue = EventQueue::new();
     let event = Event::Key(KeyEvent {
         code: KeyCode::Char('x'),
         modifiers: KeyMod::default(),
     });
-    let result = desktop.handle(&event, &mut queue);
+    let result = desktop.handle(&event);
     assert_eq!(result, HandleResult::Consumed);
 }
 
@@ -80,12 +80,11 @@ fn desktop_focus_switches_child() {
     desktop.focus("b");
 
     // Typing should go to input (b), not text (a)
-    let mut queue = EventQueue::new();
     let event = Event::Key(KeyEvent {
         code: KeyCode::Char('z'),
         modifiers: KeyMod::default(),
     });
-    desktop.handle(&event, &mut queue);
+    desktop.handle(&event);
 
     // Verify input received the character
     let view = desktop.get("b");

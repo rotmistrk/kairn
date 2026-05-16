@@ -1,6 +1,5 @@
 [workspace]
-members = ["rusticle"]
-exclude = ["rusticle-tk"]
+members = ["rusticle", "rusticle-tk"]
 
 [package]
 name = "kairn"
