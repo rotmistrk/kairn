@@ -69,6 +69,9 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
         }
     });
 
+    // Clear warming_up — server has had a full tick to process 'initialized'
+    state.lsp.warming_up.clear();
+
     // Replay deferred requests marked ready (from previous tick's initialization)
     let mut remaining = Vec::new();
     for req in state.deferred_lsp.drain(..) {
@@ -144,6 +147,7 @@ pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
                         } else {
                             log::error!("Cannot send initialized — client not found for {lang}");
                         }
+                        state.lsp.warming_up.push(lang.clone());
                         // Mark pending opens as ready (replayed in next tick)
                         for (l, _) in &mut state.lsp.pending_opens {
                             if *l == lang {

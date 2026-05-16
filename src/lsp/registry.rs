@@ -24,6 +24,8 @@ pub struct LspRegistry {
     pub(super) pending_init: HashMap<u64, String>,
     /// Files to send didOpen for after initialization completes.
     pub(super) pending_opens: Vec<(String, std::path::PathBuf)>,
+    /// Languages where `initialized` was just sent — block requests for one tick.
+    pub(super) warming_up: Vec<String>,
 }
 
 impl LspRegistry {
@@ -46,6 +48,7 @@ impl LspRegistry {
             last_error: None,
             pending_init: HashMap::new(),
             pending_opens: Vec::new(),
+            warming_up: Vec::new(),
         }
     }
 
@@ -129,7 +132,7 @@ impl LspRegistry {
 
     /// Check if a language server is still in the initialization phase.
     pub fn is_initializing(&self, language_id: &str) -> bool {
-        self.pending_init.values().any(|lang| lang == language_id)
+        self.pending_init.values().any(|lang| lang == language_id) || self.warming_up.iter().any(|l| l == language_id)
     }
 
     /// Poll all active clients for messages.
