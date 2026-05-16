@@ -26,12 +26,23 @@ impl LspClient {
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .ok()?;
 
         let stdin = child.stdin.take()?;
         let stdout = child.stdout.take()?;
+
+        // Log stderr in background
+        if let Some(stderr) = child.stderr.take() {
+            let cmd_name = cmd.to_string();
+            thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines().map_while(Result::ok) {
+                    log::warn!("LSP stderr [{cmd_name}]: {line}");
+                }
+            });
+        }
 
         let write_tx = Self::start_writer(stdin);
         let msg_rx = Self::start_reader(stdout);
