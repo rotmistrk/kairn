@@ -33,7 +33,7 @@ pub fn register_lsp_commands(interp: &mut Interpreter) {
         let cmd_and_args: Vec<String> = args[1..].iter().map(|a| a.as_str().to_string()).collect();
         let val = cmd_and_args.join(" ");
         let var_name = format!("lsp.server.{lang}");
-        interp.set_var(&var_name, TclValue::from(val));
+        interp.set_var(&var_name, TclValue::from(val))?;
         Ok(TclValue::Str(String::new()))
     });
 
@@ -45,7 +45,7 @@ pub fn register_lsp_commands(interp: &mut Interpreter) {
         }
         let lang = args[0].as_str().to_string();
         let var_name = format!("lsp.disable.{lang}");
-        interp.set_var(&var_name, TclValue::from("1"));
+        interp.set_var(&var_name, TclValue::from("1"))?;
         Ok(TclValue::Str(String::new()))
     });
 }

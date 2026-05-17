@@ -14,7 +14,7 @@ pub(super) fn lookup_var(interp: &Interpreter, name: &str) -> Result<TclValue, T
 
 /// Apply a property accessor `.prop`.
 pub(super) fn apply_property(
-    interp: &mut Interpreter,
+    _interp: &mut Interpreter,
     val: &TclValue,
     chars: &[char],
     start: usize,
@@ -43,7 +43,7 @@ pub(super) fn apply_property(
         "type" => TclValue::Str(val.type_name().into()),
         _ => {
             // Try as dict key access
-            dict_get(val, &prop, interp)?
+            dict_get(val, &prop)?
         }
     };
     Ok((result, i))
@@ -146,11 +146,11 @@ pub(super) fn index_value(val: &TclValue, key: &str) -> Result<TclValue, TclErro
             .ok_or_else(|| TclError::new(format!("list index {idx} out of range")));
     }
     // Dict key access
-    dict_get(val, key, &Interpreter::new())
+    dict_get(val, key)
 }
 
 /// Get a value from a dict by key.
-pub(super) fn dict_get(val: &TclValue, key: &str, _interp: &Interpreter) -> Result<TclValue, TclError> {
+pub(super) fn dict_get(val: &TclValue, key: &str) -> Result<TclValue, TclError> {
     match val {
         TclValue::Dict(pairs) => {
             for (k, v) in pairs {

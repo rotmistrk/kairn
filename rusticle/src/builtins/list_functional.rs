@@ -21,7 +21,7 @@ fn cmd_lmap(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
     let mut result = Vec::new();
     for item in &list {
         interp.push_scope();
-        interp.set_var(&param, item.clone());
+        interp.set_var(&param, item.clone())?;
         let val = match interp.eval(&body) {
             Ok(v) => v,
             Err(e) if e.code == ErrorCode::Break => {
@@ -54,7 +54,7 @@ fn cmd_lfilter(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
     let mut result = Vec::new();
     for item in &list {
         interp.push_scope();
-        interp.set_var(&param, item.clone());
+        interp.set_var(&param, item.clone())?;
         let val = interp.eval(&body);
         interp.pop_scope();
         if val?.as_bool()? {
@@ -75,8 +75,8 @@ fn cmd_lreduce(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
     let (params, body) = parse_lambda2(&lambda)?;
     for item in &list {
         interp.push_scope();
-        interp.set_var(&params.0, acc.clone());
-        interp.set_var(&params.1, item.clone());
+        interp.set_var(&params.0, acc.clone())?;
+        interp.set_var(&params.1, item.clone())?;
         acc = interp.eval(&body)?;
         interp.pop_scope();
     }

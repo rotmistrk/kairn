@@ -38,7 +38,7 @@ fn cmd_try(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclE
             if let Err(ref e) = final_result {
                 if e.code == ErrorCode::Error && !handled {
                     let var = var_spec.trim_matches(|c| c == '{' || c == '}').to_string();
-                    interp.set_var(&var, TclValue::Str(e.message.clone()));
+                    interp.set_var(&var, TclValue::Str(e.message.clone()))?;
                     final_result = interp.eval(&handler);
                     handled = true;
                 }
@@ -69,7 +69,7 @@ fn cmd_catch(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tc
     };
     if args.len() > 1 {
         let var = args[1].as_str().to_string();
-        interp.set_var(&var, value);
+        interp.set_var(&var, value)?;
     }
     Ok(TclValue::Int(code))
 }

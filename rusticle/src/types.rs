@@ -147,13 +147,8 @@ pub fn infer_return_type(cmd: &str, subcmd: Option<&str>) -> InferredType {
 
 /// Parse an enum type spec: `enum {a b c}`.
 fn parse_enum(s: &str) -> Result<TypeDecl, TclError> {
-    let inner = s
-        .strip_prefix("enum")
-        .unwrap_or("")
-        .trim()
-        .trim_start_matches('{')
-        .trim_end_matches('}')
-        .trim();
+    // Caller guarantees s starts with "enum"
+    let inner = s[4..].trim().trim_start_matches('{').trim_end_matches('}').trim();
     let variants: Vec<String> = inner.split_whitespace().map(|v| v.to_string()).collect();
     if variants.is_empty() {
         return Err(TclError::new("enum type requires at least one variant"));
@@ -163,13 +158,8 @@ fn parse_enum(s: &str) -> Result<TypeDecl, TclError> {
 
 /// Parse a record type spec: `record {name:string age:int}`.
 fn parse_record(s: &str) -> Result<TypeDecl, TclError> {
-    let inner = s
-        .strip_prefix("record")
-        .unwrap_or("")
-        .trim()
-        .trim_start_matches('{')
-        .trim_end_matches('}')
-        .trim();
+    // Caller guarantees s starts with "record"
+    let inner = s[6..].trim().trim_start_matches('{').trim_end_matches('}').trim();
     let mut fields = Vec::new();
     for field in inner.split_whitespace() {
         if let Some((name, type_str)) = field.split_once(':') {

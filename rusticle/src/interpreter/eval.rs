@@ -122,7 +122,7 @@ fn call_proc(interp: &mut Interpreter, proc_def: &Proc, args: &[TclValue]) -> Re
         } else {
             TclValue::Str(String::new())
         };
-        interp.set_var(&param.name, val);
+        interp.set_var(&param.name, val)?;
     }
     let result = eval_script(interp, &proc_def.body);
     interp.pop_scope();

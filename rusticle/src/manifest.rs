@@ -95,13 +95,8 @@ fn parse_manifest(body: &str) -> Result<Manifest, TclError> {
 /// Parse a single command block from manifest lines.
 fn parse_manifest_command(lines: &[&str], start: usize) -> Result<(ManifestCommand, usize), TclError> {
     let header = lines[start].trim();
-    let name = header
-        .strip_prefix("command")
-        .unwrap_or("")
-        .trim()
-        .trim_end_matches('{')
-        .trim()
-        .to_string();
+    // Caller guarantees header starts with "command"
+    let name = header[7..].trim().trim_end_matches('{').trim().to_string();
     let mut cmd = ManifestCommand {
         name,
         subcommands: Vec::new(),

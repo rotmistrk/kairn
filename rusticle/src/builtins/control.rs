@@ -90,7 +90,7 @@ fn cmd_foreach(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
     while i < list.len() {
         for (j, var) in vars.iter().enumerate() {
             let val = list.get(i + j).cloned().unwrap_or(TclValue::Str(String::new()));
-            interp.set_var(var, val);
+            interp.set_var(var, val)?;
         }
         i += step;
         match interp.eval(&body) {

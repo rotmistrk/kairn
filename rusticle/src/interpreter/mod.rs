@@ -98,20 +98,7 @@ impl Interpreter {
 
     /// Set a variable in the current scope.
     /// Validates type declarations for context variables.
-    pub fn set_var(&mut self, name: &str, value: TclValue) {
-        // Check context type declarations
-        if name.contains("::") {
-            if let Err(e) = crate::context::check_context_assignment(self, name, &value) {
-                // Store the error message — caller should use try_set_var for Result
-                self.output.push(format!("type error: {e}\n"));
-                return;
-            }
-        }
-        scope::set_var(&mut self.scopes, name, value);
-    }
-
-    /// Set a variable with type validation, returning errors.
-    pub fn try_set_var(&mut self, name: &str, value: TclValue) -> Result<(), TclError> {
+    pub fn set_var(&mut self, name: &str, value: TclValue) -> Result<(), TclError> {
         if name.contains("::") {
             crate::context::check_context_assignment(self, name, &value)?;
         }

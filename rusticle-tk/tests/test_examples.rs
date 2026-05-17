@@ -56,7 +56,7 @@ fn example_config_editor() {
 #[test]
 fn example_log_viewer() {
     let mut interp = setup();
-    interp.set_var("argv", TclValue::List(vec![]));
+    interp.set_var("argv", TclValue::List(vec![])).unwrap();
     let script = fs::read_to_string("examples/log-viewer.tcl").unwrap();
     interp.eval(&script).unwrap();
 }

@@ -41,7 +41,7 @@ fn cmd_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, TclE
             .ok_or_else(|| TclError::new(format!("can't read \"{name}\": no such variable")))
     } else {
         let value = args[1].clone();
-        interp.try_set_var(&name, value.clone())?;
+        interp.set_var(&name, value.clone())?;
         Ok(value)
     }
 }
@@ -77,7 +77,7 @@ fn handle_equals_form(interp: &mut Interpreter, args: &[TclValue], eq_idx: usize
 
     if names.len() == 1 {
         // Simple: set x = 42
-        interp.try_set_var(&names[0], value.clone())?;
+        interp.set_var(&names[0], value.clone())?;
         return Ok(value);
     }
 
@@ -85,7 +85,7 @@ fn handle_equals_form(interp: &mut Interpreter, args: &[TclValue], eq_idx: usize
     let list = value.as_list()?;
     for (i, name) in names.iter().enumerate() {
         let val = list.get(i).cloned().unwrap_or(TclValue::Str(String::new()));
-        interp.set_var(name, val);
+        interp.set_var(name, val)?;
     }
     Ok(args[eq_idx + 1].clone())
 }
@@ -116,7 +116,7 @@ fn destructure_dict(interp: &mut Interpreter, pattern: &str, args: &[TclValue]) 
             .find(|(k, _)| k == name)
             .map(|(_, v)| v.clone())
             .unwrap_or(TclValue::Str(String::new()));
-        interp.set_var(name, val);
+        interp.set_var(name, val)?;
     }
     Ok(args[1].clone())
 }
@@ -160,7 +160,7 @@ fn cmd_append(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, T
         current.push_str(&arg.as_str());
     }
     let val = TclValue::Str(current);
-    interp.set_var(&name, val.clone());
+    interp.set_var(&name, val.clone())?;
     Ok(val)
 }
 
@@ -177,7 +177,7 @@ fn cmd_incr(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
     };
     let current = interp.get_var(&name).map(|v| v.as_int()).unwrap_or(Ok(0))?;
     let new_val = TclValue::Int(current + amount);
-    interp.set_var(&name, new_val.clone());
+    interp.set_var(&name, new_val.clone())?;
     Ok(new_val)
 }
 

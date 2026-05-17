@@ -76,7 +76,7 @@ fn cmd_context(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
         })
         .unwrap_or_default();
     for (qualified, val) in vars_to_set {
-        interp.set_var(&qualified, val);
+        interp.set_var(&qualified, val)?;
     }
 
     result
@@ -131,14 +131,8 @@ pub fn validate_type(type_spec: &str, value: &TclValue) -> Result<(), TclError> 
 
 /// Validate a value against an enum type.
 fn validate_enum(spec: &str, value: &TclValue) -> Result<(), TclError> {
-    // Parse "enum {a b c}"
-    let inner = spec
-        .strip_prefix("enum")
-        .unwrap_or("")
-        .trim()
-        .trim_start_matches('{')
-        .trim_end_matches('}')
-        .trim();
+    // Caller guarantees spec starts with "enum"
+    let inner = spec[4..].trim().trim_start_matches('{').trim_end_matches('}').trim();
     let variants: Vec<&str> = inner.split_whitespace().collect();
     let val_str = value.as_str();
     if variants.iter().any(|v| *v == val_str.as_ref()) {

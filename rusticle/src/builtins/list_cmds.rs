@@ -55,7 +55,7 @@ fn cmd_lappend(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, 
         list.push(arg.clone());
     }
     let val = TclValue::List(list);
-    interp.set_var(&name, val.clone());
+    interp.set_var(&name, val.clone())?;
     Ok(val)
 }
 
@@ -114,7 +114,7 @@ fn cmd_lset(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
         list[idx] = value;
     }
     let val = TclValue::List(list);
-    interp.set_var(&name, val.clone());
+    interp.set_var(&name, val.clone())?;
     Ok(val)
 }
 

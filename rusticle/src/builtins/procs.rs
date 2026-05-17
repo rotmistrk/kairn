@@ -192,14 +192,14 @@ fn match_pattern(interp: &mut Interpreter, value: &TclValue, case: &MatchCase) -
     };
     if type_match {
         if let Some(binding) = &case.binding {
-            interp.set_var(binding, value.clone());
+            interp.set_var(binding, value.clone())?;
         }
         return Ok(true);
     }
     let pat_str = pat.trim_matches('"');
     if value.as_str() == pat_str {
         if let Some(binding) = &case.binding {
-            interp.set_var(binding, value.clone());
+            interp.set_var(binding, value.clone())?;
         }
         return Ok(true);
     }

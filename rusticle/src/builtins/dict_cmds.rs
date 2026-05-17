@@ -110,7 +110,7 @@ fn dict_set(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
         pairs.push((key, value));
     }
     let val = TclValue::Dict(pairs);
-    interp.set_var(&var_name, val.clone());
+    interp.set_var(&var_name, val.clone())?;
     Ok(val)
 }
 
@@ -187,8 +187,8 @@ fn dict_for(interp: &mut Interpreter, args: &[TclValue]) -> Result<TclValue, Tcl
     };
     let body = args[2].as_str().to_string();
     for (k, v) in &pairs {
-        interp.set_var(vars[0], TclValue::Str(k.clone()));
-        interp.set_var(vars[1], v.clone());
+        interp.set_var(vars[0], TclValue::Str(k.clone()))?;
+        interp.set_var(vars[1], v.clone())?;
         match interp.eval(&body) {
             Ok(_) => {}
             Err(e) if e.code == ErrorCode::Break => break,
