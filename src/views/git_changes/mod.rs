@@ -83,10 +83,14 @@ impl View for GitChangesView {
                             } else {
                                 CM_OPEN_FILE
                             };
-                            let req = OpenFileRequest::with_diff(path.to_path_buf());
+                            let req = if self.inner.data.is_untracked(node_id) {
+                                OpenFileRequest::new(path.to_path_buf())
+                            } else {
+                                OpenFileRequest::with_diff(path.to_path_buf())
+                            };
                             self.inner.state.put_command(cmd, Some(Box::new(req)));
-                            return HandleResult::Consumed;
                         }
+                        return HandleResult::Consumed;
                     }
                 }
             }

@@ -38,15 +38,22 @@ impl EditorView {
             KeyCode::Enter => {
                 let buf = self.editor.command_buf.clone();
                 if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+                    if !buf.is_empty() {
+                        self.editor.command_history.push(buf.clone());
+                    }
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                     let action = self.editor.execute(crate::editor::command::Command::SearchForward(buf));
                     self.handle_action(action);
                 } else {
+                    if !buf.is_empty() {
+                        self.editor.command_history.push(buf.clone());
+                    }
                     self.editor.mode = crate::editor::keymap::EditorMode::Normal;
                     let action = self.editor.execute(crate::editor::command::Command::ExCommand(buf));
                     self.handle_action(action);
                 }
                 self.editor.command_buf.clear();
+                self.editor.history_index = None;
             }
             KeyCode::Backspace => {
                 if self.editor.command_buf.is_empty() {
@@ -54,14 +61,22 @@ impl EditorView {
                     self.editor.highlight = None;
                 } else {
                     self.editor.command_buf.pop();
+                    self.editor.history_index = None;
                     self.update_incsearch();
                 }
             }
             KeyCode::Tab => {
                 self.complete_command_buf();
             }
+            KeyCode::Up => {
+                self.history_prev();
+            }
+            KeyCode::Down => {
+                self.history_next();
+            }
             KeyCode::Char(c) => {
                 self.editor.command_buf.push(*c);
+                self.editor.history_index = None;
                 self.update_incsearch();
             }
             _ => {}
@@ -69,19 +84,6 @@ impl EditorView {
         self.ensure_cursor_visible();
         self.state.mark_dirty();
         HandleResult::Consumed
-    }
-
-    pub(super) fn ensure_cursor_visible(&mut self) {
-        let h = self.state.bounds().h as usize;
-        if h == 0 {
-            return;
-        }
-        self.editor.viewport_height = h;
-        if self.editor.cursor_line < self.editor.viewport_scroll {
-            self.editor.viewport_scroll = self.editor.cursor_line;
-        } else if self.editor.cursor_line >= self.editor.viewport_scroll + h {
-            self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
-        }
     }
 
     pub(super) fn emit_status_changes(

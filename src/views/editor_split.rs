@@ -7,12 +7,16 @@ use txv_core::prelude::*;
 use txv_widgets::split_pane::{SplitDirection, SplitPane};
 
 use crate::views::editor::EditorView;
+use crate::views::scroll_map::ScrollMap;
 
 /// A split editor view — two EditorViews side by side or stacked.
 pub struct EditorSplit {
     pub split: SplitPane,
     /// When true, scrolling in one pane scrolls the other.
     pub linked_scroll: bool,
+    /// Hunk-aligned scroll map: maps line in pane 0 → line in pane 1.
+    /// If None, uses 1:1 mapping.
+    pub scroll_map: Option<ScrollMap>,
 }
 
 impl EditorSplit {
@@ -20,6 +24,7 @@ impl EditorSplit {
         Self {
             split: SplitPane::new(direction, first, second),
             linked_scroll: false,
+            scroll_map: None,
         }
     }
 
@@ -69,11 +74,16 @@ impl EditorSplit {
             .and_then(|v| v.as_any_mut())
             .and_then(|a| a.downcast_ref::<EditorView>())
             .map(|ev| ev.editor.viewport_scroll);
-        if let Some(scroll_top) = scroll {
-            if let Some(other_view) = self.split.child_mut(other) {
-                if let Some(ev) = other_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                    ev.editor.viewport_scroll = scroll_top;
-                }
+        let Some(scroll_top) = scroll else {
+            return;
+        };
+        let target = match &self.scroll_map {
+            Some(map) => map.translate(focused, scroll_top),
+            None => scroll_top,
+        };
+        if let Some(other_view) = self.split.child_mut(other) {
+            if let Some(ev) = other_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                ev.editor.viewport_scroll = target;
             }
         }
     }

@@ -169,14 +169,7 @@ impl EditorView {
             .to_string_lossy()
             .to_string();
 
-        let base_content = match git_file_content(&self.root_dir, &rel_path, &opts.base) {
-            Ok(c) => c,
-            Err(e) => {
-                self.editor.status = format!("diff: {e}");
-                self.state.mark_dirty();
-                return;
-            }
-        };
+        let base_content = git_file_content(&self.root_dir, &rel_path, &opts.base).unwrap_or_default();
 
         let current = self.editor.buf().content();
         let lines = build_diff_lines(&base_content, &current, &opts);

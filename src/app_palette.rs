@@ -124,8 +124,20 @@ impl AppPalette {
 
 impl Default for AppPalette {
     fn default() -> Self {
+        let mut base = Palette::dark();
+        // Darker backgrounds for interactive elements
+        base.interactive.cursor_focused = PaletteStyle {
+            fg: None,
+            bg: Some(Color::Rgb(0x00, 0x00, 0x66)),
+            attrs: None,
+        };
+        base.interactive.visual_selection = PaletteStyle {
+            fg: None,
+            bg: Some(Color::Rgb(0x00, 0x44, 0x44)),
+            attrs: None,
+        };
         Self {
-            base: Palette::dark(),
+            base,
             git: GitPalette {
                 added: PaletteStyle::fg(ansi(2)),
                 modified: PaletteStyle::fg(ansi(12)),
@@ -149,13 +161,13 @@ impl Default for AppPalette {
                     ..Default::default()
                 },
                 highlight_match: PaletteStyle {
-                    fg: Some(ansi(0)),
-                    bg: Some(ansi(3)),
+                    fg: None,
+                    bg: Some(Color::Rgb(0x44, 0x44, 0x00)),
                     attrs: None,
                 },
                 highlight_other: PaletteStyle {
                     fg: None,
-                    bg: Some(ansi(58)),
+                    bg: Some(Color::Rgb(0x00, 0x44, 0x00)),
                     attrs: None,
                 },
                 matchparen: PaletteStyle {

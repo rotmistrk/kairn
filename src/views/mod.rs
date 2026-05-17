@@ -8,6 +8,7 @@ pub mod git_log;
 pub mod help;
 pub mod messages;
 pub mod results;
+pub mod scroll_map;
 pub mod struct_view;
 pub mod terminal;
 pub mod todo_tree;
