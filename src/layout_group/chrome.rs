@@ -13,14 +13,26 @@ fn chrome_style() -> Style {
 fn truncate_title(title: &str, max_chars: usize) -> String {
     let char_count = title.chars().count();
     if char_count <= max_chars {
-        title.to_string()
-    } else if max_chars <= 1 {
-        "…".to_string()
-    } else {
-        let mut s: String = title.chars().take(max_chars - 1).collect();
-        s.push('…');
-        s
+        return title.to_string();
     }
+    if max_chars <= 1 {
+        return "…".to_string();
+    }
+    // For paths, collapse leading segments: "…/last/segments"
+    if title.contains('/') {
+        let parts: Vec<&str> = title.split('/').collect();
+        // Try progressively dropping leading segments
+        for skip in 1..parts.len() {
+            let candidate = format!("…/{}", parts[skip..].join("/"));
+            if candidate.chars().count() <= max_chars {
+                return candidate;
+            }
+        }
+    }
+    // Fallback: simple right-truncation
+    let mut s: String = title.chars().take(max_chars - 1).collect();
+    s.push('…');
+    s
 }
 
 /// Return (glyph, foreground color) for a terminal activity badge.
@@ -256,3 +268,7 @@ impl LayoutGroup {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "chrome_tests.rs"]
+mod tests;

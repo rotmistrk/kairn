@@ -7,7 +7,18 @@ use std::io::Write;
 /// Copy text to system clipboard.
 /// On macOS, uses pbcopy for reliable single-copy behavior.
 /// On other platforms, uses OSC 52 escape sequence.
+/// Trailing whitespace is stripped from each line before copying.
 pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
+    let trimmed: String = text.lines().map(|l| l.trim_end()).collect::<Vec<_>>().join("\n");
+    let cleaned = if text.ends_with('\n') {
+        format!("{trimmed}\n")
+    } else {
+        trimmed
+    };
+    copy_raw(&cleaned)
+}
+
+fn copy_raw(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let mut child = std::process::Command::new("pbcopy")
