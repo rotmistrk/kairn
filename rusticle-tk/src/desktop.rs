@@ -88,13 +88,15 @@ impl View for TkDesktop {
         self.apply_layout();
     }
 
-    fn draw(&self, surface: &mut Surface) {
-        for child in self.group.children_iter() {
-            child.draw(surface);
+    fn draw(&mut self) {
+        for i in 0..self.group.child_count() {
+            if let Some(child) = self.group.child_mut(i) {
+                child.draw();
+            }
         }
     }
 
-    fn handle(&mut self, event: &Event, queue: &mut EventQueue) -> HandleResult {
-        self.group.dispatch(event, queue)
+    fn handle(&mut self, event: &Event) -> HandleResult {
+        self.group.dispatch(event)
     }
 }

@@ -37,10 +37,10 @@ fn diff_sets_status() {
     let mut view = EditorView::from_text("hello\nworld\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
-    // No git repo → error status mentioning "diff"
+    // No git repo → diff against empty base, enters diff mode
     assert!(
-        view.editor.status.contains("diff"),
-        "status should mention diff: {:?}",
+        view.editor.status.contains("DIFF"),
+        "status should mention DIFF: {:?}",
         view.editor.status
     );
 }
@@ -70,9 +70,9 @@ fn toggle_diff_via_command() {
     };
     let result = view.handle(&cmd);
     assert_eq!(result, HandleResult::Consumed);
-    // Status should mention diff (error since no git)
+    // Status should mention DIFF (enters diff mode against empty base)
     assert!(
-        view.editor.status.contains("diff"),
+        view.editor.status.contains("DIFF"),
         "CM_DIFF should trigger diff: {:?}",
         view.editor.status
     );

@@ -18,6 +18,7 @@ struct ChangeNode {
     expanded: bool,
     file_path: Option<PathBuf>,
     color: Color,
+    status: Option<FileStatus>,
 }
 
 /// Data provider for the git changes tree.
@@ -106,6 +107,7 @@ impl GitChangesData {
                 expanded: true,
                 file_path: None,
                 color: *color,
+                status: None,
             });
             let mut sorted = files.clone();
             sorted.sort_by(|a, b| a.0.cmp(&b.0));
@@ -117,6 +119,7 @@ impl GitChangesData {
                     expanded: false,
                     file_path: Some(abs),
                     color: *color,
+                    status: Some(*status),
                 });
             }
         }
@@ -143,6 +146,13 @@ impl GitChangesData {
     /// Get the file path for a node (if it's a leaf).
     pub fn file_path(&self, id: usize) -> Option<&Path> {
         self.nodes.get(id).and_then(|n| n.file_path.as_deref())
+    }
+
+    /// Check if a node is an untracked file.
+    pub fn is_untracked(&self, id: usize) -> bool {
+        self.nodes
+            .get(id)
+            .is_some_and(|n| n.status == Some(FileStatus::Untracked))
     }
 }
 

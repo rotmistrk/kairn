@@ -12,7 +12,6 @@ impl EditorView {
         if w == 0 || h == 0 {
             return;
         }
-
         if self.in_diff_mode() {
             self.draw_diff();
             return;
@@ -236,19 +235,12 @@ impl EditorView {
 
             // --- Cursor rendering (AFTER content, reverse style, tab-aware) ---
             if line_idx == self.editor.cursor_line && self.state.is_focused() {
-                let cursor_visual_col = if self.editor.cursor_col >= char_idx {
-                    col_offset
-                } else {
-                    let line_ref = self.editor.buf().line(line_idx).unwrap_or_default();
-                    let positions = visual_positions(&line_ref, tab_width);
-                    positions
-                        .get(self.editor.cursor_col)
-                        .map(|(vcol, _, _)| *vcol as usize)
-                        .unwrap_or(col_offset)
-                };
-                if visual_row < h as usize && cursor_visual_col < avail {
-                    let cx = text_x + cursor_visual_col as u16;
-                    let cy = visual_row as u16;
+                // Compute cursor visual position accounting for wrapping
+                let (cursor_vrow, cursor_vcol) =
+                    self.cursor_visual_pos(line_idx, self.editor.cursor_col, avail, tab_width, row);
+                if cursor_vrow < h as usize && cursor_vcol < avail {
+                    let cx = text_x + cursor_vcol as u16;
+                    let cy = cursor_vrow as u16;
                     let under = self.state.buf.cell(cx, cy).ch;
                     self.state.buf.put(cx, cy, under, cursor_style);
                 }
@@ -256,6 +248,11 @@ impl EditorView {
 
             row = visual_row + 1;
             line_idx += 1;
+        }
+
+        // Highlight word (gs target) — paint bg on the word only
+        if let Some((hl_line, col_start, col_end)) = self.highlight_word {
+            self.paint_highlight_word(hl_line, col_start, col_end, scroll);
         }
 
         // Fill remaining rows + prompt

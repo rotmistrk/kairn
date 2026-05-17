@@ -72,6 +72,11 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
                     .push_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
                 Ok(serde_json::json!({"split": "opened"}))
             }
+            crate::mcp::commands::McpAction::SplitLinked { on } => {
+                ctx.sink
+                    .push_command(crate::commands::CM_SPLIT_LINKED, Some(Box::new(*on)));
+                Ok(serde_json::json!({"linked_scroll": on}))
+            }
             crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
             crate::mcp::commands::McpAction::LspControl { command } => {
                 let msg = crate::handler_lsp_cmd::handle_lsp_command(command, state);

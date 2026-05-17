@@ -137,6 +137,49 @@ impl super::EditorView {
     }
 }
 
+/// Paint highlight background on a single row (for gs target line).
+pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: u16, to_x: u16) {
+    let Some(bg) = txv_core::palette::palette().interactive.search_match.bg else {
+        return;
+    };
+    let bw = buf.width() as usize;
+    let cells = buf.cells_mut();
+    let base = y as usize * bw;
+    for x in (from_x as usize)..(to_x as usize) {
+        if let Some(c) = cells.get_mut(base + x) {
+            c.style.bg = bg;
+        }
+    }
+}
+
+impl super::EditorView {
+    /// Paint highlight on a word (gs target), accounting for wrapped lines.
+    pub(super) fn paint_highlight_word(&mut self, hl_line: usize, col_start: usize, col_end: usize, scroll: usize) {
+        if hl_line < scroll {
+            return;
+        }
+        let w = self.state.buf.width();
+        let h = self.state.buf.height();
+        let gutter_w = self.gutter_width();
+        let avail = w.saturating_sub(gutter_w) as usize;
+        let mut vis_row: usize = 0;
+        for li in scroll..hl_line {
+            vis_row += self.wrapped_line_rows(li, avail);
+        }
+        if vis_row >= h as usize {
+            return;
+        }
+        let app = crate::app_palette::app_palette();
+        let bg = app.editor.highlight_match.to_style().bg;
+        let x_start = gutter_w + col_start as u16;
+        let x_end = gutter_w + (col_end as u16).min(w.saturating_sub(gutter_w));
+        let y = vis_row as u16;
+        for x in x_start..x_end {
+            self.state.buf.cell_mut(x, y).style.bg = bg;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

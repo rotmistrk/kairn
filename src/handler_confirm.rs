@@ -134,3 +134,13 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
         }
     }
 }
+
+pub fn handle_set_confirm_context(ctx: &mut CommandContext, state: &mut AppState) {
+    if let Some(context) = ctx
+        .data
+        .as_ref()
+        .and_then(|b| b.downcast_ref::<crate::commands::ConfirmContext>())
+    {
+        state.confirm_context = Some(context.clone());
+    }
+}

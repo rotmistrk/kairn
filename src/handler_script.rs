@@ -1,6 +1,7 @@
 //! Dispatch ScriptCommand variants to the command queue.
 
 use txv_core::program::CommandContext;
+use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::app_state::AppState;
 use crate::commands::*;
@@ -69,8 +70,7 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                     if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                         if let Err(e) = editor.save() {
                             let msg = txv_core::message::Message::error("editor", e);
-                            ctx.sink
-                                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                            ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
                         }
                     }
                 }
@@ -112,13 +112,11 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                 "warn" => txv_core::message::Message::warn("tcl", full_text),
                 _ => txv_core::message::Message::info("tcl", full_text),
             };
-            ctx.sink
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         ScriptCommand::StatusFlash { text } => {
             let msg = txv_core::message::Message::info("tcl", text);
-            ctx.sink
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         ScriptCommand::FocusSlot { slot } => {
             let cmd_id = match slot.as_str() {
@@ -201,6 +199,9 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             };
             ctx.sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
         }
+        ScriptCommand::SplitLinked { on } => {
+            ctx.sink.push_command(CM_SPLIT_LINKED, Some(Box::new(on)));
+        }
         ScriptCommand::DiffRevert => {
             ctx.sink.push_command(CM_DIFF_REVERT, None);
         }
@@ -253,7 +254,7 @@ pub fn fire_hooks_for_event(
 fn lsp_cmd(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     let msg = crate::handler_lsp_cmd::handle_lsp_command(arg, state);
     ctx.sink.push_command(
-        txv_widgets::CM_STATUS_MESSAGE,
+        CM_STATUS_MESSAGE,
         Some(Box::new(txv_core::message::Message::info("lsp", msg))),
     );
 }

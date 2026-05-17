@@ -12,6 +12,7 @@ mod handle;
 mod handle_action;
 mod handle_completion;
 mod handle_diff;
+mod handle_viewport;
 
 use std::path::PathBuf;
 
@@ -47,6 +48,8 @@ pub struct EditorView {
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
     pub buffer_id: Option<crate::buffer_registry::BufferId>,
+    /// Highlighted word (from gs — clears on next keypress). (line, col_start, col_end)
+    pub highlight_word: Option<(usize, usize, usize)>,
 }
 
 impl View for EditorView {
@@ -72,6 +75,11 @@ impl View for EditorView {
         if let Event::Tick = event {
             self.handle_tick();
             return HandleResult::Ignored;
+        }
+
+        // Clear highlight word on any keypress
+        if matches!(event, Event::Key(_)) {
+            self.highlight_word = None;
         }
 
         let Event::Key(key) = event else {

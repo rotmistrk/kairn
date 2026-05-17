@@ -46,6 +46,7 @@ pub mod handler_script;
 pub mod handler_script_edit;
 pub mod handler_set;
 pub mod handler_split;
+pub mod handler_split_nav;
 pub mod help;
 pub mod help_editor;
 pub mod help_global;
