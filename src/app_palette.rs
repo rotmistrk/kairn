@@ -136,6 +136,11 @@ impl Default for AppPalette {
             bg: Some(Color::Rgb(0x00, 0x44, 0x44)),
             attrs: None,
         };
+        base.interactive.edit_overlay = PaletteStyle {
+            fg: None,
+            bg: Some(Color::Rgb(0x00, 0x44, 0x00)),
+            attrs: None,
+        };
         Self {
             base,
             git: GitPalette {

@@ -90,7 +90,7 @@ impl TodoTreeView {
         if row < self.inner.data.visible_count() {
             let id = self.inner.data.visible_id(row);
             let label = self.inner.data.label(id).to_owned();
-            self.editing = Some(InlineEditor::new(row, &label));
+            self.editing = Some(InlineEditor::new_selected(row, &label));
             self.inner.mark_dirty();
         }
     }

@@ -167,19 +167,11 @@ fn edit_existing_item() {
     let mut h = TestHarness::new(dir.path());
     focus_todo(&mut h);
 
-    // Press 'e' to edit
+    // Press 'e' to edit (selects all text)
     h.inject_key(KeyCode::Char('e'), KeyMod::default());
     h.run_cycles(2);
 
-    // Select all and replace
-    h.inject_key(
-        KeyCode::Home,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
-    h.run_cycles(1);
+    // Type replaces selected text
     h.inject_str("New title");
     h.run_cycles(1);
     h.inject_key(KeyCode::Enter, KeyMod::default());
