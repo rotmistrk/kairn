@@ -22,6 +22,8 @@ pub struct GitChangesView {
     keys: GitKeys,
     needs_rebuild: bool,
     tick_counter: u16,
+    /// Cooldown ticks after rebuild to avoid feedback loop (status read triggers watcher).
+    cooldown: u16,
 }
 
 impl GitChangesView {
@@ -35,6 +37,7 @@ impl GitChangesView {
             keys,
             needs_rebuild: true,
             tick_counter: 0,
+            cooldown: 0,
         }
     }
 
@@ -63,12 +66,25 @@ impl View for GitChangesView {
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
             self.tick_counter = self.tick_counter.wrapping_add(1);
+            // Cooldown after rebuild: repo.statuses() touches the index which
+            // re-triggers the watcher, causing a feedback loop without this guard.
+            if self.cooldown > 0 {
+                self.cooldown -= 1;
+                // Drain any watcher events accumulated during cooldown
+                if self.cooldown == 0 {
+                    if let Some(w) = self.watcher.as_mut() {
+                        w.has_changes();
+                    }
+                }
+                return HandleResult::Ignored;
+            }
             let poll = self.tick_counter.is_multiple_of(60);
             let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
             if changed {
                 self.needs_rebuild = false;
                 self.inner.data.rebuild(&self.root);
                 self.inner.mark_dirty();
+                self.cooldown = 4; // ~200ms at 50ms tick
             }
             return HandleResult::Ignored;
         }
