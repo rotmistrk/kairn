@@ -106,9 +106,10 @@ impl EditorView {
     }
 
     /// Save buffer to disk. Returns true on success.
+    /// Save buffer via the configured store. Returns true on success.
     pub(super) fn save_buffer(&mut self) -> bool {
         let content = self.editor.buf().content();
-        if crate::editor::save::save_file(&self.path, &content).is_ok() {
+        if self.store.save(&content).is_ok() {
             self.editor.buf().mark_saved();
             true
         } else {

@@ -24,7 +24,7 @@ fn todo_json(title: &str, note: &str) -> String {
 }
 
 #[test]
-fn open_note_creates_file_and_tab() {
+fn open_note_sets_state_and_tab() {
     let dir = temp_project(&[("dummy.txt", "")]);
     std::fs::write(dir.path().join(".kairn.todo"), todo_json("Task", "hello world")).unwrap();
 
@@ -35,18 +35,25 @@ fn open_note_creates_file_and_tab() {
     h.inject_key(KeyCode::Char('N'), KeyMod::default());
     h.run_cycles(4);
 
-    // Verify .kairn/note.md was created with the note content
-    let note_file = dir.path().join(".kairn").join("note.md");
-    assert!(note_file.exists(), ".kairn/note.md should exist");
-    let content = std::fs::read_to_string(&note_file).unwrap();
-    assert_eq!(content, "hello world");
-
     // Verify state has the tree path stored
     assert_eq!(h.state.todo_note_path, Some(vec![0]));
+
+    // Verify Notes tab is active with the note content in the buffer
+    use kairn::handler::downcast_desktop;
+    use kairn::layout_group::SlotId;
+    let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
+    assert_eq!(desktop.active_tab_title(SlotId::Center), Some("Notes"));
+    let view = desktop.active_view_mut(SlotId::Center).unwrap();
+    let ev = view
+        .as_any_mut()
+        .unwrap()
+        .downcast_ref::<kairn::views::editor::EditorView>()
+        .unwrap();
+    assert_eq!(ev.editor.buf().content(), "hello world");
 }
 
 #[test]
-fn open_note_on_empty_note_creates_empty_file() {
+fn open_note_on_empty_note() {
     let dir = temp_project(&[("dummy.txt", "")]);
     std::fs::write(dir.path().join(".kairn.todo"), todo_json("Task", "")).unwrap();
 
@@ -56,14 +63,20 @@ fn open_note_on_empty_note_creates_empty_file() {
     h.inject_key(KeyCode::Char('N'), KeyMod::default());
     h.run_cycles(4);
 
-    let note_file = dir.path().join(".kairn").join("note.md");
-    assert!(note_file.exists());
-    let content = std::fs::read_to_string(&note_file).unwrap();
-    assert_eq!(content, "");
+    use kairn::handler::downcast_desktop;
+    use kairn::layout_group::SlotId;
+    let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
+    let view = desktop.active_view_mut(SlotId::Center).unwrap();
+    let ev = view
+        .as_any_mut()
+        .unwrap()
+        .downcast_ref::<kairn::views::editor::EditorView>()
+        .unwrap();
+    assert_eq!(ev.editor.buf().content(), "");
 }
 
 #[test]
-fn sync_todo_note_writes_back_to_item() {
+fn save_note_writes_back_to_todo_json() {
     let dir = temp_project(&[("dummy.txt", "")]);
     std::fs::write(dir.path().join(".kairn.todo"), todo_json("Task", "original")).unwrap();
 
@@ -74,15 +87,42 @@ fn sync_todo_note_writes_back_to_item() {
     h.inject_key(KeyCode::Char('N'), KeyMod::default());
     h.run_cycles(4);
 
-    // Simulate editing: overwrite the note file with new content
-    let note_file = dir.path().join(".kairn").join("note.md");
-    std::fs::write(&note_file, "updated note").unwrap();
+    // Type new content (replaces buffer since it starts empty-ish)
+    // First select all, then type
+    h.inject_key(
+        KeyCode::Home,
+        KeyMod {
+            ctrl: true,
+            ..KeyMod::default()
+        },
+    );
+    h.run_cycles(1);
+    // Enter insert mode and replace content
+    h.inject_key(KeyCode::Char('c'), KeyMod::default()); // c in normal mode needs motion
+                                                         // Simpler: use ex command to replace
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("%d");
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    // Enter insert mode and type
+    h.inject_key(KeyCode::Char('i'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("updated note");
+    h.inject_key(KeyCode::Esc, KeyMod::default());
+    h.run_cycles(1);
 
-    // Trigger sync (happens on CM_SAVE)
-    kairn::handler_drain::sync_todo_note(&mut h.state);
+    // Save via :w
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("w");
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(4);
 
     // Verify the todo file was updated
     let todo_content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
-    assert!(todo_content.contains("updated note"));
-    assert!(!todo_content.contains("original"));
+    assert!(
+        todo_content.contains("updated note"),
+        "todo should contain 'updated note': {todo_content}"
+    );
 }

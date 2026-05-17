@@ -173,6 +173,7 @@ pub const CM_WORD_COMPLETED: CommandId = 221;
 
 // Todo operations
 pub const CM_TODO_NOTE_OPEN: CommandId = 230;
+pub const CM_TODO_NOTE_SAVE: CommandId = 231;
 
 // Split view
 pub const CM_SPLIT: CommandId = 240;

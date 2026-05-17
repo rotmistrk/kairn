@@ -253,7 +253,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         | CM_WORD_COMPLETED => {
             crate::handler_script::handle_script_command(ctx, state);
         }
-        CM_SAVE => crate::handler_drain::sync_todo_note(state),
+        CM_TODO_NOTE_SAVE => crate::handler_drain::save_todo_note(ctx, state),
         CM_TODO_NOTE_OPEN => crate::handler_drain::open_todo_note(ctx, state),
         _ => {}
     }

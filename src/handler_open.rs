@@ -9,6 +9,17 @@ use crate::broker::OpenResult;
 use crate::commands::*;
 use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
+
+/// Compute a short tab title: relative path within project, or filename for external files.
+fn tab_title(path: &Path, root: &Path) -> String {
+    path.strip_prefix(root)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| {
+            path.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| path.to_string_lossy().to_string())
+        })
+}
 use crate::structured::json_doc::JsonDoc;
 use crate::structured::jsonl_doc::JsonlDoc;
 use crate::views::csv_view::CsvView;
@@ -25,11 +36,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         return;
     };
     let path = &req.path;
-    let title = path
-        .strip_prefix(&state.root_dir)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .to_string();
+    let title = tab_title(path, &state.root_dir);
     log::info!("Open file: {title} (broker check)");
 
     match state.broker.open(&title, SlotId::Center, 0) {
@@ -72,11 +79,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 desktop.close_tab_by_title(SlotId::Center, "Welcome");
-                let title = path
-                    .strip_prefix(&state.root_dir)
-                    .unwrap_or(path)
-                    .to_string_lossy()
-                    .to_string();
+                let title = tab_title(path, &state.root_dir);
                 let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
                 crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
                 if focus_center {
@@ -93,11 +96,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
 
 pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
-    let title = path
-        .strip_prefix(&state.root_dir)
-        .unwrap_or(&path)
-        .to_string_lossy()
-        .to_string();
+    let title = tab_title(&path, &state.root_dir);
     match state.broker.open(&title, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
         OpenResult::Opened => {

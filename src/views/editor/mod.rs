@@ -29,16 +29,16 @@ use crate::settings::EditorSettings;
 pub struct EditorView {
     state: ViewState,
     pub editor: Editor,
-    path: PathBuf,
+    pub(crate) path: PathBuf,
     root_dir: PathBuf,
     highlighter: Highlighter,
     hl_cache: std::cell::RefCell<crate::highlight_cache::HighlightCache>,
-    file_ext: String,
+    pub(crate) file_ext: String,
     pub settings: EditorSettings,
     last_edit_tick: u64,
     tick_counter: u64,
     eviction_close: bool,
-    display_title: String,
+    pub(crate) display_title: String,
     pub(crate) diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
     /// Blame mode state. None = blame off.
     pub(crate) blame_state: Option<crate::blame::SharedBlame>,
@@ -48,6 +48,8 @@ pub struct EditorView {
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
     pub buffer_id: Option<crate::buffer_registry::BufferId>,
+    /// Persistence backend.
+    store: Box<dyn crate::buffer_store::BufferStore>,
     /// Highlighted word (from gs — clears on next keypress). (line, col_start, col_end)
     pub highlight_word: Option<(usize, usize, usize)>,
 }

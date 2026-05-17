@@ -50,6 +50,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            store: Box::new(crate::buffer_store::FileStore::new(PathBuf::from("[cmd output]"))),
         }
     }
 
@@ -81,6 +82,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            store: Box::new(crate::buffer_store::FileStore::new(path.clone())),
         };
         view.apply_settings();
         view
@@ -113,6 +115,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
         }
     }
 
@@ -143,6 +146,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
         }
     }
 
@@ -170,9 +174,14 @@ impl EditorView {
         self.hl_cache.borrow_mut().invalidate_all();
     }
 
+    /// Replace the persistence backend.
+    pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {
+        self.store = store;
+    }
+
     pub fn save(&mut self) -> Result<(), String> {
         let content = self.editor.buf().content();
-        crate::editor::save::save_file(&self.path, &content).map_err(|e| e.to_string())?;
+        self.store.save(&content)?;
         self.editor.buf().mark_saved();
         Ok(())
     }

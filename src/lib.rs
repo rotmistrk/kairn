@@ -8,6 +8,7 @@ pub mod blame;
 pub mod broker;
 pub mod buffer;
 pub mod buffer_registry;
+pub mod buffer_store;
 pub mod build;
 pub mod build_desktop;
 pub mod build_detect;
