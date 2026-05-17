@@ -10,15 +10,9 @@ use crate::commands::*;
 use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
 
-/// Compute a short tab title: relative path within project, or filename for external files.
+/// Compute tab title: relative path within project, or full path for external files.
 fn tab_title(path: &Path, root: &Path) -> String {
-    path.strip_prefix(root)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| {
-            path.file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| path.to_string_lossy().to_string())
-        })
+    path.strip_prefix(root).unwrap_or(path).to_string_lossy().to_string()
 }
 use crate::structured::json_doc::JsonDoc;
 use crate::structured::jsonl_doc::JsonlDoc;
