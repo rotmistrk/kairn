@@ -41,3 +41,24 @@ fn tree_enter_on_dir_expands() {
     h.run_cycles(1);
     assert!(h.contains("inner.rs"));
 }
+
+#[test]
+fn tree_collapse_clears_child_rows() {
+    let dir = temp_project(&[("sub/a.rs", ""), ("sub/b.rs", ""), ("top.rs", "")]);
+    let mut h = TestHarness::new(dir.path());
+    h.run_cycles(1);
+
+    // Expand "sub" directory
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    assert!(h.contains("a.rs"));
+    assert!(h.contains("b.rs"));
+
+    // Collapse "sub" directory (Left collapses expanded nodes)
+    h.inject_key(KeyCode::Left, KeyMod::default());
+    h.run_cycles(1);
+
+    // Child items must not appear on screen (no stale rows)
+    assert!(!h.content_contains("a.rs"), "a.rs should be gone after collapse");
+    assert!(!h.content_contains("b.rs"), "b.rs should be gone after collapse");
+}
