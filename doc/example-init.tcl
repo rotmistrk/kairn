@@ -111,6 +111,22 @@ set keys.quit "ctrl+q"
 # }
 
 # ─── Hooks & Selection Scripting ─────────────────────────────────────────────
+
+# ─── Project Root Override ───────────────────────────────────────────────────
+# Define a `project-root` proc to override automatic root detection.
+# Called with the file path when opening a file via CLI.
+# Return a directory path, or empty string to fall back to built-in detection.
+#
+# Example: super-project with multiple git repos under one workspace:
+# proc project-root {path} {
+#     # Always use ~/workspace/myproject as root
+#     if {[string match "*/myproject/*" $path]} {
+#         return "/home/user/workspace/myproject"
+#     }
+#     return ""
+# }
+
+# ─── Hooks & Key Bindings ────────────────────────────────────────────────────
 # Auto-close brackets via char-inserted hook with filter:
 # hook add char-inserted -filter "(" { editor insert ")" }
 # hook add char-inserted -filter "{" { editor insert "}" }

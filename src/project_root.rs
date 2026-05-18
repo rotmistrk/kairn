@@ -1,6 +1,9 @@
 //! Project root detection — walk up from a file looking for project markers.
+//! Supports user override via a `project-root` Tcl proc in config.
 
 use std::path::{Path, PathBuf};
+
+use rusticle::interpreter::Interpreter;
 
 /// Markers that indicate a project root (checked in order).
 const MARKERS: &[&str] = &[
@@ -17,10 +20,18 @@ const MARKERS: &[&str] = &[
     "pyproject.toml",
 ];
 
-/// Walk up from `start` looking for a directory containing any marker.
-/// Returns the first ancestor (or `start` itself) that contains a marker.
-/// Falls back to `fallback` if no marker is found.
+/// Detect project root, checking user Tcl proc first, then built-in heuristic.
+/// The user can define `proc project-root {path} { ... }` in their config.
 pub fn detect_project_root(start: &Path, fallback: &Path) -> PathBuf {
+    // Try user-defined Tcl proc from global config
+    if let Some(root) = try_tcl_project_root(start) {
+        return root;
+    }
+    detect_project_root_builtin(start, fallback)
+}
+
+/// Built-in heuristic: walk up looking for marker files/dirs.
+pub fn detect_project_root_builtin(start: &Path, fallback: &Path) -> PathBuf {
     let mut dir = if start.is_file() {
         start.parent().unwrap_or(start)
     } else {
@@ -40,6 +51,39 @@ pub fn detect_project_root(start: &Path, fallback: &Path) -> PathBuf {
     fallback.to_path_buf()
 }
 
+/// Try calling user's `project-root` proc from global config.
+fn try_tcl_project_root(start: &Path) -> Option<PathBuf> {
+    let config_path = global_config_path()?;
+    if !config_path.exists() {
+        return None;
+    }
+    let script = std::fs::read_to_string(&config_path).ok()?;
+    // Quick check: does the config even define project-root?
+    if !script.contains("project-root") {
+        return None;
+    }
+    let mut interp = Interpreter::new();
+    interp.eval(&script).ok()?;
+    // Call the proc with the file path
+    let call = format!("project-root {{{}}}", start.display());
+    let result = interp.eval(&call).ok()?;
+    let path = PathBuf::from(result.as_str().trim());
+    if path.is_dir() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+fn global_config_path() -> Option<PathBuf> {
+    let config_dir = if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+        PathBuf::from(xdg)
+    } else {
+        PathBuf::from(std::env::var("HOME").ok()?).join(".config")
+    };
+    Some(config_dir.join("kairn").join("init.tcl"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,7 +98,7 @@ mod tests {
         fs::write(root.join("src/deep/main.rs"), "").unwrap();
 
         let file = root.join("src/deep/main.rs");
-        assert_eq!(detect_project_root(&file, file.parent().unwrap()), root);
+        assert_eq!(detect_project_root_builtin(&file, file.parent().unwrap()), root);
     }
 
     #[test]
@@ -66,7 +110,7 @@ mod tests {
         fs::write(root.join("src/lib.rs"), "").unwrap();
 
         let file = root.join("src/lib.rs");
-        assert_eq!(detect_project_root(&file, file.parent().unwrap()), root);
+        assert_eq!(detect_project_root_builtin(&file, file.parent().unwrap()), root);
     }
 
     #[test]
@@ -78,7 +122,7 @@ mod tests {
 
         let file = root.join("sub/file.txt");
         let parent = file.parent().unwrap();
-        assert_eq!(detect_project_root(&file, parent), parent);
+        assert_eq!(detect_project_root_builtin(&file, parent), parent);
     }
 
     #[test]
