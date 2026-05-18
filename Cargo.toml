@@ -1,5 +1,5 @@
 [workspace]
-members = ["rusticle", "rusticle-tk"]
+members = ["rusticle-tk"]
 
 [package]
 name = "kairn"
@@ -15,7 +15,7 @@ txv-core = { git = "https://github.com/rotmistrk/txv.git" }
 txv-render = { git = "https://github.com/rotmistrk/txv.git" }
 txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
 duir-core = { git = "https://github.com/rotmistrk/duir.git", default-features = false, features = ["crypto"] }
-rusticle = { path = "rusticle" }
+rusticle = { git = "https://github.com/rotmistrk/rusticle.git" }
 anyhow = "1.0"
 base64 = "0.22"
 clap = { version = "4.5", features = ["derive"] }

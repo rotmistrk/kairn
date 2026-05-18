@@ -14,7 +14,7 @@ name = "rusticle_tk"
 path = "src/lib.rs"
 
 [dependencies]
-rusticle = { path = "../rusticle" }
+rusticle = { git = "https://github.com/rotmistrk/rusticle.git" }
 txv-core = { git = "https://github.com/rotmistrk/txv.git" }
 txv-render = { git = "https://github.com/rotmistrk/txv.git" }
 txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
