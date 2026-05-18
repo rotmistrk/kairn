@@ -23,7 +23,7 @@ static PANIC_MESSAGES: OnceLock<Arc<Mutex<MessageRing>>> = OnceLock::new();
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
 struct Cli {
-    /// Directory to open
+    /// File or directory to open
     #[arg(default_value = ".")]
     path: PathBuf,
 
@@ -104,6 +104,14 @@ fn main() -> anyhow::Result<()> {
     }
 
     let root_dir = std::fs::canonicalize(&cli.path)?;
+
+    // If path is a file, use its parent as root and remember to open it
+    let (root_dir, open_file) = if root_dir.is_file() {
+        let parent = root_dir.parent().unwrap_or(&root_dir).to_path_buf();
+        (parent, Some(root_dir))
+    } else {
+        (root_dir, None)
+    };
 
     // Compute socket path and check instance lock
     let socket_path = kairn::mcp::socket_path::socket_path(&root_dir);
@@ -219,6 +227,14 @@ fn main() -> anyhow::Result<()> {
     app_state.mcp_commands = Some(cmd_queue.clone());
     if let Ok(mut guard) = mcp_cmd_queue.lock() {
         *guard = Some(cmd_queue);
+    }
+
+    // Open file from CLI argument (if path was a file)
+    if let Some(ref file_path) = open_file {
+        program.sink().push_command(
+            kairn::commands::CM_OPEN_FILE_FOCUS,
+            Some(Box::new(kairn::commands::OpenFileRequest::new(file_path.clone()))),
+        );
     }
 
     program.run(&mut backend, |ctx| {

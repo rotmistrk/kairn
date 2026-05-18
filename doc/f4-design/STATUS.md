@@ -113,7 +113,7 @@
 |---------|----------|------------|-------|
 | Systematic tab names (shell:0, kiro:0) | P0 | Low | First available N, PTY title override |
 | Real PTY shell (VTE + terminal emulation) | P0 | Medium | txv-widgets PtyTerminal exists, needs wiring |
-| CLI argument parsing (clap) | P1 | Low | Open file/dir from command line |
+| CLI argument parsing (clap) | ✅ | Open file/dir from command line |
 | File tree git status (colors + filter) | P1 | Medium | ignore crate + git2 or shell out |
 | Auto-preview on tree cursor move | P1 | Low | Emit command on cursor change |
 | Session save/restore | P1 | Medium | .kairn.state file |
@@ -121,8 +121,8 @@
 | OSC 52 yank to system clipboard | P2 | Low | Emit escape sequence on yank |
 | CSV table view (Tab cycles modes) | P2 | Medium | New view type |
 | Git commit log viewer (Ctrl-G / F6) | P2 | Medium | New view, shell out to git log |
-| Git blame mode | P2 | Medium | New view mode |
-| Git diff mode | P2 | Medium | New view mode |
+| Git blame mode | ✅ | M-x blame toggles |
+| Git diff mode | ✅ | Ctrl-D / M-x diff |
 | Region select + send to shell/kiro | P2 | Medium | Visual selection → pipe to tab |
 | Template macros (@file @dir @line) | P2 | Low | String expansion before send |
 | Tab rename (Ctrl-R) | P2 | Low | Input prompt → rename |
