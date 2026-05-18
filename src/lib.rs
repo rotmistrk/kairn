@@ -59,6 +59,7 @@ pub mod layout_group;
 pub mod lsp;
 pub mod mcp;
 pub mod message_ring;
+pub mod project_root;
 pub mod scripting;
 pub mod session;
 pub mod settings;

@@ -105,10 +105,11 @@ fn main() -> anyhow::Result<()> {
 
     let root_dir = std::fs::canonicalize(&cli.path)?;
 
-    // If path is a file, use its parent as root and remember to open it
+    // If path is a file, detect project root and open the file
     let (root_dir, open_file) = if root_dir.is_file() {
         let parent = root_dir.parent().unwrap_or(&root_dir).to_path_buf();
-        (parent, Some(root_dir))
+        let project = kairn::project_root::detect_project_root(&root_dir, &parent);
+        (project, Some(root_dir))
     } else {
         (root_dir, None)
     };
