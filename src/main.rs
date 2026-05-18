@@ -107,8 +107,10 @@ fn main() -> anyhow::Result<()> {
 
     // If path is a file, detect project root and open the file
     let (root_dir, open_file) = if root_dir.is_file() {
-        let parent = root_dir.parent().unwrap_or(&root_dir).to_path_buf();
-        let project = kairn::project_root::detect_project_root(&root_dir, &parent);
+        let home = std::env::var("HOME")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| root_dir.parent().unwrap_or(&root_dir).to_path_buf());
+        let project = kairn::project_root::detect_project_root(&root_dir, &home);
         (project, Some(root_dir))
     } else {
         (root_dir, None)

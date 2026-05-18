@@ -114,15 +114,15 @@ mod tests {
     }
 
     #[test]
-    fn falls_back_to_parent() {
+    fn falls_back_to_home() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
         fs::create_dir_all(root.join("sub")).unwrap();
         fs::write(root.join("sub/file.txt"), "").unwrap();
 
         let file = root.join("sub/file.txt");
-        let parent = file.parent().unwrap();
-        assert_eq!(detect_project_root_builtin(&file, parent), parent);
+        let home = PathBuf::from("/home/test");
+        assert_eq!(detect_project_root_builtin(&file, &home), home);
     }
 
     #[test]
