@@ -1,6 +1,5 @@
 PREFIX ?= /usr/local
 LOCAL_PREFIX ?= $(HOME)/.local
-DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle/examples
 TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 
 # ── IMPORTANT ───────────────────────────────────────────
@@ -11,7 +10,7 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 
 .PHONY: all check lint clippy test test-fast fmt clean build release \
         install-local uninstall-local purge-cargo-bin \
-        install-rusticle install-rusticle-tk install-kairn \
+        install-rusticle-tk install-kairn \
         install-demos verify setup check-hooks
 
 # ── Setup (run once per clone) ──────────────────────────
@@ -81,18 +80,13 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: test-fast purge-cargo-bin install-rusticle install-rusticle-tk install-kairn install-demos
+install-local: test-fast purge-cargo-bin install-rusticle-tk install-kairn install-demos
 	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
 purge-cargo-bin:
 	@rm -f $(HOME)/.cargo/bin/kairn $(HOME)/.cargo/bin/rusticle $(HOME)/.cargo/bin/rusticle-tk
 	@echo "  🧹 Removed stale binaries from ~/.cargo/bin (if any)"
-
-install-rusticle: $(BINARY)
-	install -d $(LOCAL_PREFIX)/bin
-	install -m 755 target/release/rusticle $(LOCAL_PREFIX)/bin/rusticle
-	@echo "  ✅ rusticle → $(LOCAL_PREFIX)/bin/rusticle"
 
 install-rusticle-tk: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
@@ -105,9 +99,6 @@ install-kairn: $(BINARY)
 	@echo "  ✅ kairn → $(LOCAL_PREFIX)/bin/kairn"
 
 install-demos:
-	install -d $(DEMO_DIR)
-	install -m 644 rusticle/examples/*.tcl $(DEMO_DIR)/
-	@echo "  ✅ rusticle demos → $(DEMO_DIR)/"
 	install -d $(TK_DEMO_DIR)
 	install -m 644 rusticle-tk/examples/*.tcl $(TK_DEMO_DIR)/
 	@echo "  ✅ rusticle-tk demos → $(TK_DEMO_DIR)/"
@@ -142,13 +133,6 @@ run-script:
 run-tk:
 	@test -n "$(SCRIPT)" || (echo "Usage: make run-tk SCRIPT=path.tcl" && exit 1)
 	cargo run -p rusticle-tk -- $(SCRIPT)
-
-# Run all rusticle demos
-demo-rusticle:
-	@for f in rusticle/examples/*.tcl; do \
-		echo "\n══════ $$f ══════"; \
-		cargo run -p rusticle -- "$$f" || true; \
-	done
 
 # Run rusticle-tk hello demo
 demo-tk:
