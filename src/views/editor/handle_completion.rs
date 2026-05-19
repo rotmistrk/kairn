@@ -181,7 +181,7 @@ impl EditorView {
         }
     }
 
-    /// Check if the file was modified externally. Prompt user to reload.
+    /// Check if the file was modified externally. Auto-reload if clean, prompt if dirty.
     fn check_disk_change(&mut self) {
         let Some(known_mtime) = self.disk_mtime else {
             return;
@@ -196,12 +196,26 @@ impl EditorView {
             return;
         }
         self.disk_mtime = Some(current_mtime);
-        let path = self.path.to_string_lossy().to_string();
-        let ctx = crate::commands::ConfirmContext::FileReload(path);
-        self.state
-            .put_command(crate::commands::CM_SET_CONFIRM_CONTEXT, Some(Box::new(ctx)));
-        let prompt = format!("{} changed on disk — reload? [y/n]", self.display_title);
-        self.state
-            .put_command(crate::commands::CM_CONFIRM, Some(Box::new(prompt)));
+        if self.editor.buf().is_dirty() {
+            // Unsaved changes — ask user
+            let path = self.path.to_string_lossy().to_string();
+            let ctx = crate::commands::ConfirmContext::FileReload(path);
+            self.state
+                .put_command(crate::commands::CM_SET_CONFIRM_CONTEXT, Some(Box::new(ctx)));
+            let prompt = format!("{} changed on disk — reload? [y/n]", self.display_title);
+            self.state
+                .put_command(crate::commands::CM_CONFIRM, Some(Box::new(prompt)));
+        } else {
+            // Clean buffer — reload silently
+            if let Ok(content) = std::fs::read_to_string(&self.path) {
+                self.editor.replace_content(&content);
+                self.hl_cache.borrow_mut().invalidate_all();
+                self.state.mark_dirty();
+                self.state.put_command(
+                    txv_widgets::CM_STATUS_MESSAGE,
+                    Some(Box::new(format!("{} reloaded", self.display_title))),
+                );
+            }
+        }
     }
 }
