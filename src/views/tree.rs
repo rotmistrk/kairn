@@ -95,12 +95,15 @@ impl View for FileTreeView {
             // Periodic git2 status check (catches working tree file changes)
             if self.refresh_counter >= 60 {
                 self.refresh_counter = 0;
+                self.inner.data.refresh();
                 self.update_colors();
             }
             return HandleResult::Ignored;
         }
         if let Event::Command { id: CM_SAVE, .. } = event {
             self.notify_save();
+            self.inner.data.refresh();
+            self.update_colors();
             return HandleResult::Ignored;
         }
         if let Event::Key(key) = event {
