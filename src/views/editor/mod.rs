@@ -52,6 +52,8 @@ pub struct EditorView {
     store: Box<dyn crate::buffer_store::BufferStore>,
     /// Highlighted word (from gs — clears on next keypress). (line, col_start, col_end)
     pub highlight_word: Option<(usize, usize, usize)>,
+    /// Last known mtime of the file on disk (for external change detection).
+    disk_mtime: Option<std::time::SystemTime>,
 }
 
 impl View for EditorView {

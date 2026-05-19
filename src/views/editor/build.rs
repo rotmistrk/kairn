@@ -50,6 +50,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            disk_mtime: None,
             store: Box::new(crate::buffer_store::FileStore::new(PathBuf::from("[cmd output]"))),
         }
     }
@@ -82,6 +83,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            disk_mtime: std::fs::metadata(&path).and_then(|m| m.modified()).ok(),
             store: Box::new(crate::buffer_store::FileStore::new(path.clone())),
         };
         view.apply_settings();
@@ -115,6 +117,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            disk_mtime: std::fs::metadata(path).and_then(|m| m.modified()).ok(),
             store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
         }
     }
@@ -146,6 +149,7 @@ impl EditorView {
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
+            disk_mtime: std::fs::metadata(path).and_then(|m| m.modified()).ok(),
             store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
         }
     }

@@ -159,6 +159,14 @@ impl Editor {
         self.buffer.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    /// Replace buffer content entirely (external reload). Resets cursor to top.
+    pub fn replace_content(&mut self, content: &str) {
+        *self.buf() = PieceTable::from_text(content);
+        self.cursor_line = 0;
+        self.cursor_col = 0;
+        self.viewport_scroll = 0;
+    }
+
     pub fn clamp_col(&mut self) {
         let line_len = self.buf().line_len(self.cursor_line);
         let max = if self.mode == EditorMode::Insert {

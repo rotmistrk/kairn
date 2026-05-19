@@ -72,6 +72,10 @@ impl EditorView {
     /// Handle tick event: autosave + completion trigger + LSP didChange.
     pub(super) fn handle_tick(&mut self) {
         self.tick_counter += 1;
+        // External file change detection: every 20 ticks (~1s)
+        if self.tick_counter.is_multiple_of(20) {
+            self.check_disk_change();
+        }
         // LSP didChange: 3 ticks after last edit (debounced)
         if self.last_edit_tick > 0 && self.tick_counter - self.last_edit_tick == 3 {
             let changed = crate::commands::ContentChanged {
@@ -111,6 +115,7 @@ impl EditorView {
         let content = self.editor.buf().content();
         if self.store.save(&content).is_ok() {
             self.editor.buf().mark_saved();
+            self.disk_mtime = std::fs::metadata(&self.path).and_then(|m| m.modified()).ok();
             true
         } else {
             false
@@ -173,6 +178,43 @@ impl EditorView {
                 "e "
             };
             self.editor.command_buf = format!("{prefix}{}", matches[0]);
+        }
+    }
+
+    /// Check if the file was modified externally. Reload if buffer is clean.
+    fn check_disk_change(&mut self) {
+        let Some(known_mtime) = self.disk_mtime else {
+            return;
+        };
+        let Ok(meta) = std::fs::metadata(&self.path) else {
+            return;
+        };
+        let Ok(current_mtime) = meta.modified() else {
+            return;
+        };
+        if current_mtime == known_mtime {
+            return;
+        }
+        self.disk_mtime = Some(current_mtime);
+        if self.editor.buf().is_dirty() {
+            self.state.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(format!(
+                    "⚠ {} changed on disk (buffer has unsaved edits)",
+                    self.display_title
+                ))),
+            );
+            return;
+        }
+        // Buffer is clean — reload from disk
+        if let Ok(content) = std::fs::read_to_string(&self.path) {
+            self.editor.replace_content(&content);
+            self.hl_cache.borrow_mut().invalidate_all();
+            self.state.mark_dirty();
+            self.state.put_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(format!("{} reloaded (changed on disk)", self.display_title))),
+            );
         }
     }
 }
