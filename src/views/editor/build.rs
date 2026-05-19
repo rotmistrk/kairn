@@ -178,6 +178,12 @@ impl EditorView {
         self.hl_cache.borrow_mut().invalidate_all();
     }
 
+    /// Invalidate highlight cache and mark view dirty (for external content reload).
+    pub fn invalidate_highlight(&mut self) {
+        self.hl_cache.borrow_mut().invalidate_all();
+        self.state.mark_dirty();
+    }
+
     /// Replace the persistence backend.
     pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {
         self.store = store;

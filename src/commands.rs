@@ -150,6 +150,8 @@ pub const CM_SET_CONFIRM_CONTEXT: CommandId = 192;
 pub enum ConfirmContext {
     /// Editor close: save? (payload: file path)
     EditorClose(String),
+    /// File changed on disk: reload? (payload: file path)
+    FileReload(String),
     /// Todo tree: delete item
     TodoDelete,
     /// Todo tree: crypto passphrase prompt

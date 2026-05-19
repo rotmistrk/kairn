@@ -21,6 +21,7 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
 
     match context {
         ConfirmContext::EditorClose(path) => handle_editor_close(ctx, state, &path, ch),
+        ConfirmContext::FileReload(path) => handle_file_reload(ctx, &path, ch),
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
         ConfirmContext::TodoCrypto => handle_todo_crypto(ctx, state, ch),
     }
@@ -92,6 +93,35 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
         if let Some(desktop) = downcast_desktop(ctx.desktop) {
             crate::handler_evict::complete_pending_insert(desktop, state);
         }
+    }
+}
+
+fn handle_file_reload(ctx: &mut CommandContext, path: &str, ch: char) {
+    if ch != 'y' {
+        return;
+    }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let panel = desktop.panel_mut(SlotId::Center);
+    for i in 0..panel.tab_count() {
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        let Some(any) = view.as_any_mut() else {
+            continue;
+        };
+        let Some(editor) = any.downcast_mut::<EditorView>() else {
+            continue;
+        };
+        if editor.path().to_string_lossy() != path {
+            continue;
+        }
+        if let Ok(content) = std::fs::read_to_string(editor.path()) {
+            editor.editor.replace_content(&content);
+            editor.invalidate_highlight();
+        }
+        break;
     }
 }
 
