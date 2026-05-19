@@ -90,12 +90,14 @@ impl View for FileTreeView {
             if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
                 self.update_colors();
                 self.inner.data.refresh();
+                self.inner.mark_dirty();
                 self.refresh_counter = 0;
             }
             // Periodic git2 status check (catches working tree file changes)
             if self.refresh_counter >= 60 {
                 self.refresh_counter = 0;
                 self.inner.data.refresh();
+                self.inner.mark_dirty();
                 self.update_colors();
             }
             return HandleResult::Ignored;
@@ -103,6 +105,7 @@ impl View for FileTreeView {
         if let Event::Command { id: CM_SAVE, .. } = event {
             self.notify_save();
             self.inner.data.refresh();
+            self.inner.mark_dirty();
             self.update_colors();
             return HandleResult::Ignored;
         }
