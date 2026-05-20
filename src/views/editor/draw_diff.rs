@@ -7,8 +7,8 @@ use super::EditorView;
 
 impl EditorView {
     pub(super) fn draw_diff(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         let ds = match &self.diff_state {
             Some(ds) => ds,
             None => return,
@@ -107,7 +107,7 @@ impl EditorView {
             let y = cmd.row;
             match &cmd.kind {
                 DrawKind::Empty => {
-                    self.state.buf.print_line(0, y, "~", w, context_style);
+                    self.state.buffer_mut().print_line(0, y, "~", w, context_style);
                 }
                 DrawKind::Context { buf_line, base_line } => {
                     self.draw_diff_gutter(0, y, dw, Some(*base_line), Some(*buf_line));
@@ -145,7 +145,7 @@ impl EditorView {
                     } else {
                         fold_style
                     };
-                    self.state.buf.print_line(0, y, &label, w, st);
+                    self.state.buffer_mut().print_line(0, y, &label, w, st);
                 }
             }
         }
@@ -168,7 +168,9 @@ impl EditorView {
                 ":"
             };
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
-            self.state.buf.print_line(0, prompt_y, &prompt_text, w, prompt_style);
+            self.state
+                .buffer_mut()
+                .print_line(0, prompt_y, &prompt_text, w, prompt_style);
         }
     }
 
@@ -186,7 +188,7 @@ impl EditorView {
             None => " ".repeat(dw),
         };
         let gutter = format!("{} {} ", left, right);
-        self.state.buf.print(x, y, &gutter, gs);
+        self.state.buffer_mut().print(x, y, &gutter, gs);
     }
 
     fn draw_diff_text(&mut self, x: u16, y: u16, avail: usize, text: &str, style: Style) {
@@ -203,17 +205,17 @@ impl EditorView {
                     if col >= avail {
                         break;
                     }
-                    self.state.buf.put(x + col as u16, y, ' ', style);
+                    self.state.buffer_mut().put(x + col as u16, y, ' ', style);
                     col += 1;
                 }
             } else {
-                self.state.buf.put(x + col as u16, y, ch, style);
+                self.state.buffer_mut().put(x + col as u16, y, ch, style);
                 col += display_char_width(ch) as usize;
             }
         }
         // Pad remainder
         while col < avail {
-            self.state.buf.put(x + col as u16, y, ' ', style);
+            self.state.buffer_mut().put(x + col as u16, y, ' ', style);
             col += 1;
         }
     }

@@ -32,8 +32,8 @@ impl View for MessagesView {
     }
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -81,7 +81,7 @@ impl View for MessagesView {
             .collect();
         drop(ring);
         for (row, (line, style)) in lines.iter().enumerate() {
-            self.state.buf.print_line(0, row as u16, line, w, *style);
+            self.state.buffer_mut().print_line(0, row as u16, line, w, *style);
         }
     }
 

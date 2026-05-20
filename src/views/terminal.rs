@@ -111,11 +111,11 @@ impl txv_core::view::View for FallbackTerminal {
     fn draw(&mut self) {
         let style = txv_core::cell::Style::default();
         let err_style = txv_core::palette::palette().state.error.resolve(&style);
-        self.state.buf.print(0, 0, &format!("[{}]", self.title), style);
+        self.state.buffer_mut().print(0, 0, &format!("[{}]", self.title), style);
         if !self.message.is_empty() {
-            self.state.buf.print(0, 1, &self.message, err_style);
+            self.state.buffer_mut().print(0, 1, &self.message, err_style);
             self.state
-                .buf
+                .buffer_mut()
                 .print(0, 2, "Check that the command is installed and in PATH.", style);
         }
     }

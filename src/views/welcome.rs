@@ -38,8 +38,8 @@ impl View for WelcomeView {
     }
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -85,9 +85,9 @@ impl View for WelcomeView {
                 let pad_left = w.saturating_sub(display_width(text, 1)) / 2;
                 let left_spaces: String = " ".repeat(pad_left as usize);
                 let centered = format!("{}{}", left_spaces, text);
-                self.state.buf.print_line(0, row, &centered, w, style);
+                self.state.buffer_mut().print_line(0, row, &centered, w, style);
             } else {
-                self.state.buf.print_line(0, row, "", w, Style::default());
+                self.state.buffer_mut().print_line(0, row, "", w, Style::default());
             }
         }
     }

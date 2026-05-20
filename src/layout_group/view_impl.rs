@@ -12,8 +12,8 @@ impl View for LayoutGroup {
     }
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.set_bounds(r);
-        self.group.view.mark_dirty();
+        self.group.set_bounds(r);
+        self.group.mark_dirty();
         // Recompute proportional sizes on terminal resize
         // Wide: 1:2:2 by width. Tall: 1:2 width, 2:1 height.
         if r.w > 0 {
@@ -29,13 +29,13 @@ impl View for LayoutGroup {
     }
 
     fn draw(&mut self) {
-        let w = self.group.view.buf.width();
-        let h = self.group.view.buf.height();
+        let w = self.group.buffer_mut().width();
+        let h = self.group.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
-        self.group.view.buf.fill(' ', Style::default());
-        let my_bounds = self.group.view.bounds();
+        self.group.buffer_mut().fill(' ', Style::default());
+        let my_bounds = self.group.bounds();
         if let Some(z) = self.zoomed {
             // Zoomed panel is on top — draw it with chrome
             if let Some(c) = self.group.child_mut(z) {
@@ -43,7 +43,7 @@ impl View for LayoutGroup {
             }
             // Blit zoomed child
             let cb = self.group.child(z).map(|c| c.bounds()).unwrap_or_default();
-            let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+            let buf_ptr = self.group.buffer_mut() as *mut Buffer;
             if let Some(c) = self.group.child(z) {
                 let dx = cb.x.saturating_sub(my_bounds.x);
                 let dy = cb.y.saturating_sub(my_bounds.y);
@@ -59,7 +59,7 @@ impl View for LayoutGroup {
             }
         }
         // Blit all children
-        let buf_ptr = &mut self.group.view.buf as *mut Buffer;
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         for i in 0..self.group.child_count() {
             if let Some(child) = self.group.child(i) {
                 let cb = child.bounds();
@@ -97,7 +97,7 @@ impl View for LayoutGroup {
 
 impl LayoutGroup {
     fn draw_dividers(&mut self) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         let cs = txv_core::palette::palette().chrome.bar.to_style();
         let rects = self.compute_rects(b);
         let left_r = rects[SlotId::Left as usize];
@@ -106,11 +106,13 @@ impl LayoutGroup {
         // Vertical dividers (below chrome row)
         if left_r.w > 0 && center_r.w > 0 {
             let x = (left_r.x + left_r.w).saturating_sub(b.x);
-            self.group.view.buf.vline(x, 1, left_r.h.saturating_sub(1), '│', cs);
+            self.group.buffer_mut().vline(x, 1, left_r.h.saturating_sub(1), '│', cs);
         }
         if center_r.w > 0 && right_r.w > 0 {
             let x = right_r.x.saturating_sub(1).saturating_sub(b.x);
-            self.group.view.buf.vline(x, 1, right_r.h.saturating_sub(1), '│', cs);
+            self.group
+                .buffer_mut()
+                .vline(x, 1, right_r.h.saturating_sub(1), '│', cs);
         }
     }
 }

@@ -71,7 +71,7 @@ impl View for EditorView {
         self.draw_editor();
         self.draw_blame_gutter();
         self.draw_diagnostics();
-        self.completion_popup.draw(&mut self.state.buf);
+        self.completion_popup.draw(self.state.buffer_mut());
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

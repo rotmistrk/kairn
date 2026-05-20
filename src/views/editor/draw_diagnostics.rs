@@ -13,10 +13,10 @@ impl EditorView {
             Some(diags) => diags,
             None => return,
         };
-        let w = self.state.buf.width();
+        let w = self.state.buffer_mut().width();
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
-        let visible_lines = self.state.buf.height() as usize;
+        let visible_lines = self.state.buffer_mut().height() as usize;
 
         // Collect overlay operations to avoid borrow issues
         struct Overlay {
@@ -41,7 +41,7 @@ impl EditorView {
             let max_x = w;
 
             for x in start..end.min(max_x) {
-                let cell = self.state.buf.cell(x, y);
+                let cell = self.state.buffer_mut().cell(x, y);
                 let merged = Style {
                     fg: style.fg,
                     bg: cell.style.bg,
@@ -60,7 +60,7 @@ impl EditorView {
         }
 
         for ov in overlays {
-            self.state.buf.put(ov.x, ov.y, ov.ch, ov.style);
+            self.state.buffer_mut().put(ov.x, ov.y, ov.ch, ov.style);
         }
     }
 

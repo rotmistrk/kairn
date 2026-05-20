@@ -58,7 +58,7 @@ impl LayoutGroup {
                 let slot = self.focused_slot();
                 let title = self.panel(slot).active_title().map(String::from);
                 self.panel_mut(slot).close_active();
-                self.group.view.put_command(
+                self.group.put_command(
                     CM_FILE_CLOSED,
                     title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
                 );
@@ -77,7 +77,7 @@ impl LayoutGroup {
                 } else if panel.tab_count() > 1 {
                     panel.open_dropdown();
                 }
-                self.group.view.mark_dirty();
+                self.group.mark_dirty();
                 HandleResult::Consumed
             }
             CM_PANEL_GROW => {

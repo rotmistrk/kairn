@@ -98,8 +98,8 @@ impl View for GitLogView {
     }
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -113,7 +113,7 @@ impl View for GitLogView {
         };
 
         if !self.done {
-            self.state.buf.print(0, 0, "Loading...", dim);
+            self.state.buffer_mut().print(0, 0, "Loading...", dim);
             return;
         }
 
@@ -122,7 +122,7 @@ impl View for GitLogView {
             let idx = self.scroll + row;
             let y = row as u16;
             if idx >= self.entries.len() {
-                self.state.buf.hline(0, y, w, ' ', normal);
+                self.state.buffer_mut().hline(0, y, w, ' ', normal);
                 continue;
             }
             let style = if idx == self.cursor {
@@ -131,8 +131,8 @@ impl View for GitLogView {
                 normal
             };
             let line = Self::format_entry(&self.entries[idx], w as usize);
-            self.state.buf.hline(0, y, w, ' ', style);
-            self.state.buf.print(0, y, &line, style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
+            self.state.buffer_mut().print(0, y, &line, style);
         }
     }
 

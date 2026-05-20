@@ -7,8 +7,8 @@ use crate::highlight::HlSpan;
 
 impl EditorView {
     pub(super) fn draw_editor(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -83,7 +83,7 @@ impl EditorView {
             // --- Gutter ---
             if gutter_w > 0 {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
-                self.state.buf.print(0, y, &num, gutter_style);
+                self.state.buffer_mut().print(0, y, &num, gutter_style);
             }
 
             // --- Line content: write char-by-char, then pad to full width ---
@@ -128,9 +128,9 @@ impl EditorView {
                                 } else {
                                     '\u{2500}'
                                 };
-                                self.state.buf.put(x, vy, c, ls);
+                                self.state.buffer_mut().put(x, vy, c, ls);
                             } else {
-                                self.state.buf.put(x, vy, ' ', st);
+                                self.state.buffer_mut().put(x, vy, ' ', st);
                             }
                             col_offset += 1;
                         }
@@ -143,7 +143,7 @@ impl EditorView {
                         if col_offset >= avail {
                             let vy = visual_row as u16;
                             for pad_col in col_offset..avail {
-                                self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
+                                self.state.buffer_mut().put(text_x + pad_col as u16, vy, ' ', normal);
                             }
                             col_offset = 0;
                             visual_row += 1;
@@ -152,7 +152,7 @@ impl EditorView {
                             }
                             if gutter_w > 0 {
                                 let wy = visual_row as u16;
-                                self.state.buf.print_line(0, wy, "", gutter_w, gutter_style);
+                                self.state.buffer_mut().print_line(0, wy, "", gutter_w, gutter_style);
                             }
                         }
                     } else if col_offset >= avail {
@@ -195,7 +195,7 @@ impl EditorView {
                         &matchparen_style,
                         &rainbow_map,
                     );
-                    self.state.buf.put(x, vy, display_ch, display_style);
+                    self.state.buffer_mut().put(x, vy, display_ch, display_style);
                     col_offset += display_char_width(ch) as usize;
                     char_idx += 1;
                     byte_pos += ch.len_utf8();
@@ -210,7 +210,7 @@ impl EditorView {
                 let list_style = app.editor.list_chars.to_style();
                 let vy = visual_row as u16;
                 let x = text_x + col_offset as u16;
-                self.state.buf.put(x, vy, '$', list_style);
+                self.state.buffer_mut().put(x, vy, '$', list_style);
                 col_offset += 1;
             }
 
@@ -218,11 +218,11 @@ impl EditorView {
             if visual_row < h as usize {
                 let vy = visual_row as u16;
                 for pad_col in col_offset..avail {
-                    self.state.buf.put(text_x + pad_col as u16, vy, ' ', normal);
+                    self.state.buffer_mut().put(text_x + pad_col as u16, vy, ' ', normal);
                 }
                 if self.editor.options.guides {
                     super::draw_style::draw_indent_guides(
-                        &mut self.state.buf,
+                        self.state.buffer_mut(),
                         &line,
                         text_x,
                         vy,
@@ -241,8 +241,8 @@ impl EditorView {
                 if cursor_vrow < h as usize && cursor_vcol < avail {
                     let cx = text_x + cursor_vcol as u16;
                     let cy = cursor_vrow as u16;
-                    let under = self.state.buf.cell(cx, cy).ch;
-                    self.state.buf.put(cx, cy, under, cursor_style);
+                    let under = self.state.buffer_mut().cell(cx, cy).ch;
+                    self.state.buffer_mut().put(cx, cy, under, cursor_style);
                 }
             }
 

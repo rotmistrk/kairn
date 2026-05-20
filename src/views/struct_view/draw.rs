@@ -8,8 +8,8 @@ use super::{ColFocus, StructuredView};
 
 /// Draw the structured view as a three-column tree-table.
 pub fn draw_struct_view(view: &mut StructuredView) {
-    let w = view.state.buf.width();
-    let h = view.state.buf.height();
+    let w = view.state.buffer_mut().width();
+    let h = view.state.buffer_mut().height();
     if w == 0 || h == 0 {
         return;
     }
@@ -55,7 +55,7 @@ pub fn draw_struct_view(view: &mut StructuredView) {
         let y = row as u16;
 
         if idx >= view.visible_nodes.len() {
-            view.state.buf.hline(0, y, w, ' ', normal);
+            view.state.buffer_mut().hline(0, y, w, ' ', normal);
             continue;
         }
 
@@ -67,7 +67,7 @@ pub fn draw_struct_view(view: &mut StructuredView) {
             normal
         };
 
-        view.state.buf.hline(0, y, w, ' ', base);
+        view.state.buffer_mut().hline(0, y, w, ' ', base);
 
         // Key column
         let key_text = build_key_text(view, node_id);
@@ -77,11 +77,11 @@ pub fn draw_struct_view(view: &mut StructuredView) {
             base
         };
         let truncated_key = truncate(&key_text, key_w);
-        view.state.buf.print(0, y, &truncated_key, col_style);
+        view.state.buffer_mut().print(0, y, &truncated_key, col_style);
 
         // Separator 1
         let sep1_x = key_w as u16;
-        view.state.buf.print(sep1_x, y, "│", sep_style);
+        view.state.buffer_mut().print(sep1_x, y, "│", sep_style);
 
         // Value column
         let val_text = view.doc.value_display(node_id).to_owned();
@@ -92,11 +92,11 @@ pub fn draw_struct_view(view: &mut StructuredView) {
         };
         let val_x = sep1_x + 1;
         let truncated_val = truncate(&val_text, val_w);
-        view.state.buf.print(val_x, y, &truncated_val, col_style);
+        view.state.buffer_mut().print(val_x, y, &truncated_val, col_style);
 
         // Separator 2
         let sep2_x = val_x + val_w as u16;
-        view.state.buf.print(sep2_x, y, "│", sep_style);
+        view.state.buffer_mut().print(sep2_x, y, "│", sep_style);
 
         // Meta column
         let meta_text = view.doc.meta(node_id).to_owned();
@@ -108,7 +108,7 @@ pub fn draw_struct_view(view: &mut StructuredView) {
         let meta_x = sep2_x + 1;
         if !meta_text.is_empty() && meta_w > 0 {
             let truncated_meta = truncate(&meta_text, meta_w);
-            view.state.buf.print(meta_x, y, &truncated_meta, col_style);
+            view.state.buffer_mut().print(meta_x, y, &truncated_meta, col_style);
         }
 
         // Render InlineEditor overlay if editing this row
@@ -119,7 +119,7 @@ pub fn draw_struct_view(view: &mut StructuredView) {
                     ColFocus::Value => (val_x, val_w as u16),
                     ColFocus::Meta => (meta_x, meta_w as u16),
                 };
-                editor.draw(&mut view.state.buf, col_x, y, col_w, edit_style);
+                editor.draw(view.state.buffer_mut(), col_x, y, col_w, edit_style);
             }
         }
     }

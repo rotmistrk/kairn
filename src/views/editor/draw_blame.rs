@@ -14,7 +14,7 @@ impl EditorView {
         };
         let app = crate::app_palette::app_palette();
         let style = app.editor.gutter.to_style();
-        let h = self.state.buf.height();
+        let h = self.state.buffer_mut().height();
         let scroll = self.editor.viewport_scroll;
 
         // Collect lines to draw to avoid holding the lock while writing to buf
@@ -57,7 +57,7 @@ impl EditorView {
         drop(guard);
 
         for (y, text) in &lines_to_draw {
-            self.state.buf.print(0, *y, text, style);
+            self.state.buffer_mut().print(0, *y, text, style);
         }
     }
 }

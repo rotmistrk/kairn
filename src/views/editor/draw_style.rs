@@ -108,11 +108,11 @@ pub(super) fn rainbow_brackets(line: &str) -> Vec<(usize, Color)> {
 impl super::EditorView {
     /// Draw tilde fill and command/search prompt at the bottom.
     pub(super) fn draw_footer(&mut self, mut row: usize, gutter_style: Style) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         while row < h as usize {
             let y = row as u16;
-            self.state.buf.print_line(0, y, "~", w, gutter_style);
+            self.state.buffer_mut().print_line(0, y, "~", w, gutter_style);
             row += 1;
         }
         if self.editor.mode == crate::editor::keymap::EditorMode::Command
@@ -132,7 +132,9 @@ impl super::EditorView {
                 ":"
             };
             let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
-            self.state.buf.print_line(0, prompt_y, &prompt_text, w, prompt_style);
+            self.state
+                .buffer_mut()
+                .print_line(0, prompt_y, &prompt_text, w, prompt_style);
         }
     }
 }
@@ -158,8 +160,8 @@ impl super::EditorView {
         if hl_line < scroll {
             return;
         }
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         let gutter_w = self.gutter_width();
         let avail = w.saturating_sub(gutter_w) as usize;
         let mut vis_row: usize = 0;
@@ -175,7 +177,7 @@ impl super::EditorView {
         let x_end = gutter_w + (col_end as u16).min(w.saturating_sub(gutter_w));
         let y = vis_row as u16;
         for x in x_start..x_end {
-            self.state.buf.cell_mut(x, y).style.bg = bg;
+            self.state.buffer_mut().cell_mut(x, y).style.bg = bg;
         }
     }
 }

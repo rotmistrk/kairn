@@ -118,8 +118,8 @@ impl View for ResultsView {
     }
 
     fn draw(&mut self) {
-        let w = self.state.buf.width();
-        let h = self.state.buf.height();
+        let w = self.state.buffer_mut().width();
+        let h = self.state.buffer_mut().height();
         if w == 0 || h == 0 {
             return;
         }
@@ -138,7 +138,7 @@ impl View for ResultsView {
             let idx = self.scroll + row;
             let y = row as u16;
             if idx >= self.entries.len() {
-                self.state.buf.hline(0, y, w, ' ', normal);
+                self.state.buffer_mut().hline(0, y, w, ' ', normal);
                 continue;
             }
             let entry = &self.entries[idx];
@@ -147,7 +147,7 @@ impl View for ResultsView {
             } else {
                 normal
             };
-            self.state.buf.hline(0, y, w, ' ', style);
+            self.state.buffer_mut().hline(0, y, w, ' ', style);
 
             let path_str = entry
                 .path
@@ -155,7 +155,7 @@ impl View for ResultsView {
                 .unwrap_or(&entry.path)
                 .to_string_lossy();
             let loc = format!("{}:{}:", path_str, entry.line + 1);
-            self.state.buf.print(
+            self.state.buffer_mut().print(
                 0,
                 y,
                 &loc,
@@ -167,7 +167,7 @@ impl View for ResultsView {
             );
             let text_x = loc.len().min(w as usize) as u16;
             if text_x < w {
-                self.state.buf.print(text_x, y, &entry.text, style);
+                self.state.buffer_mut().print(text_x, y, &entry.text, style);
             }
         }
 
@@ -187,8 +187,8 @@ impl View for ResultsView {
         } else {
             pal.state.success.to_style()
         };
-        self.state.buf.hline(0, status_y, w, ' ', status_style);
-        self.state.buf.print(0, status_y, &status, status_style);
+        self.state.buffer_mut().hline(0, status_y, w, ' ', status_style);
+        self.state.buffer_mut().print(0, status_y, &status, status_style);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

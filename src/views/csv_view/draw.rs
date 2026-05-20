@@ -14,8 +14,8 @@ struct DrawStyles {
 }
 
 pub fn draw_csv_view(view: &mut CsvView) {
-    let w = view.state.buf.width();
-    let h = view.state.buf.height();
+    let w = view.state.buffer_mut().width();
+    let h = view.state.buffer_mut().height();
     if w == 0 || h == 0 {
         return;
     }
@@ -38,7 +38,7 @@ pub fn draw_csv_view(view: &mut CsvView) {
     if let Some(ref hdrs) = view.headers {
         let hdrs = hdrs.clone();
         draw_row(
-            &mut view.state.buf,
+            view.state.buffer_mut(),
             0,
             y,
             w,
@@ -62,7 +62,7 @@ pub fn draw_csv_view(view: &mut CsvView) {
         let vis_idx = view.scroll_row + row_offset;
         let screen_y = y + row_offset as u16;
         if vis_idx >= view.visible_rows.len() {
-            view.state.buf.hline(0, screen_y, w, ' ', styles.normal);
+            view.state.buffer_mut().hline(0, screen_y, w, ' ', styles.normal);
             continue;
         }
         let data_idx = view.visible_rows[vis_idx];
@@ -79,7 +79,7 @@ pub fn draw_csv_view(view: &mut CsvView) {
         };
         let row_data = view.rows[data_idx].clone();
         draw_row(
-            &mut view.state.buf,
+            view.state.buffer_mut(),
             0,
             screen_y,
             w,

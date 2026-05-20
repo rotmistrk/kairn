@@ -106,7 +106,7 @@ impl LayoutGroup {
 
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
         self.panel_mut(slot).insert_tab(title, view);
-        if self.group.view.bounds().w > 0 {
+        if self.group.bounds().w > 0 {
             self.recompute_bounds();
         }
     }
@@ -193,7 +193,7 @@ impl LayoutGroup {
             LayoutMode::Wide => false,
             LayoutMode::Tall => true,
             LayoutMode::Auto => {
-                let w = self.group.view.bounds().w;
+                let w = self.group.bounds().w;
                 if w >= self.wide_threshold {
                     false
                 } else if w <= self.tall_threshold {
@@ -206,7 +206,7 @@ impl LayoutGroup {
     }
 
     pub fn layout_rects(&self) -> [Rect; PANEL_COUNT] {
-        self.compute_rects(self.group.view.bounds())
+        self.compute_rects(self.group.bounds())
     }
 
     pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
@@ -219,7 +219,7 @@ impl LayoutGroup {
     }
 
     fn recompute_bounds(&mut self) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         self.apply_layout(b);
     }
 

@@ -60,7 +60,7 @@ impl TkDesktop {
 
     /// Recompute layout and set bounds on all children.
     fn apply_layout(&mut self) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -83,8 +83,8 @@ impl View for TkDesktop {
     delegate_group_state!(group, override { set_bounds });
 
     fn set_bounds(&mut self, r: Rect) {
-        self.group.view.set_bounds(r);
-        self.group.view.mark_dirty();
+        self.group.set_bounds(r);
+        self.group.mark_dirty();
         self.apply_layout();
     }
 

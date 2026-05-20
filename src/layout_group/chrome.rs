@@ -72,7 +72,7 @@ fn active_count() -> Style {
 impl LayoutGroup {
     /// Draw the full chrome bar (top row) with Powerline glyphs.
     pub(super) fn draw_chrome(&mut self) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
@@ -81,7 +81,7 @@ impl LayoutGroup {
         let cs = chrome_style();
 
         // Fill top row with ─
-        self.group.view.buf.hline(0, 0, b.w, '─', cs);
+        self.group.buffer_mut().hline(0, 0, b.w, '─', cs);
 
         // Draw tabs for top slots
         for (i, r) in rects[..3].iter().enumerate() {
@@ -107,11 +107,11 @@ impl LayoutGroup {
         let right_r = rects[SlotId::Right as usize];
         if left_r.w > 0 && center_r.w > 0 {
             let x = (left_r.x + left_r.w).saturating_sub(b.x);
-            self.group.view.buf.put(x, 0, '┬', cs);
+            self.group.buffer_mut().put(x, 0, '┬', cs);
         }
         if right_r.w > 0 && center_r.w > 0 {
             let x = right_r.x.saturating_sub(1).saturating_sub(b.x);
-            self.group.view.buf.put(x, 0, '┬', cs);
+            self.group.buffer_mut().put(x, 0, '┬', cs);
         }
 
         // Bottom chrome (horizontal divider above bottom panel)
@@ -139,7 +139,7 @@ impl LayoutGroup {
             bg: cs.bg,
             ..Style::default()
         };
-        self.group.view.buf.print(x, y, g.tab_left, cap);
+        self.group.buffer_mut().print(x, y, g.tab_left, cap);
         x += g.tab_left.chars().count() as u16;
 
         // Title — truncate to fit available space (max 60 chars, min 8)
@@ -152,7 +152,7 @@ impl LayoutGroup {
         if x + lw > max_x {
             return;
         }
-        self.group.view.buf.print(x, y, &label, ts);
+        self.group.buffer_mut().print(x, y, &label, ts);
         x += lw;
 
         // Activity badge for terminal tabs
@@ -165,7 +165,7 @@ impl LayoutGroup {
                 ..Style::default()
             };
             if x < max_x {
-                self.group.view.buf.put(x, y, glyph, badge_style);
+                self.group.buffer_mut().put(x, y, glyph, badge_style);
                 x += 1;
             }
         }
@@ -173,8 +173,7 @@ impl LayoutGroup {
         if count > 1 && !self.panel(Self::slot_from(panel_idx)).dropdown_open() {
             // Arrow
             self.group
-                .view
-                .buf
+                .buffer_mut()
                 .put(x, y, g.dropdown_arrow.chars().next().unwrap_or('v'), _as);
             x += 1;
             // Bridge (title bg → count bg)
@@ -183,12 +182,12 @@ impl LayoutGroup {
                 bg: _cs.bg,
                 ..Style::default()
             };
-            self.group.view.buf.print(x, y, g.tab_right, bridge);
+            self.group.buffer_mut().print(x, y, g.tab_right, bridge);
             x += g.tab_right.chars().count() as u16;
             // Badge count
             let num = format!("{count}");
             if x + num.len() as u16 <= max_x {
-                self.group.view.buf.print(x, y, &num, _cs);
+                self.group.buffer_mut().print(x, y, &num, _cs);
                 x += num.len() as u16;
             }
             // End cap
@@ -197,7 +196,7 @@ impl LayoutGroup {
                 bg: cs.bg,
                 ..Style::default()
             };
-            self.group.view.buf.print(x, y, g.tab_right, end);
+            self.group.buffer_mut().print(x, y, g.tab_right, end);
         } else {
             // Right cap (no badge)
             let end = Style {
@@ -205,7 +204,7 @@ impl LayoutGroup {
                 bg: cs.bg,
                 ..Style::default()
             };
-            self.group.view.buf.print(x, y, g.tab_right, end);
+            self.group.buffer_mut().print(x, y, g.tab_right, end);
         }
     }
 
@@ -232,7 +231,7 @@ impl LayoutGroup {
         };
 
         let cs = chrome_style();
-        self.group.view.buf.hline(0, div_y, b.w, '─', cs);
+        self.group.buffer_mut().hline(0, div_y, b.w, '─', cs);
 
         // ┴ connectors where vertical dividers meet horizontal
         let left_r = rects[SlotId::Left as usize];
@@ -240,11 +239,11 @@ impl LayoutGroup {
         let right_r = rects[SlotId::Right as usize];
         if left_r.w > 0 && center_r.w > 0 {
             let x = (left_r.x + left_r.w).saturating_sub(b.x);
-            self.group.view.buf.put(x, div_y, '┴', cs);
+            self.group.buffer_mut().put(x, div_y, '┴', cs);
         }
         if right_r.w > 0 && center_r.w > 0 {
             let x = right_r.x.saturating_sub(1).saturating_sub(b.x);
-            self.group.view.buf.put(x, div_y, '┴', cs);
+            self.group.buffer_mut().put(x, div_y, '┴', cs);
         }
 
         // Draw tab for the bottom slot
@@ -256,12 +255,12 @@ impl LayoutGroup {
 
     /// Draw chrome for a single zoomed panel (full-width Powerline tab bar).
     pub(super) fn draw_zoomed_chrome(&mut self, panel_idx: usize) {
-        let b = self.group.view.bounds();
+        let b = self.group.bounds();
         if b.w == 0 || b.h == 0 {
             return;
         }
         let cs = chrome_style();
-        self.group.view.buf.hline(0, 0, b.w, '─', cs);
+        self.group.buffer_mut().hline(0, 0, b.w, '─', cs);
         let panel = self.panel(Self::slot_from(panel_idx));
         if panel.tab_count() > 0 {
             self.draw_slot_tab(panel_idx, 0, 0, b.w, true);
