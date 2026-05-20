@@ -74,6 +74,7 @@ pub enum ScriptCommand {
         message: String,
     },
     GitBlame,
+    GitNoBlame,
     TodoAdd {
         text: String,
         parent: Option<String>,

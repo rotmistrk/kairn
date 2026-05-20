@@ -119,6 +119,7 @@ pub const CM_GIT_COMMIT_PROMPT: CommandId = 174;
 pub const CM_COMMAND_PREFILL: CommandId = 175;
 pub const CM_DIFF: CommandId = 176;
 pub const CM_BLAME: CommandId = 177;
+pub const CM_NOBLAME: CommandId = 178;
 
 // LSP document sync
 /// Editor content changed — triggers didChange to LSP server.
@@ -176,6 +177,8 @@ pub const CM_WORD_COMPLETED: CommandId = 221;
 // Todo operations
 pub const CM_TODO_NOTE_OPEN: CommandId = 230;
 pub const CM_TODO_NOTE_SAVE: CommandId = 231;
+/// Update Notes tab content (no focus change, no create if absent).
+pub const CM_TODO_NOTE_UPDATE: CommandId = 232;
 
 // Split view
 pub const CM_SPLIT: CommandId = 240;

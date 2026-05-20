@@ -10,6 +10,7 @@ mod draw_diff;
 mod draw_style;
 mod handle;
 mod handle_action;
+mod handle_command_event;
 mod handle_completion;
 mod handle_diff;
 mod handle_viewport;
@@ -18,7 +19,6 @@ use std::path::PathBuf;
 
 use txv_core::prelude::*;
 
-use crate::commands::CM_CLIPBOARD_PASTE;
 use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
 use crate::highlight::Highlighter;
@@ -27,7 +27,7 @@ use crate::settings::EditorSettings;
 
 /// Per-line diff tag for inline diff rendering.
 pub struct EditorView {
-    state: ViewState,
+    pub(crate) state: ViewState,
     pub editor: Editor,
     pub(crate) path: PathBuf,
     root_dir: PathBuf,
@@ -99,80 +99,9 @@ impl View for EditorView {
                 self.state.mark_dirty();
                 return HandleResult::Consumed;
             }
-            // Handle clipboard paste command
+            // Handle command events
             if let Event::Command { id, data } = event {
-                if *id == crate::commands::CM_DIFF {
-                    let args = data
-                        .as_ref()
-                        .and_then(|b| b.downcast_ref::<String>())
-                        .map(|s| s.as_str())
-                        .unwrap_or("");
-                    // Side-by-side: create a split with base content on the left
-                    if let Some((base_content, base_ref)) = self.try_diff_side_by_side(args) {
-                        let payload = crate::commands::DiffSplitRequest { base_content, base_ref };
-                        self.state
-                            .put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
-                        return HandleResult::Consumed;
-                    }
-                    self.toggle_diff(args);
-                    if !self.editor.status.is_empty() {
-                        let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
-                        self.state
-                            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                    }
-                    let mode = if self.in_diff_mode() {
-                        "DIFF"
-                    } else {
-                        "NOR"
-                    };
-                    self.state
-                        .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
-                    return HandleResult::Consumed;
-                }
-                if *id == crate::commands::CM_BLAME {
-                    self.toggle_blame();
-                    return HandleResult::Consumed;
-                }
-                if *id == crate::commands::CM_DIFF_REVERT {
-                    let msg = match self.revert_hunk() {
-                        Ok(m) => txv_core::message::Message::info("editor", m),
-                        Err(e) => txv_core::message::Message::error("editor", e),
-                    };
-                    self.state
-                        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                    return HandleResult::Consumed;
-                }
-                if *id == crate::commands::CM_GOTO_LINE {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() {
-                            self.goto(line, col);
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-                if *id == CM_CLIPBOARD_PASTE {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(text) = boxed.downcast_ref::<String>() {
-                            let offset = self
-                                .editor
-                                .buf()
-                                .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
-                                .unwrap_or(0);
-                            self.editor.buf().insert(offset, text);
-                            self.last_edit_tick = self.tick_counter;
-                            self.state.mark_dirty();
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
-                if *id == crate::commands::CM_LSP_COMPLETION {
-                    if let Some(boxed) = data.as_ref() {
-                        if let Some(items) = boxed.downcast_ref::<Vec<crate::lsp::requests::CompletionItem>>() {
-                            self.show_completion_items(items);
-                            return HandleResult::Consumed;
-                        }
-                    }
-                }
+                return self.handle_command_event(*id, data);
             }
             return HandleResult::Ignored;
         };

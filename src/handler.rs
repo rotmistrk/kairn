@@ -255,6 +255,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
         CM_TODO_NOTE_SAVE => crate::handler_drain::save_todo_note(ctx, state),
         CM_TODO_NOTE_OPEN => crate::handler_drain::open_todo_note(ctx, state),
+        CM_TODO_NOTE_UPDATE => crate::handler_drain::update_todo_note(ctx, state),
         _ => {}
     }
 }

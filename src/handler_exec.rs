@@ -196,6 +196,9 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         "blame" => {
             ctx.sink.push_command(crate::commands::CM_BLAME, None);
         }
+        "noblame" => {
+            ctx.sink.push_command(crate::commands::CM_NOBLAME, None);
+        }
         "log" => {
             crate::handler_log::open_git_log(ctx, state, arg);
         }

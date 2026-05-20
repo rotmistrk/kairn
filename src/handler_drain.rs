@@ -112,7 +112,7 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some((tree_path, note)) = boxed.downcast_ref::<(Vec<usize>, String)>() else {
+    let Some((tree_path, note, focus)) = boxed.downcast_ref::<(Vec<usize>, String, bool)>() else {
         return;
     };
     state.todo_note_path = Some(tree_path.clone());
@@ -121,17 +121,50 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     };
     let title = "Notes";
     if desktop.focus_tab_by_title(SlotId::Center, title) {
-        desktop.close_tab_by_title(SlotId::Center, title);
+        // Tab exists — update its content
+        if let Some(editor) = desktop.get_view_mut::<crate::views::editor::EditorView>(SlotId::Center, title) {
+            editor.editor.replace_content(note);
+            editor.state.mark_dirty();
+        }
+        if !focus {
+            // Restore focus back to left (todo tree)
+            desktop.focus_slot(SlotId::Left);
+        }
+    } else {
+        // Create new Notes tab
+        let mut editor = crate::views::editor::EditorView::from_text(note);
+        editor.file_ext = "md".to_string();
+        editor.display_title = title.to_string();
+        let store = crate::buffer_store::CommandStore::new(crate::commands::CM_TODO_NOTE_SAVE, ctx.sink.clone());
+        editor.set_store(Box::new(store));
+        let view: Box<dyn View> = Box::new(editor);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
+        desktop.focus_tab_by_title(SlotId::Center, title);
+        if *focus {
+            desktop.focus_slot(SlotId::Center);
+        } else {
+            desktop.focus_slot(SlotId::Left);
+        }
     }
-    let mut editor = crate::views::editor::EditorView::from_text(note);
-    editor.file_ext = "md".to_string();
-    editor.display_title = title.to_string();
-    let store = crate::buffer_store::CommandStore::new(crate::commands::CM_TODO_NOTE_SAVE, ctx.sink.clone());
-    editor.set_store(Box::new(store));
-    let view: Box<dyn View> = Box::new(editor);
-    crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
-    desktop.focus_tab_by_title(SlotId::Center, title);
-    desktop.focus_slot(SlotId::Center);
+}
+
+/// Handle CM_TODO_NOTE_UPDATE — update Notes content if tab exists, don't create.
+pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((tree_path, note)) = boxed.downcast_ref::<(Vec<usize>, String)>() else {
+        return;
+    };
+    state.todo_note_path = Some(tree_path.clone());
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let title = "Notes";
+    if let Some(editor) = desktop.get_view_mut::<crate::views::editor::EditorView>(SlotId::Center, title) {
+        editor.editor.replace_content(note);
+        editor.state.mark_dirty();
+    }
 }
 
 /// Handle CM_TODO_NOTE_SAVE — content arrives via command data from CommandStore.

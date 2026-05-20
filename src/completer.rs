@@ -29,6 +29,7 @@ pub const BUILTIN_COMMANDS: &[&str] = &[
     "lsp-status",
     "messages",
     "next-error",
+    "noblame",
     "only",
     "paste",
     "prev-error",

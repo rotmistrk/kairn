@@ -17,6 +17,15 @@ impl EditorView {
         let h = self.state.buffer_mut().height();
         let scroll = self.editor.viewport_scroll;
 
+        // Reserve last row if command/search prompt is active
+        let prompt_active = self.editor.mode == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode == crate::editor::keymap::EditorMode::Search;
+        let max_row = if prompt_active {
+            h.saturating_sub(1)
+        } else {
+            h
+        };
+
         // Collect lines to draw to avoid holding the lock while writing to buf
         let lines_to_draw: Vec<(u16, String)> = match &*guard {
             BlameState::Loading => {
@@ -29,7 +38,7 @@ impl EditorView {
             BlameState::Ready(lines) => {
                 let mut result = Vec::new();
                 let mut prev_hash = String::new();
-                for row in 0..h as usize {
+                for row in 0..max_row as usize {
                     let line_idx = scroll + row;
                     let y = row as u16;
                     let blame = lines.iter().find(|bl| bl.line == line_idx);

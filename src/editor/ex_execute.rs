@@ -68,6 +68,7 @@ impl Editor {
             }
             ex::ExCommand::Diff(args) => EditorAction::Diff(args),
             ex::ExCommand::NoDiff => EditorAction::NoDiff,
+            ex::ExCommand::NoBlame => EditorAction::NoBlame,
             ex::ExCommand::Revert => EditorAction::Revert,
             ex::ExCommand::NoHighlight => {
                 self.highlight = None;

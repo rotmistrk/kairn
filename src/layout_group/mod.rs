@@ -135,6 +135,13 @@ impl LayoutGroup {
         self.panel_mut(slot).active_view_mut()
     }
 
+    /// Find a tab by title in the given slot, focus it, and return a downcast mut ref.
+    pub fn get_view_mut<T: View + 'static>(&mut self, slot: SlotId, title: &str) -> Option<&mut T> {
+        self.panel_mut(slot).focus_tab_by_title(title);
+        let view = self.panel_mut(slot).active_view_mut()?;
+        view.as_any_mut()?.downcast_mut::<T>()
+    }
+
     pub fn focused_slot(&self) -> SlotId {
         match self.group.focused_index() {
             0 => SlotId::Left,

@@ -45,6 +45,7 @@ pub mod handler_mcp_edit;
 pub mod handler_open;
 pub mod handler_script;
 pub mod handler_script_edit;
+pub mod handler_script_util;
 pub mod handler_set;
 pub mod handler_split;
 pub mod handler_split_nav;

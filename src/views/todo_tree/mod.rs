@@ -9,6 +9,7 @@ use txv_widgets::TreeView;
 
 use self::handle::HandleAction;
 
+mod apply_action;
 pub mod data;
 mod draw;
 mod handle;
@@ -40,6 +41,27 @@ impl TodoTreeView {
             editing: None,
             filter_editor: None,
             crypto_pending: None,
+        }
+    }
+
+    /// Emit CM_TODO_NOTE_UPDATE if cursor moved to a different item.
+    fn emit_note_update_if_cursor_changed(&mut self, prev_cursor: usize) {
+        if self.inner.cursor == prev_cursor {
+            return;
+        }
+        let cursor = self.inner.cursor;
+        if cursor >= self.inner.data.visible_count() {
+            return;
+        }
+        let id = self.inner.data.visible_id(cursor);
+        if let Some(path) = self.inner.data.path_at(id) {
+            let path = path.clone();
+            if let Some(item) = model::get_item(&self.inner.data.file, &path) {
+                let note = item.note.clone();
+                self.inner
+                    .state
+                    .put_command(crate::commands::CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
+            }
         }
     }
 
@@ -123,57 +145,6 @@ impl TodoTreeView {
         self.inner.mark_dirty();
         HandleResult::Consumed
     }
-
-    fn apply_action(&mut self, action: HandleAction) {
-        match action {
-            HandleAction::Stay => {}
-            HandleAction::MoveDown => {
-                let max = self.inner.data.visible_count().saturating_sub(1);
-                if self.inner.cursor < max {
-                    self.inner.cursor += 1;
-                }
-            }
-            HandleAction::MoveTo(row) => {
-                self.inner.cursor = row;
-            }
-            HandleAction::EditNew(row) => {
-                self.inner.cursor = row;
-                self.start_edit_selected();
-            }
-            HandleAction::ConfirmDelete => {
-                // Handled below via CM_CONFIRM
-            }
-            HandleAction::EnterFilter => {
-                self.filter_editor = Some(InlineEditor::new(0, &self.inner.data.filter_text));
-            }
-            HandleAction::CryptoEncrypt(path) => {
-                self.crypto_pending = Some(CryptoPending::Encrypt(path));
-                self.inner.state.put_command(
-                    crate::commands::CM_SET_CONFIRM_CONTEXT,
-                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
-                );
-                self.inner
-                    .state
-                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
-            }
-            HandleAction::CryptoDecrypt(path) => {
-                self.crypto_pending = Some(CryptoPending::Decrypt(path));
-                self.inner.state.put_command(
-                    crate::commands::CM_SET_CONFIRM_CONTEXT,
-                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
-                );
-                self.inner
-                    .state
-                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
-            }
-            HandleAction::OpenNote(path, note) => {
-                self.inner
-                    .state
-                    .put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note))));
-            }
-        }
-        self.inner.mark_dirty();
-    }
 }
 
 impl View for TodoTreeView {
@@ -238,6 +209,7 @@ impl View for TodoTreeView {
             self.start_edit();
             return HandleResult::Consumed;
         }
+        let prev_cursor = self.inner.cursor;
         let cursor = self.inner.cursor;
         if self.inner.data.visible_count() > 0 {
             if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor) {
@@ -252,9 +224,12 @@ impl View for TodoTreeView {
                     );
                 }
                 self.apply_action(action);
+                self.emit_note_update_if_cursor_changed(prev_cursor);
                 return HandleResult::Consumed;
             }
         }
-        self.inner.handle(event)
+        let result = self.inner.handle(event);
+        self.emit_note_update_if_cursor_changed(prev_cursor);
+        result
     }
 }

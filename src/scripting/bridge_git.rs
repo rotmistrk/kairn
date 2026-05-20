@@ -32,6 +32,10 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::GitBlame);
                 Ok(TclValue::Str(String::new()))
             }
+            "noblame" => {
+                push(&cmds, ScriptCommand::GitNoBlame);
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("git: unknown subcommand '{other}'"))),
         }
     });

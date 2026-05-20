@@ -195,11 +195,23 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
             data.rebuild_flat();
             data.row_for_path(&new_path).map(HandleAction::MoveTo)
         }
-        // N — open note for this item
-        KeyCode::Char('N') => {
+        // Enter — open/show Notes for this item (keep focus in tree)
+        KeyCode::Enter => {
             let path = data.path_at(id)?.clone();
             let item = model::get_item(&data.file, &path)?;
             Some(HandleAction::OpenNote(path, item.note.clone()))
+        }
+        // Right — open/show Notes and move focus there
+        KeyCode::Right if !key.modifiers.shift => {
+            let path = data.path_at(id)?.clone();
+            let item = model::get_item(&data.file, &path)?;
+            Some(HandleAction::OpenNoteFocus(path, item.note.clone()))
+        }
+        // N — open note for this item (legacy, same as Enter)
+        KeyCode::Char('N') => {
+            let path = data.path_at(id)?.clone();
+            let item = model::get_item(&data.file, &path)?;
+            Some(HandleAction::OpenNoteFocus(path, item.note.clone()))
         }
         _ => None,
     }
@@ -222,4 +234,6 @@ pub enum HandleAction {
     CryptoDecrypt(model::TreePath),
     /// Open the note editor for the item at path.
     OpenNote(model::TreePath, String),
+    /// Open the note editor for the item at path and focus it.
+    OpenNoteFocus(model::TreePath, String),
 }

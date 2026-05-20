@@ -7,11 +7,10 @@ use super::EditorView;
 impl EditorView {
     /// Show completion popup with items from LSP response.
     pub(super) fn show_completion_items(&mut self, items: &[CompletionItem]) {
-        let b = self.state.bounds();
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
-        let x = b.x + gutter_w + self.editor.cursor_col as u16;
-        let y = b.y + (self.editor.cursor_line - scroll) as u16;
+        let x = gutter_w + self.editor.cursor_col as u16;
+        let y = (self.editor.cursor_line - scroll) as u16;
         self.completion_popup.show(items.to_vec(), x, y);
         self.state.mark_dirty();
     }
@@ -30,28 +29,48 @@ impl EditorView {
     }
 
     /// Accept the currently selected completion item.
-    /// Removes the word prefix before cursor, then inserts the completion text.
+    /// Replaces the entire word under/before cursor with the completion text.
     pub(super) fn accept_completion(&mut self) {
         let text = self.completion_popup.selected_text().map(|s| s.to_string());
         self.completion_popup.hide();
         if let Some(text) = text {
-            // Find the word prefix before cursor to replace
-            let prefix_len = self.word_prefix_len();
-            let offset = self
+            let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
+            let col = self.editor.cursor_col;
+            let chars: Vec<char> = line.chars().collect();
+
+            // Find word start (scan back from cursor)
+            let prefix_len = chars[..col]
+                .iter()
+                .rev()
+                .take_while(|c| c.is_alphanumeric() || **c == '_')
+                .count();
+            let word_start = col - prefix_len;
+
+            // Find word end (scan forward from cursor)
+            let suffix_len = chars[col..]
+                .iter()
+                .take_while(|c| c.is_alphanumeric() || **c == '_')
+                .count();
+            let word_end = col + suffix_len;
+
+            // Delete the entire word
+            let start_offset = self
                 .editor
                 .buf()
-                .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                .line_col_to_offset(self.editor.cursor_line, word_start)
                 .unwrap_or(0);
-            // Delete the prefix
-            if prefix_len > 0 {
-                let start = offset - prefix_len;
-                self.editor.buf().delete(start, prefix_len);
-                self.editor.cursor_col -= prefix_len;
+            let end_offset = self
+                .editor
+                .buf()
+                .line_col_to_offset(self.editor.cursor_line, word_end)
+                .unwrap_or(start_offset);
+            if end_offset > start_offset {
+                self.editor.buf().delete(start_offset, end_offset);
             }
+
             // Insert completion text
-            let insert_offset = offset - prefix_len;
-            self.editor.buf().insert(insert_offset, &text);
-            self.editor.cursor_col += text.len();
+            self.editor.buf().insert(start_offset, &text);
+            self.editor.cursor_col = word_start + text.len();
             self.last_edit_tick = self.tick_counter;
         }
         self.state.mark_dirty();
