@@ -5,13 +5,33 @@ use crate::lsp::requests::CompletionItem;
 use super::EditorView;
 
 impl EditorView {
-    /// Show completion popup with items from LSP response.
+    /// Show completion popup with items from LSP response, filtered by typed prefix.
     pub(super) fn show_completion_items(&mut self, items: &[CompletionItem]) {
+        let prefix = self.word_prefix();
+        let filtered: Vec<CompletionItem> = if prefix.is_empty() {
+            items.to_vec()
+        } else {
+            let lower_prefix = prefix.to_lowercase();
+            items
+                .iter()
+                .filter(|item| {
+                    let text = item.insert_text.as_deref().unwrap_or(&item.label);
+                    text.to_lowercase().starts_with(&lower_prefix)
+                })
+                .cloned()
+                .collect()
+        };
+        if filtered.is_empty() {
+            self.completion_popup.hide();
+            self.state.mark_dirty();
+            return;
+        }
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
-        let x = gutter_w + self.editor.cursor_col as u16;
+        let prefix_w = prefix.len() as u16;
+        let x = gutter_w + self.editor.cursor_col as u16 - prefix_w;
         let y = (self.editor.cursor_line - scroll) as u16;
-        self.completion_popup.show(items.to_vec(), x, y);
+        self.completion_popup.show(filtered, x, y);
         self.state.mark_dirty();
     }
 
@@ -74,6 +94,21 @@ impl EditorView {
             self.last_edit_tick = self.tick_counter;
         }
         self.state.mark_dirty();
+    }
+
+    /// Get the word prefix before the cursor as a string.
+    fn word_prefix(&self) -> String {
+        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
+        let col = self.editor.cursor_col;
+        let before = &line[..col.min(line.len())];
+        before
+            .chars()
+            .rev()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect()
     }
 
     /// Get the length of the word prefix before the cursor (identifier chars).
