@@ -90,6 +90,7 @@ pub const CM_LSP_HOVER: CommandId = 146;
 pub const CM_LSP_COMPLETION: CommandId = 147;
 pub const CM_LSP_RENAME: CommandId = 148;
 pub const CM_CODE_ACTION: CommandId = 149;
+pub const CM_LSP_SIGNATURE_HELP: CommandId = 150;
 
 // Clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = 150;

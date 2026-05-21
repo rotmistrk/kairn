@@ -77,15 +77,22 @@ impl CompletionPopup {
             return;
         }
         let max_items = 8.min(self.items.len());
-        let max_width = self
+        // Compute width: label + detail (capped)
+        let max_label = self
             .items
             .iter()
             .take(max_items)
             .map(|i| i.label.len())
             .max()
             .unwrap_or(10)
-            .min(40) as u16
-            + 2;
+            .min(30);
+        let has_detail = self.items.iter().take(max_items).any(|i| i.detail.is_some());
+        let detail_col = max_label + 2; // 1 padding + label + 1 space
+        let max_width = if has_detail {
+            (max_label + 20).min(50) as u16 + 2
+        } else {
+            max_label as u16 + 2
+        };
 
         let x = self.anchor_x;
         let y = self.anchor_y + 1; // below cursor
@@ -93,6 +100,9 @@ impl CompletionPopup {
         let pal = txv_core::palette::palette();
         let normal = pal.popup.background.to_style();
         let selected = pal.popup.selected.to_style();
+        let dim_fg = pal.base.dim.to_style().fg;
+        let detail_style = Style { fg: dim_fg, ..normal };
+        let detail_sel_style = Style { fg: dim_fg, ..selected };
 
         for (i, item) in self.items.iter().take(max_items).enumerate() {
             let row = y + i as u16;
@@ -102,12 +112,27 @@ impl CompletionPopup {
                 normal
             };
             buf.hline(x, row, max_width, ' ', style);
-            let label = if item.label.len() > max_width as usize - 1 {
-                &item.label[..max_width as usize - 1]
+            let label = if item.label.len() > max_label {
+                &item.label[..max_label]
             } else {
                 &item.label
             };
             buf.print(x + 1, row, label, style);
+            // Draw detail (type) in grey
+            if let Some(ref detail) = item.detail {
+                let ds = if i == self.selected {
+                    detail_sel_style
+                } else {
+                    detail_style
+                };
+                let avail = max_width.saturating_sub(detail_col as u16 + 1) as usize;
+                let d = if detail.len() > avail {
+                    &detail[..avail]
+                } else {
+                    detail.as_str()
+                };
+                buf.print(x + detail_col as u16, row, d, ds);
+            }
         }
     }
 }

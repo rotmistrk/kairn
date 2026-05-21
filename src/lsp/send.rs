@@ -137,6 +137,24 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
     state.lsp_pending.insert_with_lang(id, PendingKind::Completion, lang);
 }
 
+pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState) {
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
+        return;
+    };
+    let lang = protocol::language_id(path);
+    let root = state.root_dir.clone();
+    state.lsp.ensure_started(lang, &root);
+    let Some(client) = state.lsp.get_client_mut(lang) else {
+        return;
+    };
+    let uri = protocol::path_to_uri(path);
+    let id = requests::signature_help(client, &uri, *line, *col);
+    state.lsp_pending.insert_with_lang(id, PendingKind::SignatureHelp, lang);
+}
+
 pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;

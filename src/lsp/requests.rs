@@ -155,6 +155,8 @@ pub fn code_action(client: &mut LspClient, uri: &str, line: u32, character: u32)
 /// Apply a workspace edit from a rename response. Returns number of files changed.
 pub use super::workspace_edit::apply_workspace_edit;
 
+pub use super::signature_help::{parse_signature_help, signature_help, SignatureHelp};
+
 /// Parse code actions response into action titles.
 pub fn parse_code_actions(result: &Value) -> Vec<String> {
     let arr = result.as_array();

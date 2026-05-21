@@ -16,4 +16,5 @@ pub mod resource_ops;
 mod response;
 mod send;
 mod send_sync;
+pub mod signature_help;
 pub mod workspace_edit;

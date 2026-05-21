@@ -30,6 +30,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_LSP_FIND_REFS => send::send_find_refs(ctx, state),
         CM_LSP_HOVER => send::send_hover(ctx, state),
         CM_LSP_COMPLETION => send::send_completion(ctx, state),
+        CM_LSP_SIGNATURE_HELP => send::send_signature_help(ctx, state),
         CM_LSP_RENAME => send::send_rename(ctx, state),
         CM_CODE_ACTION => send::send_code_action(ctx, state),
         _ => {}

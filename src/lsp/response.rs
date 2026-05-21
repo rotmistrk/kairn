@@ -16,6 +16,7 @@ pub(super) fn handle_response(kind: PendingKind, result: &serde_json::Value, sin
         PendingKind::FindReferences { symbol } => handle_references(result, sink, &symbol),
         PendingKind::Hover => handle_hover(result, sink),
         PendingKind::Completion => handle_completion(result, sink),
+        PendingKind::SignatureHelp => handle_signature_help(result, sink),
         PendingKind::Rename => handle_rename(result, sink),
         PendingKind::CodeAction => handle_code_action(result, sink),
         PendingKind::JdtClassContents { line, character } => handle_jdt(result, sink, line, character),
@@ -118,6 +119,12 @@ fn handle_completion(result: &serde_json::Value, sink: &EventSink) {
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("lsp", "No completions"))),
         );
+    }
+}
+
+fn handle_signature_help(result: &serde_json::Value, sink: &EventSink) {
+    if let Some(sig) = requests::parse_signature_help(result) {
+        sink.push_command(CM_LSP_SIGNATURE_HELP, Some(Box::new(sig)));
     }
 }
 

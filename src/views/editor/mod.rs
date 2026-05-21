@@ -13,6 +13,7 @@ mod handle_action;
 mod handle_command_event;
 mod handle_completion;
 mod handle_diff;
+mod handle_tick;
 mod handle_viewport;
 
 use std::path::PathBuf;

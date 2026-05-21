@@ -88,6 +88,14 @@ impl EditorView {
                 }
             }
         }
+        if id == crate::commands::CM_LSP_SIGNATURE_HELP {
+            if let Some(boxed) = data.as_ref() {
+                if let Some(sig) = boxed.downcast_ref::<crate::lsp::requests::SignatureHelp>() {
+                    self.show_signature_help(sig);
+                    return HandleResult::Consumed;
+                }
+            }
+        }
         HandleResult::Ignored
     }
 }
