@@ -35,6 +35,11 @@ impl EditorView {
         let visual_range = self.editor.visual_range();
         let avail = w.saturating_sub(gutter_w) as usize;
         let wrap = self.editor.options.wrap;
+        let h_off = if wrap {
+            0
+        } else {
+            self.editor.h_scroll
+        };
         let tab_width = self.editor.options.tab_width;
         let highlight = self.editor.highlight.as_ref();
 
@@ -57,18 +62,11 @@ impl EditorView {
         };
 
         // Matchparen: find matching bracket for cursor position.
-        let matchparen_pos = self
-            .editor
-            .options
-            .matchparen
-            .then(|| {
-                crate::editor::motions::match_bracket(
-                    &self.editor.buf(),
-                    self.editor.cursor_line,
-                    self.editor.cursor_col,
-                )
-            })
-            .flatten();
+        let matchparen_pos = if self.editor.options.matchparen {
+            crate::editor::motions::match_bracket(&self.editor.buf(), self.editor.cursor_line, self.editor.cursor_col)
+        } else {
+            None
+        };
         let matchparen_style = app.editor.matchparen;
         let rainbow_map = if self.editor.options.rainbow {
             super::draw_style::rainbow_brackets(&self.editor.buf().line(self.editor.cursor_line).unwrap_or_default())
@@ -121,21 +119,23 @@ impl EditorView {
                             hl_other_bg,
                         );
                         for ti in 0..tab_width {
-                            if col_offset >= avail || visual_row >= h as usize {
+                            if col_offset >= h_off + avail || visual_row >= h as usize {
                                 break;
                             }
-                            let x = text_x + col_offset as u16;
-                            let vy = visual_row as u16;
-                            if self.editor.options.list {
-                                let ls = app.editor.list_chars.resolve(&st);
-                                let c = if ti == tab_width - 1 {
-                                    '\u{2192}'
+                            if col_offset >= h_off {
+                                let x = text_x + (col_offset - h_off) as u16;
+                                let vy = visual_row as u16;
+                                if self.editor.options.list {
+                                    let ls = app.editor.list_chars.resolve(&st);
+                                    let c = if ti == tab_width - 1 {
+                                        '\u{2192}'
+                                    } else {
+                                        '\u{2500}'
+                                    };
+                                    self.state.buffer_mut().put(x, vy, c, ls);
                                 } else {
-                                    '\u{2500}'
-                                };
-                                self.state.buffer_mut().put(x, vy, c, ls);
-                            } else {
-                                self.state.buffer_mut().put(x, vy, ' ', st);
+                                    self.state.buffer_mut().put(x, vy, ' ', st);
+                                }
                             }
                             col_offset += 1;
                         }
@@ -160,7 +160,7 @@ impl EditorView {
                                 self.state.buffer_mut().print_line(0, wy, "", gutter_w, gutter_style);
                             }
                         }
-                    } else if col_offset >= avail {
+                    } else if col_offset >= h_off + avail {
                         char_idx += 1;
                         byte_pos += ch.len_utf8();
                         continue;
@@ -169,7 +169,13 @@ impl EditorView {
                     if visual_row >= h as usize {
                         break;
                     }
-                    let x = text_x + col_offset as u16;
+                    if col_offset < h_off {
+                        col_offset += display_char_width(ch) as usize;
+                        char_idx += 1;
+                        byte_pos += ch.len_utf8();
+                        continue;
+                    }
+                    let x = text_x + (col_offset - h_off) as u16;
                     let style = char_style(
                         span.style,
                         byte_pos,
@@ -211,11 +217,11 @@ impl EditorView {
             }
 
             // End-of-line marker in list mode
-            if self.editor.options.list && col_offset < avail && visual_row < h as usize {
+            if self.editor.options.list && col_offset >= h_off && col_offset - h_off < avail && visual_row < h as usize
+            {
                 let list_style = app.editor.list_chars.to_style();
-                let vy = visual_row as u16;
-                let x = text_x + col_offset as u16;
-                self.state.buffer_mut().put(x, vy, '$', list_style);
+                let x = text_x + (col_offset - h_off) as u16;
+                self.state.buffer_mut().put(x, visual_row as u16, '$', list_style);
                 col_offset += 1;
             }
 
@@ -242,9 +248,10 @@ impl EditorView {
             if line_idx == self.editor.cursor_line && self.state.is_focused() {
                 // Compute cursor visual position accounting for wrapping
                 let (cursor_vrow, cursor_vcol) =
-                    self.cursor_visual_pos(line_idx, self.editor.cursor_col, avail, tab_width, row);
-                if cursor_vrow < h as usize && cursor_vcol < avail {
-                    let cx = text_x + cursor_vcol as u16;
+                    self.cursor_visual_pos(line_idx, self.editor.cursor_col, avail + h_off, tab_width, row);
+                let screen_col = cursor_vcol.saturating_sub(h_off);
+                if cursor_vrow < h as usize && cursor_vcol >= h_off && screen_col < avail {
+                    let cx = text_x + screen_col as u16;
                     let cy = cursor_vrow as u16;
                     let under = self.state.buffer_mut().cell(cx, cy).ch;
                     self.state.buffer_mut().put(cx, cy, under, cursor_style);

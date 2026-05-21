@@ -18,6 +18,16 @@ impl EditorView {
             if self.editor.cursor_line >= self.editor.viewport_scroll + h {
                 self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
             }
+            // Horizontal scroll: keep cursor within visible columns
+            let avail = self.text_avail_width();
+            if avail > 0 {
+                let col = self.cursor_visual_col();
+                if col < self.editor.h_scroll {
+                    self.editor.h_scroll = col;
+                } else if col >= self.editor.h_scroll + avail {
+                    self.editor.h_scroll = col - avail + 1;
+                }
+            }
             return;
         }
 
@@ -70,6 +80,24 @@ impl EditorView {
         let w = self.state.bounds().w;
         let gutter = self.gutter_width();
         w.saturating_sub(gutter) as usize
+    }
+
+    /// Visual column of cursor (accounts for tabs and wide chars).
+    pub(super) fn cursor_visual_col(&self) -> usize {
+        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
+        let tab_w = self.editor.options.tab_width;
+        let mut col: usize = 0;
+        for (i, ch) in line.chars().enumerate() {
+            if i == self.editor.cursor_col {
+                return col;
+            }
+            col += if ch == '\t' {
+                tab_w
+            } else {
+                txv_core::text::display_char_width(ch) as usize
+            };
+        }
+        col
     }
 
     /// Compute visual (row, col) for cursor position accounting for wrapping.

@@ -258,11 +258,15 @@ fn toggle_wrap_after_insert_no_corruption() {
     h.inject_key(KeyCode::Esc, none());
     h.run_cycles(2);
 
-    // Toggle wrap off
+    // Toggle wrap off — cursor is at end, so view scrolls right
     ex(&mut h, "set nowrap");
     h.run_cycles(2);
 
-    // Content should still have both original and addition
-    assert!(h.content_contains("original"));
+    // Content should have the addition visible (cursor is near end)
     assert!(h.content_contains("XXX"));
+
+    // Move cursor to start of line to scroll left
+    h.inject_key(KeyCode::Char('0'), none());
+    h.run_cycles(2);
+    assert!(h.content_contains("original"));
 }

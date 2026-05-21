@@ -35,9 +35,15 @@ impl EditorView {
             let y = row;
             let text_x = gutter_w;
             let style = diag_style(diag.severity);
+            let h_off = self.editor.h_scroll;
 
-            let start = text_x + diag.col_start as u16;
-            let end = text_x + diag.col_end as u16;
+            let col_s = diag.col_start.saturating_sub(h_off);
+            let col_e = diag.col_end.saturating_sub(h_off);
+            if col_s == col_e || diag.col_end <= h_off {
+                continue;
+            }
+            let start = text_x + col_s as u16;
+            let end = text_x + col_e as u16;
             let max_x = w;
 
             for x in start..end.min(max_x) {

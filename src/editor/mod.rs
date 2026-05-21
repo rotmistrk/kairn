@@ -72,6 +72,7 @@ pub struct Editor {
     pub register: String,
     pub viewport_scroll: usize,
     pub viewport_height: usize,
+    pub h_scroll: usize,
     pub visual_anchor: Option<(usize, usize)>,
     pub search_pattern: String,
     pub search_direction_forward: bool,
@@ -138,6 +139,7 @@ impl Editor {
             register: String::new(),
             viewport_scroll: 0,
             viewport_height: 24,
+            h_scroll: 0,
             visual_anchor: None,
             search_pattern: String::new(),
             search_direction_forward: true,
@@ -166,6 +168,7 @@ impl Editor {
         self.cursor_line = 0;
         self.cursor_col = 0;
         self.viewport_scroll = 0;
+        self.h_scroll = 0;
     }
 
     pub fn clamp_col(&mut self) {
