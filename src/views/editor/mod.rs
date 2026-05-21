@@ -41,9 +41,6 @@ pub struct EditorView {
     eviction_close: bool,
     pub(crate) display_title: String,
     pub(crate) diagnostics: Option<Vec<crate::lsp::diagnostics::Diagnostic>>,
-    /// Version counter: incremented on edit, sent with didChange. Only accept diagnostics matching current version.
-    diag_version: u64,
-    diag_accepted_version: u64,
     /// Blame mode state. None = blame off.
     pub(crate) blame_state: Option<crate::blame::SharedBlame>,
     /// Diff mode state. None = normal mode.

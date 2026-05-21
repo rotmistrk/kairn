@@ -102,9 +102,7 @@ impl EditorView {
                 if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<crate::lsp::diagnostics::Diagnostic>)>() {
                     let file_uri = format!("file://{}", self.path.display());
                     if *uri == file_uri {
-                        if self.diag_version == self.diag_accepted_version {
-                            self.set_diagnostics(diags.clone());
-                        }
+                        self.set_diagnostics(diags.clone());
                         return HandleResult::Consumed;
                     }
                 }

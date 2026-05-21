@@ -88,7 +88,6 @@ impl EditorView {
 
     /// Set diagnostics for this editor view.
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
-        log::info!("Setting {} diagnostics for {}", diagnostics.len(), self.path.display());
         self.diagnostics = Some(diagnostics);
         self.state.mark_dirty();
     }
@@ -96,11 +95,9 @@ impl EditorView {
     /// Clear diagnostics (called on buffer edits — LSP will resend after didChange).
     pub fn clear_diagnostics(&mut self) {
         if self.diagnostics.is_some() {
-            log::info!("Clearing diagnostics for {}", self.path.display());
             self.diagnostics = None;
             self.state.mark_dirty();
         }
-        self.diag_version += 1;
     }
 }
 
