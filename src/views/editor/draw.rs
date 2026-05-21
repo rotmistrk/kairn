@@ -84,6 +84,11 @@ impl EditorView {
             if gutter_w > 0 {
                 let num = format!("{:>width$} ", line_idx + 1, width = (gutter_w - 1) as usize);
                 self.state.buffer_mut().print(0, y, &num, gutter_style);
+                // Diagnostic marker in last gutter column
+                if let Some(sev) = self.diagnostic_severity_at(line_idx) {
+                    let marker_style = crate::views::editor::draw_diagnostics::diag_marker_style(sev);
+                    self.state.buffer_mut().put(gutter_w - 1, y, '●', marker_style);
+                }
             }
 
             // --- Line content: write char-by-char, then pad to full width ---

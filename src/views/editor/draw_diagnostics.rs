@@ -71,6 +71,21 @@ impl EditorView {
         diags.iter().find(|d| d.line == line).map(|d| d.message.as_str())
     }
 
+    /// Get the highest severity diagnostic at a given line.
+    pub(super) fn diagnostic_severity_at(&self, line: usize) -> Option<Severity> {
+        let diags = self.diagnostics.as_ref()?;
+        diags
+            .iter()
+            .filter(|d| d.line == line)
+            .map(|d| d.severity)
+            .min_by_key(|s| match s {
+                Severity::Error => 0,
+                Severity::Warning => 1,
+                Severity::Info => 2,
+                Severity::Hint => 3,
+            })
+    }
+
     /// Set diagnostics for this editor view.
     pub fn set_diagnostics(&mut self, diagnostics: Vec<Diagnostic>) {
         self.diagnostics = Some(diagnostics);
@@ -90,5 +105,20 @@ fn diag_style(severity: Severity) -> Style {
         Severity::Warning => app.diag.warning.to_style(),
         Severity::Info => app.diag.info.to_style(),
         Severity::Hint => app.diag.hint.to_style(),
+    }
+}
+
+/// Style for gutter diagnostic marker (fg only, no bg override).
+pub(super) fn diag_marker_style(severity: Severity) -> Style {
+    let app = crate::app_palette::app_palette();
+    let ps = match severity {
+        Severity::Error => &app.diag.error,
+        Severity::Warning => &app.diag.warning,
+        Severity::Info => &app.diag.info,
+        Severity::Hint => &app.diag.hint,
+    };
+    Style {
+        fg: ps.to_style().fg,
+        ..Style::default()
     }
 }
