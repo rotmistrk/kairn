@@ -43,13 +43,10 @@ fn open_note_sets_state_and_tab() {
     use kairn::layout_group::SlotId;
     let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
     assert_eq!(desktop.active_tab_title(SlotId::Center), Some("Notes"));
-    let view = desktop.active_view_mut(SlotId::Center).unwrap();
-    let ev = view
-        .as_any_mut()
-        .unwrap()
-        .downcast_ref::<kairn::views::editor::EditorView>()
+    let nv = desktop
+        .find_view_mut::<kairn::views::notes::NotesView>(SlotId::Center)
         .unwrap();
-    assert_eq!(ev.editor.buf().content(), "hello world");
+    assert_eq!(nv.content(), "hello world");
 }
 
 #[test]
@@ -66,13 +63,10 @@ fn open_note_on_empty_note() {
     use kairn::handler::downcast_desktop;
     use kairn::layout_group::SlotId;
     let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
-    let view = desktop.active_view_mut(SlotId::Center).unwrap();
-    let ev = view
-        .as_any_mut()
-        .unwrap()
-        .downcast_ref::<kairn::views::editor::EditorView>()
+    let nv = desktop
+        .find_view_mut::<kairn::views::notes::NotesView>(SlotId::Center)
         .unwrap();
-    assert_eq!(ev.editor.buf().content(), "");
+    assert_eq!(nv.content(), "");
 }
 
 #[test]

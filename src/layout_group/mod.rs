@@ -9,6 +9,7 @@ use std::time::Instant;
 use txv_core::prelude::*;
 use txv_widgets::TabGroup;
 
+mod badges;
 mod chrome;
 mod dispatch;
 mod layout;
@@ -135,11 +136,37 @@ impl LayoutGroup {
         self.panel_mut(slot).active_view_mut()
     }
 
-    /// Find a tab by title in the given slot, focus it, and return a downcast mut ref.
-    pub fn get_view_mut<T: View + 'static>(&mut self, slot: SlotId, title: &str) -> Option<&mut T> {
-        self.panel_mut(slot).focus_tab_by_title(title);
-        let view = self.panel_mut(slot).active_view_mut()?;
+    /// Find the first tab of type T in the given slot (by downcast). Does not change active tab.
+    pub fn find_view_mut<T: View + 'static>(&mut self, slot: SlotId) -> Option<&mut T> {
+        let panel = self.panel_mut(slot);
+        let count = panel.tab_count();
+        let idx = (0..count).find(|&i| {
+            panel
+                .view_at_mut(i)
+                .and_then(|v| v.as_any_mut())
+                .is_some_and(|a| a.downcast_ref::<T>().is_some())
+        })?;
+        let view = self.panel_mut(slot).view_at_mut(idx)?;
         view.as_any_mut()?.downcast_mut::<T>()
+    }
+
+    /// Find the first tab of type T in the given slot, make it active, and return a mut ref.
+    pub fn focus_view_mut<T: View + 'static>(&mut self, slot: SlotId) -> Option<&mut T> {
+        let panel = self.panel_mut(slot);
+        let count = panel.tab_count();
+        for i in 0..count {
+            // Check if this tab is the right type
+            let is_match = panel
+                .view_at_mut(i)
+                .and_then(|v| v.as_any_mut())
+                .is_some_and(|a| a.downcast_ref::<T>().is_some());
+            if is_match {
+                panel.set_active(i);
+                let view = panel.active_view_mut()?;
+                return view.as_any_mut()?.downcast_mut::<T>();
+            }
+        }
+        None
     }
 
     pub fn focused_slot(&self) -> SlotId {
@@ -228,51 +255,6 @@ impl LayoutGroup {
     fn recompute_bounds(&mut self) {
         let b = self.group.bounds();
         self.apply_layout(b);
-    }
-
-    /// Update terminal activity badges. Call from tick handler.
-    /// `idle_secs` is the threshold before a terminal is considered idle.
-    pub fn update_badges(&mut self, idle_secs: u64) -> Vec<String> {
-        let now = Instant::now();
-        let idle_dur = std::time::Duration::from_secs(idle_secs);
-        let mut auto_close = Vec::new();
-
-        // Collect tab info first to avoid borrow conflicts
-        let mut tab_info: Vec<(SlotId, usize, String, bool)> = Vec::new();
-        for slot in [SlotId::Right, SlotId::Bottom] {
-            let panel = self.panel(slot);
-            for i in 0..panel.tab_count() {
-                let title = panel.tab_title(i).unwrap_or_default().to_string();
-                let dirty = panel.view_at(i).is_some_and(|v| v.needs_redraw());
-                tab_info.push((slot, i, title, dirty));
-            }
-        }
-
-        for (slot, i, title, dirty) in tab_info {
-            let key = (slot, i);
-            if title.contains("[exited]") {
-                self.badges.insert(key, TabBadge::Exited);
-                self.last_output.remove(&key);
-                auto_close.push(title);
-            } else if dirty {
-                self.last_output.insert(key, now);
-                self.badges.insert(key, TabBadge::Busy);
-            } else {
-                let last = self.last_output.get(&key).copied().unwrap_or(now);
-                if now.duration_since(last) > idle_dur {
-                    self.badges.insert(key, TabBadge::Idle);
-                } else {
-                    self.badges.insert(key, TabBadge::Busy);
-                }
-            }
-        }
-        auto_close
-    }
-
-    /// Get the badge for the active tab in a slot.
-    pub fn active_badge(&self, slot: SlotId) -> Option<TabBadge> {
-        let idx = self.panel(slot).active_index();
-        self.badges.get(&(slot, idx)).copied()
     }
 
     fn slot_from(idx: usize) -> SlotId {

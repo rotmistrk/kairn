@@ -119,27 +119,24 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let title = "Notes";
-    if desktop.focus_tab_by_title(SlotId::Center, title) {
-        // Tab exists — update its content
-        if let Some(editor) = desktop.get_view_mut::<crate::views::editor::EditorView>(SlotId::Center, title) {
-            editor.editor.replace_content(note);
-            editor.state.mark_dirty();
-        }
-        if !focus {
-            // Restore focus back to left (todo tree)
+    use crate::views::notes::NotesView;
+    if let Some(nv) = desktop.find_view_mut::<NotesView>(SlotId::Center) {
+        // Tab exists — update content and bring to front
+        nv.replace_content(note);
+        desktop.focus_view_mut::<NotesView>(SlotId::Center);
+        if *focus {
+            desktop.focus_slot(SlotId::Center);
+        } else {
             desktop.focus_slot(SlotId::Left);
         }
     } else {
         // Create new Notes tab
-        let mut editor = crate::views::editor::EditorView::from_text(note);
-        editor.file_ext = "md".to_string();
-        editor.display_title = title.to_string();
+        let mut nv = NotesView::new(note);
         let store = crate::buffer_store::CommandStore::new(crate::commands::CM_TODO_NOTE_SAVE, ctx.sink.clone());
-        editor.set_store(Box::new(store));
-        let view: Box<dyn View> = Box::new(editor);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
-        desktop.focus_tab_by_title(SlotId::Center, title);
+        nv.set_store(Box::new(store));
+        let view: Box<dyn View> = Box::new(nv);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Notes".to_string(), view);
+        desktop.focus_view_mut::<NotesView>(SlotId::Center);
         if *focus {
             desktop.focus_slot(SlotId::Center);
         } else {
@@ -160,10 +157,9 @@ pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let title = "Notes";
-    if let Some(editor) = desktop.get_view_mut::<crate::views::editor::EditorView>(SlotId::Center, title) {
-        editor.editor.replace_content(note);
-        editor.state.mark_dirty();
+    use crate::views::notes::NotesView;
+    if let Some(nv) = desktop.find_view_mut::<NotesView>(SlotId::Center) {
+        nv.replace_content(note);
     }
 }
 
