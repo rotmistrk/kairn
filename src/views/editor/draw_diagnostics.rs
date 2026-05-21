@@ -98,6 +98,7 @@ impl EditorView {
             self.diagnostics = None;
             self.state.mark_dirty();
         }
+        self.diag_suppressed = true;
     }
 }
 
