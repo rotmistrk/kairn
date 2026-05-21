@@ -96,6 +96,17 @@ impl EditorView {
                 }
             }
         }
+        if id == crate::commands::CM_DIAGNOSTIC {
+            if let Some(boxed) = data.as_ref() {
+                if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<crate::lsp::diagnostics::Diagnostic>)>() {
+                    let file_uri = format!("file://{}", self.path.display());
+                    if *uri == file_uri {
+                        self.set_diagnostics(diags.clone());
+                        return HandleResult::Consumed;
+                    }
+                }
+            }
+        }
         HandleResult::Ignored
     }
 }
