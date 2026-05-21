@@ -11,7 +11,7 @@ pub struct CompletionPopup {
     pub visible: bool,
     pub anchor_x: u16,
     pub anchor_y: u16,
-    scroll: usize,
+    pub(crate) scroll: usize,
 }
 
 impl Default for CompletionPopup {
@@ -198,58 +198,5 @@ impl CompletionPopup {
             }
             CompletionKind::Other => item.label.clone(),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn items(labels: &[&str]) -> Vec<CompletionItem> {
-        labels
-            .iter()
-            .map(|l| CompletionItem {
-                label: l.to_string(),
-                detail: None,
-                insert_text: None,
-                kind: CompletionKind::Other,
-            })
-            .collect()
-    }
-
-    #[test]
-    fn show_and_navigate() {
-        let mut popup = CompletionPopup::new();
-        popup.show(items(&["foo", "bar", "baz"]), 5, 10);
-        assert!(popup.visible);
-        assert_eq!(popup.selected, 0);
-        assert_eq!(popup.selected_text(), Some("foo"));
-
-        popup.next();
-        assert_eq!(popup.selected_text(), Some("bar"));
-
-        popup.prev();
-        assert_eq!(popup.selected_text(), Some("foo"));
-
-        popup.prev(); // wraps
-        assert_eq!(popup.selected_text(), Some("baz"));
-    }
-
-    #[test]
-    fn show_empty_hides() {
-        let mut popup = CompletionPopup::new();
-        popup.show(Vec::new(), 0, 0);
-        assert!(!popup.visible);
-    }
-
-    #[test]
-    fn draw_renders_items() {
-        let mut popup = CompletionPopup::new();
-        popup.show(items(&["hello", "world"]), 0, 0);
-        let mut buf = Buffer::new(20, 5);
-        popup.draw(&mut buf);
-        // First item at row 1 (anchor_y + 1)
-        let cell = buf.cell(1, 1);
-        assert_eq!(cell.ch, 'h');
     }
 }

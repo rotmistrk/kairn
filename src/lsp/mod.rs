@@ -2,6 +2,8 @@
 
 pub mod client;
 pub mod completion;
+#[cfg(test)]
+mod completion_tests;
 pub mod config_commands;
 pub mod diagnostics;
 pub mod handler;

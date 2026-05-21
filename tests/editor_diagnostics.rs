@@ -54,3 +54,102 @@ fn no_diagnostics_no_crash() {
     // Should not crash with no diagnostics set
     view.draw();
 }
+
+#[test]
+fn gutter_marker_shows_for_error_line() {
+    let mut view = EditorView::from_text("line1\nline2\nline3\n");
+    view.editor.options.number = true;
+    view.set_bounds(Rect::new(0, 0, 40, 5));
+    view.set_diagnostics(vec![Diagnostic {
+        line: 1,
+        col_start: 0,
+        col_end: 5,
+        severity: Severity::Error,
+        message: "err".into(),
+    }]);
+
+    view.draw();
+
+    // Gutter marker '●' should appear in the gutter area of line 1
+    let gutter_w = view.gutter_width();
+    let marker_cell = view.buffer().cell(gutter_w - 1, 1);
+    assert_eq!(marker_cell.ch, '●');
+}
+
+#[test]
+fn gutter_marker_absent_for_clean_line() {
+    let mut view = EditorView::from_text("line1\nline2\nline3\n");
+    view.editor.options.number = true;
+    view.set_bounds(Rect::new(0, 0, 40, 5));
+    view.set_diagnostics(vec![Diagnostic {
+        line: 1,
+        col_start: 0,
+        col_end: 5,
+        severity: Severity::Error,
+        message: "err".into(),
+    }]);
+
+    view.draw();
+
+    // Line 0 should NOT have a marker
+    let gutter_w = view.gutter_width();
+    let cell = view.buffer().cell(gutter_w - 1, 0);
+    assert_ne!(cell.ch, '●');
+}
+
+#[test]
+fn clear_diagnostics_removes_markers() {
+    let mut view = EditorView::from_text("line1\nline2\n");
+    view.editor.options.number = true;
+    view.set_bounds(Rect::new(0, 0, 40, 5));
+    view.set_diagnostics(vec![Diagnostic {
+        line: 0,
+        col_start: 0,
+        col_end: 5,
+        severity: Severity::Error,
+        message: "err".into(),
+    }]);
+    view.draw();
+
+    // Marker present
+    let gutter_w = view.gutter_width();
+    assert_eq!(view.buffer().cell(gutter_w - 1, 0).ch, '●');
+
+    // Clear and redraw
+    view.clear_diagnostics();
+    view.draw();
+
+    // Marker gone
+    assert_ne!(view.buffer().cell(gutter_w - 1, 0).ch, '●');
+}
+
+#[test]
+fn highest_severity_wins_for_gutter_marker() {
+    let mut view = EditorView::from_text("line1\n");
+    view.editor.options.number = true;
+    view.set_bounds(Rect::new(0, 0, 40, 5));
+    view.set_diagnostics(vec![
+        Diagnostic {
+            line: 0,
+            col_start: 0,
+            col_end: 2,
+            severity: Severity::Warning,
+            message: "warn".into(),
+        },
+        Diagnostic {
+            line: 0,
+            col_start: 3,
+            col_end: 5,
+            severity: Severity::Error,
+            message: "err".into(),
+        },
+    ]);
+
+    view.draw();
+
+    // Error color (red) should win over warning
+    let gutter_w = view.gutter_width();
+    let cell = view.buffer().cell(gutter_w - 1, 0);
+    assert_eq!(cell.ch, '●');
+    assert_eq!(cell.style.fg, Color::Ansi(1)); // red = error
+}

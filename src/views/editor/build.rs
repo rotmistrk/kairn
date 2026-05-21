@@ -214,7 +214,7 @@ impl EditorView {
         self.state.mark_dirty();
     }
 
-    pub(super) fn gutter_width(&self) -> u16 {
+    pub fn gutter_width(&self) -> u16 {
         if !self.editor.options.number {
             return 0;
         }
