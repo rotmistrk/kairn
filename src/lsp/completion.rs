@@ -9,9 +9,9 @@ pub struct CompletionPopup {
     pub items: Vec<CompletionItem>,
     pub selected: usize,
     pub visible: bool,
-    /// Anchor position (screen x, y) for the popup.
     pub anchor_x: u16,
     pub anchor_y: u16,
+    scroll: usize,
 }
 
 impl Default for CompletionPopup {
@@ -28,6 +28,7 @@ impl CompletionPopup {
             visible: false,
             anchor_x: 0,
             anchor_y: 0,
+            scroll: 0,
         }
     }
 
@@ -39,6 +40,7 @@ impl CompletionPopup {
         }
         self.items = items;
         self.selected = 0;
+        self.scroll = 0;
         self.visible = true;
         self.anchor_x = x;
         self.anchor_y = y;
@@ -55,6 +57,7 @@ impl CompletionPopup {
     pub fn next(&mut self) {
         if !self.items.is_empty() {
             self.selected = (self.selected + 1) % self.items.len();
+            self.ensure_visible();
         }
     }
 
@@ -62,6 +65,16 @@ impl CompletionPopup {
     pub fn prev(&mut self) {
         if !self.items.is_empty() {
             self.selected = self.selected.checked_sub(1).unwrap_or(self.items.len() - 1);
+            self.ensure_visible();
+        }
+    }
+
+    fn ensure_visible(&mut self) {
+        let page = 8;
+        if self.selected < self.scroll {
+            self.scroll = self.selected;
+        } else if self.selected >= self.scroll + page {
+            self.scroll = self.selected + 1 - page;
         }
     }
 
@@ -131,9 +144,10 @@ impl CompletionPopup {
         let detail_style = Style { fg: dim_fg, ..normal };
         let detail_sel_style = Style { fg: dim_fg, ..selected };
 
-        for (i, item) in self.items.iter().take(max_items).enumerate() {
+        for (i, item) in self.items.iter().skip(self.scroll).take(max_items).enumerate() {
             let row = y + i as u16;
-            let style = if i == self.selected {
+            let abs_idx = self.scroll + i;
+            let style = if abs_idx == self.selected {
                 selected
             } else {
                 normal
@@ -148,7 +162,7 @@ impl CompletionPopup {
             buf.print(x + 1, row, label, style);
             // Draw detail (type) in grey
             if let Some(ref detail) = item.detail {
-                let ds = if i == self.selected {
+                let ds = if abs_idx == self.selected {
                     detail_sel_style
                 } else {
                     detail_style
