@@ -94,8 +94,35 @@ impl CompletionPopup {
             max_label as u16 + 2
         };
 
-        let x = self.anchor_x;
-        let y = self.anchor_y + 1; // below cursor
+        let buf_w = buf.width();
+        let buf_h = buf.height();
+
+        // Clamp popup within buffer bounds
+        let max_width = max_width.min(buf_w.saturating_sub(1));
+        let x = if self.anchor_x + max_width > buf_w {
+            buf_w.saturating_sub(max_width)
+        } else {
+            self.anchor_x
+        };
+        // Show above cursor if not enough room below
+        let rows_below = buf_h.saturating_sub(self.anchor_y + 1);
+        let rows_above = self.anchor_y;
+        let (y, max_items) = if rows_below >= max_items as u16 {
+            (self.anchor_y + 1, max_items)
+        } else if rows_above >= max_items as u16 {
+            (self.anchor_y.saturating_sub(max_items as u16), max_items)
+        } else {
+            // Use whichever side has more room
+            if rows_below >= rows_above {
+                (self.anchor_y + 1, rows_below as usize)
+            } else {
+                let n = rows_above as usize;
+                (self.anchor_y.saturating_sub(n as u16), n)
+            }
+        };
+        if max_items == 0 {
+            return;
+        }
 
         let pal = txv_core::palette::palette();
         let normal = pal.popup.background.to_style();
