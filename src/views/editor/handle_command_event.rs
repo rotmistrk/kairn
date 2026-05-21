@@ -75,6 +75,7 @@ impl EditorView {
                         .unwrap_or(0);
                     self.editor.buf().insert(offset, text);
                     self.last_edit_tick = self.tick_counter;
+                    self.clear_diagnostics();
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }

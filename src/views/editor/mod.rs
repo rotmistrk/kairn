@@ -97,6 +97,7 @@ impl View for EditorView {
                     .unwrap_or(0);
                 self.editor.buf().insert(offset, text);
                 self.last_edit_tick = self.tick_counter;
+                self.clear_diagnostics();
                 self.state.mark_dirty();
                 return HandleResult::Consumed;
             }
@@ -174,6 +175,7 @@ impl View for EditorView {
         // Track edits for autosave
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
+            self.clear_diagnostics();
             self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line);
             // Emit hook triggers for char-inserted / word-completed
             self.emit_hook_triggers(&cmd);

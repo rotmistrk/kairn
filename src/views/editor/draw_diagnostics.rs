@@ -92,9 +92,12 @@ impl EditorView {
         self.state.mark_dirty();
     }
 
-    /// Clear diagnostics.
+    /// Clear diagnostics (called on buffer edits — LSP will resend after didChange).
     pub fn clear_diagnostics(&mut self) {
-        self.diagnostics = None;
+        if self.diagnostics.is_some() {
+            self.diagnostics = None;
+            self.state.mark_dirty();
+        }
     }
 }
 

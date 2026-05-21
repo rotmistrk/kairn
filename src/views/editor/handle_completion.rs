@@ -94,6 +94,7 @@ impl EditorView {
             self.editor.cursor_col = word_start + text.len();
             self.last_edit_tick = self.tick_counter;
         }
+        self.clear_diagnostics();
         self.state.mark_dirty();
     }
 
