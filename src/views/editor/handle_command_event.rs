@@ -100,7 +100,7 @@ impl EditorView {
         if id == crate::commands::CM_DIAGNOSTIC {
             if let Some(boxed) = data.as_ref() {
                 if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<crate::lsp::diagnostics::Diagnostic>)>() {
-                    let file_uri = format!("file://{}", self.path.display());
+                    let file_uri = crate::lsp::protocol::path_to_uri(&self.path);
                     if *uri == file_uri {
                         self.set_diagnostics(diags.clone());
                         return HandleResult::Consumed;
