@@ -167,6 +167,12 @@ impl View for TodoTreeView {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        if matches!(event, Event::Tick) {
+            if self.inner.data.reload_if_changed() {
+                self.inner.mark_dirty();
+            }
+            return self.inner.handle(event);
+        }
         let Event::Key(key) = event else {
             return self.inner.handle(event);
         };
