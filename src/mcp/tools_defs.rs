@@ -56,13 +56,13 @@ fn read_tool_definitions() -> Vec<Value> {
         }),
         json!({
             "name": "update_todo",
-            "description": "Modify the todo tree: toggle, add, remove, move, promote, demote items",
+            "description": "Modify the todo tree: toggle, add, remove, move, promote, demote, get/set notes",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote", "demote"],
+                        "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote", "demote", "get_note", "set_note"],
                         "description": "Action to perform"
                     },
                     "path": {
@@ -73,6 +73,10 @@ fn read_tool_definitions() -> Vec<Value> {
                     "title": {
                         "type": "string",
                         "description": "Title for new item (required for 'add' action)"
+                    },
+                    "note": {
+                        "type": "string",
+                        "description": "Note content (required for 'set_note' action)"
                     }
                 },
                 "required": ["action", "path"]

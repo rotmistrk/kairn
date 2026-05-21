@@ -28,6 +28,9 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
             if item.important {
                 obj["important"] = json!(true);
             }
+            if !item.note.is_empty() {
+                obj["note"] = json!(item.note);
+            }
             if !item.items.is_empty() {
                 obj["items"] = json!(serialize_todo_items(&item.items));
             }
@@ -63,10 +66,37 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
         "move_down" => McpAction::TodoMoveDown { path },
         "promote" => McpAction::TodoPromote { path },
         "demote" => McpAction::TodoDemote { path },
+        "get_note" => {
+            return tool_get_note(&path);
+        }
+        "set_note" => {
+            let note = args.get("note").and_then(Value::as_str).unwrap_or("").to_string();
+            McpAction::TodoSetNote { path, note }
+        }
         _ => return Err(format!("Unknown action: {action_str}")),
     };
 
     queue.send(action)
+}
+
+fn tool_get_note(path: &[usize]) -> Result<Value, String> {
+    let file_path = std::env::current_dir()
+        .map(|d| d.join(".kairn.todo"))
+        .map_err(|e| e.to_string())?;
+    if !file_path.exists() {
+        return Err("No todo file".to_string());
+    }
+    let content = std::fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
+    let file: duir_core::TodoFile = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    let mut items = &file.items[..];
+    let mut item = None;
+    for &idx in path {
+        let it = items.get(idx).ok_or("Item not found")?;
+        item = Some(it);
+        items = &it.items;
+    }
+    let note = item.map(|i| i.note.as_str()).unwrap_or("");
+    Ok(json!({"note": note}))
 }
 
 pub fn tool_add_subtree(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {

@@ -201,11 +201,19 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
             let item = model::get_item(&data.file, &path)?;
             Some(HandleAction::OpenNote(path, item.note.clone()))
         }
-        // Right — open/show Notes and move focus there
+        // Right — expand if folded with children, otherwise open Notes
         KeyCode::Right if !key.modifiers.shift => {
             let path = data.path_at(id)?.clone();
-            let item = model::get_item(&data.file, &path)?;
-            Some(HandleAction::OpenNoteFocus(path, item.note.clone()))
+            let item = model::get_item_mut(&mut data.file, &path)?;
+            if !item.items.is_empty() && item.folded {
+                item.folded = false;
+                data.save();
+                data.rebuild_flat();
+                Some(HandleAction::Stay)
+            } else {
+                let note = item.note.clone();
+                Some(HandleAction::OpenNoteFocus(path, note))
+            }
         }
         // N — open note for this item (legacy, same as Enter)
         KeyCode::Char('N') => {

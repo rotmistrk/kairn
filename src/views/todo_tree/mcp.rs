@@ -38,6 +38,10 @@ impl TodoTreeView {
             McpAction::TodoDemote { path } => {
                 model::demote(&mut self.inner.data.file, path).ok_or("Cannot demote")?;
             }
+            McpAction::TodoSetNote { path, note } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.note.clone_from(note);
+            }
             McpAction::TodoAddSubtree { path, items } => {
                 fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
                     let title = val.get("title")?.as_str()?;

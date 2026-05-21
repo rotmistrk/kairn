@@ -28,6 +28,8 @@ pub enum McpAction {
     TodoPromote { path: Vec<usize> },
     /// Demote a todo item (increase nesting).
     TodoDemote { path: Vec<usize> },
+    /// Set the note on a todo item.
+    TodoSetNote { path: Vec<usize>, note: String },
     /// Add a subtree of items as children of the item at path.
     TodoAddSubtree {
         path: Vec<usize>,
