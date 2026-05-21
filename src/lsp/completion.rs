@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use super::requests::CompletionItem;
+use super::requests::{CompletionItem, CompletionKind};
 
 /// Completion popup state.
 pub struct CompletionPopup {
@@ -82,7 +82,7 @@ impl CompletionPopup {
             .items
             .iter()
             .take(max_items)
-            .map(|i| i.label.len())
+            .map(|i| self.display_label(i).len())
             .max()
             .unwrap_or(10)
             .min(30);
@@ -112,10 +112,11 @@ impl CompletionPopup {
                 normal
             };
             buf.hline(x, row, max_width, ' ', style);
-            let label = if item.label.len() > max_label {
-                &item.label[..max_label]
+            let display_label = self.display_label(item);
+            let label = if display_label.len() > max_label {
+                &display_label[..max_label]
             } else {
-                &item.label
+                display_label.as_str()
             };
             buf.print(x + 1, row, label, style);
             // Draw detail (type) in grey
@@ -135,6 +136,28 @@ impl CompletionPopup {
             }
         }
     }
+
+    /// Format display label: append parens for functions/methods.
+    fn display_label(&self, item: &CompletionItem) -> String {
+        match item.kind {
+            CompletionKind::Function | CompletionKind::Method => {
+                let has_params = item
+                    .detail
+                    .as_deref()
+                    .map(|d| {
+                        // detail like "fn(x: i32) -> T" or "fn() -> T"
+                        d.starts_with("fn(") && !d.starts_with("fn()")
+                    })
+                    .unwrap_or(false);
+                if has_params {
+                    format!("{}(…)", item.label)
+                } else {
+                    format!("{}()", item.label)
+                }
+            }
+            CompletionKind::Other => item.label.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -148,6 +171,7 @@ mod tests {
                 label: l.to_string(),
                 detail: None,
                 insert_text: None,
+                kind: CompletionKind::Other,
             })
             .collect()
     }

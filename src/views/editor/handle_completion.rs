@@ -43,6 +43,7 @@ impl EditorView {
                 label: l.clone(),
                 detail: None,
                 insert_text: None,
+                kind: crate::lsp::requests::CompletionKind::Other,
             })
             .collect();
         self.show_completion_items(&items);
@@ -153,7 +154,9 @@ impl EditorView {
         } else {
             sig.label.clone()
         };
-        self.state
-            .put_command(crate::commands::CM_DIAGNOSTIC, Some(Box::new(("sig".to_string(), msg))));
+        self.state.put_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(txv_core::message::Message::info("sig", msg))),
+        );
     }
 }

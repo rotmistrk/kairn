@@ -57,6 +57,7 @@ fn completion_replaces_entire_word_under_cursor() {
             label: "GetLogLevel".into(),
             detail: None,
             insert_text: Some("GetLogLevel".into()),
+            kind: kairn::lsp::requests::CompletionKind::Other,
         }],
     );
     accept(&mut h);
@@ -87,6 +88,7 @@ fn completion_replaces_prefix_at_end_of_word() {
             label: "println".into(),
             detail: None,
             insert_text: Some("println".into()),
+            kind: kairn::lsp::requests::CompletionKind::Other,
         }],
     );
     accept(&mut h);
@@ -116,11 +118,13 @@ fn completion_popup_draws_near_cursor() {
                 label: "println".into(),
                 detail: None,
                 insert_text: None,
+                kind: kairn::lsp::requests::CompletionKind::Other,
             },
             CompletionItem {
                 label: "print".into(),
                 detail: None,
                 insert_text: None,
+                kind: kairn::lsp::requests::CompletionKind::Other,
             },
         ],
     );
@@ -150,6 +154,7 @@ fn cursor_at_end_after_completion() {
             label: "hello_world".into(),
             detail: None,
             insert_text: Some("hello_world".into()),
+            kind: kairn::lsp::requests::CompletionKind::Other,
         }],
     );
     accept(&mut h);

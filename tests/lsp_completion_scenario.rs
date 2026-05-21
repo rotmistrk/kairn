@@ -57,6 +57,7 @@ fn completion_prefix_removal() {
         label: "println".into(),
         detail: None,
         insert_text: Some("println".into()),
+        kind: kairn::lsp::requests::CompletionKind::Other,
     }];
     send_to_view(&mut h, CM_LSP_COMPLETION, Some(Box::new(items)));
     h.run_cycles(1);
@@ -97,6 +98,7 @@ fn completion_insert_text_differs_from_label() {
         label: "inner : State".into(),
         detail: Some("field".into()),
         insert_text: Some("inner".into()),
+        kind: kairn::lsp::requests::CompletionKind::Other,
     }];
     send_to_view(&mut h, CM_LSP_COMPLETION, Some(Box::new(items)));
     h.run_cycles(1);

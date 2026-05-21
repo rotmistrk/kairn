@@ -47,6 +47,15 @@ pub struct CompletionItem {
     pub label: String,
     pub detail: Option<String>,
     pub insert_text: Option<String>,
+    pub kind: CompletionKind,
+}
+
+/// LSP completion item kind (subset we care about).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionKind {
+    Function,
+    Method,
+    Other,
 }
 
 /// Parse a completion response into items.
@@ -65,10 +74,16 @@ fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
     let label = val.get("label")?.as_str()?.to_string();
     let detail = val.get("detail").and_then(|v| v.as_str()).map(|s| s.to_string());
     let insert_text = val.get("insertText").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let kind = match val.get("kind").and_then(|v| v.as_u64()) {
+        Some(2) => CompletionKind::Method,
+        Some(3) => CompletionKind::Function,
+        _ => CompletionKind::Other,
+    };
     Some(CompletionItem {
         label,
         detail,
         insert_text,
+        kind,
     })
 }
 
