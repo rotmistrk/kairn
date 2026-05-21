@@ -28,9 +28,29 @@ impl EditorView {
         }
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
-        let prefix_w = prefix.len() as u16;
-        let x = gutter_w + self.editor.cursor_col as u16 - prefix_w;
-        let y = (self.editor.cursor_line - scroll) as u16;
+        let avail = self.text_avail_width();
+        let tab_w = self.editor.options.tab_width;
+
+        // Compute visual row of cursor line relative to viewport top
+        let mut vis_row: usize = 0;
+        for li in scroll..self.editor.cursor_line {
+            vis_row += if self.editor.options.wrap {
+                self.wrapped_line_rows(li, avail)
+            } else {
+                1
+            };
+        }
+        let (cursor_vrow, cursor_vcol) =
+            self.cursor_visual_pos(self.editor.cursor_line, self.editor.cursor_col, avail, tab_w, vis_row);
+
+        let h_off = if self.editor.options.wrap {
+            0
+        } else {
+            self.editor.h_scroll
+        };
+        let screen_col = cursor_vcol.saturating_sub(h_off);
+        let x = gutter_w + screen_col.saturating_sub(prefix.len()) as u16;
+        let y = cursor_vrow as u16;
         self.completion_popup.show(filtered, x, y);
         self.state.mark_dirty();
     }
