@@ -17,7 +17,7 @@ impl EditorView {
             };
             self.state
                 .put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
-            self.diag_suppressed = false;
+            self.diag_accepted_version = self.diag_version;
         }
         // Completion trigger: 5 ticks after last edit in insert mode
         if self.editor.mode == crate::editor::keymap::EditorMode::Insert
