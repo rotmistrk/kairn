@@ -11,6 +11,18 @@ pub struct EditorSettings {
     pub number: bool,
     pub autosave: bool,
     pub autosave_delay: u16,
+    pub cursor_insert: CursorStyle,
+    pub cursor_normal: CursorStyle,
+    pub cursor_command: CursorStyle,
+}
+
+/// Cursor style: software (reverse block) or hardware (bar/block/underline).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CursorStyle {
+    Software,
+    Bar,
+    Block,
+    Underline,
 }
 
 impl Default for EditorSettings {
@@ -22,6 +34,9 @@ impl Default for EditorSettings {
             number: true,
             autosave: true,
             autosave_delay: 5,
+            cursor_insert: CursorStyle::Bar,
+            cursor_normal: CursorStyle::Software,
+            cursor_command: CursorStyle::Software,
         }
     }
 }

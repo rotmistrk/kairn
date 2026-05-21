@@ -5,7 +5,7 @@ use std::path::Path;
 use rusticle::interpreter::Interpreter;
 
 use crate::config_keys::parse_key_var;
-use crate::settings::AppSettings;
+use crate::settings::{AppSettings, CursorStyle};
 
 /// Load configuration from `$XDG_CONFIG_HOME/kairn/init.tcl` (or `~/.config/kairn/init.tcl`).
 /// Returns defaults silently if the file does not exist or on any error.
@@ -75,6 +75,21 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
     if let Some(val) = interp.get_var("editor.number") {
         if let Ok(b) = val.as_bool() {
             settings.editor_defaults.number = b;
+        }
+    }
+    if let Some(val) = interp.get_var("editor.cursor_insert") {
+        if let Some(s) = parse_cursor_style(&val.to_string()) {
+            settings.editor_defaults.cursor_insert = s;
+        }
+    }
+    if let Some(val) = interp.get_var("editor.cursor_normal") {
+        if let Some(s) = parse_cursor_style(&val.to_string()) {
+            settings.editor_defaults.cursor_normal = s;
+        }
+    }
+    if let Some(val) = interp.get_var("editor.cursor_command") {
+        if let Some(s) = parse_cursor_style(&val.to_string()) {
+            settings.editor_defaults.cursor_command = s;
         }
     }
     if let Some(val) = interp.get_var("clock.interval") {
@@ -192,6 +207,16 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
     }
 
     settings
+}
+
+fn parse_cursor_style(s: &str) -> Option<CursorStyle> {
+    match s.to_lowercase().as_str() {
+        "bar" => Some(CursorStyle::Bar),
+        "block" => Some(CursorStyle::Block),
+        "underline" => Some(CursorStyle::Underline),
+        "software" | "none" => Some(CursorStyle::Software),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

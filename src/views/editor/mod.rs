@@ -1,6 +1,7 @@
 //! EditorView — View wrapper around the Editor core.
 
 mod build;
+mod cursor;
 mod diff;
 pub mod diff_model;
 mod draw;
@@ -24,7 +25,7 @@ use crate::editor::keymap::Keymap;
 use crate::editor::Editor;
 use crate::highlight::Highlighter;
 use crate::lsp::completion::CompletionPopup;
-use crate::settings::EditorSettings;
+use crate::settings::{CursorStyle, EditorSettings};
 
 /// Per-line diff tag for inline diff rendering.
 pub struct EditorView {
@@ -58,7 +59,7 @@ pub struct EditorView {
 }
 
 impl View for EditorView {
-    delegate_view_state!(state, override { title, needs_redraw, draw });
+    delegate_view_state!(state, override { title, needs_redraw, draw, cursor });
 
     fn title(&self) -> &str {
         &self.display_title
@@ -73,6 +74,21 @@ impl View for EditorView {
         self.draw_blame_gutter();
         self.draw_diagnostics();
         self.completion_popup.draw(self.state.buffer_mut());
+    }
+
+    fn cursor(&self) -> Option<CursorRequest> {
+        if !self.state.is_focused() {
+            return None;
+        }
+        let style = self.cursor_style_for_mode();
+        let shape = match style {
+            CursorStyle::Software => return None,
+            CursorStyle::Bar => CursorShape::Bar,
+            CursorStyle::Block => CursorShape::Block,
+            CursorStyle::Underline => CursorShape::Underline,
+        };
+        let (x, y) = self.hw_cursor_screen_pos()?;
+        Some(CursorRequest { x, y, shape })
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

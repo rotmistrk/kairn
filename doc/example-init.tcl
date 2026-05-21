@@ -18,6 +18,11 @@ set editor.list false
 set editor.number true
 set editor.tabstop 4
 
+# Cursor shapes per mode: bar, block, underline, software, none
+set editor.cursor_insert bar
+set editor.cursor_normal software
+set editor.cursor_command software
+
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
 

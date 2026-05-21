@@ -171,6 +171,9 @@ impl EditorView {
         self.editor.options.list = self.settings.list;
         self.editor.options.tab_width = self.settings.tabstop as usize;
         self.editor.options.number = self.settings.number;
+        self.editor.options.cursor_insert = self.settings.cursor_insert;
+        self.editor.options.cursor_normal = self.settings.cursor_normal;
+        self.editor.options.cursor_command = self.settings.cursor_command;
     }
 
     pub fn set_syntax_theme(&mut self, name: &str) {

@@ -24,6 +24,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
+use crate::settings::CursorStyle;
 
 use self::command::Command;
 use self::highlight_state::HighlightState;
@@ -98,6 +99,9 @@ pub struct EditorOptions {
     pub matchparen: bool,
     pub rainbow: bool,
     pub guides: bool,
+    pub cursor_insert: CursorStyle,
+    pub cursor_normal: CursorStyle,
+    pub cursor_command: CursorStyle,
 }
 
 impl Default for EditorOptions {
@@ -111,6 +115,9 @@ impl Default for EditorOptions {
             matchparen: true,
             rainbow: false,
             guides: false,
+            cursor_insert: CursorStyle::Bar,
+            cursor_normal: CursorStyle::Software,
+            cursor_command: CursorStyle::Software,
         }
     }
 }

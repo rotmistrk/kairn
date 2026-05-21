@@ -1,5 +1,7 @@
 //! Clipboard, yank, and multi-line operations.
 
+use crate::settings::CursorStyle;
+
 use super::keymap::EditorMode;
 use super::motions;
 use super::Editor;
@@ -83,9 +85,31 @@ impl Editor {
             "guides" => self.options.guides = true,
             "noguides" => self.options.guides = false,
             _ => {
-                self.status = format!("Unknown option: {opt}");
+                if let Some(style) = self.parse_cursor_set(opt) {
+                    style
+                } else {
+                    self.status = format!("Unknown option: {opt}");
+                }
             }
         }
+    }
+
+    fn parse_cursor_set(&mut self, opt: &str) -> Option<()> {
+        let (key, val) = opt.split_once('=')?;
+        let style = match val {
+            "bar" => CursorStyle::Bar,
+            "block" => CursorStyle::Block,
+            "underline" => CursorStyle::Underline,
+            "software" | "none" => CursorStyle::Software,
+            _ => return None,
+        };
+        match key {
+            "cursor_insert" => self.options.cursor_insert = style,
+            "cursor_normal" => self.options.cursor_normal = style,
+            "cursor_command" => self.options.cursor_command = style,
+            _ => return None,
+        }
+        Some(())
     }
 
     pub(super) fn yank_lines(&mut self, n: usize) {

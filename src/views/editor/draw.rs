@@ -245,7 +245,7 @@ impl EditorView {
             }
 
             // --- Cursor rendering (AFTER content, reverse style, tab-aware) ---
-            if line_idx == self.editor.cursor_line && self.state.is_focused() {
+            if line_idx == self.editor.cursor_line && self.state.is_focused() && !self.uses_hw_cursor() {
                 // Compute cursor visual position accounting for wrapping
                 let (cursor_vrow, cursor_vcol) =
                     self.cursor_visual_pos(line_idx, self.editor.cursor_col, avail + h_off, tab_width, row);
