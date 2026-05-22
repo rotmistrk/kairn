@@ -21,7 +21,7 @@ fn mock_lsp_path() -> PathBuf {
 
 fn spawn_mock() -> LspClient {
     let path = mock_lsp_path();
-    LspClient::spawn(path.to_str().unwrap(), &[]).expect("Failed to spawn mock_lsp")
+    LspClient::spawn(path.to_str().unwrap(), &[], txv_core::run::Waker::noop()).expect("Failed to spawn mock_lsp")
 }
 
 fn poll_until_response(client: &mut LspClient, timeout_ms: u64) -> Option<LspMessage> {

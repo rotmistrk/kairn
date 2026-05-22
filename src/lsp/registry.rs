@@ -36,6 +36,7 @@ pub struct LspRegistry {
     pub last_error: Option<String>,
     /// Files to send didOpen for after initialization completes.
     pub(super) pending_opens: Vec<(String, PathBuf)>,
+    waker: txv_core::run::Waker,
 }
 
 impl LspRegistry {
@@ -56,7 +57,13 @@ impl LspRegistry {
             timeouts: HashMap::new(),
             last_error: None,
             pending_opens: Vec::new(),
+            waker: txv_core::run::Waker::noop(),
         }
+    }
+
+    /// Set the waker so LSP reader threads can wake the event loop.
+    pub fn set_waker(&mut self, waker: txv_core::run::Waker) {
+        self.waker = waker;
     }
 
     /// Ensure a server is started for a language. Returns true if ready for requests.
@@ -69,7 +76,7 @@ impl LspRegistry {
             None => return false,
         };
         let args: Vec<&str> = config.args.iter().map(|s| s.as_str()).collect();
-        let mut client = match LspClient::spawn(&config.command, &args) {
+        let mut client = match LspClient::spawn(&config.command, &args, self.waker.clone()) {
             Some(c) => c,
             None => {
                 let hint = crate::tool_check::install_hint(&config.command);

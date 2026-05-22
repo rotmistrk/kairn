@@ -3,9 +3,11 @@
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use serde_json::Value;
+use txv_core::run::Waker;
 
 use super::messages::{self, LspMessage};
 
@@ -17,11 +19,12 @@ pub struct LspClient {
     #[allow(dead_code)]
     child: Child,
     dead: bool,
+    waker: Arc<Mutex<Waker>>,
 }
 
 impl LspClient {
     /// Spawn an LSP server process. Returns None if spawn fails.
-    pub fn spawn(cmd: &str, args: &[&str]) -> Option<Self> {
+    pub fn spawn(cmd: &str, args: &[&str], waker: Waker) -> Option<Self> {
         let mut child = Command::new(cmd)
             .args(args)
             .stdin(Stdio::piped())
@@ -45,7 +48,8 @@ impl LspClient {
         }
 
         let write_tx = Self::start_writer(stdin);
-        let msg_rx = Self::start_reader(stdout);
+        let waker = Arc::new(Mutex::new(waker));
+        let msg_rx = Self::start_reader(stdout, Arc::clone(&waker));
 
         Some(Self {
             next_id: 1,
@@ -53,6 +57,7 @@ impl LspClient {
             msg_rx,
             child,
             dead: false,
+            waker,
         })
     }
 
@@ -129,7 +134,7 @@ impl LspClient {
         tx
     }
 
-    fn start_reader(stdout: std::process::ChildStdout) -> Receiver<LspMessage> {
+    fn start_reader(stdout: std::process::ChildStdout, waker: Arc<Mutex<Waker>>) -> Receiver<LspMessage> {
         let (tx, rx) = mpsc::channel();
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
@@ -137,6 +142,9 @@ impl LspClient {
                 if let Some(msg) = messages::parse_message(&json) {
                     if tx.send(msg).is_err() {
                         break;
+                    }
+                    if let Ok(w) = waker.lock() {
+                        w.wake();
                     }
                 }
             }
@@ -196,14 +204,14 @@ mod tests {
 
     #[test]
     fn spawn_nonexistent_returns_none() {
-        let client = LspClient::spawn("__nonexistent_lsp_server_xyz__", &[]);
+        let client = LspClient::spawn("__nonexistent_lsp_server_xyz__", &[], Waker::noop());
         assert!(client.is_none());
     }
 
     #[test]
     fn send_request_increments_id() {
         // Use `cat` as a dummy process (won't respond but won't crash)
-        let client = LspClient::spawn("cat", &[]);
+        let client = LspClient::spawn("cat", &[], Waker::noop());
         if let Some(mut c) = client {
             let id1 = c.send_request("test", serde_json::json!({}));
             let id2 = c.send_request("test", serde_json::json!({}));
@@ -214,7 +222,7 @@ mod tests {
 
     #[test]
     fn poll_empty_when_no_response() {
-        let client = LspClient::spawn("cat", &[]);
+        let client = LspClient::spawn("cat", &[], Waker::noop());
         if let Some(mut c) = client {
             let msgs = c.poll();
             assert!(msgs.is_empty());

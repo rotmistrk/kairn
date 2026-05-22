@@ -224,6 +224,7 @@ fn main() -> anyhow::Result<()> {
     let color_mode = detect_truecolor_mode();
     let mut backend = CrosstermBackend::new(color_mode);
     app_state.waker = Some(backend.waker());
+    app_state.lsp.set_waker(backend.waker());
 
     // Now that waker is available, set up MCP command queue for write operations
     let cmd_queue = kairn::mcp::commands::McpCommandQueue::new(backend.waker());
