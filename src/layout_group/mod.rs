@@ -1,4 +1,4 @@
-//! LayoutGroup — the desktop. Uses GroupState with 4 TabGroup children.
+//! LayoutGroup — the desktop. Uses GroupState with 4 TabPanel children.
 //!
 //! set_bounds is the SINGLE source of truth for child bounds.
 //! Resize/zoom change constraints then call set_bounds.
@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use txv_core::prelude::*;
-use txv_widgets::TabGroup;
+use txv_widgets::tab_bar::TabBarMode;
+use txv_widgets::tab_panel::TabPanel;
 
 mod badges;
 mod chrome;
@@ -42,7 +43,7 @@ pub enum TabBadge {
     Exited,
 }
 
-/// The desktop — GroupState with 4 TabGroup children, custom layout.
+/// The desktop — GroupState with 4 TabPanel children, custom layout.
 pub struct LayoutGroup {
     pub(crate) group: GroupState,
     pub zoomed: Option<usize>,
@@ -69,11 +70,23 @@ impl LayoutGroup {
             focusable: true,
             ..ViewOptions::default()
         });
-        // Insert 4 TabGroup panels as children
-        for _ in 0..PANEL_COUNT {
-            group.insert(Box::new(TabGroup::new()));
+        // Insert 4 TabPanel panels as children
+        // Left=Static (fixed tabs), Center/Right/Bottom=Lru (editor/tools)
+        let modes = [
+            TabBarMode::Static, // Left
+            TabBarMode::Lru,    // Center
+            TabBarMode::Lru,    // Right
+            TabBarMode::Lru,    // Bottom
+        ];
+        for mode in modes {
+            let mut panel = TabPanel::new(mode);
+            panel.bar_mut().set_handle_keys(false);
+            group.insert(Box::new(panel));
         }
         group.set_focused_index(SlotId::Left as usize);
+        if let Some(child) = group.child_mut(SlotId::Left as usize) {
+            child.select();
+        }
         Self {
             group,
             zoomed: None,
@@ -90,19 +103,19 @@ impl LayoutGroup {
         }
     }
 
-    /// Access a panel as TabGroup (downcast from Box<dyn View>).
-    pub fn panel(&self, slot: SlotId) -> &TabGroup {
+    /// Access a panel as TabPanel (downcast from Box<dyn View>).
+    pub fn panel(&self, slot: SlotId) -> &TabPanel {
         let child = self.group.child(slot as usize).expect("valid slot");
-        // SAFETY: we only insert TabGroup instances at construction
-        unsafe { &*(child as *const dyn View as *const TabGroup) }
+        // SAFETY: we only insert TabPanel instances at construction
+        unsafe { &*(child as *const dyn View as *const TabPanel) }
     }
 
-    /// Access a panel mutably as TabGroup.
-    pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabGroup {
+    /// Access a panel mutably as TabPanel.
+    pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabPanel {
         let child = self.group.child_mut(slot as usize).expect("valid slot");
-        // SAFETY: we only insert TabGroup instances at construction
+        // SAFETY: we only insert TabPanel instances at construction
         let ptr: *mut dyn View = &mut **child;
-        unsafe { &mut *(ptr as *mut TabGroup) }
+        unsafe { &mut *(ptr as *mut TabPanel) }
     }
 
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
@@ -116,6 +129,7 @@ impl LayoutGroup {
         self.panel(slot).active_title()
     }
 
+    #[allow(deprecated)]
     pub fn close_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
         self.panel_mut(slot).close_tab_by_title(title)
     }
@@ -128,11 +142,12 @@ impl LayoutGroup {
         self.panel_mut(slot).set_active(index);
     }
 
+    #[allow(deprecated)]
     pub fn focus_tab_by_title(&mut self, slot: SlotId, title: &str) -> bool {
         self.panel_mut(slot).focus_tab_by_title(title)
     }
 
-    pub fn active_view_mut(&mut self, slot: SlotId) -> Option<&mut Box<dyn View>> {
+    pub fn active_view_mut(&mut self, slot: SlotId) -> Option<&mut (dyn View + '_)> {
         self.panel_mut(slot).active_view_mut()
     }
 

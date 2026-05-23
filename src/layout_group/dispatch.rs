@@ -50,7 +50,21 @@ impl LayoutGroup {
             }
             CM_FOCUS_TAB => {
                 if let Some(idx) = data.as_ref().and_then(|d| d.downcast_ref::<u16>()) {
-                    self.panel_mut(self.focused_slot()).set_active(*idx as usize);
+                    let slot = self.focused_slot();
+                    if *idx == 0 {
+                        // M-0: open/close dropdown
+                        let panel = self.panel_mut(slot);
+                        if panel.dropdown_open() {
+                            panel.close_dropdown();
+                        } else if panel.tab_count() > 1 {
+                            panel.open_dropdown();
+                        }
+                        self.group.mark_dirty();
+                    } else {
+                        // M-N: activate by number (mode-aware)
+                        let panel = self.panel_mut(slot);
+                        panel.activate_by_number(*idx as usize);
+                    }
                 }
                 HandleResult::Consumed
             }
@@ -69,7 +83,7 @@ impl LayoutGroup {
                 let panel = self.panel_mut(slot);
                 if panel.dropdown_open() {
                     match id {
-                        CM_TAB_DROPDOWN => panel.dropdown_cursor = None,
+                        CM_TAB_DROPDOWN => panel.close_dropdown(),
                         CM_TAB_DROPDOWN_UP => panel.dropdown_move_up(),
                         CM_TAB_DROPDOWN_DOWN => panel.dropdown_move_down(),
                         _ => {}

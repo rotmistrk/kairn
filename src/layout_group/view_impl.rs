@@ -37,11 +37,12 @@ impl View for LayoutGroup {
         self.group.buffer_mut().fill(' ', Style::default());
         let my_bounds = self.group.bounds();
         if let Some(z) = self.zoomed {
-            // Zoomed panel is on top — draw it with chrome
+            // Zoomed: chrome background line, then panel renders its own TabBar
+            let cs = txv_core::palette::palette().chrome.bar.to_style();
+            self.group.buffer_mut().hline(0, 0, w, '─', cs);
             if let Some(c) = self.group.child_mut(z) {
                 c.draw();
             }
-            // Blit zoomed child
             let cb = self.group.child(z).map(|c| c.bounds()).unwrap_or_default();
             let buf_ptr = self.group.buffer_mut() as *mut Buffer;
             if let Some(c) = self.group.child(z) {
@@ -49,9 +50,11 @@ impl View for LayoutGroup {
                 let dy = cb.y.saturating_sub(my_bounds.y);
                 unsafe { (*buf_ptr).blit(c.buffer(), dx, dy) };
             }
-            self.draw_zoomed_chrome(z);
             return;
         }
+        // Draw chrome background: horizontal lines + connectors
+        self.draw_chrome_background();
+        // Draw all children (TabPanels render their own TabBar with transparent fill)
         for child in self.group.children_iter_mut() {
             let pb = child.bounds();
             if pb.w > 0 && pb.h > 0 {
@@ -70,8 +73,6 @@ impl View for LayoutGroup {
                 }
             }
         }
-        // Chrome overwrites TabGroup's plain chrome with Powerline visuals
-        self.draw_chrome();
         self.draw_dividers();
     }
 

@@ -85,7 +85,7 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
 
 /// Extract cursor, modified, and selection state from an editor view.
 fn extract_editor_state(
-    view: Option<&mut Box<dyn txv_core::view::View>>,
+    view: Option<&mut (dyn txv_core::view::View + '_)>,
 ) -> (bool, Option<CursorPos>, Option<SelectionRange>) {
     let Some(v) = view else {
         return (false, None, None);

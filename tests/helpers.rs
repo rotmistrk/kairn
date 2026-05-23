@@ -23,6 +23,8 @@ pub struct TestHarness {
 /// Initialize logger for tests (safe to call multiple times).
 fn init_test_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
+    // Ensure nerd glyphs are set (matches kairn's default)
+    txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::nerd());
 }
 
 impl TestHarness {

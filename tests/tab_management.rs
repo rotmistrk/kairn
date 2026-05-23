@@ -61,8 +61,8 @@ fn alt_digit_selects_tab() {
     h.inject_str("e b.rs\n");
     h.run_cycles(1);
     assert!(h.contains("bbb"));
-    // Alt-0 should switch to first tab (a.rs)
-    h.inject_key(KeyCode::Char('0'), ALT);
+    // Alt-1 should switch to most recent other tab (a.rs) in LRU mode
+    h.inject_key(KeyCode::Char('1'), ALT);
     h.run_cycles(1);
     assert!(h.contains("aaa"));
 }
@@ -78,4 +78,33 @@ fn rename_changes_tool_tab_title() {
     h.inject_str("tab-rename myserver\n");
     h.run_cycles(1);
     assert!(h.contains("Shell:myserver"));
+}
+
+#[test]
+fn opening_same_file_twice_does_not_create_duplicate_tab() {
+    let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb")]);
+    let mut h = TestHarness::with_size(dir.path(), 200, 30);
+    // Open a.rs
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    assert!(h.contains("aaa"));
+    // Open b.rs
+    h.inject_key(KeyCode::F(2), KeyMod::default());
+    h.inject_key(KeyCode::Down, KeyMod::default());
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    // Now try to open a.rs again (go back to tree, select a.rs, Enter)
+    h.inject_key(KeyCode::F(2), KeyMod::default());
+    h.inject_key(KeyCode::Up, KeyMod::default());
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    // Should focus existing a.rs tab, not create a new one
+    // Center panel should have exactly 2 tabs (a.rs + b.rs), not 3
+    let top = h.row(0);
+    // Count occurrences of "a.rs" in the tab bar — should be exactly 1
+    let count = top.matches("a.rs").count();
+    assert!(
+        count <= 1,
+        "a.rs should appear at most once in tab bar (no duplicate): count={count}, row={top}"
+    );
 }

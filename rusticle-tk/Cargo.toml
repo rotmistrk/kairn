@@ -15,9 +15,9 @@ path = "src/lib.rs"
 
 [dependencies]
 rusticle = { git = "https://github.com/rotmistrk/rusticle.git" }
-txv-core = { git = "https://github.com/rotmistrk/txv.git" }
-txv-render = { git = "https://github.com/rotmistrk/txv.git" }
-txv-widgets = { git = "https://github.com/rotmistrk/txv.git" }
+txv-core = { path = "../../txv/txv-core" }
+txv-render = { path = "../../txv/txv-render" }
+txv-widgets = { path = "../../txv/txv-widgets" }
 crossterm = "0.28"
 ignore = "0.4"
 log = "0.4"

@@ -160,7 +160,7 @@ impl Default for AppSettings {
             theme_mode: "auto".to_string(),
             theme_syntax_dark: "base16-eighties.dark".to_string(),
             theme_syntax_light: "base16-ocean.light".to_string(),
-            theme_glyphs: "auto".to_string(),
+            theme_glyphs: "nerd".to_string(),
             editor_defaults: EditorSettings::default(),
             build_command: None,
             run_command: None,

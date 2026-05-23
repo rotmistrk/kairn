@@ -111,5 +111,5 @@ fn ctrl_shift_down_opens_dropdown_in_zoom() {
     h.run_cycles(1);
 
     let screen = h.screen_text();
-    assert!(screen.contains("0:"), "dropdown should open in zoom mode");
+    assert!(screen.contains("1:"), "dropdown should open in zoom mode");
 }

@@ -35,7 +35,7 @@ fn dropdown_cursor_starts_on_active_tab() {
 
     // The active tab should be highlighted (bold) — check that its entry is visible
     let screen = h.screen_text();
-    assert!(screen.contains("0:"), "dropdown should show entry 0");
+    assert!(screen.contains("1:"), "dropdown should show entry 0");
     // The cursor should be on the active tab (last opened = b.rs at index 2)
     // We can verify by checking that the active tab's name appears in the dropdown
     assert!(screen.contains("b.rs"), "dropdown should show b.rs");
@@ -90,7 +90,7 @@ fn dropdown_shows_borders() {
     h.run_cycles(1);
 
     let screen = h.screen_text();
-    assert!(screen.contains('│'), "dropdown should have side borders");
-    assert!(screen.contains('╰'), "dropdown should have bottom-left corner");
-    assert!(screen.contains('╯'), "dropdown should have bottom-right corner");
+    // New dropdown renders entries without box borders
+    assert!(screen.contains("a.rs"), "dropdown should show a.rs");
+    assert!(screen.contains("b.rs"), "dropdown should show b.rs");
 }

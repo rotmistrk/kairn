@@ -41,7 +41,33 @@ impl LayoutGroup {
                 }
             }
         }
+
+        // Sync badges to TabBar for rendering
+        self.sync_badges_to_bar();
+
         auto_close
+    }
+
+    /// Push badge state from LayoutGroup's HashMap to each TabPanel's TabBar.
+    fn sync_badges_to_bar(&mut self) {
+        let g = txv_core::glyphs::glyphs();
+        for slot in [SlotId::Right, SlotId::Bottom] {
+            // Collect badge strings first to avoid borrow conflict
+            let count = self.panel(slot).tab_count();
+            let badge_strs: Vec<Option<String>> = (0..count)
+                .map(|i| {
+                    self.badges.get(&(slot, i)).map(|b| match b {
+                        TabBadge::Busy => g.chrome.badge_busy.to_string(),
+                        TabBadge::Idle => g.chrome.badge_idle.to_string(),
+                        TabBadge::Exited => g.chrome.badge_exited.to_string(),
+                    })
+                })
+                .collect();
+            let panel = self.panel_mut(slot);
+            for (i, badge) in badge_strs.into_iter().enumerate() {
+                panel.bar_mut().set_badge(i, badge);
+            }
+        }
     }
 
     /// Get the badge for the active tab in a slot.

@@ -4,7 +4,7 @@ use rusticle::error::TclError;
 use rusticle::interpreter::Interpreter;
 use rusticle::value::TclValue;
 
-use txv_widgets::{ProgressBar, TabBar, Table};
+use txv_widgets::{ProgressBar, TabBar, TabBarMode, Table};
 
 use super::{get_widget, opt_val, parse_opts, parse_string_list, require_arg, tcl_to_string_list, SendShared};
 
@@ -16,7 +16,7 @@ pub fn register_tabbar(interp: &mut Interpreter, shared: &SendShared) {
         match sub.as_str() {
             "create" => {
                 let id = st.alloc_id();
-                let tb = TabBar::new();
+                let tb = TabBar::new(TabBarMode::Static);
                 st.desktop.insert_widget(id.clone(), Box::new(tb));
                 Ok(TclValue::Str(id))
             }
@@ -24,7 +24,7 @@ pub fn register_tabbar(interp: &mut Interpreter, shared: &SendShared) {
                 let id = require_arg(args, 1, "tabbar add")?;
                 let title = require_arg(args, 2, "tabbar add")?;
                 let tb = get_widget::<TabBar>(&mut st.desktop, &id, "tabbar add")?;
-                tb.add_tab(title, 0);
+                tb.add_tab(title);
                 Ok(TclValue::Str(String::new()))
             }
             "remove" => {
@@ -39,7 +39,7 @@ pub fn register_tabbar(interp: &mut Interpreter, shared: &SendShared) {
             "active" => {
                 let id = require_arg(args, 1, "tabbar active")?;
                 let tb = get_widget::<TabBar>(&mut st.desktop, &id, "tabbar active")?;
-                Ok(TclValue::Int(tb.active as i64))
+                Ok(TclValue::Int(tb.active_index() as i64))
             }
             "set-active" => {
                 let id = require_arg(args, 1, "tabbar set-active")?;

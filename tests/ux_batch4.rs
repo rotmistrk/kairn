@@ -129,7 +129,7 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
     h.inject_key(KeyCode::Down, KeyMod::default()); // move to c.rs
     h.inject_key(KeyCode::Right, KeyMod::default()); // open c.rs + focus
     h.run_cycles(1);
-    // Now c.rs is active. Ctrl-Shift-Down opens dropdown, press '1' for b.rs
+    // Now c.rs is active. Ctrl-Shift-Down opens dropdown, type 'b' + Enter for b.rs
     h.inject_key(
         KeyCode::Down,
         KeyMod {
@@ -139,7 +139,9 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
         },
     );
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('1'), KeyMod::default());
+    h.inject_key(KeyCode::Char('b'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
     assert!(h.contains("bbb"), "should switch to b.rs via dropdown");
 }
@@ -158,7 +160,7 @@ fn ctrl_shift_down_twice_cycles_further_back() {
     h.inject_key(KeyCode::Down, KeyMod::default());
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
-    // Open dropdown and press '0' to select a.rs directly
+    // Open dropdown and type 'a' + Enter to select a.rs
     h.inject_key(
         KeyCode::Down,
         KeyMod {
@@ -168,7 +170,9 @@ fn ctrl_shift_down_twice_cycles_further_back() {
         },
     );
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('0'), KeyMod::default());
+    h.inject_key(KeyCode::Char('a'), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("aaa"), "should switch to a.rs via dropdown '0'");
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(1);
+    assert!(h.contains("aaa"), "should switch to a.rs via dropdown filter");
 }

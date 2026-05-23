@@ -27,17 +27,18 @@ fn dropdown_position_wide_layout_right_slot() {
     // Open dropdown
     h.inject_key(KeyCode::Down, CTRL_SHIFT_DOWN);
     h.run_cycles(1);
-    // The dropdown "0:" should appear in the right slot area (not at column 0)
-    let row1 = h.row(1);
+    // The dropdown should appear in the right slot area (rows 1-3: border + content)
+    let screen = h.screen_text();
     assert!(
-        row1.contains("0:"),
-        "dropdown should render at row 1 in right slot area. Row 1: {row1:?}"
+        screen.contains("1:"),
+        "dropdown should render in right slot area. Screen:\n{screen}"
     );
     // It should NOT be at the far left (that's the tree)
-    let left_part: String = row1.chars().take(10).collect();
+    let row2 = h.row(2);
+    let left_part: String = row2.chars().take(10).collect();
     assert!(
-        !left_part.contains("0:"),
-        "dropdown should be in right slot, not left: {row1:?}"
+        !left_part.contains("1:"),
+        "dropdown should be in right slot, not left: {row2:?}"
     );
 }
 
@@ -61,7 +62,7 @@ fn dropdown_position_tall_layout_center_slot() {
     // Dropdown should appear below center's chrome (not at row 0/1 which is tree area)
     // Center slot starts after the tree in tall layout
     let screen = h.screen_text();
-    assert!(screen.contains("0:"), "dropdown should be visible: {screen}");
+    assert!(screen.contains("1:"), "dropdown should be visible: {screen}");
     assert!(screen.contains("a.rs"), "dropdown should list a.rs");
     assert!(screen.contains("b.rs"), "dropdown should list b.rs");
 }

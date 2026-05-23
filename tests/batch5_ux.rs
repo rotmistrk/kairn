@@ -60,14 +60,15 @@ fn chrome_shows_active_tab_with_count() {
     h.inject_key(KeyCode::Down, KeyMod::default());
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
-    // Chrome should show "c.rs (3)" not "(a.rs)(b.rs)(c.rs)"
+    // Chrome should show all tabs in LRU mode (active first, then by recency)
     let top = h.row(0);
+    assert!(top.contains("c.rs"), "should show active tab: {}", top);
+    // In Multi mode, other tabs are visible too (not hidden behind a count badge)
     assert!(
-        top.contains("❨3❩") || top.contains("3"),
-        "should show tab count: {}",
+        top.contains("b.rs") || top.contains("a.rs") || top.contains("▾"),
+        "should show other tabs or overflow badge: {}",
         top
     );
-    assert!(!top.contains("(a.rs)"), "should NOT show all tab names: {}", top);
 }
 
 #[test]
@@ -91,9 +92,9 @@ fn ctrl_shift_down_shows_dropdown_overlay() {
     );
     h.run_cycles(1);
     let screen = h.screen_text();
-    // Dropdown should show numbered entries
+    // Dropdown should show numbered entries (1-based)
     assert!(
-        screen.contains("0:"),
+        screen.contains("1:"),
         "dropdown should show numbered entries: {}",
         screen
     );
@@ -102,7 +103,7 @@ fn ctrl_shift_down_shows_dropdown_overlay() {
 }
 
 #[test]
-fn dropdown_digit_selects_tab() {
+fn dropdown_filter_selects_tab() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
     h.inject_key(KeyCode::Right, KeyMod::default());
@@ -115,7 +116,7 @@ fn dropdown_digit_selects_tab() {
     h.inject_key(KeyCode::Down, KeyMod::default());
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
-    // c.rs is active. Open dropdown, press '0' to select a.rs
+    // c.rs is active. Open dropdown, type 'a' to filter, Enter to select a.rs
     h.inject_key(
         KeyCode::Down,
         KeyMod {
@@ -125,10 +126,12 @@ fn dropdown_digit_selects_tab() {
         },
     );
     h.run_cycles(1);
-    h.inject_key(KeyCode::Char('0'), KeyMod::default());
+    h.inject_key(KeyCode::Char('a'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
     // a.rs should now be active
-    assert!(h.contains("aaa"), "pressing '0' should select first tab (a.rs)");
+    assert!(h.contains("aaa"), "typing 'a' + Enter should select a.rs");
 }
 
 #[test]
