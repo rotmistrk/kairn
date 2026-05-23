@@ -22,8 +22,8 @@ struct ChromeRects {
 impl Desktop {
     /// Draw chrome on top of TiledWorkspace's buffer.
     pub(super) fn draw_chrome(&mut self) {
-        let rects = self.layout_rects();
-        let is_tall = self.is_tall();
+        let rects = self.panel_rects();
+        let is_tall = !self.workspace.is_wide();
         let is_zoomed = self.workspace.is_zoomed();
         let origin = self.workspace.bounds();
         let buf = self.workspace.buffer_mut();
@@ -41,6 +41,16 @@ impl Desktop {
         Self::draw_dividers(buf, &cr, is_tall, w, h);
     }
 
+    fn panel_rects(&self) -> [Rect; PANEL_COUNT] {
+        let mut rects = [Rect::default(); PANEL_COUNT];
+        for (i, rect) in rects.iter_mut().enumerate() {
+            if let Some(child) = self.workspace.child(i) {
+                *rect = child.bounds();
+            }
+        }
+        rects
+    }
+
     fn to_chrome_rects(rects: &[Rect; PANEL_COUNT], origin: Rect) -> ChromeRects {
         let rel = |r: Rect| Rect::new(r.x.saturating_sub(origin.x), r.y.saturating_sub(origin.y), r.w, r.h);
         ChromeRects {
@@ -55,7 +65,6 @@ impl Desktop {
         let cs = chrome_style();
         buf.hline(0, 0, w, '─', cs);
 
-        // ┬ connectors at top
         if cr.left.w > 0 && cr.center.w > 0 {
             buf.put(cr.left.x + cr.left.w, 0, '┬', cs);
         }
@@ -63,7 +72,6 @@ impl Desktop {
             buf.put(cr.right.x.saturating_sub(1), 0, '┬', cs);
         }
 
-        // Vertical dividers
         let tall_right = is_tall && cr.right.h > 0;
         let div_y = match (cr.bottom.h > 0 || tall_right, tall_right) {
             (true, true) => cr.right.y,
@@ -78,7 +86,6 @@ impl Desktop {
             buf.vline(cr.right.x.saturating_sub(1), 1, vline_len, '│', cs);
         }
 
-        // Bottom horizontal divider
         if (cr.bottom.h > 0 || tall_right) && div_y > 0 && div_y < h {
             buf.hline(0, div_y, w, '─', cs);
             if cr.left.w > 0 && cr.center.w > 0 {

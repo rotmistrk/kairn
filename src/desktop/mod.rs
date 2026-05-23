@@ -1,26 +1,22 @@
-//! Desktop — wraps TiledWorkspace with kairn's SlotId API and chrome drawing.
+//! Desktop — minimal View adapter for TiledWorkspace.
 //!
-//! This is the top-level view for kairn's panel layout. It delegates panel
-//! management to TiledWorkspace while providing the familiar SlotId-based
-//! accessors that all handler code uses.
-
-use std::collections::HashMap;
-use std::time::Instant;
+//! Provides chrome drawing, command dispatch, and tick routing.
+//! All panel access goes through workspace() directly.
 
 use txv_core::prelude::*;
 use txv_widgets::tab_panel::TabPanel;
-use txv_widgets::tiled_workspace::types::{PanelConfig, PanelPosition, SplitDir, SplitNode};
+use txv_widgets::tiled_workspace::types::{PanelConfig, PanelPosition, SplitNode};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub use txv_widgets::tiled_workspace::types::LayoutMode;
 
-mod badges;
 mod chrome;
 mod dispatch;
 mod view_impl;
 
 /// Identifies one of the four panel slots.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[repr(usize)]
 pub enum SlotId {
     Left = 0,
     Center = 1,
@@ -28,23 +24,11 @@ pub enum SlotId {
     Bottom = 3,
 }
 
-/// Activity state for a terminal tab.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum TabBadge {
-    Busy,
-    Idle,
-    Exited,
-}
+pub const PANEL_COUNT: usize = 4;
 
-const PANEL_COUNT: usize = 4;
-
-/// The desktop — TiledWorkspace with kairn-specific chrome and badge tracking.
+/// The desktop — TiledWorkspace with kairn-specific chrome.
 pub struct Desktop {
     workspace: TiledWorkspace,
-    /// Last output timestamp per terminal tab (slot, tab_index).
-    last_output: HashMap<(SlotId, usize), Instant>,
-    /// Cached badge state per terminal tab.
-    badges: HashMap<(SlotId, usize), TabBadge>,
 }
 
 impl Default for Desktop {
@@ -56,7 +40,6 @@ impl Default for Desktop {
 impl Desktop {
     pub fn new() -> Self {
         let mut ws = Self::create_workspace();
-        // Disable internal key handling on tab bars
         for i in 0..PANEL_COUNT {
             if let Some(panel) = ws.panel_mut(i) {
                 panel.bar_mut().set_handle_keys(false);
@@ -64,12 +47,7 @@ impl Desktop {
         }
         ws.focus_panel(0);
         ws.set_hidden(3, true);
-
-        Self {
-            workspace: ws,
-            last_output: HashMap::new(),
-            badges: HashMap::new(),
-        }
+        Self { workspace: ws }
     }
 
     fn create_workspace() -> TiledWorkspace {
@@ -104,16 +82,23 @@ impl Desktop {
         ws
     }
 
-    /// Access a panel as TabPanel. SlotId is bounded so this always succeeds.
+    /// Access the underlying TiledWorkspace.
+    pub fn workspace(&self) -> &TiledWorkspace {
+        &self.workspace
+    }
+
+    /// Mutable access to the underlying TiledWorkspace.
+    pub fn workspace_mut(&mut self) -> &mut TiledWorkspace {
+        &mut self.workspace
+    }
+
     pub fn panel(&self, slot: SlotId) -> &TabPanel {
-        // SAFETY: SlotId enum has exactly 4 variants matching our 4 panels
         match self.workspace.panel(slot as usize) {
             Some(p) => p,
             None => unreachable!(),
         }
     }
 
-    /// Access a panel mutably as TabPanel. SlotId is bounded so this always succeeds.
     pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabPanel {
         match self.workspace.panel_mut(slot as usize) {
             Some(p) => p,
@@ -124,9 +109,25 @@ impl Desktop {
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
         let id = slot as usize;
         self.workspace.insert_tab(id, title, view);
-        // Auto-show panel when it gets tabs
         if self.workspace.is_hidden(id) {
             self.workspace.set_hidden(id, false);
+        }
+    }
+
+    pub fn focused_slot(&self) -> SlotId {
+        Self::slot_from(self.workspace.focused_panel())
+    }
+
+    pub fn focus_slot(&mut self, id: SlotId) {
+        self.workspace.focus_panel(id as usize);
+    }
+
+    fn slot_from(idx: usize) -> SlotId {
+        match idx {
+            0 => SlotId::Left,
+            1 => SlotId::Center,
+            2 => SlotId::Right,
+            _ => SlotId::Bottom,
         }
     }
 
@@ -185,41 +186,13 @@ impl Desktop {
         view.as_any_mut()?.downcast_mut::<T>()
     }
 
-    pub fn focused_slot(&self) -> SlotId {
-        Self::slot_from(self.workspace.focused_panel())
+    pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
+        self.panel(slot).next_tab_name(prefix)
     }
 
-    pub fn focus_slot(&mut self, id: SlotId) {
-        self.workspace.focus_panel(id as usize);
-    }
-
-    pub fn focus_tab(&mut self, slot: SlotId, tab: usize) {
-        self.focus_slot(slot);
-        self.panel_mut(slot).set_active(tab);
-    }
-
-    pub fn toggle_zoom(&mut self) {
-        self.workspace.toggle_zoom();
-    }
-
-    pub fn is_zoomed(&self) -> bool {
-        self.workspace.is_zoomed()
-    }
-
-    pub fn cycle_focus(&mut self, dir: i32) {
-        if dir > 0 {
-            self.workspace.focus_next_visible();
-        } else {
-            self.workspace.focus_prev_visible();
-        }
-        // If zoomed, follow focus
-        if self.workspace.is_zoomed() {
-            self.workspace.set_zoomed(Some(self.workspace.focused_panel()));
-        }
-    }
-
-    pub fn is_tall(&self) -> bool {
-        !self.workspace.is_wide()
+    pub fn rename_focused_tab(&mut self, new_user_part: &str) {
+        let slot = self.focused_slot();
+        self.panel_mut(slot).rename_user_part(new_user_part);
     }
 
     pub fn set_layout_mode(&mut self, mode: LayoutMode) {
@@ -230,25 +203,12 @@ impl Desktop {
         self.workspace.layout_mode()
     }
 
-    pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
-        self.panel(slot).next_tab_name(prefix)
-    }
-
-    pub fn rename_focused_tab(&mut self, new_user_part: &str) {
-        let slot = self.focused_slot();
-        self.panel_mut(slot).rename_user_part(new_user_part);
-    }
-
-    pub fn resize_focused(&mut self, delta: i16) {
-        self.workspace.resize_panel(SplitDir::Horizontal, delta);
-    }
-
-    pub fn resize_vertical(&mut self, delta: i16) {
-        self.workspace.resize_panel(SplitDir::Vertical, delta);
-    }
-
     pub fn set_wide_threshold(&mut self, threshold: u16) {
         self.workspace.set_wide_threshold(threshold);
+    }
+
+    pub fn is_tall(&self) -> bool {
+        !self.workspace.is_wide()
     }
 
     pub fn layout_rects(&self) -> [Rect; PANEL_COUNT] {
@@ -259,38 +219,5 @@ impl Desktop {
             }
         }
         rects
-    }
-
-    fn slot_from(idx: usize) -> SlotId {
-        match idx {
-            0 => SlotId::Left,
-            1 => SlotId::Center,
-            2 => SlotId::Right,
-            _ => SlotId::Bottom,
-        }
-    }
-
-    /// Draw and blit all visible children onto the workspace buffer.
-    pub(crate) fn draw_children(&mut self) {
-        let my_bounds = self.workspace.bounds();
-        for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.child_mut(i) {
-                let cb = child.bounds();
-                if cb.w > 0 && cb.h > 0 {
-                    child.draw();
-                }
-            }
-        }
-        let buf_ptr = self.workspace.buffer_mut() as *mut txv_core::prelude::Buffer;
-        for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.child(i) {
-                let cb = child.bounds();
-                if cb.w > 0 && cb.h > 0 {
-                    let dx = cb.x.saturating_sub(my_bounds.x);
-                    let dy = cb.y.saturating_sub(my_bounds.y);
-                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
-                }
-            }
-        }
     }
 }

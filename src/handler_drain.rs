@@ -94,15 +94,25 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Update PTY activity badges and auto-close exited terminals.
 pub fn update_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let idle_secs = state.settings.terminal_idle_timeout;
-        let exited = desktop.update_badges(idle_secs);
-        if state.settings.terminal_auto_close {
-            for title in exited {
-                for slot in [SlotId::Right, SlotId::Bottom] {
-                    desktop.close_tab_by_title(slot, &title);
+    if !state.settings.terminal_auto_close {
+        return;
+    }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    for slot in [SlotId::Right, SlotId::Bottom] {
+        let titles: Vec<String> = (0..desktop.panel(slot).tab_count())
+            .filter_map(|i| {
+                let t = desktop.panel(slot).tab_title(i)?;
+                if t.contains("[exited]") {
+                    Some(t.to_string())
+                } else {
+                    None
                 }
-            }
+            })
+            .collect();
+        for title in titles {
+            desktop.close_tab_by_title(slot, &title);
         }
     }
 }
