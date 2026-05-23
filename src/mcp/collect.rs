@@ -59,9 +59,9 @@ pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
                 .as_any_mut()
                 .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
             {
-                let dir = match es.split.direction {
-                    txv_widgets::split_pane::SplitDirection::Horizontal => "horizontal",
-                    txv_widgets::split_pane::SplitDirection::Vertical => "vertical",
+                let dir = match es.split.direction() {
+                    txv_widgets::tiled_workspace::types::SplitDir::Horizontal => "horizontal",
+                    txv_widgets::tiled_workspace::types::SplitDir::Vertical => "vertical",
                 };
                 (dir.to_string(), es.linked_scroll)
             } else {

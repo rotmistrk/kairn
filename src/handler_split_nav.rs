@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
-use txv_widgets::split_pane::SplitDirection;
+use txv_widgets::tiled_workspace::types::SplitDir;
 
 use crate::handler::{downcast_desktop, AppState};
 use crate::layout_group::SlotId;
@@ -59,13 +59,13 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
         }
     }
 
-    let mut split = EditorSplit::new(SplitDirection::Horizontal, Box::new(base_ev), current_view);
+    let mut split = EditorSplit::new(SplitDir::Horizontal, Box::new(base_ev), current_view);
     split.linked_scroll = true;
     if let Some(ref current) = current_content {
         split.scroll_map = Some(ScrollMap::from_diff(&base_content, current));
     }
     // Focus the right (current) pane
-    split.split.focus_next();
+    split.split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 
@@ -117,9 +117,9 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
     };
     let _ = word_range;
 
-    let mut split = EditorSplit::new(txv_widgets::split_pane::SplitDirection::Horizontal, new_pane, existing);
+    let mut split = EditorSplit::new(SplitDir::Horizontal, new_pane, existing);
     // Focus the second pane (right — where the user was editing)
-    split.split.focus_next();
+    split.split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 

@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
-use txv_widgets::split_pane::SplitDirection;
+use txv_widgets::tiled_workspace::types::SplitDir;
 
 use crate::commands::SplitRequest;
 use crate::handler::{downcast_desktop, AppState};
@@ -20,9 +20,9 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     let vertical = req.vertical;
     let file = req.file.clone();
     let direction = if vertical {
-        SplitDirection::Horizontal
+        SplitDir::Horizontal
     } else {
-        SplitDirection::Vertical
+        SplitDir::Vertical
     };
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
@@ -65,7 +65,7 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     // new_pane = first (top/left), existing = second (bottom/right)
     let mut split = EditorSplit::new(direction, new_pane, existing);
     // Focus the second pane (bottom/right) where the user was editing
-    split.split.focus_next();
+    split.split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 
@@ -107,7 +107,7 @@ pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
     let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) else {
         return;
     };
-    es.split.focus_next();
+    es.split.cycle_focus();
 }
 
 pub(crate) fn handle_split_linked(ctx: &mut CommandContext) {

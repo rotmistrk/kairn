@@ -1,39 +1,39 @@
-//! EditorSplit — wraps SplitPane for editor-specific split behavior.
+//! EditorSplit — wraps SplitPanel for editor-specific split behavior.
 //!
 //! Intercepts Ctrl-W w to switch focus between panes.
 //! The handler creates this when :split/:vsplit is invoked.
 
 use txv_core::prelude::*;
-use txv_widgets::split_pane::{SplitDirection, SplitPane};
+use txv_widgets::split_panel::SplitPanel;
+use txv_widgets::tiled_workspace::types::SplitDir;
 
 use crate::views::editor::EditorView;
 use crate::views::scroll_map::ScrollMap;
 
 /// A split editor view — two EditorViews side by side or stacked.
 pub struct EditorSplit {
-    pub split: SplitPane,
+    pub split: SplitPanel,
     /// When true, scrolling in one pane scrolls the other.
     pub linked_scroll: bool,
     /// Hunk-aligned scroll map: maps line in pane 0 → line in pane 1.
-    /// If None, uses 1:1 mapping.
     pub scroll_map: Option<ScrollMap>,
 }
 
 impl EditorSplit {
-    pub fn new(direction: SplitDirection, first: Box<dyn View>, second: Box<dyn View>) -> Self {
+    pub fn new(direction: SplitDir, first: Box<dyn View>, second: Box<dyn View>) -> Self {
+        let mut split = SplitPanel::new(direction);
+        split.add_child(first, 0.5);
+        split.add_child(second, 0.5);
         Self {
-            split: SplitPane::new(direction, first, second),
+            split,
             linked_scroll: false,
             scroll_map: None,
         }
     }
 
     /// Change orientation without recreating the split.
-    pub fn set_direction(&mut self, direction: SplitDirection) {
-        self.split.direction = direction;
-        // Re-apply layout with new direction
-        let bounds = self.split.bounds();
-        self.split.set_bounds(bounds);
+    pub fn set_direction(&mut self, direction: SplitDir) {
+        self.split.set_direction(direction);
     }
 
     /// Get the focused pane as EditorView (if it is one).
@@ -48,24 +48,24 @@ impl EditorSplit {
     }
 
     /// Remove the focused pane and return the other one.
-    pub fn collapse(self) -> Box<dyn View> {
-        let keep = if self.split.focused_index() == 0 {
-            0
-        } else {
-            1
-        };
-        self.split.take_child(keep)
+    pub fn collapse(mut self) -> Box<dyn View> {
+        let keep = 1 - self.split.focused_index();
+        self.split
+            .remove_child(keep)
+            .unwrap_or_else(|| self.split.remove_child(0).expect("split must have at least one child"))
     }
 
-    /// Remove the focused child, returning it. Leaves the split in an invalid state.
-    /// Caller must replace the split with the returned view.
+    /// Remove the focused child, returning it.
     pub fn take_focused(&mut self) -> Option<Box<dyn View>> {
         let idx = self.split.focused_index();
-        Some(self.split.remove_child(idx))
+        self.split.remove_child(idx)
     }
 
     /// Sync scroll position from focused pane to the other pane.
     fn sync_scroll(&mut self) {
+        if self.split.child_count() < 2 {
+            return;
+        }
         let focused = self.split.focused_index();
         let other = 1 - focused;
         let scroll = self
@@ -137,7 +137,7 @@ impl View for EditorSplit {
                         shift: false,
                     })
             {
-                self.split.focus_next();
+                self.split.cycle_focus();
                 return HandleResult::Consumed;
             }
         }
