@@ -40,11 +40,11 @@ const PANEL_COUNT: usize = 4;
 
 /// The desktop — TiledWorkspace with kairn-specific chrome and badge tracking.
 pub struct Desktop {
-    pub workspace: TiledWorkspace,
+    workspace: TiledWorkspace,
     /// Last output timestamp per terminal tab (slot, tab_index).
-    pub last_output: HashMap<(SlotId, usize), Instant>,
+    last_output: HashMap<(SlotId, usize), Instant>,
     /// Cached badge state per terminal tab.
-    pub badges: HashMap<(SlotId, usize), TabBadge>,
+    badges: HashMap<(SlotId, usize), TabBadge>,
 }
 
 impl Default for Desktop {
@@ -86,9 +86,9 @@ impl Desktop {
         ]);
 
         let mut ws = TiledWorkspace::new(configs, wide_layout, narrow_layout, 300);
-        ws.narrow_threshold = 200;
+        ws.set_narrow_threshold(200);
         ws.set_handle_keys(false);
-        ws.v_divider_gaps = false;
+        ws.set_v_divider_gaps(false);
 
         // Disable internal key handling on tab bars
         for i in 0..PANEL_COUNT {
@@ -101,7 +101,7 @@ impl Desktop {
         ws.focus_panel(0);
 
         // Bottom panel starts hidden (shown when tabs are added)
-        ws.hidden[3] = true;
+        ws.set_hidden(3, true);
 
         Self {
             workspace: ws,
@@ -124,9 +124,8 @@ impl Desktop {
         let id = slot as usize;
         self.workspace.insert_tab(id, title, view);
         // Auto-show panel when it gets tabs
-        if self.workspace.hidden[id] {
-            self.workspace.hidden[id] = false;
-            self.workspace.recompute_layout();
+        if self.workspace.is_hidden(id) {
+            self.workspace.set_hidden(id, false);
         }
     }
 
@@ -203,7 +202,7 @@ impl Desktop {
     }
 
     pub fn is_zoomed(&self) -> bool {
-        self.workspace.zoomed.is_some()
+        self.workspace.is_zoomed()
     }
 
     pub fn cycle_focus(&mut self, dir: i32) {
@@ -213,23 +212,21 @@ impl Desktop {
             self.workspace.focus_prev_visible();
         }
         // If zoomed, follow focus
-        if self.workspace.zoomed.is_some() {
-            self.workspace.zoomed = Some(self.workspace.focused_panel());
-            self.workspace.recompute_layout();
+        if self.workspace.is_zoomed() {
+            self.workspace.set_zoomed(Some(self.workspace.focused_panel()));
         }
     }
 
     pub fn is_tall(&self) -> bool {
-        !self.workspace.is_wide
+        !self.workspace.is_wide()
     }
 
     pub fn set_layout_mode(&mut self, mode: LayoutMode) {
-        self.workspace.layout_mode = mode;
-        self.workspace.recompute_layout();
+        self.workspace.set_layout_mode(mode);
     }
 
     pub fn layout_mode(&self) -> LayoutMode {
-        self.workspace.layout_mode
+        self.workspace.layout_mode()
     }
 
     pub fn next_tab_name(&self, slot: SlotId, prefix: &str) -> String {
@@ -250,13 +247,13 @@ impl Desktop {
     }
 
     pub fn set_wide_threshold(&mut self, threshold: u16) {
-        self.workspace.wide_threshold = threshold;
+        self.workspace.set_wide_threshold(threshold);
     }
 
     pub fn layout_rects(&self) -> [Rect; PANEL_COUNT] {
         let mut rects = [Rect::default(); PANEL_COUNT];
         for (i, rect) in rects.iter_mut().enumerate() {
-            if let Some(child) = self.workspace.group.child(i) {
+            if let Some(child) = self.workspace.child(i) {
                 *rect = child.bounds();
             }
         }
@@ -276,7 +273,7 @@ impl Desktop {
     pub(crate) fn draw_children(&mut self) {
         let my_bounds = self.workspace.bounds();
         for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.group.child_mut(i) {
+            if let Some(child) = self.workspace.child_mut(i) {
                 let cb = child.bounds();
                 if cb.w > 0 && cb.h > 0 {
                     child.draw();
@@ -285,7 +282,7 @@ impl Desktop {
         }
         let buf_ptr = self.workspace.buffer_mut() as *mut txv_core::prelude::Buffer;
         for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.group.child(i) {
+            if let Some(child) = self.workspace.child(i) {
                 let cb = child.bounds();
                 if cb.w > 0 && cb.h > 0 {
                     let dx = cb.x.saturating_sub(my_bounds.x);

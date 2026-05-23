@@ -12,11 +12,11 @@ use crate::views::scroll_map::ScrollMap;
 
 /// A split editor view — two EditorViews side by side or stacked.
 pub struct EditorSplit {
-    pub split: SplitPanel,
+    split: SplitPanel,
     /// When true, scrolling in one pane scrolls the other.
-    pub linked_scroll: bool,
+    linked_scroll: bool,
     /// Hunk-aligned scroll map: maps line in pane 0 → line in pane 1.
-    pub scroll_map: Option<ScrollMap>,
+    scroll_map: Option<ScrollMap>,
 }
 
 impl EditorSplit {
@@ -34,6 +34,37 @@ impl EditorSplit {
     /// Change orientation without recreating the split.
     pub fn set_direction(&mut self, direction: SplitDir) {
         self.split.set_direction(direction);
+    }
+
+    /// Get the split direction.
+    pub fn direction(&self) -> SplitDir {
+        self.split.direction()
+    }
+
+    /// Access a child by index.
+    pub fn child_mut(&mut self, idx: usize) -> Option<&mut Box<dyn View>> {
+        self.split.child_mut(idx)
+    }
+
+    /// Set the focused pane index.
+    pub fn set_focused(&mut self, idx: usize) {
+        self.split.set_focused(idx);
+    }
+
+    /// Cycle focus between panes.
+    pub fn cycle_focus(&mut self) {
+        self.split.cycle_focus();
+    }
+
+    /// Enable linked scrolling with an optional scroll map.
+    pub fn set_linked_scroll(&mut self, enabled: bool, map: Option<ScrollMap>) {
+        self.linked_scroll = enabled;
+        self.scroll_map = map;
+    }
+
+    /// Whether linked scrolling is enabled.
+    pub fn is_linked_scroll(&self) -> bool {
+        self.linked_scroll
     }
 
     /// Get the focused pane as EditorView (if it is one).

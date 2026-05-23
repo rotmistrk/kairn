@@ -16,7 +16,7 @@ impl Desktop {
     pub(super) fn draw_chrome(&mut self) {
         let rects = self.layout_rects();
         let is_tall = self.is_tall();
-        let is_zoomed = self.workspace.zoomed.is_some();
+        let is_zoomed = self.workspace.is_zoomed();
         let origin = self.workspace.bounds();
         let buf = self.workspace.buffer_mut();
         let w = buf.width();

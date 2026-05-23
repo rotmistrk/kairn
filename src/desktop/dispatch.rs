@@ -68,7 +68,7 @@ impl Desktop {
                 let slot = self.focused_slot();
                 let title = self.panel(slot).active_title().map(String::from);
                 self.panel_mut(slot).close_active();
-                self.workspace.group.put_command(
+                self.workspace.put_command(
                     CM_FILE_CLOSED,
                     title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
                 );

@@ -69,4 +69,14 @@ impl Desktop {
         let idx = self.panel(slot).active_index();
         self.badges.get(&(slot, idx)).copied()
     }
+
+    /// Record output timestamp for a tab (for testing/external use).
+    pub fn set_last_output(&mut self, slot: SlotId, tab: usize, when: Instant) {
+        self.last_output.insert((slot, tab), when);
+    }
+
+    /// Clear all cached badges (forces recalculation on next update).
+    pub fn clear_badges(&mut self) {
+        self.badges.clear();
+    }
 }

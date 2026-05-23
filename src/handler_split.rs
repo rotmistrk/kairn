@@ -35,7 +35,7 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(ref filename) = file {
                 // Open file in the other pane
                 let other_idx = 1 - es.focused_index();
-                if let Some(child) = es.split.child_mut(other_idx) {
+                if let Some(child) = es.child_mut(other_idx) {
                     if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                         crate::handler_split_nav::open_into_editor(ev, &state.root_dir.join(filename), 0, 0, state);
                     }
@@ -65,7 +65,7 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     // new_pane = first (top/left), existing = second (bottom/right)
     let mut split = EditorSplit::new(direction, new_pane, existing);
     // Focus the second pane (bottom/right) where the user was editing
-    split.split.set_focused(1);
+    split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 
@@ -107,7 +107,7 @@ pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
     let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) else {
         return;
     };
-    es.split.cycle_focus();
+    es.cycle_focus();
 }
 
 pub(crate) fn handle_split_linked(ctx: &mut CommandContext) {
@@ -127,7 +127,7 @@ pub(crate) fn handle_split_linked(ctx: &mut CommandContext) {
     let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) else {
         return;
     };
-    es.linked_scroll = on;
+    es.set_linked_scroll(on, None);
 }
 
 fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {

@@ -35,9 +35,9 @@ fn forced_idle_badge() {
     let desktop = get_desktop(&mut h);
     // Manually set last_output to the past and clear the badge
     let past = std::time::Instant::now() - std::time::Duration::from_secs(10);
-    desktop.last_output.insert((SlotId::Right, 0), past);
+    desktop.set_last_output(SlotId::Right, 0, past);
     // Clear any existing badge so update_badges recalculates
-    desktop.badges.clear();
+    desktop.clear_badges();
 
     // Now update with a short idle timeout — if view is not dirty, should be idle
     // If view IS dirty (test env), it'll be busy — both are valid states

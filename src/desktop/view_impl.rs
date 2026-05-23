@@ -55,14 +55,14 @@ impl View for Desktop {
         // Tick goes to ALL panels (background tabs need it for PTY poll)
         if matches!(event, Event::Tick) {
             for i in 0..super::PANEL_COUNT {
-                if let Some(child) = self.workspace.group.child_mut(i) {
+                if let Some(child) = self.workspace.child_mut(i) {
                     child.handle(event);
                 }
             }
             return HandleResult::Ignored;
         }
         // All other events: delegate to focused child
-        self.workspace.group.dispatch(event)
+        self.workspace.dispatch(event)
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {

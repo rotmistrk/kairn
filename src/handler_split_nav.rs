@@ -59,13 +59,13 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
         }
     }
 
+    let map = current_content
+        .as_ref()
+        .map(|current| ScrollMap::from_diff(&base_content, current));
     let mut split = EditorSplit::new(SplitDir::Horizontal, Box::new(base_ev), current_view);
-    split.linked_scroll = true;
-    if let Some(ref current) = current_content {
-        split.scroll_map = Some(ScrollMap::from_diff(&base_content, current));
-    }
+    split.set_linked_scroll(true, map);
     // Focus the right (current) pane
-    split.split.set_focused(1);
+    split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 
@@ -89,7 +89,7 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
     if let Some(view) = panel.active_view_mut() {
         if let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) {
             let other_idx = 1 - es.focused_index();
-            if let Some(child) = es.split.child_mut(other_idx) {
+            if let Some(child) = es.child_mut(other_idx) {
                 if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                     open_into_editor(ev, &path, line, col, state);
                     let word_range = word_cols_at(ev, line as usize, col as usize);
@@ -119,7 +119,7 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
 
     let mut split = EditorSplit::new(SplitDir::Horizontal, new_pane, existing);
     // Focus the second pane (right — where the user was editing)
-    split.split.set_focused(1);
+    split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
 }
 

@@ -182,7 +182,7 @@ fn main() -> anyhow::Result<()> {
     };
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
     let mut desktop = build_desktop(&root_dir, git_keys);
-    desktop.workspace.wide_threshold = app_state.settings.layout_wide_threshold;
+    desktop.set_wide_threshold(app_state.settings.layout_wide_threshold);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
     if let Some(ref sess) = saved_session {

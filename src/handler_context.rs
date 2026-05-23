@@ -54,11 +54,11 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
                 .as_any_mut()
                 .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
             {
-                let dir = match es.split.direction() {
+                let dir = match es.direction() {
                     txv_widgets::tiled_workspace::types::SplitDir::Horizontal => "horizontal",
                     txv_widgets::tiled_workspace::types::SplitDir::Vertical => "vertical",
                 };
-                (dir, es.linked_scroll)
+                (dir, es.is_linked_scroll())
             } else {
                 ("none", false)
             }
