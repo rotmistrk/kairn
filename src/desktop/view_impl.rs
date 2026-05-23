@@ -1,8 +1,16 @@
 //! View trait implementation for Desktop.
 
+use txv_core::event::CommandId;
 use txv_core::prelude::*;
 
 use super::Desktop;
+
+/// Check if a command ID belongs to TiledWorkspace's command space.
+fn is_workspace_command(id: CommandId) -> bool {
+    use txv_core::commands::CM_TXV_MAX;
+    use txv_widgets::tiled_workspace::commands::CM_WORKSPACE_BASE;
+    (CM_WORKSPACE_BASE..=CM_TXV_MAX).contains(&id)
+}
 
 impl View for Desktop {
     fn bounds(&self) -> Rect {
@@ -50,6 +58,13 @@ impl View for Desktop {
             let r = self.handle_command(*id, data);
             if r == HandleResult::Consumed {
                 return r;
+            }
+            // Forward workspace subpanel/layout commands to TiledWorkspace
+            if is_workspace_command(*id) {
+                let r = self.workspace.handle_command_event(*id, data);
+                if r == HandleResult::Consumed {
+                    return r;
+                }
             }
         }
         // Tick goes to ALL panels (background tabs need it for PTY poll)

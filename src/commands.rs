@@ -47,87 +47,85 @@ impl OpenFileRequest {
 }
 
 // File operations
-pub const CM_OPEN_FILE: CommandId = 100;
-pub const CM_OPEN_FILE_FOCUS: CommandId = 106;
-pub const CM_SAVE: CommandId = 101;
-pub const CM_NEW_SHELL: CommandId = 102;
-pub const CM_NEW_KIRO: CommandId = 103;
-pub const CM_FILE_DELETED: CommandId = 104;
-pub const CM_FILE_CLOSED: CommandId = 105;
+pub const CM_APP_BASE: CommandId = txv_core::commands::CM_TXV_MAX + 1;
+pub const CM_OPEN_FILE: CommandId = CM_APP_BASE;
+pub const CM_SAVE: CommandId = CM_APP_BASE + 1;
+pub const CM_NEW_SHELL: CommandId = CM_APP_BASE + 2;
+pub const CM_NEW_KIRO: CommandId = CM_APP_BASE + 3;
+pub const CM_FILE_DELETED: CommandId = CM_APP_BASE + 4;
+pub const CM_FILE_CLOSED: CommandId = CM_APP_BASE + 5;
+pub const CM_OPEN_FILE_FOCUS: CommandId = CM_APP_BASE + 6;
 
 // Focus / slot navigation
-pub const CM_FOCUS_LEFT: CommandId = 110;
-pub const CM_FOCUS_CENTER: CommandId = 111;
-pub const CM_FOCUS_RIGHT: CommandId = 112;
-pub const CM_FOCUS_BOTTOM: CommandId = 113;
-pub const CM_ZOOM_TOGGLE: CommandId = 114;
-pub const CM_TAB_NEXT: CommandId = 115;
-pub const CM_TAB_PREV: CommandId = 116;
-pub const CM_TAB_CLOSE: CommandId = 117;
-pub const CM_FOCUS_TAB: CommandId = 118;
-pub const CM_TAB_DROPDOWN: CommandId = 119;
-pub const CM_TAB_DROPDOWN_UP: CommandId = 183;
-pub const CM_TAB_DROPDOWN_DOWN: CommandId = 184;
+pub const CM_FOCUS_LEFT: CommandId = CM_APP_BASE + 10;
+pub const CM_FOCUS_CENTER: CommandId = CM_APP_BASE + 11;
+pub const CM_FOCUS_RIGHT: CommandId = CM_APP_BASE + 12;
+pub const CM_FOCUS_BOTTOM: CommandId = CM_APP_BASE + 13;
+pub const CM_ZOOM_TOGGLE: CommandId = CM_APP_BASE + 14;
+pub const CM_TAB_NEXT: CommandId = CM_APP_BASE + 15;
+pub const CM_TAB_PREV: CommandId = CM_APP_BASE + 16;
+pub const CM_TAB_CLOSE: CommandId = CM_APP_BASE + 17;
+pub const CM_FOCUS_TAB: CommandId = CM_APP_BASE + 18;
+pub const CM_TAB_DROPDOWN: CommandId = CM_APP_BASE + 19;
+pub const CM_TAB_DROPDOWN_UP: CommandId = CM_APP_BASE + 20;
+pub const CM_TAB_DROPDOWN_DOWN: CommandId = CM_APP_BASE + 21;
 
 // Display
-pub const CM_SHOW_HELP: CommandId = 120;
-pub const CM_SHOW_MESSAGES: CommandId = 121;
+pub const CM_SHOW_HELP: CommandId = CM_APP_BASE + 30;
+pub const CM_SHOW_MESSAGES: CommandId = CM_APP_BASE + 31;
 
 // Command mode
-pub const CM_COMMAND_MODE: CommandId = 130;
-pub const CM_EXECUTE_COMMAND: CommandId = 131;
-pub const CM_SHELL_OUTPUT: CommandId = 132;
-pub const CM_SET_GLOBAL: CommandId = 133;
+pub const CM_COMMAND_MODE: CommandId = CM_APP_BASE + 40;
+pub const CM_EXECUTE_COMMAND: CommandId = CM_APP_BASE + 41;
+pub const CM_SHELL_OUTPUT: CommandId = CM_APP_BASE + 42;
+pub const CM_SET_GLOBAL: CommandId = CM_APP_BASE + 43;
 
 // Editor status
-pub const CM_MODE_CHANGED: CommandId = 141;
-pub const CM_CURSOR_MOVED: CommandId = 142;
-pub const CM_DIAGNOSTIC: CommandId = 143;
-pub const CM_LSP_GOTO_DEF: CommandId = 144;
-pub const CM_LSP_GOTO_SHOW: CommandId = 243;
-pub const CM_LSP_FIND_REFS: CommandId = 145;
-pub const CM_LSP_HOVER: CommandId = 146;
-pub const CM_LSP_COMPLETION: CommandId = 147;
-pub const CM_LSP_RENAME: CommandId = 148;
-pub const CM_CODE_ACTION: CommandId = 149;
-pub const CM_LSP_SIGNATURE_HELP: CommandId = 150;
+pub const CM_MODE_CHANGED: CommandId = CM_APP_BASE + 50;
+pub const CM_CURSOR_MOVED: CommandId = CM_APP_BASE + 51;
+pub const CM_DIAGNOSTIC: CommandId = CM_APP_BASE + 52;
+pub const CM_LSP_GOTO_DEF: CommandId = CM_APP_BASE + 53;
+pub const CM_LSP_GOTO_SHOW: CommandId = CM_APP_BASE + 54;
+pub const CM_LSP_FIND_REFS: CommandId = CM_APP_BASE + 55;
+pub const CM_LSP_HOVER: CommandId = CM_APP_BASE + 56;
+pub const CM_LSP_COMPLETION: CommandId = CM_APP_BASE + 57;
+pub const CM_LSP_RENAME: CommandId = CM_APP_BASE + 58;
+pub const CM_CODE_ACTION: CommandId = CM_APP_BASE + 59;
+pub const CM_LSP_SIGNATURE_HELP: CommandId = CM_APP_BASE + 60;
 
-// Clipboard
-pub const CM_CLIPBOARD_PASTE: CommandId = 150;
-pub const CM_BUILD: CommandId = 151;
-pub const CM_RUN: CommandId = 152;
-pub const CM_TEST: CommandId = 153;
-pub const CM_TEST_FILE: CommandId = 154;
-pub const CM_TEST_AT_CURSOR: CommandId = 155;
-pub const CM_NEXT_ERROR: CommandId = 156;
-pub const CM_PREV_ERROR: CommandId = 157;
+// Build / clipboard
+pub const CM_CLIPBOARD_PASTE: CommandId = CM_APP_BASE + 70;
+pub const CM_BUILD: CommandId = CM_APP_BASE + 71;
+pub const CM_RUN: CommandId = CM_APP_BASE + 72;
+pub const CM_TEST: CommandId = CM_APP_BASE + 73;
+pub const CM_TEST_FILE: CommandId = CM_APP_BASE + 74;
+pub const CM_TEST_AT_CURSOR: CommandId = CM_APP_BASE + 75;
+pub const CM_NEXT_ERROR: CommandId = CM_APP_BASE + 76;
+pub const CM_PREV_ERROR: CommandId = CM_APP_BASE + 77;
 
 // Panel resize
-pub const CM_PANEL_GROW: CommandId = 160;
-pub const CM_PANEL_SHRINK: CommandId = 161;
-pub const CM_PANEL_GROW_V: CommandId = 162;
-pub const CM_PANEL_SHRINK_V: CommandId = 163;
-pub const CM_SUSPEND: CommandId = 164;
-pub const CM_PEEK: CommandId = 165;
+pub const CM_PANEL_GROW: CommandId = CM_APP_BASE + 80;
+pub const CM_PANEL_SHRINK: CommandId = CM_APP_BASE + 81;
+pub const CM_PANEL_GROW_V: CommandId = CM_APP_BASE + 82;
+pub const CM_PANEL_SHRINK_V: CommandId = CM_APP_BASE + 83;
+pub const CM_SUSPEND: CommandId = CM_APP_BASE + 84;
+pub const CM_PEEK: CommandId = CM_APP_BASE + 85;
 
 // Git operations
-pub const CM_GIT_STAGE: CommandId = 170;
-pub const CM_GIT_UNSTAGE: CommandId = 171;
-pub const CM_GIT_UNTRACK: CommandId = 172;
-pub const CM_GIT_COMMIT: CommandId = 173;
-pub const CM_GIT_COMMIT_PROMPT: CommandId = 174;
+pub const CM_GIT_STAGE: CommandId = CM_APP_BASE + 90;
+pub const CM_GIT_UNSTAGE: CommandId = CM_APP_BASE + 91;
+pub const CM_GIT_UNTRACK: CommandId = CM_APP_BASE + 92;
+pub const CM_GIT_COMMIT: CommandId = CM_APP_BASE + 93;
+pub const CM_GIT_COMMIT_PROMPT: CommandId = CM_APP_BASE + 94;
 /// Activates the command input with pre-filled text.
-pub const CM_COMMAND_PREFILL: CommandId = 175;
-pub const CM_DIFF: CommandId = 176;
-pub const CM_BLAME: CommandId = 177;
-pub const CM_NOBLAME: CommandId = 178;
+pub const CM_COMMAND_PREFILL: CommandId = CM_APP_BASE + 95;
+pub const CM_DIFF: CommandId = CM_APP_BASE + 96;
+pub const CM_BLAME: CommandId = CM_APP_BASE + 97;
+pub const CM_NOBLAME: CommandId = CM_APP_BASE + 98;
 
 // LSP document sync
 /// Editor content changed — triggers didChange to LSP server.
-pub const CM_CONTENT_CHANGED: CommandId = 180;
-
-/// Show results in a quickfix-style list (data: Vec<ResultEntry>).
-pub const CM_SHOW_RESULTS: CommandId = 181;
+pub const CM_CONTENT_CHANGED: CommandId = CM_APP_BASE + 100;
 
 /// Payload for CM_CONTENT_CHANGED.
 #[derive(Debug, Clone)]
@@ -135,17 +133,20 @@ pub struct ContentChanged {
     pub path: PathBuf,
     pub content: String,
 }
-pub const CM_GOTO_LINE: CommandId = 182;
-pub const CM_GREP_RESULTS: CommandId = 183;
-pub const CM_TOGGLE_THEME: CommandId = 184;
-pub const CM_SET_SYNTAX_THEME: CommandId = 185;
-pub const CM_SET_GLYPHS: CommandId = 186;
+
+/// Show results in a quickfix-style list (data: Vec<ResultEntry>).
+pub const CM_SHOW_RESULTS: CommandId = CM_APP_BASE + 101;
+pub const CM_GOTO_LINE: CommandId = CM_APP_BASE + 102;
+pub const CM_GREP_RESULTS: CommandId = CM_APP_BASE + 103;
+pub const CM_TOGGLE_THEME: CommandId = CM_APP_BASE + 104;
+pub const CM_SET_SYNTAX_THEME: CommandId = CM_APP_BASE + 105;
+pub const CM_SET_GLYPHS: CommandId = CM_APP_BASE + 106;
 
 // Confirmation prompt (ConfirmItem in status bar)
-pub const CM_CONFIRM: CommandId = 190;
-pub const CM_CONFIRM_RESPONSE: CommandId = 191;
+pub const CM_CONFIRM: CommandId = CM_APP_BASE + 110;
+pub const CM_CONFIRM_RESPONSE: CommandId = CM_APP_BASE + 111;
 /// Sets the confirm context (data: ConfirmContext). Handled by main handler.
-pub const CM_SET_CONFIRM_CONTEXT: CommandId = 192;
+pub const CM_SET_CONFIRM_CONTEXT: CommandId = CM_APP_BASE + 112;
 
 /// Context for which confirmation is active — used to route CM_CONFIRM_RESPONSE.
 #[derive(Debug, Clone)]
@@ -161,34 +162,34 @@ pub enum ConfirmContext {
 }
 
 // Context broadcast
-pub const CM_CONTEXT_UPDATE: CommandId = 200;
+pub const CM_CONTEXT_UPDATE: CommandId = CM_APP_BASE + 120;
 
 // Editor script operations (from Tcl bridge)
-pub const CM_EDITOR_REPLACE_SELECTION: CommandId = 210;
-pub const CM_EDITOR_DELETE_LINE: CommandId = 211;
-pub const CM_EDITOR_REPLACE_WORD: CommandId = 212;
-pub const CM_EDITOR_SEARCH: CommandId = 213;
-pub const CM_EDITOR_CLEAR_HIGHLIGHT: CommandId = 214;
-pub const CM_DIFF_REVERT: CommandId = 215;
+pub const CM_EDITOR_REPLACE_SELECTION: CommandId = CM_APP_BASE + 130;
+pub const CM_EDITOR_DELETE_LINE: CommandId = CM_APP_BASE + 131;
+pub const CM_EDITOR_REPLACE_WORD: CommandId = CM_APP_BASE + 132;
+pub const CM_EDITOR_SEARCH: CommandId = CM_APP_BASE + 133;
+pub const CM_EDITOR_CLEAR_HIGHLIGHT: CommandId = CM_APP_BASE + 134;
+pub const CM_DIFF_REVERT: CommandId = CM_APP_BASE + 135;
 
 // Hook triggers from editor
-pub const CM_CHAR_INSERTED: CommandId = 220;
-pub const CM_WORD_COMPLETED: CommandId = 221;
+pub const CM_CHAR_INSERTED: CommandId = CM_APP_BASE + 140;
+pub const CM_WORD_COMPLETED: CommandId = CM_APP_BASE + 141;
 
 // Todo operations
-pub const CM_TODO_NOTE_OPEN: CommandId = 230;
-pub const CM_TODO_NOTE_SAVE: CommandId = 231;
+pub const CM_TODO_NOTE_OPEN: CommandId = CM_APP_BASE + 150;
+pub const CM_TODO_NOTE_SAVE: CommandId = CM_APP_BASE + 151;
 /// Update Notes tab content (no focus change, no create if absent).
-pub const CM_TODO_NOTE_UPDATE: CommandId = 232;
+pub const CM_TODO_NOTE_UPDATE: CommandId = CM_APP_BASE + 152;
 
 // Split view
-pub const CM_SPLIT: CommandId = 240;
-pub const CM_SPLIT_CLOSE: CommandId = 241;
-pub const CM_OPEN_IN_SPLIT: CommandId = 242;
-pub const CM_SPLIT_FOCUS: CommandId = 243;
-pub const CM_DIFF_SPLIT: CommandId = 244;
-pub const CM_LSP_STATUS_UPDATE: CommandId = 245;
-pub const CM_SPLIT_LINKED: CommandId = 246;
+pub const CM_SPLIT: CommandId = CM_APP_BASE + 160;
+pub const CM_SPLIT_CLOSE: CommandId = CM_APP_BASE + 161;
+pub const CM_OPEN_IN_SPLIT: CommandId = CM_APP_BASE + 162;
+pub const CM_SPLIT_FOCUS: CommandId = CM_APP_BASE + 163;
+pub const CM_DIFF_SPLIT: CommandId = CM_APP_BASE + 164;
+pub const CM_LSP_STATUS_UPDATE: CommandId = CM_APP_BASE + 165;
+pub const CM_SPLIT_LINKED: CommandId = CM_APP_BASE + 166;
 
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]

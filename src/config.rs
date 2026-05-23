@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use rusticle::interpreter::Interpreter;
+use txv_core::prelude::KeyEvent;
 
 use crate::config_keys::parse_key_var;
 use crate::settings::{AppSettings, CursorStyle};
@@ -56,7 +57,13 @@ fn config_file_path() -> Option<std::path::PathBuf> {
 /// Read Tcl variables set by the script and map them to AppSettings.
 fn extract_settings(interp: &Interpreter) -> AppSettings {
     let mut settings = AppSettings::default();
+    extract_editor_settings(interp, &mut settings);
+    extract_app_settings(interp, &mut settings);
+    extract_key_settings(interp, &mut settings);
+    settings
+}
 
+fn extract_editor_settings(interp: &Interpreter, settings: &mut AppSettings) {
     if let Some(val) = interp.get_var("editor.wrap") {
         if let Ok(b) = val.as_bool() {
             settings.editor_defaults.wrap = b;
@@ -92,6 +99,9 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.editor_defaults.cursor_command = s;
         }
     }
+}
+
+fn extract_app_settings(interp: &Interpreter, settings: &mut AppSettings) {
     if let Some(val) = interp.get_var("clock.interval") {
         if let Ok(n) = val.as_int() {
             settings.clock_interval = n as u16;
@@ -125,6 +135,15 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.max_tabs = n as u16;
         }
     }
+    if let Some(val) = interp.get_var("lsp.timeout") {
+        if let Ok(n) = val.as_int() {
+            settings.lsp_timeout = (n as u64).max(1);
+        }
+    }
+    extract_theme_settings(interp, settings);
+}
+
+fn extract_theme_settings(interp: &Interpreter, settings: &mut AppSettings) {
     if let Some(val) = interp.get_var("theme.mode") {
         let s = val.as_str();
         if s == "dark" || s == "light" || s == "auto" {
@@ -143,70 +162,35 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
             settings.theme_glyphs = s.to_string();
         }
     }
-    if let Some(val) = interp.get_var("lsp.timeout") {
-        if let Ok(n) = val.as_int() {
-            settings.lsp_timeout = (n as u64).max(1);
-        }
-    }
-    if let Some(val) = interp.get_var("git.stage") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.git_keys.stage = k;
-        }
-    }
-    if let Some(val) = interp.get_var("git.unstage") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.git_keys.unstage = k;
-        }
-    }
-    if let Some(val) = interp.get_var("git.untrack") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.git_keys.untrack = k;
-        }
-    }
-    if let Some(val) = interp.get_var("git.commit") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.git_keys.commit = k;
-        }
-    }
+}
 
-    // Status bar key bindings
-    if let Some(val) = interp.get_var("keys.help") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.help = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.tree") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.tree = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.main") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.main = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.term") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.term = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.zoom") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.zoom = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.messages") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.messages = k;
-        }
-    }
-    if let Some(val) = interp.get_var("keys.quit") {
-        if let Some(k) = parse_key_var(&val.as_str()) {
-            settings.status_keys.quit = k;
-        }
-    }
+type KeyAccessor = fn(&mut AppSettings) -> &mut KeyEvent;
 
-    settings
+fn extract_key_settings(interp: &Interpreter, settings: &mut AppSettings) {
+    let key_map: &[(&str, KeyAccessor)] = &[
+        ("git.stage", |s| &mut s.git_keys.stage),
+        ("git.unstage", |s| &mut s.git_keys.unstage),
+        ("git.untrack", |s| &mut s.git_keys.untrack),
+        ("git.commit", |s| &mut s.git_keys.commit),
+        ("keys.help", |s| &mut s.status_keys.help),
+        ("keys.tree", |s| &mut s.status_keys.tree),
+        ("keys.main", |s| &mut s.status_keys.main),
+        ("keys.term", |s| &mut s.status_keys.term),
+        ("keys.zoom", |s| &mut s.status_keys.zoom),
+        ("keys.messages", |s| &mut s.status_keys.messages),
+        ("keys.quit", |s| &mut s.status_keys.quit),
+        ("keys.subpanel_focus", |s| &mut s.status_keys.subpanel_focus),
+        ("keys.subpanel_move", |s| &mut s.status_keys.subpanel_move),
+        ("keys.subpanel_grow", |s| &mut s.status_keys.subpanel_grow),
+        ("keys.subpanel_shrink", |s| &mut s.status_keys.subpanel_shrink),
+    ];
+    for (var, accessor) in key_map {
+        if let Some(val) = interp.get_var(var) {
+            if let Some(k) = parse_key_var(&val.as_str()) {
+                *accessor(settings) = k;
+            }
+        }
+    }
 }
 
 fn parse_cursor_style(s: &str) -> Option<CursorStyle> {

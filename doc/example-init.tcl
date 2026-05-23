@@ -62,6 +62,12 @@ set keys.zoom "F5"
 set keys.messages "F6"
 set keys.quit "ctrl+q"
 
+# ─── Subpanel Keys (split pane navigation) ───────────────────────────────────
+set keys.subpanel_focus "Ctrl-w"
+set keys.subpanel_move "Ctrl-Alt-w"
+set keys.subpanel_grow "Ctrl-Alt-="
+set keys.subpanel_shrink "Ctrl-Alt--"
+
 # ─── Colors ──────────────────────────────────────────────────────────────────
 # Colors use ANSI 256 numbers (0-255) or "reset" for terminal default.
 # Format: set color.<role> <ansi-number>
