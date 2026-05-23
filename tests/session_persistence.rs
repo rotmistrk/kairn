@@ -16,7 +16,7 @@ fn save_and_load_session_roundtrip() {
     std::fs::write(root.join("hello.rs"), "fn main() {}\n").unwrap();
 
     // Build a desktop with an editor tab
-    let mut desktop = kairn::desktop::Desktop::new();
+    let mut desktop = kairn::desktop::Desktop::default_desktop();
     let defaults = EditorSettings::default();
     let path = root.join("hello.rs");
     let mut editor = EditorView::open(&path, &defaults).unwrap();
@@ -88,7 +88,7 @@ fn restore_tabs_opens_editors() {
         kiro_sessions: Vec::new(),
     };
 
-    let mut desktop = kairn::desktop::Desktop::new();
+    let mut desktop = kairn::desktop::Desktop::default_desktop();
     let defaults = EditorSettings::default();
     session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 
@@ -116,7 +116,7 @@ fn restore_skips_missing_files() {
         kiro_sessions: Vec::new(),
     };
 
-    let mut desktop = kairn::desktop::Desktop::new();
+    let mut desktop = kairn::desktop::Desktop::default_desktop();
     let defaults = EditorSettings::default();
     session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 

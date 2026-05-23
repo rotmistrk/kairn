@@ -4,8 +4,7 @@ pub mod schema;
 
 use std::path::Path;
 
-use crate::desktop::Desktop;
-use crate::desktop::SlotId;
+use crate::desktop::{Desktop, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;

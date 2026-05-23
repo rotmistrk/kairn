@@ -6,7 +6,7 @@ use txv_core::program::CommandContext;
 
 pub use crate::app_state::AppState;
 use crate::commands::*;
-use crate::desktop::SlotId;
+use crate::slots::{Desktop, SlotId};
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
@@ -64,6 +64,11 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // Plugin hot-reload: scan every ~5s (100 ticks at 50ms)
     if state.mcp_tick.is_multiple_of(100) {
         crate::handler_drain::refresh_plugins(ctx, state);
+    }
+
+    // Panel focus/tab/resize commands
+    if crate::handler_panel::handle_panel_command(ctx) {
+        return;
     }
 
     match ctx.command {
@@ -160,64 +165,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_FOCUS => crate::handler_split::handle_split_focus(ctx),
         CM_SPLIT_LINKED => crate::handler_split::handle_split_linked(ctx),
         CM_DIFF_SPLIT => crate::handler_split_nav::handle_diff_split(ctx, state),
-        CM_TOGGLE_THEME => {
-            let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
-            if let Some(ref ts) = state.theme_state {
-                let mut ts = ts.borrow_mut();
-                match arg.as_deref() {
-                    Some("dark") => {
-                        ts.mode = txv_core::palette::ThemeMode::Dark;
-                        ts.active = ts.dark.clone();
-                        ts.apply();
-                    }
-                    Some("light") => {
-                        ts.mode = txv_core::palette::ThemeMode::Light;
-                        ts.active = ts.light.clone();
-                        ts.apply();
-                    }
-                    Some("auto") => {
-                        let detected = txv_core::palette::detect_system_theme();
-                        ts.mode = detected.clone();
-                        ts.active = match detected {
-                            txv_core::palette::ThemeMode::Light => ts.light.clone(),
-                            _ => ts.dark.clone(),
-                        };
-                        ts.apply();
-                    }
-                    _ => ts.toggle(),
-                }
-            }
-        }
-        CM_SET_SYNTAX_THEME => {
-            if let Some(name) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
-                // Store in settings for the current mode
-                let is_light = state
-                    .theme_state
-                    .as_ref()
-                    .map(|ts| ts.borrow().mode == txv_core::palette::ThemeMode::Light)
-                    .unwrap_or(false);
-                if is_light {
-                    state.settings.theme_syntax_light = name.clone();
-                } else {
-                    state.settings.theme_syntax_dark = name.clone();
-                }
-                // Apply to all open editors
-                if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                    for slot in [SlotId::Center, SlotId::Right] {
-                        let panel = desktop.panel_mut(slot);
-                        for i in 0..panel.tab_count() {
-                            if let Some(view) = panel.view_at_mut(i) {
-                                if let Some(any) = view.as_any_mut() {
-                                    if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
-                                        editor.set_syntax_theme(name);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        CM_TOGGLE_THEME => crate::handler_theme::handle_toggle_theme(ctx, state),
+        CM_SET_SYNTAX_THEME => crate::handler_theme::handle_set_syntax_theme(ctx, state),
         CM_SET_GLYPHS => {
             if let Some(g) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
                 let tier = match g.as_str() {
@@ -260,7 +209,12 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-/// Downcast the desktop View to Desktop.
-pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut crate::desktop::Desktop> {
-    view.as_any_mut()?.downcast_mut::<crate::desktop::Desktop>()
+/// Downcast the desktop View to Desktop wrapper.
+pub fn downcast_workspace(view: &mut dyn View) -> Option<&mut Desktop> {
+    view.as_any_mut()?.downcast_mut::<Desktop>()
+}
+
+/// Deprecated alias.
+pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut Desktop> {
+    downcast_workspace(view)
 }

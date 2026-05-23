@@ -9,7 +9,7 @@ use txv_core::run::Backend;
 use txv_render::backend::CrosstermBackend;
 use txv_render::color::{detect_color_mode, ColorMode};
 
-use kairn::build_desktop::build_desktop;
+use kairn::build_desktop::build_workspace;
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
 use kairn::handler::{handle_command, AppState};
@@ -181,7 +181,7 @@ fn main() -> anyhow::Result<()> {
         _ => txv_core::glyphs::detect_glyph_tier(),
     };
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
-    let mut desktop = build_desktop(&root_dir, git_keys);
+    let mut desktop = kairn::slots::Desktop::new(build_workspace(&root_dir, git_keys));
     desktop.set_wide_threshold(app_state.settings.layout_wide_threshold);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
@@ -251,7 +251,7 @@ fn main() -> anyhow::Result<()> {
     if let Some(desktop) = program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
+        .and_then(|a| a.downcast_mut::<kairn::slots::Desktop>())
     {
         session::save_session(desktop, &root_dir, &app_state.kiro_registry);
     }

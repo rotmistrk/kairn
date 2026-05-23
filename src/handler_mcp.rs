@@ -3,7 +3,7 @@
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
-use crate::desktop::SlotId;
+use crate::desktop::{Desktop, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
 /// Drain MCP write commands and execute them on the live app state.
@@ -99,7 +99,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn mcp_open_file(
-    desktop: &mut crate::desktop::Desktop,
+    desktop: &mut Desktop,
     state: &mut AppState,
     sink: &EventSink,
     rel_path: &str,
@@ -132,7 +132,7 @@ fn mcp_open_file(
 }
 
 fn mcp_create_file(
-    desktop: &mut crate::desktop::Desktop,
+    desktop: &mut Desktop,
     state: &mut AppState,
     sink: &EventSink,
     rel_path: &str,
@@ -147,11 +147,7 @@ fn mcp_create_file(
     Ok(serde_json::json!({"created": rel_path}))
 }
 
-fn mcp_close_tab(
-    desktop: &mut crate::desktop::Desktop,
-    state: &mut AppState,
-    name: &str,
-) -> Result<serde_json::Value, String> {
+fn mcp_close_tab(desktop: &mut Desktop, state: &mut AppState, name: &str) -> Result<serde_json::Value, String> {
     if desktop.close_tab_by_title(SlotId::Center, name) {
         state.broker.close(&state.root_dir.join(name).to_string_lossy());
         Ok(serde_json::json!({"closed": name}))
@@ -171,10 +167,7 @@ fn mcp_split(sink: &EventSink, vertical: bool, file: Option<String>) -> Result<s
     Ok(serde_json::json!({"split": dir}))
 }
 
-fn find_editor<'a>(
-    desktop: &'a mut crate::desktop::Desktop,
-    name: &str,
-) -> Result<&'a mut crate::views::editor::EditorView, String> {
+fn find_editor<'a>(desktop: &'a mut Desktop, name: &str) -> Result<&'a mut crate::views::editor::EditorView, String> {
     let panel = desktop.panel_mut(SlotId::Center);
     for i in 0..panel.tab_count() {
         if panel.tab_title(i) == Some(name) {
@@ -188,7 +181,7 @@ fn find_editor<'a>(
     Err(format!("Tab not found: {name}"))
 }
 
-fn mcp_diff_revert(desktop: &mut crate::desktop::Desktop, name: &str) -> Result<serde_json::Value, String> {
+fn mcp_diff_revert(desktop: &mut Desktop, name: &str) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
     let msg = editor.revert_hunk()?;
     Ok(serde_json::json!({"result": msg}))

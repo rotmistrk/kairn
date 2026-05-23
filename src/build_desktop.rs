@@ -1,42 +1,91 @@
-//! Desktop builder — constructs the initial kairn layout.
+//! Workspace builder — constructs the initial kairn layout.
 
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::desktop::Desktop;
-use crate::desktop::SlotId;
+use txv_widgets::tiled_workspace::types::{PanelConfig, PanelPosition, SplitNode};
+use txv_widgets::tiled_workspace::TiledWorkspace;
+
 use crate::git_watcher::{GitWatcher, WatchHandle};
 use crate::settings::GitKeys;
+use crate::slots::{insert_tab, SlotId, PANEL_COUNT};
 use crate::views::git_changes::GitChangesView;
 use crate::views::terminal::new_shell_terminal;
 use crate::views::todo_tree::TodoTreeView;
 use crate::views::tree::FileTreeView;
 use crate::views::welcome::WelcomeView;
 
-/// Build the standard kairn desktop with tree and terminal.
-pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> Desktop {
-    let mut desktop = Desktop::new();
+pub fn create_workspace_shell() -> TiledWorkspace {
+    let configs = vec![
+        PanelConfig::fixed("Files", PanelPosition::Left),
+        PanelConfig::new("Editor", PanelPosition::Center),
+        PanelConfig::new("Tools", PanelPosition::Right),
+        PanelConfig::new("Bottom", PanelPosition::Bottom),
+    ];
+    let wide_layout = SplitNode::v(vec![
+        (
+            0.7,
+            SplitNode::h(vec![
+                (0.2, SplitNode::leaf(0)),
+                (0.4, SplitNode::leaf(1)),
+                (0.4, SplitNode::leaf(2)),
+            ]),
+        ),
+        (0.3, SplitNode::leaf(3)),
+    ]);
+    let narrow_layout = SplitNode::v(vec![
+        (
+            0.6,
+            SplitNode::h(vec![(0.2, SplitNode::leaf(0)), (0.8, SplitNode::leaf(1))]),
+        ),
+        (0.4, SplitNode::leaf(2)),
+    ]);
+    let mut ws = TiledWorkspace::new(configs, wide_layout, narrow_layout, 300);
+    ws.set_narrow_threshold(200);
+    ws.set_handle_keys(false);
+    ws.set_v_divider_gaps(false);
+    for i in 0..PANEL_COUNT {
+        if let Some(panel) = ws.panel_mut(i) {
+            panel.bar_mut().set_handle_keys(false);
+        }
+    }
+    ws.focus_panel(0);
+    ws.set_hidden(3, true);
+    ws
+}
 
-    // Shared git watcher — both tree and git panel react to same events
+/// Build the standard kairn workspace with tree, welcome, and terminal.
+pub fn build_workspace(root_dir: &Path, git_keys: GitKeys) -> TiledWorkspace {
+    let mut ws = create_workspace_shell();
+
     let watcher = GitWatcher::new(root_dir).map(Arc::new);
     let tree_handle = watcher.as_ref().map(|w| WatchHandle::new(w.clone()));
     let git_handle = watcher.as_ref().map(|w| WatchHandle::new(w.clone()));
 
     let tree = FileTreeView::new(root_dir.to_path_buf(), tree_handle);
-    desktop.insert_tab(SlotId::Left, "Files", Box::new(tree));
+    insert_tab(&mut ws, SlotId::Left, "Files", Box::new(tree));
 
     let git_panel = GitChangesView::new(root_dir.to_path_buf(), git_handle, git_keys);
-    desktop.insert_tab(SlotId::Left, "Git", Box::new(git_panel));
+    insert_tab(&mut ws, SlotId::Left, "Git", Box::new(git_panel));
 
     let todo_panel = TodoTreeView::new(root_dir);
-    desktop.insert_tab(SlotId::Left, "Todo", Box::new(todo_panel));
+    insert_tab(&mut ws, SlotId::Left, "Todo", Box::new(todo_panel));
 
-    // Keep "Files" as the initially active tab
-    desktop.set_active_tab(SlotId::Left, 0);
+    if let Some(panel) = ws.panel_mut(SlotId::Left as usize) {
+        panel.set_active(0);
+    }
 
     let welcome = WelcomeView::new(root_dir.to_path_buf());
-    desktop.insert_tab(SlotId::Center, "Welcome", Box::new(welcome));
+    insert_tab(&mut ws, SlotId::Center, "Welcome", Box::new(welcome));
+
     let term = new_shell_terminal();
-    desktop.insert_tab(SlotId::Right, "Shell:0", term);
-    desktop
+    insert_tab(&mut ws, SlotId::Right, "Shell:0", term);
+
+    ws
+}
+
+/// Deprecated alias — use [`build_workspace`] instead.
+#[deprecated(note = "use build_workspace")]
+pub fn build_desktop(root_dir: &Path, git_keys: GitKeys) -> TiledWorkspace {
+    build_workspace(root_dir, git_keys)
 }

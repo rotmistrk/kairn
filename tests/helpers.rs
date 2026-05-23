@@ -7,7 +7,7 @@ use txv_core::event::{KeyCode, KeyMod};
 use txv_core::program::Program;
 use txv_core::run::MockBackend;
 
-use kairn::build_desktop::build_desktop;
+use kairn::build_desktop::build_workspace;
 use kairn::completer::AppCompleter;
 use kairn::handler::{handle_command, AppState};
 use kairn::settings::{GitKeys, StatusKeys};
@@ -32,7 +32,7 @@ impl TestHarness {
     /// Same setup as main.rs: StatusBar + Desktop + AppState.
     pub fn new(root_dir: &Path) -> Self {
         init_test_logger();
-        let desktop = build_desktop(root_dir, GitKeys::default());
+        let desktop = kairn::slots::Desktop::new(build_workspace(root_dir, GitKeys::default()));
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
@@ -52,7 +52,7 @@ impl TestHarness {
     /// Create with custom dimensions.
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
         init_test_logger();
-        let desktop = build_desktop(root_dir, GitKeys::default());
+        let desktop = kairn::slots::Desktop::new(build_workspace(root_dir, GitKeys::default()));
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
             Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
