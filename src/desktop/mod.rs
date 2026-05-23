@@ -10,7 +10,6 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub use txv_widgets::tiled_workspace::types::LayoutMode;
 
-mod chrome;
 mod dispatch;
 mod view_impl;
 

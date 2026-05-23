@@ -2,8 +2,9 @@
 
 use txv_core::event::CommandId;
 use txv_core::prelude::*;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
-use super::{Desktop, PANEL_COUNT};
+use super::Desktop;
 
 /// Check if a command ID belongs to TiledWorkspace's command space.
 fn is_workspace_command(id: CommandId) -> bool {
@@ -46,11 +47,11 @@ impl View for Desktop {
     }
 
     fn draw(&mut self) {
-        self.draw_chrome();
-        self.draw_children();
+        <TiledWorkspace as View>::draw(&mut self.workspace);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        // Intercept kairn-specific commands before TiledWorkspace
         if let Event::Command { id, data } = event {
             let r = self.handle_command(*id, data);
             if r == HandleResult::Consumed {
@@ -63,15 +64,8 @@ impl View for Desktop {
                 }
             }
         }
-        if matches!(event, Event::Tick) {
-            for i in 0..PANEL_COUNT {
-                if let Some(child) = self.workspace.child_mut(i) {
-                    child.handle(event);
-                }
-            }
-            return HandleResult::Ignored;
-        }
-        self.workspace.dispatch(event)
+        // Everything (including unhandled commands) goes to TiledWorkspace
+        <TiledWorkspace as View>::handle(&mut self.workspace, event)
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -80,29 +74,5 @@ impl View for Desktop {
 
     fn buffer(&self) -> &Buffer {
         self.workspace.buffer()
-    }
-}
-
-impl Desktop {
-    pub(super) fn draw_children(&mut self) {
-        let my_bounds = self.workspace.bounds();
-        for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.child_mut(i) {
-                if child.bounds().w > 0 && child.bounds().h > 0 {
-                    child.draw();
-                }
-            }
-        }
-        let buf_ptr = self.workspace.buffer_mut() as *mut Buffer;
-        for i in 0..PANEL_COUNT {
-            if let Some(child) = self.workspace.child(i) {
-                let cb = child.bounds();
-                if cb.w > 0 && cb.h > 0 {
-                    let dx = cb.x.saturating_sub(my_bounds.x);
-                    let dy = cb.y.saturating_sub(my_bounds.y);
-                    unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
-                }
-            }
-        }
     }
 }
