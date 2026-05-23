@@ -4,8 +4,8 @@ use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 use crate::commands::*;
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 use crate::views::help::HelpView;
 use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
 use crate::views::welcome::WelcomeView;

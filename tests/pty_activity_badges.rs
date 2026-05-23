@@ -3,14 +3,14 @@
 mod helpers;
 
 use helpers::{temp_project, TestHarness};
-use kairn::layout_group::{LayoutGroup, SlotId, TabBadge};
+use kairn::desktop::{Desktop, SlotId, TabBadge};
 
-fn get_desktop(h: &mut TestHarness) -> &mut LayoutGroup {
+fn get_desktop(h: &mut TestHarness) -> &mut Desktop {
     h.program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<LayoutGroup>())
-        .expect("desktop is LayoutGroup")
+        .and_then(|a| a.downcast_mut::<Desktop>())
+        .expect("desktop is Desktop")
 }
 
 #[test]

@@ -3,8 +3,8 @@
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 
 /// Drain grep results from background thread into the ResultsView.
 pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {

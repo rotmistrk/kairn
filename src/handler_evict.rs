@@ -4,15 +4,15 @@ use txv_core::prelude::*;
 
 use crate::app_state::AppState;
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
+use crate::desktop::{Desktop, SlotId};
 use crate::eviction::PendingTab;
-use crate::layout_group::{LayoutGroup, SlotId};
 use crate::views::editor::EditorView;
 
 /// Try to insert a tab, handling eviction if at capacity.
 /// Returns true if the tab was inserted immediately.
 /// Returns false if the LRU tab's close prompt was triggered (pending).
 pub fn try_insert_tab(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     state: &mut AppState,
     sink: &EventSink,
     slot: SlotId,
@@ -59,7 +59,7 @@ pub fn try_insert_tab(
     false
 }
 
-fn trigger_close_prompt(desktop: &mut LayoutGroup, sink: &EventSink, slot: SlotId, idx: usize) {
+fn trigger_close_prompt(desktop: &mut Desktop, sink: &EventSink, slot: SlotId, idx: usize) {
     let panel = desktop.panel_mut(slot);
     if let Some(view) = panel.view_at_mut(idx) {
         if let Some(any) = view.as_any_mut() {
@@ -80,7 +80,7 @@ fn trigger_close_prompt(desktop: &mut LayoutGroup, sink: &EventSink, slot: SlotI
 }
 
 /// Called from CM_FILE_CLOSED handler.
-pub fn complete_pending_insert(desktop: &mut LayoutGroup, state: &mut AppState) {
+pub fn complete_pending_insert(desktop: &mut Desktop, state: &mut AppState) {
     let Some(pending) = state.pending_tab.take() else {
         return;
     };

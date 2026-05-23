@@ -35,7 +35,7 @@ fn enter_on_tree_file_focuses_center() {
     // Better: use the public focused_slot() accessor.
     let desktop = h.program.desktop_mut();
     let sd = kairn::handler::downcast_desktop(desktop).unwrap();
-    assert_eq!(sd.focused_slot(), kairn::layout_group::SlotId::Center);
+    assert_eq!(sd.focused_slot(), kairn::desktop::SlotId::Center);
 }
 
 // ─── Feature 2: Welcome view when center is empty ──────────────────────────
@@ -84,10 +84,10 @@ fn wide_layout_three_columns_at_200_width() {
     let desktop = h.program.desktop_mut();
     let sd = kairn::handler::downcast_desktop(desktop).unwrap();
     let rects = sd.layout_rects();
-    let left = rects[kairn::layout_group::SlotId::Left as usize];
-    let center = rects[kairn::layout_group::SlotId::Center as usize];
-    let right = rects[kairn::layout_group::SlotId::Right as usize];
-    let bottom = rects[kairn::layout_group::SlotId::Bottom as usize];
+    let left = rects[kairn::desktop::SlotId::Left as usize];
+    let center = rects[kairn::desktop::SlotId::Center as usize];
+    let right = rects[kairn::desktop::SlotId::Right as usize];
+    let bottom = rects[kairn::desktop::SlotId::Bottom as usize];
     // All three top slots should be on the same y, bottom should be empty
     assert_eq!(left.y, center.y);
     assert_eq!(center.y, right.y);
@@ -101,15 +101,15 @@ fn tall_layout_tools_below_at_100_width() {
     let mut h = TestHarness::with_size(dir.path(), 100, 24);
     h.inject_key(KeyCode::Enter, KeyMod::default());
     h.run_cycles(1);
-    // In tall layout (<200), the right slot content moves to bottom.
+    // In tall/narrow layout (<200), the right slot moves to bottom position.
     let desktop = h.program.desktop_mut();
     let sd = kairn::handler::downcast_desktop(desktop).unwrap();
+    assert!(sd.is_tall(), "should be in tall/narrow layout at 100 cols");
     let rects = sd.layout_rects();
-    let right = rects[kairn::layout_group::SlotId::Right as usize];
-    let bottom = rects[kairn::layout_group::SlotId::Bottom as usize];
-    // In tall layout, right slot should be empty (w=0) and bottom should have content
-    assert_eq!(right.w, 0, "right slot should be hidden in tall layout");
-    assert!(bottom.h > 0, "bottom slot should be visible in tall layout");
+    let right = rects[kairn::desktop::SlotId::Right as usize];
+    // In narrow layout, Right panel is placed at the bottom (full width)
+    assert!(right.w > 0, "right slot should be visible at bottom in tall layout");
+    assert_eq!(right.w, 100, "right slot should span full width in tall layout");
 }
 
 // ─── Feature 4: Ctrl-Shift-Up/Down tab cycling (LRU) ───────────────────────

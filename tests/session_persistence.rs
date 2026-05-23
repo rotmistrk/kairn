@@ -1,7 +1,7 @@
 //! Tests for session persistence (save/restore).
 
+use kairn::desktop::{LayoutMode, SlotId};
 use kairn::kiro_registry::KiroTabRegistry;
-use kairn::layout_group::{LayoutMode, SlotId};
 use kairn::session;
 use kairn::session::schema::{EditorTabState, SessionState, SESSION_VERSION};
 use kairn::settings::EditorSettings;
@@ -16,14 +16,14 @@ fn save_and_load_session_roundtrip() {
     std::fs::write(root.join("hello.rs"), "fn main() {}\n").unwrap();
 
     // Build a desktop with an editor tab
-    let mut desktop = kairn::layout_group::LayoutGroup::new();
+    let mut desktop = kairn::desktop::Desktop::new();
     let defaults = EditorSettings::default();
     let path = root.join("hello.rs");
     let mut editor = EditorView::open(&path, &defaults).unwrap();
     editor.set_root_dir(root.clone());
     editor.goto(0, 5);
     desktop.insert_tab(SlotId::Center, "hello.rs", Box::new(editor));
-    desktop.layout_mode = LayoutMode::Wide;
+    desktop.set_layout_mode(LayoutMode::Wide);
 
     // Save
     session::save_session(&mut desktop, &root, &KiroTabRegistry::default());
@@ -88,7 +88,7 @@ fn restore_tabs_opens_editors() {
         kiro_sessions: Vec::new(),
     };
 
-    let mut desktop = kairn::layout_group::LayoutGroup::new();
+    let mut desktop = kairn::desktop::Desktop::new();
     let defaults = EditorSettings::default();
     session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 
@@ -116,7 +116,7 @@ fn restore_skips_missing_files() {
         kiro_sessions: Vec::new(),
     };
 
-    let mut desktop = kairn::layout_group::LayoutGroup::new();
+    let mut desktop = kairn::desktop::Desktop::new();
     let defaults = EditorSettings::default();
     session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
 

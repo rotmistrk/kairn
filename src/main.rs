@@ -182,8 +182,7 @@ fn main() -> anyhow::Result<()> {
     };
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
     let mut desktop = build_desktop(&root_dir, git_keys);
-    desktop.wide_threshold = app_state.settings.layout_wide_threshold;
-    desktop.tall_threshold = app_state.settings.layout_tall_threshold;
+    desktop.workspace.wide_threshold = app_state.settings.layout_wide_threshold;
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
     if let Some(ref sess) = saved_session {
@@ -197,7 +196,7 @@ fn main() -> anyhow::Result<()> {
         );
         // Register restored tabs with broker
         for tab in &sess.editor_tabs {
-            app_state.broker.open(&tab.path, kairn::layout_group::SlotId::Center, 0);
+            app_state.broker.open(&tab.path, kairn::desktop::SlotId::Center, 0);
         }
         session::restore_kiro_tabs(
             &mut desktop,
@@ -252,7 +251,7 @@ fn main() -> anyhow::Result<()> {
     if let Some(desktop) = program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::layout_group::LayoutGroup>())
+        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
     {
         session::save_session(desktop, &root_dir, &app_state.kiro_registry);
     }

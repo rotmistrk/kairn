@@ -7,7 +7,7 @@
 
 use txv_core::prelude::*;
 
-use crate::layout_group::SlotId;
+use crate::desktop::SlotId;
 
 /// A pending tab insertion waiting for the LRU tab's close to complete.
 pub struct PendingTab {

@@ -5,8 +5,8 @@ use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::app_state::AppState;
 use crate::commands::*;
+use crate::desktop::SlotId;
 use crate::handler_script_util::{fire_hooks_for_event, lsp_cmd};
-use crate::layout_group::SlotId;
 use crate::scripting::ScriptCommand;
 use crate::views::editor::EditorView;
 

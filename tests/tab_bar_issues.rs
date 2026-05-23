@@ -154,10 +154,10 @@ fn tabbar_handle_keys_is_false() {
         .program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::layout_group::LayoutGroup>())
+        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
         .expect("desktop");
 
-    let panel = desktop.panel(kairn::layout_group::SlotId::Left);
+    let panel = desktop.panel(kairn::desktop::SlotId::Left);
     assert!(
         !panel.bar().handle_keys(),
         "TabBar.handle_keys should be false in kairn (kairn owns keyboard)"

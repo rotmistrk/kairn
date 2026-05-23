@@ -4,8 +4,8 @@ use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 use txv_widgets::tiled_workspace::types::SplitDir;
 
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 use crate::views::editor::diff_model::{DiffLine, DiffState};
 use crate::views::editor::EditorView;
 use crate::views::editor_split::EditorSplit;

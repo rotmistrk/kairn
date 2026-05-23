@@ -4,9 +4,9 @@ use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
 use crate::commands::{ViewContext, CM_CONTEXT_UPDATE};
+use crate::desktop::SlotId;
 use crate::editor::keymap::Keymap;
 use crate::handler::downcast_desktop;
-use crate::layout_group::SlotId;
 use crate::views::editor::EditorView;
 
 /// Collect context from the focused view and broadcast it.

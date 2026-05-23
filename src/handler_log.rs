@@ -2,8 +2,8 @@
 
 use txv_core::program::CommandContext;
 
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 
 /// Open the git log viewer as a singleton tab in the right panel.
 pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {

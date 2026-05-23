@@ -3,8 +3,8 @@
 use txv_core::program::CommandContext;
 
 use crate::build;
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 
 /// Handle :build — spawn async build, show results in right panel.
 pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {

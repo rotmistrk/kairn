@@ -7,8 +7,8 @@ use txv_core::program::CommandContext;
 
 use crate::broker::OpenResult;
 use crate::commands::*;
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 
 /// Compute tab title: relative path within project, or full path for external files.
 fn tab_title(path: &Path, root: &Path) -> String {

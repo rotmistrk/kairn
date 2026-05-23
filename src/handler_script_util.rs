@@ -4,7 +4,7 @@ use txv_core::program::CommandContext;
 use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::app_state::AppState;
-use crate::layout_group::SlotId;
+use crate::desktop::SlotId;
 
 use crate::handler_script::dispatch_script_commands;
 

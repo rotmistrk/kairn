@@ -3,8 +3,8 @@
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
-use crate::layout_group::SlotId;
 
 /// Drain MCP write commands and execute them on the live app state.
 pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
@@ -99,7 +99,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn mcp_open_file(
-    desktop: &mut crate::layout_group::LayoutGroup,
+    desktop: &mut crate::desktop::Desktop,
     state: &mut AppState,
     sink: &EventSink,
     rel_path: &str,
@@ -132,7 +132,7 @@ fn mcp_open_file(
 }
 
 fn mcp_create_file(
-    desktop: &mut crate::layout_group::LayoutGroup,
+    desktop: &mut crate::desktop::Desktop,
     state: &mut AppState,
     sink: &EventSink,
     rel_path: &str,
@@ -148,7 +148,7 @@ fn mcp_create_file(
 }
 
 fn mcp_close_tab(
-    desktop: &mut crate::layout_group::LayoutGroup,
+    desktop: &mut crate::desktop::Desktop,
     state: &mut AppState,
     name: &str,
 ) -> Result<serde_json::Value, String> {
@@ -172,7 +172,7 @@ fn mcp_split(sink: &EventSink, vertical: bool, file: Option<String>) -> Result<s
 }
 
 fn find_editor<'a>(
-    desktop: &'a mut crate::layout_group::LayoutGroup,
+    desktop: &'a mut crate::desktop::Desktop,
     name: &str,
 ) -> Result<&'a mut crate::views::editor::EditorView, String> {
     let panel = desktop.panel_mut(SlotId::Center);
@@ -188,7 +188,7 @@ fn find_editor<'a>(
     Err(format!("Tab not found: {name}"))
 }
 
-fn mcp_diff_revert(desktop: &mut crate::layout_group::LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+fn mcp_diff_revert(desktop: &mut crate::desktop::Desktop, name: &str) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
     let msg = editor.revert_hunk()?;
     Ok(serde_json::json!({"result": msg}))

@@ -6,8 +6,8 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn focus_todo(h: &mut TestHarness) {
+    use kairn::desktop::SlotId;
     use kairn::handler::downcast_desktop;
-    use kairn::layout_group::SlotId;
     let desktop = h.program.desktop_mut();
     if let Some(d) = downcast_desktop(desktop) {
         d.focus_tab_by_title(SlotId::Left, "Todo");

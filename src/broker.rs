@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::layout_group::SlotId;
+use crate::desktop::SlotId;
 
 /// Result of attempting to open a file.
 pub enum OpenResult {

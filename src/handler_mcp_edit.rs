@@ -1,10 +1,10 @@
 //! MCP edit operations — buffer edits, cursor, save, diagnostics.
 
-use crate::layout_group::{LayoutGroup, SlotId};
+use crate::desktop::{Desktop, SlotId};
 use crate::views::editor::EditorView;
 
 /// Find an editor view by tab name in the center panel.
-pub(crate) fn find_editor<'a>(desktop: &'a mut LayoutGroup, name: &str) -> Result<&'a mut EditorView, String> {
+pub(crate) fn find_editor<'a>(desktop: &'a mut Desktop, name: &str) -> Result<&'a mut EditorView, String> {
     let panel = desktop.panel_mut(SlotId::Center);
     for i in 0..panel.tab_count() {
         if panel.tab_title(i) == Some(name) {
@@ -19,7 +19,7 @@ pub(crate) fn find_editor<'a>(desktop: &'a mut LayoutGroup, name: &str) -> Resul
 }
 
 pub(crate) fn mcp_edit_buffer(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     name: &str,
     start_line: usize,
     end_line: usize,
@@ -50,7 +50,7 @@ pub(crate) fn mcp_edit_buffer(
 }
 
 pub(crate) fn mcp_insert_text(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     name: &str,
     line: usize,
     col: usize,
@@ -62,7 +62,7 @@ pub(crate) fn mcp_insert_text(
 }
 
 pub(crate) fn mcp_set_cursor(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     name: &str,
     line: usize,
     col: usize,
@@ -72,13 +72,13 @@ pub(crate) fn mcp_set_cursor(
     Ok(serde_json::json!({"cursor": {"line": line, "col": col}}))
 }
 
-pub(crate) fn mcp_save_file(desktop: &mut LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+pub(crate) fn mcp_save_file(desktop: &mut Desktop, name: &str) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
     editor.save().map_err(|e| format!("Save failed: {e}"))?;
     Ok(serde_json::json!({"saved": name}))
 }
 
-pub(crate) fn mcp_get_diagnostics(desktop: &mut LayoutGroup, name: &str) -> Result<serde_json::Value, String> {
+pub(crate) fn mcp_get_diagnostics(desktop: &mut Desktop, name: &str) -> Result<serde_json::Value, String> {
     let panel = desktop.panel_mut(SlotId::Center);
     let mut all_diags = Vec::new();
     for i in 0..panel.tab_count() {

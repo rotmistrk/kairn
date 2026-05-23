@@ -6,7 +6,7 @@ use txv_core::program::CommandContext;
 
 pub use crate::app_state::AppState;
 use crate::commands::*;
-use crate::layout_group::{LayoutGroup, SlotId};
+use crate::desktop::SlotId;
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
@@ -260,7 +260,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-/// Downcast the desktop View to LayoutGroup.
-pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut LayoutGroup> {
-    view.as_any_mut()?.downcast_mut::<LayoutGroup>()
+/// Downcast the desktop View to Desktop.
+pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut crate::desktop::Desktop> {
+    view.as_any_mut()?.downcast_mut::<crate::desktop::Desktop>()
 }

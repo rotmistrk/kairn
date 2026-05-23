@@ -4,8 +4,9 @@ pub mod schema;
 
 use std::path::Path;
 
+use crate::desktop::Desktop;
+use crate::desktop::SlotId;
 use crate::kiro_registry::KiroTabRegistry;
-use crate::layout_group::{LayoutGroup, LayoutMode, SlotId};
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;
 use crate::views::terminal::new_kiro_terminal_with_resume;
@@ -16,7 +17,7 @@ use schema::{EditorTabState, KiroSessionState, SessionState, SESSION_VERSION};
 const STATE_FILE: &str = ".kairn.state";
 
 /// Collect current state from the desktop and save to `.kairn.state`.
-pub fn save_session(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
+pub fn save_session(desktop: &mut Desktop, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
     let state = collect_state(desktop, root_dir, kiro_registry);
     if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() && state.kiro_sessions.is_empty() {
         return;
@@ -53,17 +54,17 @@ pub fn load_session(root_dir: &Path) -> Option<SessionState> {
 }
 
 /// Apply restored layout mode to the desktop.
-pub fn restore_session(desktop: &mut LayoutGroup, state: &SessionState) {
-    desktop.layout_mode = match state.layout.as_str() {
-        "wide" => LayoutMode::Wide,
-        "tall" => LayoutMode::Tall,
-        _ => LayoutMode::Auto,
-    };
+pub fn restore_session(desktop: &mut Desktop, state: &SessionState) {
+    desktop.set_layout_mode(match state.layout.as_str() {
+        "wide" => crate::desktop::LayoutMode::Wide,
+        "tall" => crate::desktop::LayoutMode::Narrow,
+        _ => crate::desktop::LayoutMode::Auto,
+    });
 }
 
 /// Restore editor tabs and unfolded directories.
 pub fn restore_tabs(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     state: &SessionState,
     root_dir: &Path,
     editor_defaults: &EditorSettings,
@@ -106,7 +107,7 @@ pub fn restore_tabs(
 
 /// Restore kiro tabs from saved session state.
 pub fn restore_kiro_tabs(
-    desktop: &mut LayoutGroup,
+    desktop: &mut Desktop,
     sessions: &[KiroSessionState],
     root_dir: &Path,
     registry: &mut KiroTabRegistry,
@@ -119,11 +120,11 @@ pub fn restore_kiro_tabs(
     }
 }
 
-fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &KiroTabRegistry) -> SessionState {
-    let layout = match desktop.layout_mode {
-        LayoutMode::Auto => "auto",
-        LayoutMode::Wide => "wide",
-        LayoutMode::Tall => "tall",
+fn collect_state(desktop: &mut Desktop, root_dir: &Path, kiro_registry: &KiroTabRegistry) -> SessionState {
+    let layout = match desktop.layout_mode() {
+        crate::desktop::LayoutMode::Auto => "auto",
+        crate::desktop::LayoutMode::Wide => "wide",
+        crate::desktop::LayoutMode::Narrow => "tall",
     };
     let editor_tabs = collect_editor_tabs(desktop, root_dir);
     let active_tab = desktop.panel(SlotId::Center).active_index();
@@ -133,8 +134,8 @@ fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &Kir
     SessionState {
         version: SESSION_VERSION,
         layout: layout.to_string(),
-        left_width: desktop.left_width,
-        right_width: desktop.right_width,
+        left_width: 24,
+        right_width: 60,
         active_tab,
         editor_tabs,
         unfolded_dirs,
@@ -142,7 +143,7 @@ fn collect_state(desktop: &mut LayoutGroup, root_dir: &Path, kiro_registry: &Kir
     }
 }
 
-fn collect_editor_tabs(desktop: &mut LayoutGroup, root_dir: &Path) -> Vec<EditorTabState> {
+fn collect_editor_tabs(desktop: &mut Desktop, root_dir: &Path) -> Vec<EditorTabState> {
     let panel = desktop.panel_mut(SlotId::Center);
     let count = panel.tab_count();
     let mut tabs = Vec::new();
@@ -175,7 +176,7 @@ fn collect_editor_tabs(desktop: &mut LayoutGroup, root_dir: &Path) -> Vec<Editor
     tabs
 }
 
-fn collect_unfolded_dirs(desktop: &mut LayoutGroup, root_dir: &Path) -> Vec<String> {
+fn collect_unfolded_dirs(desktop: &mut Desktop, root_dir: &Path) -> Vec<String> {
     let panel = desktop.panel_mut(SlotId::Left);
     let Some(view) = panel.view_at_mut(0) else {
         return Vec::new();

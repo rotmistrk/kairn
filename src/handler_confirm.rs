@@ -4,8 +4,8 @@ use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
 use crate::commands::*;
+use crate::desktop::SlotId;
 use crate::handler::downcast_desktop;
-use crate::layout_group::SlotId;
 use crate::views::editor::EditorView;
 
 pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {

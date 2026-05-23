@@ -1,12 +1,12 @@
 //! MCP snapshot collector — extracts state from the desktop for MCP tools.
 
-use crate::layout_group::{LayoutGroup, SlotId};
+use crate::desktop::{Desktop, SlotId};
 use crate::mcp::snapshot::{CursorPos, McpSnapshot, SelectionRange, TabInfo, TerminalInfo};
 use crate::views::editor::EditorView;
 use crate::views::results::ResultsView;
 
 /// Collect current state from the desktop into a snapshot.
-pub fn collect_snapshot(desktop: &mut LayoutGroup) -> McpSnapshot {
+pub fn collect_snapshot(desktop: &mut Desktop) -> McpSnapshot {
     let mut tabs = Vec::new();
     let focused_slot = desktop.focused_slot();
     let mut order = 0usize;
@@ -115,7 +115,7 @@ fn extract_editor_state(
 }
 
 /// Collect terminal content (requires mutable access for PtyTerminal).
-pub fn collect_terminal_content(desktop: &mut LayoutGroup) -> Vec<TerminalInfo> {
+pub fn collect_terminal_content(desktop: &mut Desktop) -> Vec<TerminalInfo> {
     let mut terminals = Vec::new();
     let mut index = 0usize;
     for slot in [SlotId::Right, SlotId::Bottom] {
@@ -167,7 +167,7 @@ fn classify_tab(slot: SlotId, title: &str) -> &'static str {
 }
 
 /// Collect content from all center-panel tabs for the snapshot.
-fn collect_center_contents(desktop: &mut LayoutGroup) -> std::collections::HashMap<String, String> {
+fn collect_center_contents(desktop: &mut Desktop) -> std::collections::HashMap<String, String> {
     let mut contents = std::collections::HashMap::new();
     let panel = desktop.panel_mut(SlotId::Center);
     for i in 0..panel.tab_count() {
