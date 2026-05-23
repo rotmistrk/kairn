@@ -5,10 +5,18 @@
 
 use txv_core::prelude::*;
 
-use super::{Desktop, SlotId};
+use super::{Desktop, SlotId, PANEL_COUNT};
 
 fn chrome_style() -> Style {
     txv_core::palette::palette().chrome.bar.to_style()
+}
+
+/// Buffer-relative panel rects for chrome drawing.
+struct ChromeRects {
+    left: Rect,
+    center: Rect,
+    right: Rect,
+    bottom: Rect,
 }
 
 impl Desktop {
@@ -25,65 +33,59 @@ impl Desktop {
             return;
         }
         buf.fill(' ', Style::default());
-
         if is_zoomed {
-            let cs = chrome_style();
-            buf.hline(0, 0, w, '─', cs);
+            buf.hline(0, 0, w, '─', chrome_style());
             return;
         }
+        let cr = Self::to_chrome_rects(&rects, origin);
+        Self::draw_dividers(buf, &cr, is_tall, w, h);
+    }
 
+    fn to_chrome_rects(rects: &[Rect; PANEL_COUNT], origin: Rect) -> ChromeRects {
+        let rel = |r: Rect| Rect::new(r.x.saturating_sub(origin.x), r.y.saturating_sub(origin.y), r.w, r.h);
+        ChromeRects {
+            left: rel(rects[SlotId::Left as usize]),
+            center: rel(rects[SlotId::Center as usize]),
+            right: rel(rects[SlotId::Right as usize]),
+            bottom: rel(rects[SlotId::Bottom as usize]),
+        }
+    }
+
+    fn draw_dividers(buf: &mut Buffer, cr: &ChromeRects, is_tall: bool, w: u16, h: u16) {
         let cs = chrome_style();
-        // Convert absolute rects to buffer-relative
-        let rel = |r: Rect| -> Rect { Rect::new(r.x.saturating_sub(origin.x), r.y.saturating_sub(origin.y), r.w, r.h) };
-        let left_r = rel(rects[SlotId::Left as usize]);
-        let center_r = rel(rects[SlotId::Center as usize]);
-        let right_r = rel(rects[SlotId::Right as usize]);
-        let bottom_r = rel(rects[SlotId::Bottom as usize]);
-
-        // Top row: full-width horizontal rule
         buf.hline(0, 0, w, '─', cs);
 
-        // ┬ connectors where vertical dividers meet top line
-        if left_r.w > 0 && center_r.w > 0 {
-            let x = left_r.x + left_r.w;
-            buf.put(x, 0, '┬', cs);
+        // ┬ connectors at top
+        if cr.left.w > 0 && cr.center.w > 0 {
+            buf.put(cr.left.x + cr.left.w, 0, '┬', cs);
         }
-        if right_r.w > 0 && center_r.w > 0 && !is_tall {
-            let x = right_r.x.saturating_sub(1);
-            buf.put(x, 0, '┬', cs);
+        if cr.right.w > 0 && cr.center.w > 0 && !is_tall {
+            buf.put(cr.right.x.saturating_sub(1), 0, '┬', cs);
         }
 
-        // Vertical dividers (below chrome row)
-        let tall_right = is_tall && right_r.h > 0;
-        let div_y = if bottom_r.h > 0 || tall_right {
-            if tall_right {
-                right_r.y
-            } else {
-                bottom_r.y
-            }
-        } else {
-            h
+        // Vertical dividers
+        let tall_right = is_tall && cr.right.h > 0;
+        let div_y = match (cr.bottom.h > 0 || tall_right, tall_right) {
+            (true, true) => cr.right.y,
+            (true, false) => cr.bottom.y,
+            _ => h,
         };
         let vline_len = div_y.saturating_sub(1);
-        if left_r.w > 0 && center_r.w > 0 {
-            let x = left_r.x + left_r.w;
-            buf.vline(x, 1, vline_len, '│', cs);
+        if cr.left.w > 0 && cr.center.w > 0 {
+            buf.vline(cr.left.x + cr.left.w, 1, vline_len, '│', cs);
         }
-        if center_r.w > 0 && right_r.w > 0 && !is_tall {
-            let x = right_r.x.saturating_sub(1);
-            buf.vline(x, 1, vline_len, '│', cs);
+        if cr.center.w > 0 && cr.right.w > 0 && !is_tall {
+            buf.vline(cr.right.x.saturating_sub(1), 1, vline_len, '│', cs);
         }
 
-        // Bottom chrome (horizontal divider — overlaps bottom panel's tab bar row)
-        if (bottom_r.h > 0 || tall_right) && div_y > 0 && div_y < h {
+        // Bottom horizontal divider
+        if (cr.bottom.h > 0 || tall_right) && div_y > 0 && div_y < h {
             buf.hline(0, div_y, w, '─', cs);
-            if left_r.w > 0 && center_r.w > 0 {
-                let x = left_r.x + left_r.w;
-                buf.put(x, div_y, '┴', cs);
+            if cr.left.w > 0 && cr.center.w > 0 {
+                buf.put(cr.left.x + cr.left.w, div_y, '┴', cs);
             }
-            if right_r.w > 0 && center_r.w > 0 && !is_tall {
-                let x = right_r.x.saturating_sub(1);
-                buf.put(x, div_y, '┴', cs);
+            if cr.right.w > 0 && cr.center.w > 0 && !is_tall {
+                buf.put(cr.right.x.saturating_sub(1), div_y, '┴', cs);
             }
         }
     }

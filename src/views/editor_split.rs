@@ -79,11 +79,9 @@ impl EditorSplit {
     }
 
     /// Remove the focused pane and return the other one.
-    pub fn collapse(mut self) -> Box<dyn View> {
+    pub fn collapse(mut self) -> Option<Box<dyn View>> {
         let keep = 1 - self.split.focused_index();
-        self.split
-            .remove_child(keep)
-            .unwrap_or_else(|| self.split.remove_child(0).expect("split must have at least one child"))
+        self.split.remove_child(keep).or_else(|| self.split.remove_child(0))
     }
 
     /// Remove the focused child, returning it.

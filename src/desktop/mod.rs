@@ -55,15 +55,30 @@ impl Default for Desktop {
 
 impl Desktop {
     pub fn new() -> Self {
+        let mut ws = Self::create_workspace();
+        // Disable internal key handling on tab bars
+        for i in 0..PANEL_COUNT {
+            if let Some(panel) = ws.panel_mut(i) {
+                panel.bar_mut().set_handle_keys(false);
+            }
+        }
+        ws.focus_panel(0);
+        ws.set_hidden(3, true);
+
+        Self {
+            workspace: ws,
+            last_output: HashMap::new(),
+            badges: HashMap::new(),
+        }
+    }
+
+    fn create_workspace() -> TiledWorkspace {
         let configs = vec![
             PanelConfig::fixed("Files", PanelPosition::Left),
             PanelConfig::new("Editor", PanelPosition::Center),
             PanelConfig::new("Tools", PanelPosition::Right),
             PanelConfig::new("Bottom", PanelPosition::Bottom),
         ];
-
-        // Wide: [Left | Center | Right] over [Bottom]
-        // Proportions: 1:2:2 (matching old LayoutGroup)
         let wide_layout = SplitNode::v(vec![
             (
                 0.7,
@@ -75,8 +90,6 @@ impl Desktop {
             ),
             (0.3, SplitNode::leaf(3)),
         ]);
-
-        // Narrow/tall: [Left | Center] over [Right/Bottom]
         let narrow_layout = SplitNode::v(vec![
             (
                 0.6,
@@ -84,40 +97,28 @@ impl Desktop {
             ),
             (0.4, SplitNode::leaf(2)),
         ]);
-
         let mut ws = TiledWorkspace::new(configs, wide_layout, narrow_layout, 300);
         ws.set_narrow_threshold(200);
         ws.set_handle_keys(false);
         ws.set_v_divider_gaps(false);
-
-        // Disable internal key handling on tab bars
-        for i in 0..PANEL_COUNT {
-            if let Some(panel) = ws.panel_mut(i) {
-                panel.bar_mut().set_handle_keys(false);
-            }
-        }
-
-        // Start with focus on Left (tree panel)
-        ws.focus_panel(0);
-
-        // Bottom panel starts hidden (shown when tabs are added)
-        ws.set_hidden(3, true);
-
-        Self {
-            workspace: ws,
-            last_output: HashMap::new(),
-            badges: HashMap::new(),
-        }
+        ws
     }
 
-    /// Access a panel as TabPanel.
+    /// Access a panel as TabPanel. SlotId is bounded so this always succeeds.
     pub fn panel(&self, slot: SlotId) -> &TabPanel {
-        self.workspace.panel(slot as usize).expect("valid slot")
+        // SAFETY: SlotId enum has exactly 4 variants matching our 4 panels
+        match self.workspace.panel(slot as usize) {
+            Some(p) => p,
+            None => unreachable!(),
+        }
     }
 
-    /// Access a panel mutably as TabPanel.
+    /// Access a panel mutably as TabPanel. SlotId is bounded so this always succeeds.
     pub fn panel_mut(&mut self, slot: SlotId) -> &mut TabPanel {
-        self.workspace.panel_mut(slot as usize).expect("valid slot")
+        match self.workspace.panel_mut(slot as usize) {
+            Some(p) => p,
+            None => unreachable!(),
+        }
     }
 
     pub fn insert_tab(&mut self, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
