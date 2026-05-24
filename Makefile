@@ -80,8 +80,8 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: test-fast purge-cargo-bin install-rusticle-tk install-kairn install-demos
-	@echo "✅ Installed rusticle, rusticle-tk, kairn, and demos to $(LOCAL_PREFIX)"
+install-local: test-fast purge-cargo-bin install-rusticle-tk install-kairn install-rusticle-lsp install-demos
+	@echo "✅ Installed rusticle, rusticle-tk, rusticle-lsp, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
 purge-cargo-bin:
@@ -98,6 +98,11 @@ install-kairn: $(BINARY)
 	install -m 755 $(BINARY) $(LOCAL_PREFIX)/bin/kairn
 	@echo "  ✅ kairn → $(LOCAL_PREFIX)/bin/kairn"
 
+install-rusticle-lsp: $(BINARY)
+	install -d $(LOCAL_PREFIX)/bin
+	install -m 755 target/release/rusticle-lsp $(LOCAL_PREFIX)/bin/rusticle-lsp
+	@echo "  ✅ rusticle-lsp → $(LOCAL_PREFIX)/bin/rusticle-lsp"
+
 install-demos:
 	install -d $(TK_DEMO_DIR)
 	install -m 644 rusticle-tk/examples/*.tcl $(TK_DEMO_DIR)/
@@ -108,6 +113,7 @@ install-demos:
 uninstall-local:
 	rm -f $(LOCAL_PREFIX)/bin/rusticle
 	rm -f $(LOCAL_PREFIX)/bin/rusticle-tk
+	rm -f $(LOCAL_PREFIX)/bin/rusticle-lsp
 	rm -f $(LOCAL_PREFIX)/bin/kairn
 	rm -rf $(LOCAL_PREFIX)/share/rusticle
 	rm -rf $(LOCAL_PREFIX)/share/rusticle-tk

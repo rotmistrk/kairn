@@ -76,7 +76,8 @@ impl LspRegistry {
             None => return false,
         };
         let args: Vec<&str> = config.args.iter().map(|s| s.as_str()).collect();
-        let mut client = match LspClient::spawn(&config.command, &args, self.waker.clone()) {
+        let resolved_cmd = resolve_command(&config.command);
+        let mut client = match LspClient::spawn(&resolved_cmd, &args, self.waker.clone()) {
             Some(c) => c,
             None => {
                 let hint = crate::tool_check::install_hint(&config.command);
@@ -217,4 +218,20 @@ impl Default for LspRegistry {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Resolve a command: if not an absolute path, check next to the current executable first.
+fn resolve_command(cmd: &str) -> String {
+    if std::path::Path::new(cmd).is_absolute() {
+        return cmd.to_string();
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let candidate = dir.join(cmd);
+            if candidate.exists() {
+                return candidate.to_string_lossy().to_string();
+            }
+        }
+    }
+    cmd.to_string()
 }

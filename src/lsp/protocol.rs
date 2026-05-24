@@ -82,6 +82,7 @@ pub fn language_id(path: &Path) -> &'static str {
         Some("rb") => "ruby",
         Some("lua") => "lua",
         Some("sh") | Some("bash") => "shellscript",
+        Some("tcl") => "tcl",
         Some("toml") => "toml",
         Some("json") => "json",
         Some("yaml") | Some("yml") => "yaml",

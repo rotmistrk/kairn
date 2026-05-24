@@ -19,6 +19,7 @@ const KNOWN_LANGS: &[&str] = &[
     "python",
     "ruby",
     "lua",
+    "tcl",
 ];
 
 /// Register LSP-related Tcl commands on the interpreter.

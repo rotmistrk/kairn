@@ -1237,7 +1237,7 @@ dependencies = [
  "log",
  "notify",
  "regex",
- "rusticle",
+ "rusticle 0.1.0",
  "serde",
  "serde_json",
  "sha2",
@@ -1821,6 +1821,13 @@ dependencies = [
 [[package]]
 name = "rusticle"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "rusticle"
+version = "0.1.0"
 source = "git+https://github.com/rotmistrk/rusticle.git#c85c101224d7549e122c0b30df64547c5762e333"
 
 [[package]]
@@ -1830,7 +1837,7 @@ dependencies = [
  "crossterm",
  "ignore",
  "log",
- "rusticle",
+ "rusticle 0.1.0 (git+https://github.com/rotmistrk/rusticle.git)",
  "txv-core",
  "txv-render",
  "txv-widgets",
