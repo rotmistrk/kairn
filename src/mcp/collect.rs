@@ -1,18 +1,21 @@
 //! MCP snapshot collector — extracts state from the desktop for MCP tools.
 
-use crate::desktop::{Desktop, SlotId};
+use crate::desktop::{slot_from, SlotId};
 use crate::mcp::snapshot::{CursorPos, McpSnapshot, SelectionRange, TabInfo, TerminalInfo};
 use crate::views::editor::EditorView;
 use crate::views::results::ResultsView;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 /// Collect current state from the desktop into a snapshot.
-pub fn collect_snapshot(desktop: &mut Desktop) -> McpSnapshot {
+pub fn collect_snapshot(desktop: &mut TiledWorkspace) -> McpSnapshot {
     let mut tabs = Vec::new();
-    let focused_slot = desktop.focused_slot();
+    let focused_slot = slot_from(desktop.focused_panel());
     let mut order = 0usize;
 
-    for slot in [SlotId::Left, SlotId::Center, SlotId::Right, SlotId::Bottom] {
-        let panel = desktop.panel_mut(slot);
+    for slot in [SlotId::Left, SlotId::Center, SlotId::Tools] {
+        let Some(panel) = desktop.panel_mut(slot as usize) else {
+            continue;
+        };
         let active_idx = panel.active_index();
         for i in 0..panel.tab_count() {
             let title = panel.tab_title(i).unwrap_or_default().to_string();
@@ -48,12 +51,10 @@ pub fn collect_snapshot(desktop: &mut Desktop) -> McpSnapshot {
     let slot_name = match focused_slot {
         SlotId::Left => "left",
         SlotId::Center => "center",
-        SlotId::Right => "right",
-        SlotId::Bottom => "bottom",
+        SlotId::Tools => "right",
     };
 
-    let (split_direction, split_linked) = {
-        let panel = desktop.panel_mut(SlotId::Center);
+    let (split_direction, split_linked) = if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
         if let Some(view) = panel.active_view_mut() {
             if let Some(es) = view
                 .as_any_mut()
@@ -70,6 +71,8 @@ pub fn collect_snapshot(desktop: &mut Desktop) -> McpSnapshot {
         } else {
             ("none".to_string(), false)
         }
+    } else {
+        ("none".to_string(), false)
     };
 
     McpSnapshot {
@@ -115,11 +118,13 @@ fn extract_editor_state(
 }
 
 /// Collect terminal content (requires mutable access for PtyTerminal).
-pub fn collect_terminal_content(desktop: &mut Desktop) -> Vec<TerminalInfo> {
+pub fn collect_terminal_content(desktop: &mut TiledWorkspace) -> Vec<TerminalInfo> {
     let mut terminals = Vec::new();
     let mut index = 0usize;
-    for slot in [SlotId::Right, SlotId::Bottom] {
-        let panel = desktop.panel_mut(slot);
+    for slot in [SlotId::Tools] {
+        let Some(panel) = desktop.panel_mut(slot as usize) else {
+            continue;
+        };
         for i in 0..panel.tab_count() {
             let title = panel.tab_title(i).unwrap_or_default().to_string();
             let terminal_type = if title.starts_with("Kiro") {
@@ -149,7 +154,7 @@ pub fn collect_terminal_content(desktop: &mut Desktop) -> Vec<TerminalInfo> {
 fn classify_tab(slot: SlotId, title: &str) -> &'static str {
     match slot {
         SlotId::Left => "tree",
-        SlotId::Right | SlotId::Bottom => {
+        SlotId::Tools => {
             if title.starts_with("Kiro") {
                 "kiro"
             } else {
@@ -167,9 +172,11 @@ fn classify_tab(slot: SlotId, title: &str) -> &'static str {
 }
 
 /// Collect content from all center-panel tabs for the snapshot.
-fn collect_center_contents(desktop: &mut Desktop) -> std::collections::HashMap<String, String> {
+fn collect_center_contents(desktop: &mut TiledWorkspace) -> std::collections::HashMap<String, String> {
     let mut contents = std::collections::HashMap::new();
-    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return std::collections::HashMap::new();
+    };
     for i in 0..panel.tab_count() {
         let title = panel.tab_title(i).unwrap_or_default().to_string();
         let Some(view) = panel.view_at_mut(i) else {

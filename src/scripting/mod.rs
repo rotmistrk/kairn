@@ -46,6 +46,7 @@ impl ScriptEngine {
         bridge_view::register(&mut interp, commands.clone());
         bridge_system::register(&mut interp, snapshot.clone());
         bridge_build::register(&mut interp, commands.clone());
+        bridge_build::register_grep(&mut interp, commands.clone());
         bridge_keymap::register(&mut interp, commands.clone());
         bridge_hook::register(&mut interp, hook_registry.clone());
         bridge_lsp::register(&mut interp, commands.clone());
@@ -69,9 +70,9 @@ impl ScriptEngine {
             .map_err(|e| e.message)
     }
 
-    /// Check if a Tcl command is registered.
+    /// Check if a Tcl command or proc is registered.
     pub fn has_command(&self, name: &str) -> bool {
-        self.interp.has_command(name)
+        self.interp.has_command(name) || self.interp.proc_names().contains(&name.to_string())
     }
 
     /// Get all registered Tcl command names (for completion).

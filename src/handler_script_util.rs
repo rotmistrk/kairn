@@ -13,7 +13,7 @@ pub fn slot_from_name(name: &str) -> Option<SlotId> {
     match name {
         "left" => Some(SlotId::Left),
         "center" => Some(SlotId::Center),
-        "right" => Some(SlotId::Right),
+        "right" => Some(SlotId::Tools),
         _ => None,
     }
 }

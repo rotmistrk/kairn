@@ -42,6 +42,14 @@ impl TodoTreeView {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
                 item.note.clone_from(note);
             }
+            McpAction::TodoToggleImportant { path } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.important = !item.important;
+            }
+            McpAction::TodoEdit { path, title } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.title.clone_from(title);
+            }
             McpAction::TodoAddSubtree { path, items } => {
                 fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
                     let title = val.get("title")?.as_str()?;

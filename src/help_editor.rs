@@ -71,7 +71,14 @@ pub fn help_editor() -> String {
   :diff            Diff vs HEAD (unified, 3 context lines)
   :diff -U5        Diff with 5 context lines
   :diff -w         Diff ignoring whitespace
+  :diff -y         Side-by-side diff (split view)
   :diff --base <r> Diff vs branch/commit/remote
+  :nodiff          Exit diff mode
+  :blame           Show git blame annotations
+  :noblame         Hide git blame
+  :split <file>    Horizontal split
+  :vsplit <file>   Vertical split
+  :only            Close split
   :revert          Revert hunk under cursor (in diff mode)
 
 ─── Editor — Diff Mode ───────────────────────────────
@@ -83,6 +90,15 @@ pub fn help_editor() -> String {
   Esc             Exit diff mode
   /               Search
   :revert / :rev  Revert hunk (ex command)
+
+─── Editor — Side-by-Side Diff (:diff -y) ────────────
+  j / k           Scroll down / up
+  g / G           Jump to start / end
+  Space / PgDn    Page down
+  PgUp            Page up
+  /               Search
+  :               Command mode
+  q / Esc         Exit side-by-side diff
 
 ─── Editor — Insert Mode ─────────────────────────────
   Esc             Return to normal mode

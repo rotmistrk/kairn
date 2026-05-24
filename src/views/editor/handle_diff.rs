@@ -115,4 +115,68 @@ impl EditorView {
             ds.ensure_visible(self.state.bounds().h as usize);
         }
     }
+
+    pub(super) fn handle_sbs_key(&mut self, key: &KeyEvent) -> HandleResult {
+        // Allow : to enter command mode
+        if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
+            self.editor.mode = crate::editor::keymap::EditorMode::Command;
+            self.editor.command_buf.clear();
+            self.state.mark_dirty();
+            return HandleResult::Consumed;
+        }
+
+        // If in command/search mode, delegate to normal command input
+        if self.editor.mode == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        {
+            let result = self.handle_command_input(key);
+            self.state.mark_dirty();
+            return result;
+        }
+
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') => {
+                self.sbs_state = None;
+                self.state.mark_dirty();
+                self.state
+                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+            }
+            KeyCode::Char('/') => {
+                self.editor.mode = crate::editor::keymap::EditorMode::Search;
+                self.editor.command_buf.clear();
+                self.state.mark_dirty();
+            }
+            KeyCode::Char('j') | KeyCode::Down => self.sbs_scroll(1),
+            KeyCode::Char('k') | KeyCode::Up => self.sbs_scroll(-1),
+            KeyCode::Char('G') => {
+                if let Some(sbs) = &mut self.sbs_state {
+                    sbs.scroll = sbs.lines.len().saturating_sub(1);
+                }
+            }
+            KeyCode::Char('g') => {
+                if let Some(sbs) = &mut self.sbs_state {
+                    sbs.scroll = 0;
+                }
+            }
+            KeyCode::PageDown | KeyCode::Char(' ') => {
+                let h = self.state.bounds().h as i32;
+                self.sbs_scroll(h - 1);
+            }
+            KeyCode::PageUp => {
+                let h = self.state.bounds().h as i32;
+                self.sbs_scroll(-(h - 1));
+            }
+            _ => {}
+        }
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
+    fn sbs_scroll(&mut self, delta: i32) {
+        if let Some(sbs) = &mut self.sbs_state {
+            let max = sbs.lines.len().saturating_sub(1);
+            let new = (sbs.scroll as i32 + delta).clamp(0, max as i32) as usize;
+            sbs.scroll = new;
+        }
+    }
 }

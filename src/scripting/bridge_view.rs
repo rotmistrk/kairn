@@ -30,6 +30,27 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::StatusFlash { text });
                 Ok(TclValue::Str(String::new()))
             }
+            "theme" => {
+                let mode = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::ViewTheme { mode });
+                Ok(TclValue::Str(String::new()))
+            }
+            "zoom" => {
+                push(&cmds, ScriptCommand::ViewZoom);
+                Ok(TclValue::Str(String::new()))
+            }
+            "toggle-tree" => {
+                push(&cmds, ScriptCommand::ViewToggleTree);
+                Ok(TclValue::Str(String::new()))
+            }
+            "toggle-tools" => {
+                push(&cmds, ScriptCommand::ViewToggleTools);
+                Ok(TclValue::Str(String::new()))
+            }
+            "layout" => {
+                push(&cmds, ScriptCommand::ViewLayout);
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("view: unknown subcommand '{other}'"))),
         }
     });

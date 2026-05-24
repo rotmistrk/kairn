@@ -7,7 +7,7 @@ use txv_core::program::CommandContext;
 
 use crate::broker::OpenResult;
 use crate::commands::*;
-use crate::desktop::SlotId;
+use crate::desktop::{active_tab_title, close_tab_by_title, focus_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
 /// Compute tab title: relative path within project, or full path for external files.
@@ -37,14 +37,14 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         OpenResult::AlreadyOpen { .. } => {
             log::info!("Already open: {title}");
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if !desktop.focus_tab_by_title(SlotId::Center, &title) {
+                if !focus_tab_by_title(desktop, SlotId::Center, &title) {
                     // Tab was evicted but broker wasn't updated — reopen
                     state.broker.close(&title);
                     let view: Box<dyn View> =
                         try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
                     crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
                     if focus_center {
-                        desktop.focus_slot(SlotId::Center);
+                        desktop.focus_panel(SlotId::Center as usize);
                     }
                     ctx.sink.push_command(
                         txv_widgets::CM_STATUS_MESSAGE,
@@ -53,17 +53,19 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
                     return;
                 }
                 if let (Some(line), Some(col)) = (req.line, req.col) {
-                    if let Some(view) = desktop.active_view_mut(SlotId::Center) {
-                        if let Some(editor) = view
-                            .as_any_mut()
-                            .and_then(|a| a.downcast_mut::<crate::views::editor::EditorView>())
-                        {
-                            editor.goto(line, col);
+                    if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
+                        if let Some(view) = panel.active_view_mut() {
+                            if let Some(editor) = view
+                                .as_any_mut()
+                                .and_then(|a| a.downcast_mut::<crate::views::editor::EditorView>())
+                            {
+                                editor.goto(line, col);
+                            }
                         }
                     }
                 }
                 if focus_center {
-                    desktop.focus_slot(SlotId::Center);
+                    desktop.focus_panel(SlotId::Center as usize);
                 }
             }
             if req.diff {
@@ -72,12 +74,12 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         }
         OpenResult::Opened => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                desktop.close_tab_by_title(SlotId::Center, "Welcome");
+                close_tab_by_title(desktop, SlotId::Center, "Welcome");
                 let title = tab_title(path, &state.root_dir);
                 let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
                 crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
                 if focus_center {
-                    desktop.focus_slot(SlotId::Center);
+                    desktop.focus_panel(SlotId::Center as usize);
                 }
                 ctx.sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
@@ -141,8 +143,8 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let view = crate::views::results::ResultsView::new(title, entries.clone()).with_root(&state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, title.clone(), Box::new(view));
-        desktop.focus_slot(SlotId::Right);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title.clone(), Box::new(view));
+        desktop.focus_panel(SlotId::Tools as usize);
     }
 }
 
@@ -152,14 +154,14 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
-    let Some(title) = d.active_tab_title(SlotId::Center).map(String::from) else {
+    let Some(title) = active_tab_title(d, SlotId::Center).map(String::from) else {
         return;
     };
     let path = state.root_dir.join(&title);
     if !path.is_file() {
         return;
     }
-    d.close_tab_by_title(SlotId::Center, &title);
+    close_tab_by_title(d, SlotId::Center, &title);
     state.broker.close(&title);
     let _ = state.broker.open(&title, SlotId::Center, 0);
     let view: Box<dyn View> = if to_structured {
@@ -232,7 +234,7 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut 
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
-    let Some(title) = d.active_tab_title(SlotId::Center).map(String::from) else {
+    let Some(title) = active_tab_title(d, SlotId::Center).map(String::from) else {
         return;
     };
     let path = state.root_dir.join(&title);
@@ -242,7 +244,7 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut 
     let Ok(content) = std::fs::read_to_string(&path) else {
         return;
     };
-    d.close_tab_by_title(SlotId::Center, &title);
+    close_tab_by_title(d, SlotId::Center, &title);
     state.broker.close(&title);
     let _ = state.broker.open(&title, SlotId::Center, 0);
     let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));

@@ -29,6 +29,37 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::TodoComplete { path });
                 Ok(TclValue::Str(String::new()))
             }
+            "toggle-important" => {
+                let path = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::TodoToggleImportant { path });
+                Ok(TclValue::Str(String::new()))
+            }
+            "edit" => {
+                let path = super::arg_str(args, 1)?;
+                let text = super::arg_str(args, 2)?;
+                push(&cmds, ScriptCommand::TodoEdit { path, text });
+                Ok(TclValue::Str(String::new()))
+            }
+            "swap" => {
+                let path = super::arg_str(args, 1)?;
+                let direction = super::arg_str(args, 2)?;
+                push(&cmds, ScriptCommand::TodoSwap { path, direction });
+                Ok(TclValue::Str(String::new()))
+            }
+            "promote" => {
+                let path = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::TodoPromote { path });
+                Ok(TclValue::Str(String::new()))
+            }
+            "demote" => {
+                let path = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::TodoDemote { path });
+                Ok(TclValue::Str(String::new()))
+            }
+            "list" => {
+                push(&cmds, ScriptCommand::TodoList);
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("todo: unknown subcommand '{other}'"))),
         }
     });

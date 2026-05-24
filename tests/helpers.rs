@@ -32,9 +32,10 @@ impl TestHarness {
     /// Same setup as main.rs: StatusBar + Desktop + AppState.
     pub fn new(root_dir: &Path) -> Self {
         init_test_logger();
-        let desktop = kairn::slots::Desktop::new(build_workspace(root_dir, GitKeys::default()));
+        let desktop = build_workspace(root_dir, GitKeys::default());
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
+            &desktop,
             Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
             0,
             root_dir.to_path_buf(),
@@ -52,9 +53,10 @@ impl TestHarness {
     /// Create with custom dimensions.
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
         init_test_logger();
-        let desktop = kairn::slots::Desktop::new(build_workspace(root_dir, GitKeys::default()));
+        let desktop = build_workspace(root_dir, GitKeys::default());
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
+            &desktop,
             Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
             0,
             root_dir.to_path_buf(),

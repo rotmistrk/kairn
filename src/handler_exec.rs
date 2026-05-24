@@ -1,14 +1,26 @@
-//! M-x command dispatch — handles CM_EXECUTE_COMMAND.
+//! M-x command dispatch — handles CM_EXECUTE_COMMAND via dispatch table.
 
-use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
-use crate::commands::*;
-use crate::desktop::SlotId;
-use crate::handler::{downcast_desktop, AppState};
-use crate::views::help::HelpView;
-use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
-use crate::views::welcome::WelcomeView;
+use crate::handler::AppState;
+
+/// A dispatch table entry. The table IS the command list.
+pub struct ExecEntry {
+    /// Command names (first is canonical, rest are aliases).
+    pub names: &'static [&'static str],
+    /// If true, the command requires a non-empty argument.
+    pub requires_arg: bool,
+    /// Handler function: receives context, state, and the argument string.
+    pub handler: fn(&mut CommandContext, &mut AppState, &str),
+}
+
+/// The dispatch table — single source of truth for M-x commands.
+/// The completer iterates this directly. No separate list to maintain.
+pub fn dispatch_table() -> impl Iterator<Item = &'static ExecEntry> {
+    crate::handler_exec_table1::TABLE_PART1
+        .iter()
+        .chain(crate::handler_exec_table2::TABLE_PART2.iter())
+}
 
 /// Handle the M-x command dispatch.
 pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
@@ -24,217 +36,38 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
     let cmd = parts.first().copied().unwrap_or("");
     let arg = parts.get(1).copied().unwrap_or("");
 
-    match cmd {
-        "help" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
-                    crate::handler_evict::try_insert_tab(
-                        desktop,
-                        state,
-                        ctx.sink,
-                        SlotId::Center,
-                        "Help".into(),
-                        Box::new(HelpView::new()),
-                    );
+    // Look up in dispatch table
+    for entry in dispatch_table() {
+        if entry.names.contains(&cmd) {
+            if entry.requires_arg && arg.is_empty() {
+                return; // silently ignore (matches old behavior)
+            }
+            (entry.handler)(ctx, state, arg);
+            return;
+        }
+    }
+
+    // Fallback: try as Tcl script
+    if is_bare_word(text) && !state.script.has_command(text) {
+        let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
+        ctx.sink
+            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+    } else {
+        match state.script.eval(text) {
+            Ok(result) => {
+                crate::completer::refresh_commands(&state.command_list, &state.script);
+                let cmds = state.script.drain_commands();
+                crate::handler_script::dispatch_script_commands(cmds, ctx, state);
+                if !result.is_empty() {
+                    let msg = txv_core::message::Message::info("tcl", result);
+                    ctx.sink
+                        .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                 }
-            }
-        }
-        "welcome" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if !desktop.focus_tab_by_title(SlotId::Center, "Welcome") {
-                    crate::handler_evict::try_insert_tab(
-                        desktop,
-                        state,
-                        ctx.sink,
-                        SlotId::Center,
-                        "Welcome".into(),
-                        Box::new(WelcomeView::new(state.root_dir.clone())),
-                    );
-                }
-            }
-        }
-        "quit" => ctx.sink.push_command(CM_QUIT, None),
-        "edit" | "e" if !arg.is_empty() => crate::handler_open::handle_edit_file(ctx.desktop, ctx.sink, state, arg),
-        "save" => ctx.sink.push_command(CM_SAVE, None),
-        "close" => ctx.sink.push_command(CM_TAB_CLOSE, None),
-        "tab-rename" if !arg.is_empty() => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let slot = desktop.focused_slot();
-                let old_title = desktop.active_tab_title(slot).map(String::from);
-                desktop.rename_focused_tab(arg);
-                if let Some(old) = old_title {
-                    if state.kiro_registry.contains(&old) {
-                        let new_title = desktop.active_tab_title(slot).map(String::from);
-                        if let Some(new) = new_title {
-                            state.kiro_registry.rename(&old, &new);
-                        }
-                    }
-                }
-            }
-        }
-        "lsp-rename" if !arg.is_empty() => {
-            ctx.sink.push_command(CM_LSP_RENAME, Some(Box::new(arg.to_string())));
-        }
-        "shell" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(
-                    desktop,
-                    state,
-                    ctx.sink,
-                    SlotId::Right,
-                    name.clone(),
-                    new_shell_terminal(),
-                );
-                ctx.sink.push_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(txv_core::message::Message::info(
-                        "shell",
-                        format!("Started: {name}"),
-                    ))),
-                );
-            }
-        }
-        "kiro" => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let name = desktop.next_tab_name(SlotId::Right, "Kiro");
-                let agent_arg = if arg.starts_with("--agent=") {
-                    Some(arg.trim_start_matches("--agent="))
-                } else if !arg.is_empty() {
-                    Some(arg)
-                } else {
-                    Some("kairn")
-                };
-                let term = new_kiro_terminal(agent_arg, &state.root_dir);
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, name.clone(), term);
-                state.kiro_registry.register(&name);
-                ctx.sink.push_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(txv_core::message::Message::info(
-                        "kiro",
-                        format!("Started: {name}"),
-                    ))),
-                );
-            }
-        }
-        "messages" => ctx.sink.push_command(CM_SHOW_MESSAGES, None),
-        "theme" => {
-            if let Some(name) = arg.strip_prefix("syntax ") {
-                ctx.sink
-                    .push_command(CM_SET_SYNTAX_THEME, Some(Box::new(name.to_string())));
-            } else if let Some(g) = arg.strip_prefix("glyphs ") {
-                ctx.sink.push_command(CM_SET_GLYPHS, Some(Box::new(g.to_string())));
-            } else if matches!(arg, "dark" | "light" | "auto" | "toggle" | "") {
-                ctx.sink.push_command(CM_TOGGLE_THEME, Some(Box::new(arg.to_string())));
-            }
-        }
-        "lsp-status" => {
-            let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
-            ctx.sink.push_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
-        }
-        "lsp" if !arg.is_empty() => {
-            let msg = crate::handler_lsp_cmd::handle_lsp_command(arg, state);
-            ctx.sink.push_command(
-                txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(txv_core::message::Message::info("lsp", msg))),
-            );
-        }
-        "build" => ctx.sink.push_command(CM_BUILD, None),
-        "run" => ctx.sink.push_command(CM_RUN, None),
-        "test" => ctx.sink.push_command(CM_TEST, None),
-        "grep" if !arg.is_empty() => {
-            let root = state.root_dir.clone();
-            let waker = state.waker.clone().unwrap_or_else(txv_core::run::Waker::noop);
-            let grep_state = crate::grep::grep_async(arg, &root, waker);
-            state.grep_pending = Some((format!("grep:{arg}"), grep_state, root.clone()));
-            let title = format!("grep:{arg}");
-            let view = crate::views::results::ResultsView::searching(&title, &root);
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, title, Box::new(view));
-                desktop.focus_slot(SlotId::Right);
-            }
-        }
-        "grep" => {
-            let msg = txv_core::message::Message::warn("grep", "Usage: :grep <pattern>");
-            ctx.sink
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-        "test-file" => ctx.sink.push_command(CM_TEST_FILE, None),
-        "test-at-cursor" => ctx.sink.push_command(CM_TEST_AT_CURSOR, None),
-        "next-error" => ctx.sink.push_command(CM_NEXT_ERROR, None),
-        "prev-error" => ctx.sink.push_command(CM_PREV_ERROR, None),
-        "code-action" => ctx.sink.push_command(CM_CODE_ACTION, None),
-        "grow" => ctx.sink.push_command(CM_PANEL_GROW, None),
-        "shrink" => ctx.sink.push_command(CM_PANEL_SHRINK, None),
-        "grow-v" => ctx.sink.push_command(CM_PANEL_GROW_V, None),
-        "shrink-v" => ctx.sink.push_command(CM_PANEL_SHRINK_V, None),
-        "paste" => match crate::clipboard::paste_from_clipboard() {
-            Ok(text) => {
-                ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
             }
             Err(e) => {
-                let msg = txv_core::message::Message::error("clipboard", e);
+                let msg = txv_core::message::Message::error("tcl", e);
                 ctx.sink
                     .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            }
-        },
-        "git-stage" if !arg.is_empty() => {
-            ctx.sink.push_command(CM_GIT_STAGE, Some(Box::new(arg.to_string())));
-        }
-        "git-unstage" if !arg.is_empty() => {
-            ctx.sink.push_command(CM_GIT_UNSTAGE, Some(Box::new(arg.to_string())));
-        }
-        "git-untrack" if !arg.is_empty() => {
-            ctx.sink.push_command(CM_GIT_UNTRACK, Some(Box::new(arg.to_string())));
-        }
-        "git-commit" if !arg.is_empty() => {
-            ctx.sink.push_command(CM_GIT_COMMIT, Some(Box::new(arg.to_string())));
-        }
-        "diff" => {
-            ctx.sink.push_command(CM_DIFF, Some(Box::new(arg.to_string())));
-        }
-        "blame" => {
-            ctx.sink.push_command(crate::commands::CM_BLAME, None);
-        }
-        "noblame" => {
-            ctx.sink.push_command(crate::commands::CM_NOBLAME, None);
-        }
-        "log" => {
-            crate::handler_log::open_git_log(ctx, state, arg);
-        }
-        "tree" | "struct" | "structured" => {
-            crate::handler_open::toggle_view_mode(ctx.desktop, ctx.sink, state, true);
-        }
-        "tab" => {
-            crate::handler_open::open_as_csv(ctx.desktop, ctx.sink, state);
-        }
-        "text" => {
-            crate::handler_open::toggle_view_mode(ctx.desktop, ctx.sink, state, false);
-        }
-        _ => {
-            // Try as Tcl script before reporting unknown
-            if is_bare_word(text) && !state.script.has_command(text) {
-                let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
-                ctx.sink
-                    .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            } else {
-                match state.script.eval(text) {
-                    Ok(result) => {
-                        crate::completer::refresh_commands(&state.command_list, &state.script);
-                        let cmds = state.script.drain_commands();
-                        crate::handler_script::dispatch_script_commands(cmds, ctx, state);
-                        if !result.is_empty() {
-                            let msg = txv_core::message::Message::info("tcl", result);
-                            ctx.sink
-                                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                        }
-                    }
-                    Err(e) => {
-                        let msg = txv_core::message::Message::error("tcl", e);
-                        ctx.sink
-                            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                    }
-                }
             }
         }
     }
@@ -243,4 +76,72 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
 /// A bare word is a single token with no Tcl syntax (no spaces, brackets, braces, quotes).
 fn is_bare_word(s: &str) -> bool {
     !s.is_empty() && !s.contains(|c: char| c.is_whitespace() || "[]{}\"$;".contains(c))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::CM_EXECUTE_COMMAND;
+
+    /// Verify every entry in the dispatch table is actually callable
+    /// (not producing "Unknown command").
+    #[test]
+    fn dispatch_table_all_recognized() {
+        use txv_core::event::Event;
+        use txv_core::program::Program;
+
+        let dir = std::env::temp_dir();
+        let desktop = crate::build_desktop::build_workspace(&dir, crate::settings::GitKeys::default());
+        let mut state = crate::handler::AppState::new(dir.clone());
+        let status = crate::status::build_status_bar(
+            &desktop,
+            Box::new(crate::completer::AppCompleter::new(
+                dir.clone(),
+                crate::completer::new_command_list(),
+            )),
+            0,
+            dir.clone(),
+            &crate::settings::StatusKeys::default(),
+        );
+        let mut program = Program::new(Box::new(status), Box::new(desktop));
+        let sink = program.sink().clone();
+
+        for entry in dispatch_table() {
+            for &name in entry.names {
+                // For requires_arg entries, provide a dummy arg
+                let text = if entry.requires_arg {
+                    format!("{name} test_arg")
+                } else {
+                    name.to_string()
+                };
+                let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(text));
+                let mut ctx = txv_core::program::CommandContext {
+                    command: CM_EXECUTE_COMMAND,
+                    data: &data,
+                    sink: &sink,
+                    desktop: program.desktop_mut(),
+                };
+                handle_execute_command(&mut ctx, &mut state);
+
+                let events = sink.drain();
+                let produced_unknown = events.iter().any(|ev| {
+                    if let Event::Command { id, data } = ev {
+                        if *id == txv_widgets::CM_STATUS_MESSAGE {
+                            if let Some(msg) = data
+                                .as_ref()
+                                .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
+                            {
+                                return msg.text.contains("Unknown command");
+                            }
+                        }
+                    }
+                    false
+                });
+                assert!(
+                    !produced_unknown,
+                    "Dispatch table entry '{name}' produced 'Unknown command'. Bug in lookup logic."
+                );
+            }
+        }
+    }
 }

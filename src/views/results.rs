@@ -211,7 +211,10 @@ impl View for ResultsView {
             }
             KeyCode::Right => {
                 self.open_current();
-                self.state.put_command(crate::commands::CM_FOCUS_CENTER, None);
+                self.state.put_command(
+                    txv_widgets::tiled_workspace::commands::CM_TW_FOCUS_PANEL,
+                    Some(Box::new(1usize)),
+                );
                 HandleResult::Consumed
             }
             KeyCode::Char('n') => {

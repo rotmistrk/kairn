@@ -8,9 +8,8 @@ use txv_widgets::command_item::CommandItem;
 use txv_widgets::confirm_item::ConfirmItem;
 use txv_widgets::status_indicators::BranchItem;
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
-use txv_widgets::tiled_workspace::commands::{
-    CM_CYCLE_SUBPANEL, CM_GROW_SUBPANEL, CM_MOVE_TAB_SUBPANEL, CM_SHRINK_SUBPANEL,
-};
+use txv_widgets::tiled_workspace::commands::CM_TW_ACTIVATE_TAB;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
@@ -49,61 +48,102 @@ fn ctrl(ch: char) -> KeyEvent {
         },
     }
 }
-fn ctrl_shift(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    }
-}
 
 /// Build the application status bar with all items configured.
 pub fn build_status_bar(
+    desktop: &TiledWorkspace,
     completer: Box<dyn Completer>,
     clock_interval: u16,
     root_dir: PathBuf,
     keys: &StatusKeys,
 ) -> StatusBar {
     let mut bar = StatusBar::new();
-    add_key_bindings(&mut bar, keys);
+    add_workspace_bindings(&mut bar, desktop);
+    add_app_bindings(&mut bar, keys);
     add_tab_digit_bindings(&mut bar);
     add_command_items(&mut bar, completer);
     add_right_side(&mut bar, root_dir, clock_interval);
     bar
 }
 
-fn add_key_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
+/// Register TiledWorkspace's default key→command bindings.
+fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
+    for (key, command, _payload) in desktop.default_bindings() {
+        bar.add_active_only(KeyLabelItem::hidden(key, command));
+    }
+}
+
+/// App-specific bindings (not workspace navigation).
+fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
+    use txv_widgets::tiled_workspace::commands::{
+        CM_TW_FOCUS_PANEL, CM_TW_GROW_H, CM_TW_GROW_V, CM_TW_SHRINK_H, CM_TW_SHRINK_V, CM_TW_ZOOM,
+    };
     bar.add(KeyLabelItem::new(keys.help, CM_SHOW_HELP, "F1:Help"));
-    bar.add(KeyLabelItem::new(keys.zoom, CM_ZOOM_TOGGLE, "F5:Zoom"));
+    bar.add(KeyLabelItem::new(keys.zoom, CM_TW_ZOOM, "F5:Zoom"));
     bar.add(KeyLabelItem::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"));
     bar.add(KeyLabelItem::new(keys.quit, CM_QUIT, "^Q:Quit"));
-    bar.add_active_only(KeyLabelItem::hidden(keys.tree, CM_FOCUS_LEFT));
-    bar.add_active_only(KeyLabelItem::hidden(keys.main, CM_FOCUS_CENTER));
-    bar.add_active_only(KeyLabelItem::hidden(keys.term, CM_FOCUS_RIGHT));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Left), CM_FOCUS_PREV));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Right), CM_FOCUS_NEXT));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Up), CM_TAB_DROPDOWN_UP));
-    bar.add_active_only(KeyLabelItem::hidden(ctrl_shift(KeyCode::Down), CM_TAB_DROPDOWN_DOWN));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_PANEL_GROW));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_PANEL_SHRINK));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('±')), CM_PANEL_GROW_V));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('—')), CM_PANEL_SHRINK_V));
-    bar.add_active_only(KeyLabelItem::hidden(keys.subpanel_focus, CM_CYCLE_SUBPANEL));
-    bar.add_active_only(KeyLabelItem::hidden(keys.subpanel_move, CM_MOVE_TAB_SUBPANEL));
-    bar.add_active_only(KeyLabelItem::hidden(keys.subpanel_grow, CM_GROW_SUBPANEL));
-    bar.add_active_only(KeyLabelItem::hidden(keys.subpanel_shrink, CM_SHRINK_SUBPANEL));
+    bar.add_active_only(KeyLabelItem::hidden_with_data(keys.tree, CM_TW_FOCUS_PANEL, 0));
+    bar.add_active_only(KeyLabelItem::hidden_with_data(keys.main, CM_TW_FOCUS_PANEL, 1));
+    bar.add_active_only(KeyLabelItem::hidden_with_data(keys.term, CM_TW_FOCUS_PANEL, 2));
+    // macOS Option+=/- resize keys (Alt+Shift produces these chars on macOS)
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_TW_GROW_H));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_TW_SHRINK_H));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('±')), CM_TW_GROW_V));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('—')), CM_TW_SHRINK_V));
+    // Alt+Shift+Arrow resize keys
+    let alt_shift = |code| KeyEvent {
+        code,
+        modifiers: KeyMod {
+            ctrl: false,
+            shift: true,
+            alt: true,
+        },
+    };
+    bar.add_active_only(KeyLabelItem::hidden(alt_shift(KeyCode::Right), CM_TW_GROW_H));
+    bar.add_active_only(KeyLabelItem::hidden(alt_shift(KeyCode::Left), CM_TW_SHRINK_H));
+    bar.add_active_only(KeyLabelItem::hidden(alt_shift(KeyCode::Down), CM_TW_GROW_V));
+    bar.add_active_only(KeyLabelItem::hidden(alt_shift(KeyCode::Up), CM_TW_SHRINK_V));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('z'), CM_SUSPEND));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('o'), CM_PEEK));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('d'), CM_DIFF));
     bar.add_active_only(KeyLabelItem::hidden(ctrl('l'), CM_REPAINT));
+    // Alt-\ layout cycle (macOS produces «)
+    use txv_widgets::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE;
+    bar.add_active_only(KeyLabelItem::hidden(
+        KeyEvent {
+            code: KeyCode::Char('\\'),
+            modifiers: KeyMod {
+                ctrl: false,
+                alt: true,
+                shift: false,
+            },
+        },
+        CM_TW_LAYOUT_CYCLE,
+    ));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('«')), CM_TW_LAYOUT_CYCLE));
 }
 
+/// Alt+digit and macOS Option+digit for tab switching.
 fn add_tab_digit_bindings(bar: &mut StatusBar) {
+    use txv_widgets::tiled_workspace::commands::CM_TW_TAB_DROPDOWN;
     let mac_digits = ['º', '¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
-    for i in 0..10u8 {
+    // Alt+0 → dropdown
+    let alt_0 = KeyEvent {
+        code: KeyCode::Char('0'),
+        modifiers: KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    };
+    bar.add_active_only(KeyLabelItem::hidden(alt_0, CM_TW_TAB_DROPDOWN));
+    bar.add_active_only(KeyLabelItem::hidden(
+        key(KeyCode::Char(mac_digits[0])),
+        CM_TW_TAB_DROPDOWN,
+    ));
+    // Alt+1..9 → activate tab by label
+    for i in 1..10u8 {
+        let tab_idx = (i - 1) as u16;
         let alt_key = KeyEvent {
             code: KeyCode::Char((b'0' + i) as char),
             modifiers: KeyMod {
@@ -112,9 +152,9 @@ fn add_tab_digit_bindings(bar: &mut StatusBar) {
                 shift: false,
             },
         };
-        bar.add_active_only(KeyLabelItem::hidden_with_data(alt_key, CM_FOCUS_TAB, i as u16));
+        bar.add_active_only(KeyLabelItem::hidden_with_data(alt_key, CM_TW_ACTIVATE_TAB, tab_idx));
         let mac_key = key(KeyCode::Char(mac_digits[i as usize]));
-        bar.add_active_only(KeyLabelItem::hidden_with_data(mac_key, CM_FOCUS_TAB, i as u16));
+        bar.add_active_only(KeyLabelItem::hidden_with_data(mac_key, CM_TW_ACTIVATE_TAB, tab_idx));
     }
 }
 

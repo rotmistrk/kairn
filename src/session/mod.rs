@@ -4,19 +4,20 @@ pub mod schema;
 
 use std::path::Path;
 
-use crate::desktop::{Desktop, SlotId};
+use crate::desktop::{close_tab_by_title, insert_tab, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;
 use crate::views::terminal::new_kiro_terminal_with_resume;
 use crate::views::tree::FileTreeView;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use schema::{EditorTabState, KiroSessionState, SessionState, SESSION_VERSION};
 
 const STATE_FILE: &str = ".kairn.state";
 
 /// Collect current state from the desktop and save to `.kairn.state`.
-pub fn save_session(desktop: &mut Desktop, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
+pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
     let state = collect_state(desktop, root_dir, kiro_registry);
     if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() && state.kiro_sessions.is_empty() {
         return;
@@ -53,7 +54,7 @@ pub fn load_session(root_dir: &Path) -> Option<SessionState> {
 }
 
 /// Apply restored layout mode to the desktop.
-pub fn restore_session(desktop: &mut Desktop, state: &SessionState) {
+pub fn restore_session(desktop: &mut TiledWorkspace, state: &SessionState) {
     desktop.set_layout_mode(match state.layout.as_str() {
         "wide" => crate::desktop::LayoutMode::Wide,
         "tall" => crate::desktop::LayoutMode::Narrow,
@@ -63,7 +64,7 @@ pub fn restore_session(desktop: &mut Desktop, state: &SessionState) {
 
 /// Restore editor tabs and unfolded directories.
 pub fn restore_tabs(
-    desktop: &mut Desktop,
+    desktop: &mut TiledWorkspace,
     state: &SessionState,
     root_dir: &Path,
     editor_defaults: &EditorSettings,
@@ -71,7 +72,7 @@ pub fn restore_tabs(
 ) {
     // Restore editor tabs
     if !state.editor_tabs.is_empty() {
-        desktop.close_tab_by_title(SlotId::Center, "Welcome");
+        close_tab_by_title(desktop, SlotId::Center, "Welcome");
         for tab in &state.editor_tabs {
             let path = root_dir.join(&tab.path);
             if !path.is_file() {
@@ -82,18 +83,25 @@ pub fn restore_tabs(
             editor.set_root_dir(root_dir.to_path_buf());
             editor.goto(tab.line, tab.col);
             let title = tab.path.clone();
-            desktop.insert_tab(SlotId::Center, &title, Box::new(editor));
+            insert_tab(desktop, SlotId::Center, &title, Box::new(editor));
         }
         // Restore active tab index
-        let count = desktop.panel(SlotId::Center).tab_count();
+        let Some(panel) = desktop.panel(SlotId::Center as usize) else {
+            return;
+        };
+        let count = panel.tab_count();
         if state.active_tab < count {
-            desktop.set_active_tab(SlotId::Center, state.active_tab);
+            if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
+                panel.set_active(state.active_tab);
+            }
         }
     }
     // Restore unfolded directories
     if !state.unfolded_dirs.is_empty() {
         let paths: Vec<_> = state.unfolded_dirs.iter().map(|d| root_dir.join(d)).collect();
-        let panel = desktop.panel_mut(SlotId::Left);
+        let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+            return;
+        };
         if let Some(view) = panel.view_at_mut(0) {
             if let Some(any) = view.as_any_mut() {
                 if let Some(tree) = any.downcast_mut::<FileTreeView>() {
@@ -106,7 +114,7 @@ pub fn restore_tabs(
 
 /// Restore kiro tabs from saved session state.
 pub fn restore_kiro_tabs(
-    desktop: &mut Desktop,
+    desktop: &mut TiledWorkspace,
     sessions: &[KiroSessionState],
     root_dir: &Path,
     registry: &mut KiroTabRegistry,
@@ -114,19 +122,19 @@ pub fn restore_kiro_tabs(
     for session in sessions {
         let resume_id = session.session_id.as_deref();
         let term = new_kiro_terminal_with_resume(Some("kairn"), resume_id, root_dir);
-        desktop.insert_tab(SlotId::Right, &session.name, term);
+        insert_tab(desktop, SlotId::Tools, &session.name, term);
         registry.register_with_id(&session.name, session.session_id.clone());
     }
 }
 
-fn collect_state(desktop: &mut Desktop, root_dir: &Path, kiro_registry: &KiroTabRegistry) -> SessionState {
+fn collect_state(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry: &KiroTabRegistry) -> SessionState {
     let layout = match desktop.layout_mode() {
         crate::desktop::LayoutMode::Auto => "auto",
         crate::desktop::LayoutMode::Wide => "wide",
         crate::desktop::LayoutMode::Narrow => "tall",
     };
     let editor_tabs = collect_editor_tabs(desktop, root_dir);
-    let active_tab = desktop.panel(SlotId::Center).active_index();
+    let active_tab = desktop.panel(SlotId::Center as usize).map_or(0, |p| p.active_index());
     let unfolded_dirs = collect_unfolded_dirs(desktop, root_dir);
     let kiro_sessions = kiro_registry.to_state();
 
@@ -142,8 +150,10 @@ fn collect_state(desktop: &mut Desktop, root_dir: &Path, kiro_registry: &KiroTab
     }
 }
 
-fn collect_editor_tabs(desktop: &mut Desktop, root_dir: &Path) -> Vec<EditorTabState> {
-    let panel = desktop.panel_mut(SlotId::Center);
+fn collect_editor_tabs(desktop: &mut TiledWorkspace, root_dir: &Path) -> Vec<EditorTabState> {
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return Vec::new();
+    };
     let count = panel.tab_count();
     let mut tabs = Vec::new();
     for i in 0..count {
@@ -175,8 +185,10 @@ fn collect_editor_tabs(desktop: &mut Desktop, root_dir: &Path) -> Vec<EditorTabS
     tabs
 }
 
-fn collect_unfolded_dirs(desktop: &mut Desktop, root_dir: &Path) -> Vec<String> {
-    let panel = desktop.panel_mut(SlotId::Left);
+fn collect_unfolded_dirs(desktop: &mut TiledWorkspace, root_dir: &Path) -> Vec<String> {
+    let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+        return Vec::new();
+    };
     let Some(view) = panel.view_at_mut(0) else {
         return Vec::new();
     };

@@ -32,7 +32,9 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
         'y' => {
             // Save and close
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let panel = desktop.panel_mut(SlotId::Center);
+                let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+                    return;
+                };
                 for i in 0..panel.tab_count() {
                     if let Some(view) = panel.view_at_mut(i) {
                         if let Some(any) = view.as_any_mut() {
@@ -67,7 +69,9 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
         'n' => {
             // Discard and close
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let panel = desktop.panel_mut(SlotId::Center);
+                let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+                    return;
+                };
                 for i in 0..panel.tab_count() {
                     if let Some(view) = panel.view_at_mut(i) {
                         if let Some(any) = view.as_any_mut() {
@@ -103,7 +107,9 @@ fn handle_file_reload(ctx: &mut CommandContext, path: &str, ch: char) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
     for i in 0..panel.tab_count() {
         let Some(view) = panel.view_at_mut(i) else {
             continue;
@@ -130,7 +136,9 @@ fn handle_todo_delete(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
         return;
     }
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let panel = desktop.panel_mut(SlotId::Left);
+        let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+            return;
+        };
         if let Some(view) = panel.view_at_mut(2) {
             if let Some(any) = view.as_any_mut() {
                 if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {
@@ -154,7 +162,9 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
         return; // cancelled
     }
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let panel = desktop.panel_mut(SlotId::Left);
+        let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+            return;
+        };
         if let Some(view) = panel.view_at_mut(2) {
             if let Some(any) = view.as_any_mut() {
                 if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {

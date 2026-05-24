@@ -9,18 +9,35 @@ pub fn help_global() -> String {
   F4              Focus terminal (right slot)
   F5              Zoom toggle (maximize focused slot)
   F6              Messages window
-  Ctrl-Shift-Left   Focus previous slot
-  Ctrl-Shift-Right  Focus next slot
+  Ctrl-Shift-Left   Focus previous panel (ring)
+  Ctrl-Shift-Right  Focus next panel (ring)
 
 ─── Tabs ─────────────────────────────────────────────
   Ctrl-Shift-Up/Down  Open tab dropdown picker
-  Alt-0..9            Select tab by number
+  Alt-0               Tab dropdown (list all tabs)
+  Alt-1..9            Select tab by number
+  Alt-;               Next tab
+  Alt-'               Previous tab
+  Alt-w               Close active tab
 
 ─── Panel Resize ─────────────────────────────────────
-  ≠ (Alt+=)         Grow focused slot width
-  – (Alt+-)         Shrink focused slot width
-  ± (Alt+Shift+=)   Grow focused slot height
-  — (Alt+Shift+-)   Shrink focused slot height
+  Alt-Shift-Left    Move border left
+  Alt-Shift-Right   Move border right
+  Alt-Shift-Up      Move border up
+  Alt-Shift-Down    Move border down
+  ≠ (Alt+=)         Move border right
+  – (Alt+-)         Move border left
+  ± (Alt+Shift+=)   Move border down
+  — (Alt+Shift+-)   Move border up
+
+─── Splits & Layout ──────────────────────────────────
+  Ctrl-W            Cycle subpanel focus (in splits)
+  Alt-=             Grow subpanel
+  Alt--             Shrink subpanel
+  Alt-,             Toggle tree panel
+  Alt-.             Toggle tools panel
+  Alt-/             Zoom toggle
+  Alt-\\             Cycle layout mode
 
 ─── Global ───────────────────────────────────────────
   F1              Show this help
@@ -92,6 +109,23 @@ pub fn help_global() -> String {
   messages        Show messages window
   grep <pattern>  Search files for pattern
   diff            Diff current file
+  blame           Show git blame annotations
+  noblame         Hide git blame
+  log             Show git log
+  split [<file>]  Horizontal split
+  vsplit [<file>] Vertical split
+  zoom            Zoom toggle (maximize panel)
+  layout          Cycle layout mode (auto/wide/tall)
+  move-tab        Move tab to other subpanel
+  cycle-subpanel  Cycle focus between subpanels
+  grow-subpanel   Grow current subpanel
+  shrink-subpanel Shrink current subpanel
+  toggle-tree     Show/hide tree panel
+  toggle-tools    Show/hide tools panel
+  grow / shrink   Move panel border right/left
+  grow-v / shrink-v  Move panel border down/up
+  focus-left/right/up/down  Move focus between panels (ring)
+  tab-next / tab-prev  Switch tabs in current panel
   theme <mode>    dark / light / auto / toggle
   git-stage <p>   Stage file
   git-unstage <p> Unstage file
@@ -109,6 +143,8 @@ pub fn help_global() -> String {
   editor save / save-all / close / undo / redo
   editor goto <line> ?<col>?     Jump to position
   editor insert <text>           Insert at cursor
+  editor search <pattern>        Search in buffer
+  editor clear-highlight         Clear search highlight
   editor diff-revert             Revert diff hunk under cursor
   editor current-file / current-line / current-col
   editor modified? / filetype
@@ -120,9 +156,21 @@ pub fn help_global() -> String {
   build run ?<cmd>? / build test ?<cmd>?
   lsp hover / definition / references
   lsp rename <name> / lsp format
+  lsp start ?<pattern>?          Start LSP server
+  lsp restart ?<pattern>?        Restart LSP server
+  lsp stop ?<pattern>?           Stop LSP server
+  lsp status                     Show LSP status
 
   git stage <file> / unstage <file> / commit <msg>
+  git blame / noblame
   todo add <text> / remove <path> / complete <path>
+
+  split vsplit ?<file>?          Vertical split
+  split hsplit ?<file>?          Horizontal split
+  split close / split only       Close split
+  split focus                    Cycle split focus
+  split open <path>              Open file in other pane
+  split linked ?<bool>?          Toggle linked scroll
 
   keymap bind <key> <command>    Bind key to command
   keymap unbind <key>            Remove binding

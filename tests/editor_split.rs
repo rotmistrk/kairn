@@ -38,6 +38,13 @@ fn split_creates_second_pane() {
 
     // Content should still be visible (same file in both panes)
     assert!(h.content_contains("main"));
+    // Horizontal divider should be present between the two panes
+    let screen = h.screen_text();
+    assert!(
+        screen.contains("────"),
+        "horizontal divider missing after split:\n{}",
+        screen
+    );
 }
 
 #[test]
@@ -57,6 +64,13 @@ fn vsplit_creates_vertical_pane() {
     h.run_cycles(3);
 
     assert!(h.content_contains("main"));
+    // Vertical divider should be present between the two panes
+    let screen = h.screen_text();
+    assert!(
+        screen.contains("│"),
+        "vertical divider missing after vsplit:\n{}",
+        screen
+    );
 }
 
 #[test]

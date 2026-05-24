@@ -26,7 +26,7 @@ fn mcp_snapshot_collects_editor_tabs() {
     let desktop = h.program.desktop_mut();
     let lg = desktop
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
+        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
         .expect("desktop is Desktop");
     let snap = collect_snapshot(lg);
 
@@ -100,7 +100,7 @@ fn mcp_snapshot_tracks_focus_and_slot() {
     let desktop = h.program.desktop_mut();
     let lg = desktop
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
+        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
         .unwrap();
     let snap = collect_snapshot(lg);
 
@@ -119,7 +119,7 @@ fn mcp_snapshot_terminal_index() {
     let desktop = h.program.desktop_mut();
     let lg = desktop
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
+        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
         .unwrap();
     let snap = collect_snapshot(lg);
 

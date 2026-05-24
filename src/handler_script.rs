@@ -6,7 +6,7 @@ use txv_widgets::CM_STATUS_MESSAGE;
 use crate::app_state::AppState;
 use crate::commands::*;
 use crate::desktop::SlotId;
-use crate::handler_script_util::{fire_hooks_for_event, lsp_cmd};
+use crate::handler_script_util::fire_hooks_for_event;
 use crate::scripting::ScriptCommand;
 use crate::views::editor::EditorView;
 
@@ -50,15 +50,15 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
     match cmd {
         ScriptCommand::OpenFile { path, line, col } => {
             crate::handler_open::handle_edit_file(ctx.desktop, ctx.sink, state, &path);
-            // Focus center after opening
             if let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) {
-                desktop.focus_slot(SlotId::Center);
-                // If line/col specified, goto directly (convert 1-indexed to 0-indexed)
+                desktop.focus_panel(SlotId::Center as usize);
                 if let Some(l) = line {
                     let c = col.unwrap_or(1).saturating_sub(1);
-                    if let Some(view) = desktop.active_view_mut(SlotId::Center) {
-                        if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                            editor.goto(l.saturating_sub(1), c);
+                    if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
+                        if let Some(view) = panel.active_view_mut() {
+                            if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                                editor.goto(l.saturating_sub(1), c);
+                            }
                         }
                     }
                 }
@@ -66,12 +66,14 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         }
         ScriptCommand::Save => {
             if let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) {
-                let slot = desktop.focused_slot();
-                if let Some(view) = desktop.active_view_mut(slot) {
-                    if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                        if let Err(e) = editor.save() {
-                            let msg = txv_core::message::Message::error("editor", e);
-                            ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                let slot = desktop.focused_panel();
+                if let Some(panel) = desktop.panel_mut(slot) {
+                    if let Some(view) = panel.active_view_mut() {
+                        if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                            if let Err(e) = editor.save() {
+                                let msg = txv_core::message::Message::error("editor", e);
+                                ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                            }
                         }
                     }
                 }
@@ -79,24 +81,24 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             ctx.sink.push_command(CM_SAVE, None);
         }
         ScriptCommand::SaveAll => {
-            // Save-all: emit save for current (handler saves all open editors)
             ctx.sink.push_command(CM_SAVE, None);
         }
         ScriptCommand::Close => ctx.sink.push_command(CM_TAB_CLOSE, None),
         ScriptCommand::Goto { line, col } => {
-            // Tcl uses 1-indexed; goto() uses 0-indexed
             let l = line.saturating_sub(1);
             let c = col.saturating_sub(1);
             if let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) {
-                let slot = desktop.focused_slot();
-                if let Some(view) = desktop.active_view_mut(slot) {
-                    if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                        editor.goto(l, c);
-                        let pos = txv_widgets::CursorPos {
-                            line: l + 1,
-                            col: c + 1,
-                        };
-                        ctx.sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
+                let slot = desktop.focused_panel();
+                if let Some(panel) = desktop.panel_mut(slot) {
+                    if let Some(view) = panel.active_view_mut() {
+                        if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                            editor.goto(l, c);
+                            let pos = txv_widgets::CursorPos {
+                                line: l + 1,
+                                col: c + 1,
+                            };
+                            ctx.sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
+                        }
                     }
                 }
             }
@@ -104,8 +106,7 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::Insert { text } => {
             ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
         }
-        ScriptCommand::Undo => {} // Handled directly in editor
-        ScriptCommand::Redo => {} // Handled directly in editor
+        ScriptCommand::Undo | ScriptCommand::Redo => {}
         ScriptCommand::ShowMessage { level, origin, text } => {
             let full_text = format!("[{origin}] {text}");
             let msg = match level.as_str() {
@@ -120,13 +121,35 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         ScriptCommand::FocusSlot { slot } => {
-            let cmd_id = match slot.as_str() {
-                "left" => CM_FOCUS_LEFT,
-                "center" => CM_FOCUS_CENTER,
-                "right" => CM_FOCUS_RIGHT,
+            let panel_id = match slot.as_str() {
+                "left" => 0usize,
+                "center" => 1usize,
+                "right" => 2usize,
                 _ => return,
             };
-            ctx.sink.push_command(cmd_id, None);
+            ctx.sink.push_command(
+                txv_widgets::tiled_workspace::commands::CM_TW_FOCUS_PANEL,
+                Some(Box::new(panel_id)),
+            );
+        }
+        ScriptCommand::ViewTheme { mode } => {
+            ctx.sink.push_command(CM_TOGGLE_THEME, Some(Box::new(mode)));
+        }
+        ScriptCommand::ViewZoom => {
+            ctx.sink
+                .push_command(txv_widgets::tiled_workspace::commands::CM_TW_ZOOM, None);
+        }
+        ScriptCommand::ViewToggleTree => {
+            ctx.sink
+                .push_command(txv_widgets::tiled_workspace::commands::CM_TW_TOGGLE_TREE, None);
+        }
+        ScriptCommand::ViewToggleTools => {
+            ctx.sink
+                .push_command(txv_widgets::tiled_workspace::commands::CM_TW_TOGGLE_TOOLS, None);
+        }
+        ScriptCommand::ViewLayout => {
+            ctx.sink
+                .push_command(txv_widgets::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE, None);
         }
         ScriptCommand::RunBuild { command } => {
             ctx.sink.push_command(CM_BUILD, command.map(|c| Box::new(c) as _));
@@ -134,37 +157,19 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::RunTest { command } => {
             ctx.sink.push_command(CM_TEST, command.map(|c| Box::new(c) as _));
         }
-        ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {
-            // Key bindings are applied at config load time, not at runtime dispatch
-        }
+        ScriptCommand::TestFile => ctx.sink.push_command(CM_TEST_FILE, None),
+        ScriptCommand::TestAtCursor => ctx.sink.push_command(CM_TEST_AT_CURSOR, None),
+        ScriptCommand::NextError => ctx.sink.push_command(CM_NEXT_ERROR, None),
+        ScriptCommand::PrevError => ctx.sink.push_command(CM_PREV_ERROR, None),
+        ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {}
         ScriptCommand::LspHover => ctx.sink.push_command(CM_LSP_HOVER, None),
         ScriptCommand::LspDefinition => ctx.sink.push_command(CM_LSP_GOTO_DEF, None),
         ScriptCommand::LspReferences => ctx.sink.push_command(CM_LSP_FIND_REFS, None),
         ScriptCommand::LspRename { new_name } => {
             ctx.sink.push_command(CM_LSP_RENAME, Some(Box::new(new_name)));
         }
-        ScriptCommand::LspFormat => {} // No CM_LSP_FORMAT yet
-        ScriptCommand::GitStage { file } => {
-            ctx.sink.push_command(CM_GIT_STAGE, Some(Box::new(file)));
-        }
-        ScriptCommand::GitUnstage { file } => {
-            ctx.sink.push_command(CM_GIT_UNSTAGE, Some(Box::new(file)));
-        }
-        ScriptCommand::GitCommit { message } => {
-            ctx.sink.push_command(CM_GIT_COMMIT, Some(Box::new(message)));
-        }
-        ScriptCommand::GitBlame => {
-            ctx.sink.push_command(crate::commands::CM_BLAME, None);
-        }
-        ScriptCommand::GitNoBlame => {
-            ctx.sink.push_command(crate::commands::CM_NOBLAME, None);
-        }
-        ScriptCommand::TodoAdd { .. } | ScriptCommand::TodoRemove { .. } | ScriptCommand::TodoComplete { .. } => {
-            // Todo commands handled via direct tree manipulation
-        }
-        ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {
-            // Read operations — handled via snapshot, no command needed
-        }
+        ScriptCommand::LspFormat => {}
+        ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {}
         ScriptCommand::ReplaceSelection { text } => {
             ctx.sink.push_command(CM_EDITOR_REPLACE_SELECTION, Some(Box::new(text)));
         }
@@ -180,47 +185,8 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::ClearHighlight => {
             ctx.sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None);
         }
-        ScriptCommand::SplitVertical { file } => {
-            let req = crate::commands::SplitRequest { vertical: true, file };
-            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
-        }
-        ScriptCommand::SplitHorizontal { file } => {
-            let req = crate::commands::SplitRequest { vertical: false, file };
-            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
-        }
-        ScriptCommand::SplitClose => {
-            ctx.sink.push_command(CM_SPLIT_CLOSE, None);
-        }
-        ScriptCommand::SplitFocus => {
-            ctx.sink.push_command(CM_SPLIT_FOCUS, None);
-        }
-        ScriptCommand::SplitOpen { path } => {
-            let req = crate::commands::OpenFileRequest {
-                path: std::path::PathBuf::from(path),
-                line: None,
-                col: None,
-                diff: false,
-            };
-            ctx.sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
-        }
-        ScriptCommand::SplitLinked { on } => {
-            ctx.sink.push_command(CM_SPLIT_LINKED, Some(Box::new(on)));
-        }
-        ScriptCommand::DiffRevert => {
-            ctx.sink.push_command(CM_DIFF_REVERT, None);
-        }
-        ScriptCommand::LspStart { pattern } => lsp_cmd(ctx, state, &format!("start {pattern}")),
-        ScriptCommand::LspRestart { pattern } => lsp_cmd(ctx, state, &format!("restart {pattern}")),
-        ScriptCommand::LspStop { pattern } => lsp_cmd(ctx, state, &format!("stop {pattern}")),
-        ScriptCommand::LspTimeout { pattern, secs } => {
-            let arg = match secs {
-                Some(s) => format!("timeout {pattern} {s}"),
-                None => format!("timeout {pattern}"),
-            };
-            lsp_cmd(ctx, state, &arg);
-        }
-        ScriptCommand::LspArgs { pattern, command } => {
-            lsp_cmd(ctx, state, &format!("args {pattern} {command}"));
+        other => {
+            crate::handler_script_dispatch::dispatch_extended(other, ctx, state);
         }
     }
 }

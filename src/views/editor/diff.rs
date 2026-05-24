@@ -62,6 +62,18 @@ impl EditorView {
         self.diff_state = Some(state);
     }
 
+    /// Set side-by-side diff state.
+    pub fn set_sbs_state(&mut self, state: super::sbs_model::SbsDiffState) {
+        self.diff_state = None;
+        self.sbs_state = Some(state);
+        self.state.mark_dirty();
+    }
+
+    /// Check if in side-by-side diff mode.
+    pub(super) fn in_sbs_mode(&self) -> bool {
+        self.sbs_state.is_some()
+    }
+
     /// Revert the hunk under the diff cursor: replace Added lines with Deleted text.
     /// Returns a status message or error.
     pub fn revert_hunk(&mut self) -> Result<String, String> {

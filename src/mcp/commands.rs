@@ -15,32 +15,64 @@ pub struct McpRequest {
 /// Actions the MCP server can request.
 pub enum McpAction {
     /// Toggle a todo item's completion state. Path is index-based (e.g., [0, 2]).
-    TodoToggle { path: Vec<usize> },
+    TodoToggle {
+        path: Vec<usize>,
+    },
     /// Add a todo item as sibling after the given path.
-    TodoAdd { path: Vec<usize>, title: String },
+    TodoAdd {
+        path: Vec<usize>,
+        title: String,
+    },
     /// Remove a todo item at the given path.
-    TodoRemove { path: Vec<usize> },
+    TodoRemove {
+        path: Vec<usize>,
+    },
     /// Move a todo item up within its siblings.
-    TodoMoveUp { path: Vec<usize> },
+    TodoMoveUp {
+        path: Vec<usize>,
+    },
     /// Move a todo item down within its siblings.
-    TodoMoveDown { path: Vec<usize> },
+    TodoMoveDown {
+        path: Vec<usize>,
+    },
     /// Promote a todo item (decrease nesting).
-    TodoPromote { path: Vec<usize> },
+    TodoPromote {
+        path: Vec<usize>,
+    },
     /// Demote a todo item (increase nesting).
-    TodoDemote { path: Vec<usize> },
+    TodoDemote {
+        path: Vec<usize>,
+    },
     /// Set the note on a todo item.
-    TodoSetNote { path: Vec<usize>, note: String },
+    TodoSetNote {
+        path: Vec<usize>,
+        note: String,
+    },
+    TodoToggleImportant {
+        path: Vec<usize>,
+    },
+    TodoEdit {
+        path: Vec<usize>,
+        title: String,
+    },
     /// Add a subtree of items as children of the item at path.
     TodoAddSubtree {
         path: Vec<usize>,
         items: Vec<serde_json::Value>,
     },
     /// Open an existing file in the editor.
-    OpenFile { path: String },
+    OpenFile {
+        path: String,
+    },
     /// Create a new file on disk and open it.
-    CreateFile { path: String, content: String },
+    CreateFile {
+        path: String,
+        content: String,
+    },
     /// Close an editor tab by path/name.
-    CloseTab { name: String },
+    CloseTab {
+        name: String,
+    },
     /// Replace lines in an open buffer.
     EditBuffer {
         name: String,
@@ -56,33 +88,107 @@ pub enum McpAction {
         text: String,
     },
     /// Move cursor to a position in a tab.
-    SetCursor { name: String, line: usize, col: usize },
+    SetCursor {
+        name: String,
+        line: usize,
+        col: usize,
+    },
     /// Save the buffer to disk.
-    SaveFile { name: String },
+    SaveFile {
+        name: String,
+    },
     /// Get diagnostics for a file.
-    GetDiagnostics { name: String },
+    GetDiagnostics {
+        name: String,
+    },
     /// Get last build errors.
     GetBuildErrors,
     /// Search project files (synchronous grep).
-    SearchProject { pattern: String },
+    SearchProject {
+        pattern: String,
+    },
     /// Trigger a build command.
-    RunBuild { command: String },
+    RunBuild {
+        command: String,
+    },
     /// Create a vertical split (optionally with a file in the new pane).
-    SplitVertical { file: Option<String> },
+    SplitVertical {
+        file: Option<String>,
+    },
     /// Create a horizontal split.
-    SplitHorizontal { file: Option<String> },
+    SplitHorizontal {
+        file: Option<String>,
+    },
     /// Close split, keep focused pane.
     SplitClose,
     /// Switch focus to the other split pane.
     SplitFocus,
     /// Open a file in the other split pane.
-    SplitOpen { path: String },
+    SplitOpen {
+        path: String,
+    },
     /// Set linked scroll on/off.
-    SplitLinked { on: bool },
+    SplitLinked {
+        on: bool,
+    },
     /// Revert the diff hunk under cursor in the specified tab.
-    DiffRevert { name: String },
+    DiffRevert {
+        name: String,
+    },
     /// LSP control: start/restart/stop/timeout/args.
-    LspControl { command: String },
+    LspControl {
+        command: String,
+    },
+    /// Send input text to a terminal tab.
+    SendTerminalInput {
+        name: String,
+        input: String,
+    },
+    /// Git stage a file.
+    GitStage {
+        file: String,
+    },
+    /// Git unstage a file.
+    GitUnstage {
+        file: String,
+    },
+    /// Git commit with message.
+    GitCommit {
+        message: String,
+    },
+    /// LSP hover at current cursor.
+    LspHover {
+        name: String,
+    },
+    /// LSP go to definition.
+    LspDefinition {
+        name: String,
+    },
+    /// LSP find references.
+    LspReferences {
+        name: String,
+    },
+    /// LSP rename symbol.
+    LspRename {
+        name: String,
+        new_name: String,
+    },
+    /// LSP code action.
+    LspCodeAction {
+        name: String,
+    },
+    /// Undo in the specified buffer.
+    Undo {
+        name: String,
+    },
+    /// Redo in the specified buffer.
+    Redo {
+        name: String,
+    },
+    /// Evaluate a Tcl script.
+    EvalTcl {
+        script: String,
+    },
 }
 
 /// Shared command queue + waker for MCP write operations.

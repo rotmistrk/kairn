@@ -16,6 +16,10 @@ impl EditorView {
             self.draw_diff();
             return;
         }
+        if self.in_sbs_mode() {
+            self.draw_sbs_diff();
+            return;
+        }
 
         let pal = txv_core::palette::palette();
         let app = crate::app_palette::app_palette();
@@ -49,17 +53,7 @@ impl EditorView {
         // Pre-compute highlighted spans for the visible viewport using cached state.
         let total_lines = self.editor.buf().line_count();
         let viewport_end = (scroll + h as usize).min(total_lines);
-        let viewport_spans = {
-            let mut cache = self.hl_cache.borrow_mut();
-            cache.highlight_viewport(
-                scroll,
-                viewport_end,
-                total_lines,
-                |i| self.editor.buf().line(i).unwrap_or_default(),
-                self.highlighter.syntax_set(),
-                self.highlighter.theme(),
-            )
-        };
+        let viewport_spans = self.compute_viewport_spans(scroll, viewport_end);
 
         // Matchparen: find matching bracket for cursor position.
         let matchparen_pos = if self.editor.options.matchparen {

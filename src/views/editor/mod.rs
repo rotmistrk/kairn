@@ -8,7 +8,9 @@ mod draw;
 mod draw_blame;
 mod draw_diagnostics;
 mod draw_diff;
+mod draw_sbs_diff;
 mod draw_style;
+mod draw_viewport;
 mod handle;
 mod handle_action;
 mod handle_command_event;
@@ -16,6 +18,7 @@ mod handle_completion;
 mod handle_diff;
 mod handle_tick;
 mod handle_viewport;
+pub mod sbs_model;
 
 use std::path::PathBuf;
 
@@ -46,6 +49,7 @@ pub struct EditorView {
     pub(crate) blame_state: Option<crate::blame::SharedBlame>,
     /// Diff mode state. None = normal mode.
     pub(super) diff_state: Option<diff_model::DiffState>,
+    pub(super) sbs_state: Option<sbs_model::SbsDiffState>,
     /// Completion popup overlay.
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
@@ -167,6 +171,9 @@ impl View for EditorView {
         // Diff mode: intercept keys for navigation
         if self.in_diff_mode() {
             return self.handle_diff_key(key);
+        }
+        if self.in_sbs_mode() {
+            return self.handle_sbs_key(key);
         }
 
         let old_mode = self.editor.mode;

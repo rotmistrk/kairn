@@ -39,6 +39,11 @@ pub fn handle_tool_call(
         "split" => tool_split(snapshot, cmd_queue, args),
         "diff_revert" => super::tools_write::tool_diff_revert(cmd_queue, args),
         "lsp_control" => super::tools_write::tool_lsp_control(cmd_queue, args),
+        "send_terminal_input" => super::tools_extra::tool_send_terminal_input(cmd_queue, args),
+        "git_ops" => super::tools_extra::tool_git_ops(cmd_queue, args),
+        "lsp_semantic" => super::tools_extra::tool_lsp_semantic(cmd_queue, args),
+        "undo_redo" => super::tools_extra::tool_undo_redo(cmd_queue, args),
+        "eval_tcl" => super::tools_extra::tool_eval_tcl(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

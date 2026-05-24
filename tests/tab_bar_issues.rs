@@ -102,11 +102,15 @@ fn m0_opens_dropdown() {
 #[test]
 fn m1_in_static_mode_goes_to_first_tab() {
     let dir = temp_project(&[("a.rs", "")]);
-    let mut h = TestHarness::new(dir.path());
+    let mut h = TestHarness::with_size(dir.path(), 200, 50);
     h.run_cycles(1);
 
-    // Left panel is Static: ₁Files ₂Git ₃Todo
-    // Start on Files (already active). M-2 should go to Git.
+    // Focus the left panel (Static: ₁Files ₂Git ₃Todo)
+    // Initial focus is on center (Welcome). Move left.
+    h.inject_key(KeyCode::Left, CTRL_SHIFT);
+    h.run_cycles(1);
+
+    // M-2 should activate Git (label ₂).
     h.inject_key(KeyCode::Char('2'), ALT);
     h.run_cycles(1);
 
@@ -154,10 +158,10 @@ fn tabbar_handle_keys_is_false() {
         .program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::desktop::Desktop>())
+        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
         .expect("desktop");
 
-    let panel = desktop.panel(kairn::desktop::SlotId::Left);
+    let panel = desktop.panel(kairn::slots::SlotId::Left as usize).expect("left panel");
     assert!(
         !panel.bar().handle_keys(),
         "TabBar.handle_keys should be false in kairn (kairn owns keyboard)"

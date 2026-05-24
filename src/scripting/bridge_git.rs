@@ -36,6 +36,19 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::GitNoBlame);
                 Ok(TclValue::Str(String::new()))
             }
+            "untrack" => {
+                let file = super::arg_str(args, 1)?;
+                push(&cmds, ScriptCommand::GitUntrack { file });
+                Ok(TclValue::Str(String::new()))
+            }
+            "log" => {
+                push(&cmds, ScriptCommand::GitLog);
+                Ok(TclValue::Str(String::new()))
+            }
+            "diff" => {
+                push(&cmds, ScriptCommand::GitDiff);
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("git: unknown subcommand '{other}'"))),
         }
     });

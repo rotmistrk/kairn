@@ -6,52 +6,8 @@ use std::sync::{Arc, Mutex};
 use txv_core::complete::{Completer, Completion};
 
 /// Built-in commands (always available).
-pub const BUILTIN_COMMANDS: &[&str] = &[
-    "blame",
-    "build",
-    "close",
-    "code-action",
-    "diff",
-    "e",
-    "edit",
-    "git-commit",
-    "git-stage",
-    "git-unstage",
-    "git-untrack",
-    "grep",
-    "grow",
-    "grow-v",
-    "help",
-    "kiro",
-    "log",
-    "lsp",
-    "lsp-rename",
-    "lsp-status",
-    "messages",
-    "next-error",
-    "noblame",
-    "only",
-    "paste",
-    "prev-error",
-    "quit",
-    "run",
-    "save",
-    "shell",
-    "shrink",
-    "shrink-v",
-    "split",
-    "struct",
-    "tab",
-    "tab-rename",
-    "test",
-    "test-at-cursor",
-    "test-file",
-    "text",
-    "theme",
-    "tree",
-    "vsplit",
-    "welcome",
-];
+/// Extra commands not in the dispatch table (ex-mode aliases handled elsewhere).
+pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
 
 /// Shared command list that can be updated at runtime (e.g. from plugins).
 pub type CommandList = Arc<Mutex<Vec<String>>>;
@@ -59,9 +15,16 @@ pub type CommandList = Arc<Mutex<Vec<String>>>;
 /// Shared list of known LSP language IDs for completions.
 pub type LspLanguageList = Arc<Mutex<Vec<String>>>;
 
-/// Create a new command list pre-populated with built-in commands.
+/// Create a new command list from the dispatch table + extras.
 pub fn new_command_list() -> CommandList {
-    Arc::new(Mutex::new(BUILTIN_COMMANDS.iter().map(|s| s.to_string()).collect()))
+    let mut cmds: Vec<String> = crate::handler_exec::dispatch_table()
+        .flat_map(|e| e.names.iter())
+        .chain(BUILTIN_COMMANDS.iter())
+        .map(|s| s.to_string())
+        .collect();
+    cmds.sort_unstable();
+    cmds.dedup();
+    Arc::new(Mutex::new(cmds))
 }
 
 /// Combined completer: dynamic command names + file paths for edit/e commands.
@@ -240,13 +203,18 @@ fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
 
 /// Refresh the command list with Tcl commands from the script engine.
 pub fn refresh_commands(list: &CommandList, script: &crate::scripting::ScriptEngine) {
-    let mut cmds: Vec<String> = BUILTIN_COMMANDS.iter().map(|s| s.to_string()).collect();
+    let mut cmds: Vec<String> = crate::handler_exec::dispatch_table()
+        .flat_map(|e| e.names.iter())
+        .chain(BUILTIN_COMMANDS.iter())
+        .map(|s| s.to_string())
+        .collect();
     for name in script.command_names() {
         if !cmds.contains(&name) {
             cmds.push(name);
         }
     }
     cmds.sort();
+    cmds.dedup();
     if let Ok(mut guard) = list.lock() {
         *guard = cmds;
     }

@@ -46,6 +46,20 @@ set clock.interval 60
 #   build = make -j8
 #   test = make check
 #   test-file = cargo test --lib {file}
+#
+# Tcl override: define a proc to replace the auto-detected command.
+# If the proc returns non-empty, it replaces the default. Return "" to fall back.
+#
+# proc build-command {} { return "make -j8" }
+# proc test-command {} { return "cargo test --workspace" }
+# proc run-command {} { return "./target/debug/myapp" }
+#
+# Project-specific overrides go in .kairn/init.tcl:
+# proc build-command {} {
+#     set file [editor current-file]
+#     if {[string match "*.go" $file]} { return "go build ./..." }
+#     return ""  ;# fall back to auto-detect
+# }
 
 # ─── Git Panel Keys ──────────────────────────────────────────────────────────
 set git.stage "s"
@@ -122,6 +136,95 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # }
 
 # ─── Hooks & Selection Scripting ─────────────────────────────────────────────
+
+# ─── View Commands ───────────────────────────────────────────────────────────
+# view theme dark|light|auto|toggle
+# view zoom                    ;# toggle maximize current panel
+# view toggle-tree             ;# show/hide file tree
+# view toggle-tools            ;# show/hide tools panel
+# view layout                  ;# cycle layout mode (auto/wide/tall)
+# view focus left|center|right ;# focus a panel
+# view status "text"           ;# flash text in status bar
+# view message info|warn|error origin "text"
+
+# ─── Build Commands ──────────────────────────────────────────────────────────
+# build run ?<cmd>?            ;# run build (optional custom command)
+# build test ?<cmd>?           ;# run tests
+# build test-file              ;# test current file
+# build test-at-cursor         ;# test function at cursor
+# build next-error             ;# jump to next error
+# build prev-error             ;# jump to previous error
+
+# ─── Git Commands ────────────────────────────────────────────────────────────
+# git stage <file>             ;# stage a file
+# git unstage <file>           ;# unstage a file
+# git untrack <file>           ;# untrack a file
+# git commit <message>         ;# commit with message
+# git blame                    ;# show blame annotations
+# git noblame                  ;# hide blame annotations
+# git log                      ;# show git log
+# git diff                     ;# show diff for current file
+
+# ─── Split Commands ──────────────────────────────────────────────────────────
+# split vsplit ?<file>?        ;# vertical split
+# split hsplit ?<file>?        ;# horizontal split
+# split close                  ;# close split
+# split focus                  ;# cycle focus between panes
+# split open <path>            ;# open file in other pane
+# split linked ?<bool>?        ;# toggle linked scroll
+# split direction              ;# query current split direction
+
+# ─── Editor Commands ─────────────────────────────────────────────────────────
+# editor open <path> ?-line N? ?-col N?
+# editor save / save-all / close
+# editor undo / redo
+# editor goto <line> ?<col>?
+# editor insert <text>
+# editor search <pattern>      ;# highlight matches
+# editor clear-highlight       ;# clear search highlight
+# editor get-selection         ;# returns selected text
+# editor replace-selection <t> ;# replace selection
+# editor get-line ?<n>?        ;# get line text (default: cursor line)
+# editor delete-line ?<n>?     ;# delete line
+# editor replace-word <text>   ;# replace word under cursor
+# editor diff-revert           ;# revert diff hunk at cursor
+# editor current-file / current-line / current-col
+# editor modified? / filetype
+
+# ─── LSP Commands ────────────────────────────────────────────────────────────
+# lsp hover                    ;# show hover info
+# lsp definition               ;# go to definition
+# lsp references               ;# find references
+# lsp rename <new-name>        ;# rename symbol
+# lsp format                   ;# format document
+# lsp start ?<pattern>?        ;# start LSP server matching pattern
+# lsp restart ?<pattern>?      ;# restart LSP server
+# lsp stop ?<pattern>?         ;# stop LSP server
+# lsp status                   ;# show LSP status (via M-x lsp-status)
+
+# ─── Todo Commands ───────────────────────────────────────────────────────────
+# todo add <text> ?-parent <path>?  ;# add item (path = dot-separated indices)
+# todo remove <path>           ;# remove item
+# todo complete <path>         ;# toggle completion
+# todo toggle-important <path> ;# toggle important flag
+# todo edit <path> <text>      ;# rename item
+# todo swap <path> up|down     ;# reorder item
+# todo promote <path>          ;# decrease nesting
+# todo demote <path>           ;# increase nesting
+# todo list                    ;# (reserved, tree panel shows todos)
+
+# ─── Grep ────────────────────────────────────────────────────────────────────
+# grep <pattern>               ;# search project files, open results tab
+
+# ─── System Commands ─────────────────────────────────────────────────────────
+# system exec <cmd>            ;# run shell command, return output
+# system env <var>             ;# get environment variable
+# system set-env <var> <val>   ;# set environment variable
+# system root-dir              ;# project root directory
+# system home-dir              ;# user home directory
+# system platform              ;# os name
+# system clipboard-get         ;# read system clipboard
+# system clipboard-set <text>  ;# write to system clipboard
 
 # ─── Project Root Override ───────────────────────────────────────────────────
 # Define a `project-root` proc to override automatic root detection.

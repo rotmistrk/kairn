@@ -6,12 +6,12 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn focus_todo(h: &mut TestHarness) {
-    use kairn::desktop::SlotId;
     use kairn::handler::downcast_desktop;
+    use kairn::slots::{focus_tab_by_title, SlotId};
     let desktop = h.program.desktop_mut();
     if let Some(d) = downcast_desktop(desktop) {
-        d.focus_tab_by_title(SlotId::Left, "Todo");
-        d.focus_slot(SlotId::Left);
+        focus_tab_by_title(d, SlotId::Left, "Todo");
+        d.focus_panel(SlotId::Left as usize);
     }
     h.run_cycles(2);
 }
@@ -39,13 +39,11 @@ fn open_note_sets_state_and_tab() {
     assert_eq!(h.state.todo_note_path, Some(vec![0]));
 
     // Verify Notes tab is active with the note content in the buffer
-    use kairn::desktop::SlotId;
     use kairn::handler::downcast_desktop;
+    use kairn::slots::{active_tab_title, find_view_mut, SlotId};
     let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
-    assert_eq!(desktop.active_tab_title(SlotId::Center), Some("Notes"));
-    let nv = desktop
-        .find_view_mut::<kairn::views::notes::NotesView>(SlotId::Center)
-        .unwrap();
+    assert_eq!(active_tab_title(desktop, SlotId::Center), Some("Notes"));
+    let nv = find_view_mut::<kairn::views::notes::NotesView>(desktop, SlotId::Center).unwrap();
     assert_eq!(nv.content(), "hello world");
 }
 
@@ -60,12 +58,10 @@ fn open_note_on_empty_note() {
     h.inject_key(KeyCode::Char('N'), KeyMod::default());
     h.run_cycles(4);
 
-    use kairn::desktop::SlotId;
     use kairn::handler::downcast_desktop;
+    use kairn::slots::{find_view_mut, SlotId};
     let desktop = downcast_desktop(h.program.desktop_mut()).unwrap();
-    let nv = desktop
-        .find_view_mut::<kairn::views::notes::NotesView>(SlotId::Center)
-        .unwrap();
+    let nv = find_view_mut::<kairn::views::notes::NotesView>(desktop, SlotId::Center).unwrap();
     assert_eq!(nv.content(), "");
 }
 

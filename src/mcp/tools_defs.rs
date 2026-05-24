@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 pub fn tool_definitions() -> Value {
     let mut tools = read_tool_definitions();
     tools.extend(super::tools_defs_write::write_tool_definitions());
+    tools.extend(super::tools_defs_extra::extra_tool_definitions());
     Value::Array(tools)
 }
 

@@ -5,7 +5,7 @@ mod helpers;
 
 use helpers::{temp_project, TestHarness};
 use kairn::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
-use kairn::desktop::SlotId;
+use kairn::slots::SlotId;
 
 #[test]
 fn external_file_broker_key_matches_session_path() {

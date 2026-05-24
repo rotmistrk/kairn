@@ -19,38 +19,57 @@ pub fn create_workspace_shell() -> TiledWorkspace {
     let configs = vec![
         PanelConfig::fixed("Files", PanelPosition::Left),
         PanelConfig::new("Editor", PanelPosition::Center),
-        PanelConfig::new("Tools", PanelPosition::Right),
-        PanelConfig::new("Bottom", PanelPosition::Bottom),
+        PanelConfig {
+            splittable: true,
+            ..PanelConfig::new("Tools", PanelPosition::Right)
+        },
     ];
-    let wide_layout = SplitNode::v(vec![
-        (
-            0.7,
-            SplitNode::h(vec![
-                (0.2, SplitNode::leaf(0)),
-                (0.4, SplitNode::leaf(1)),
-                (0.4, SplitNode::leaf(2)),
-            ]),
-        ),
-        (0.3, SplitNode::leaf(3)),
+    let wide_layout = SplitNode::h(vec![
+        (0.2, SplitNode::leaf(0)),
+        (0.4, SplitNode::leaf(1)),
+        (0.4, SplitNode::leaf(2)),
     ]);
     let narrow_layout = SplitNode::v(vec![
         (
-            0.6,
+            0.7,
             SplitNode::h(vec![(0.2, SplitNode::leaf(0)), (0.8, SplitNode::leaf(1))]),
         ),
-        (0.4, SplitNode::leaf(2)),
+        (0.3, SplitNode::leaf(2)),
     ]);
     let mut ws = TiledWorkspace::new(configs, wide_layout, narrow_layout, 300);
     ws.set_narrow_threshold(200);
     ws.set_handle_keys(false);
     ws.set_v_divider_gaps(false);
+
+    // Customize keymap: Ctrl+Shift+Up/Down for dropdown navigation
+    use txv_core::event::{KeyCode, KeyEvent, KeyMod};
+    let ctrl_shift = |code| KeyEvent {
+        code,
+        modifiers: KeyMod {
+            ctrl: true,
+            shift: true,
+            alt: false,
+        },
+    };
+    let mut km = ws.keymap().clone();
+    km.tab_dropdown_up = ctrl_shift(KeyCode::Up);
+    km.tab_dropdown_down = ctrl_shift(KeyCode::Down);
+    // Remove focus_up/down (kairn uses F-keys for panel focus)
+    km.focus_up = KeyEvent {
+        code: KeyCode::F(127),
+        modifiers: KeyMod::default(),
+    };
+    km.focus_down = KeyEvent {
+        code: KeyCode::F(127),
+        modifiers: KeyMod::default(),
+    };
+    ws.set_keymap(km);
     for i in 0..PANEL_COUNT {
         if let Some(panel) = ws.panel_mut(i) {
             panel.bar_mut().set_handle_keys(false);
         }
     }
     ws.focus_panel(0);
-    ws.set_hidden(3, true);
     ws
 }
 
@@ -79,7 +98,7 @@ pub fn build_workspace(root_dir: &Path, git_keys: GitKeys) -> TiledWorkspace {
     insert_tab(&mut ws, SlotId::Center, "Welcome", Box::new(welcome));
 
     let term = new_shell_terminal();
-    insert_tab(&mut ws, SlotId::Right, "Shell:0", term);
+    insert_tab(&mut ws, SlotId::Tools, "Shell:0", term);
 
     ws
 }

@@ -45,12 +45,15 @@ fn inactive_tab_fg_is_white() {
     // The character AFTER the subscript is the tab name — check its fg
     let text_pos = sub_pos.unwrap() + 1;
     let cell = &row0[text_pos];
-    // fg should be white-ish (Ansi(15) or Rgb bright)
+    // fg should be white-ish (Ansi(15) or Rgb bright) or black (active-unfocused)
     match cell.style.fg {
-        Color::Ansi(n) => assert!(n >= 7, "inactive tab fg should be white/bright, got Ansi({n})"),
+        Color::Ansi(n) => assert!(
+            n == 0 || n >= 7,
+            "inactive tab fg should be white/bright or black (active-unfocused), got Ansi({n})"
+        ),
         Color::Rgb(r, g, b) => assert!(
-            r >= 0xC0 && g >= 0xC0 && b >= 0xC0,
-            "inactive tab fg should be bright, got Rgb({r},{g},{b})"
+            (r >= 0xC0 && g >= 0xC0 && b >= 0xC0) || (r == 0 && g == 0 && b == 0),
+            "inactive tab fg should be bright or black, got Rgb({r},{g},{b})"
         ),
         other => panic!("inactive tab fg should be white, got {:?}", other),
     }

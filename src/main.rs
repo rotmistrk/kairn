@@ -181,7 +181,7 @@ fn main() -> anyhow::Result<()> {
         _ => txv_core::glyphs::detect_glyph_tier(),
     };
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
-    let mut desktop = kairn::slots::Desktop::new(build_workspace(&root_dir, git_keys));
+    let mut desktop = build_workspace(&root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings.layout_wide_threshold);
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
@@ -210,6 +210,7 @@ fn main() -> anyhow::Result<()> {
     let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list.clone());
     completer.lsp_languages = app_state.lsp_languages.clone();
     let status = build_status_bar(
+        &desktop,
         Box::new(completer),
         app_state.settings.clock_interval,
         root_dir.clone(),
@@ -251,7 +252,7 @@ fn main() -> anyhow::Result<()> {
     if let Some(desktop) = program
         .desktop_mut()
         .as_any_mut()
-        .and_then(|a| a.downcast_mut::<kairn::slots::Desktop>())
+        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
     {
         session::save_session(desktop, &root_dir, &app_state.kiro_registry);
     }

@@ -44,12 +44,23 @@ pub enum ScriptCommand {
     FocusSlot {
         slot: String,
     },
+    ViewTheme {
+        mode: String,
+    },
+    ViewZoom,
+    ViewToggleTree,
+    ViewToggleTools,
+    ViewLayout,
     RunBuild {
         command: Option<String>,
     },
     RunTest {
         command: Option<String>,
     },
+    TestFile,
+    TestAtCursor,
+    NextError,
+    PrevError,
     SetKeyBinding {
         key: String,
         command: String,
@@ -75,6 +86,11 @@ pub enum ScriptCommand {
     },
     GitBlame,
     GitNoBlame,
+    GitUntrack {
+        file: String,
+    },
+    GitLog,
+    GitDiff,
     TodoAdd {
         text: String,
         parent: Option<String>,
@@ -85,6 +101,24 @@ pub enum ScriptCommand {
     TodoComplete {
         path: String,
     },
+    TodoToggleImportant {
+        path: String,
+    },
+    TodoEdit {
+        path: String,
+        text: String,
+    },
+    TodoSwap {
+        path: String,
+        direction: String,
+    },
+    TodoPromote {
+        path: String,
+    },
+    TodoDemote {
+        path: String,
+    },
+    TodoList,
     GetSelection,
     ReplaceSelection {
         text: String,
@@ -117,6 +151,9 @@ pub enum ScriptCommand {
         on: bool,
     },
     DiffRevert,
+    Grep {
+        pattern: String,
+    },
     LspStart {
         pattern: String,
     },

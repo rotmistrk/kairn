@@ -4,7 +4,7 @@ use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
 use crate::commands::{ViewContext, CM_CONTEXT_UPDATE};
-use crate::desktop::SlotId;
+use crate::desktop::{active_tab_title, slot_from, SlotId};
 use crate::editor::keymap::Keymap;
 use crate::handler::downcast_desktop;
 use crate::views::editor::EditorView;
@@ -14,8 +14,8 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let title = desktop.active_tab_title(slot).unwrap_or("").to_string();
+    let slot = slot_from(desktop.focused_panel());
+    let title = active_tab_title(desktop, slot).unwrap_or("").to_string();
 
     let mut vc = ViewContext {
         title,
@@ -26,15 +26,17 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
     let mut selection_text = String::new();
     let mut current_line_text = String::new();
 
-    if let Some(view) = desktop.active_view_mut(slot) {
-        if let Some(any) = view.as_any_mut() {
-            if let Some(editor) = any.downcast_ref::<EditorView>() {
-                fill_from_editor(editor, state, &mut vc);
-                current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
-                if let Some((start, end)) = editor.editor.visual_range() {
-                    let content = editor.editor.buf().content();
-                    if end <= content.len() {
-                        selection_text = content[start..end].to_string();
+    if let Some(panel) = desktop.panel_mut(slot as usize) {
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(any) = view.as_any_mut() {
+                if let Some(editor) = any.downcast_ref::<EditorView>() {
+                    fill_from_editor(editor, state, &mut vc);
+                    current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
+                    if let Some((start, end)) = editor.editor.visual_range() {
+                        let content = editor.editor.buf().content();
+                        if end <= content.len() {
+                            selection_text = content[start..end].to_string();
+                        }
                     }
                 }
             }
@@ -48,7 +50,9 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
 
     // Determine split state
     let (split_dir, split_linked) = {
-        let panel = desktop.panel_mut(SlotId::Center);
+        let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+            return;
+        };
         if let Some(view) = panel.active_view_mut() {
             if let Some(es) = view
                 .as_any_mut()
@@ -111,7 +115,7 @@ fn mode_for_slot(slot: SlotId) -> String {
     match slot {
         SlotId::Left => "TREE".into(),
         SlotId::Center => "NOR".into(),
-        SlotId::Right | SlotId::Bottom => "TERM".into(),
+        SlotId::Tools => "TERM".into(),
     }
 }
 

@@ -3,7 +3,7 @@
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
-use crate::desktop::SlotId;
+use crate::desktop::{close_tab_by_title, find_view_mut, focus_view_mut, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
 /// Drain grep results from background thread into the ResultsView.
@@ -20,12 +20,14 @@ pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
     let done = gs.is_done();
     if !entries.is_empty() || done {
         if let Some(desktop) = downcast_desktop(ctx.desktop) {
-            if let Some(view) = desktop.active_view_mut(SlotId::Right) {
-                if let Some(rv) = view
-                    .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
-                {
-                    rv.append(entries, done);
+            if let Some(panel) = desktop.panel_mut(SlotId::Tools as usize) {
+                if let Some(view) = panel.active_view_mut() {
+                    if let Some(rv) = view
+                        .as_any_mut()
+                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
+                    {
+                        rv.append(entries, done);
+                    }
                 }
             }
         }
@@ -64,12 +66,14 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
         if let Some(desktop) = downcast_desktop(ctx.desktop) {
-            if let Some(view) = desktop.active_view_mut(SlotId::Right) {
-                if let Some(rv) = view
-                    .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
-                {
-                    rv.append(entries, done);
+            if let Some(panel) = desktop.panel_mut(SlotId::Tools as usize) {
+                if let Some(view) = panel.active_view_mut() {
+                    if let Some(rv) = view
+                        .as_any_mut()
+                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
+                    {
+                        rv.append(entries, done);
+                    }
                 }
             }
         }
@@ -100,10 +104,13 @@ pub fn update_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    for slot in [SlotId::Right, SlotId::Bottom] {
-        let titles: Vec<String> = (0..desktop.panel(slot).tab_count())
+    for slot in [SlotId::Tools] {
+        let Some(panel) = desktop.panel(slot as usize) else {
+            continue;
+        };
+        let titles: Vec<String> = (0..panel.tab_count())
             .filter_map(|i| {
-                let t = desktop.panel(slot).tab_title(i)?;
+                let t = desktop.panel(slot as usize)?.tab_title(i)?;
                 if t.contains("[exited]") {
                     Some(t.to_string())
                 } else {
@@ -112,7 +119,7 @@ pub fn update_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
             })
             .collect();
         for title in titles {
-            desktop.close_tab_by_title(slot, &title);
+            close_tab_by_title(desktop, slot, &title);
         }
     }
 }
@@ -130,14 +137,14 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     use crate::views::notes::NotesView;
-    if let Some(nv) = desktop.find_view_mut::<NotesView>(SlotId::Center) {
+    if let Some(nv) = find_view_mut::<NotesView>(desktop, SlotId::Center) {
         // Tab exists — update content and bring to front
         nv.replace_content(note);
-        desktop.focus_view_mut::<NotesView>(SlotId::Center);
+        focus_view_mut::<NotesView>(desktop, SlotId::Center);
         if *focus {
-            desktop.focus_slot(SlotId::Center);
+            desktop.focus_panel(SlotId::Center as usize);
         } else {
-            desktop.focus_slot(SlotId::Left);
+            desktop.focus_panel(SlotId::Left as usize);
         }
     } else {
         // Create new Notes tab
@@ -146,11 +153,11 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         nv.set_store(Box::new(store));
         let view: Box<dyn View> = Box::new(nv);
         crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Notes".to_string(), view);
-        desktop.focus_view_mut::<NotesView>(SlotId::Center);
+        focus_view_mut::<NotesView>(desktop, SlotId::Center);
         if *focus {
-            desktop.focus_slot(SlotId::Center);
+            desktop.focus_panel(SlotId::Center as usize);
         } else {
-            desktop.focus_slot(SlotId::Left);
+            desktop.focus_panel(SlotId::Left as usize);
         }
     }
 }
@@ -168,7 +175,7 @@ pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     use crate::views::notes::NotesView;
-    if let Some(nv) = desktop.find_view_mut::<NotesView>(SlotId::Center) {
+    if let Some(nv) = find_view_mut::<NotesView>(desktop, SlotId::Center) {
         nv.replace_content(note);
     }
 }

@@ -225,3 +225,5 @@ fn normalize_ws(text: &str) -> String {
             ""
         }
 }
+
+// Side-by-side types moved to sbs_model.rs

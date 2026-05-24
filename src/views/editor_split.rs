@@ -97,6 +97,26 @@ impl EditorSplit {
         }
         let focused = self.split.focused_index();
         let other = 1 - focused;
+
+        // Side-by-side diff: both panes have same line count, sync directly
+        let sbs_scroll = self
+            .split
+            .child_mut(focused)
+            .and_then(|v| v.as_any_mut())
+            .and_then(|a| a.downcast_ref::<EditorView>())
+            .and_then(|ev| ev.sbs_state.as_ref().map(|s| s.scroll));
+        if let Some(scroll) = sbs_scroll {
+            if let Some(other_view) = self.split.child_mut(other) {
+                if let Some(ev) = other_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                    if let Some(ref mut sbs) = ev.sbs_state {
+                        sbs.scroll = scroll;
+                    }
+                }
+            }
+            return;
+        }
+
+        // Normal scroll sync via ScrollMap
         let scroll = self
             .split
             .child_mut(focused)
@@ -170,6 +190,13 @@ impl View for EditorSplit {
                 return HandleResult::Consumed;
             }
         }
+        // Handle cycle-subpanel command (C-w intercepted by status bar)
+        if let Event::Command { id, .. } = event {
+            if *id == txv_widgets::tiled_workspace::commands::CM_TW_CYCLE_SUBPANEL {
+                self.split.cycle_focus();
+                return HandleResult::Consumed;
+            }
+        }
         let result = self.split.handle(event);
         if self.linked_scroll {
             self.sync_scroll();
@@ -179,6 +206,10 @@ impl View for EditorSplit {
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
+    }
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        self.split.cursor()
     }
 
     fn buffer(&self) -> &Buffer {

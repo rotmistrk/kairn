@@ -3,12 +3,13 @@
 use txv_core::program::CommandContext;
 
 use crate::build;
-use crate::desktop::SlotId;
+use crate::desktop::{close_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
 /// Handle :build — spawn async build, show results in right panel.
 pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(cmd) = build::resolve_build_cmd(&state.root_dir) else {
+    let cmd = tcl_override(&mut state.script, "build-command").or_else(|| build::resolve_build_cmd(&state.root_dir));
+    let Some(cmd) = cmd else {
         report_no_cmd(ctx, "build");
         return;
     };
@@ -17,22 +18,30 @@ pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Handle :run — run project in a shell tab.
 pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
-    let cmd = state
-        .settings
-        .run_command
-        .clone()
-        .unwrap_or_else(|| detect_run_command(&state.root_dir));
+    let cmd = tcl_override(&mut state.script, "run-command").or_else(|| {
+        Some(
+            state
+                .settings
+                .run_command
+                .clone()
+                .unwrap_or_else(|| detect_run_command(&state.root_dir)),
+        )
+    });
+    let Some(cmd) = cmd else {
+        return;
+    };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        desktop.close_tab_by_title(SlotId::Right, "Run");
+        close_tab_by_title(desktop, SlotId::Tools, "Run");
         let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, "Run".into(), term);
-        desktop.focus_slot(SlotId::Right);
+        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, "Run".into(), term);
+        desktop.focus_panel(SlotId::Tools as usize);
     }
 }
 
 /// Handle :test — spawn async test, show results.
 pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(cmd) = build::resolve_test_cmd(&state.root_dir) else {
+    let cmd = tcl_override(&mut state.script, "test-command").or_else(|| build::resolve_test_cmd(&state.root_dir));
+    let Some(cmd) = cmd else {
         report_no_cmd(ctx, "test");
         return;
     };
@@ -71,17 +80,17 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
     state.build_error_idx = 0;
 
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        desktop.close_tab_by_title(SlotId::Right, title);
+        close_tab_by_title(desktop, SlotId::Tools, title);
         let view = crate::views::results::ResultsView::searching(title, &state.root_dir);
         crate::handler_evict::try_insert_tab(
             desktop,
             state,
             ctx.sink,
-            SlotId::Right,
+            SlotId::Tools,
             title.to_string(),
             Box::new(view),
         );
-        desktop.focus_slot(SlotId::Right);
+        desktop.focus_panel(SlotId::Tools as usize);
     }
 }
 
@@ -105,15 +114,16 @@ fn detect_run_command(root: &std::path::Path) -> String {
 /// Try to detect the test function name at the cursor position.
 fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        if let Some(view) = desktop.active_view_mut(SlotId::Center) {
-            if let Some(any) = view.as_any_mut() {
-                if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
-                    let line = editor.editor.cursor_line;
-                    // Walk backwards from cursor to find fn name
-                    for i in (0..=line).rev() {
-                        let text = editor.editor.buf().line(i).unwrap_or_default();
-                        if let Some(name) = extract_test_fn_name(&text) {
-                            return name;
+        if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
+            if let Some(view) = panel.active_view_mut() {
+                if let Some(any) = view.as_any_mut() {
+                    if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
+                        let line = editor.editor.cursor_line;
+                        for i in (0..=line).rev() {
+                            let text = editor.editor.buf().line(i).unwrap_or_default();
+                            if let Some(name) = extract_test_fn_name(&text) {
+                                return name;
+                            }
                         }
                     }
                 }
@@ -165,4 +175,16 @@ fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
     let req = crate::commands::OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
     ctx.sink
         .push_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+}
+
+/// Try a Tcl proc override. Returns Some(cmd) if proc exists and returns non-empty.
+fn tcl_override(script: &mut crate::scripting::ScriptEngine, proc_name: &str) -> Option<String> {
+    if script.has_command(proc_name) {
+        if let Ok(result) = script.eval(proc_name) {
+            if !result.is_empty() {
+                return Some(result);
+            }
+        }
+    }
+    None
 }

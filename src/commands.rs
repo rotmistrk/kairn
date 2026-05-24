@@ -56,23 +56,12 @@ pub const CM_FILE_DELETED: CommandId = CM_APP_BASE + 4;
 pub const CM_FILE_CLOSED: CommandId = CM_APP_BASE + 5;
 pub const CM_OPEN_FILE_FOCUS: CommandId = CM_APP_BASE + 6;
 
-// Focus / slot navigation
-pub const CM_FOCUS_LEFT: CommandId = CM_APP_BASE + 10;
-pub const CM_FOCUS_CENTER: CommandId = CM_APP_BASE + 11;
-pub const CM_FOCUS_RIGHT: CommandId = CM_APP_BASE + 12;
-pub const CM_FOCUS_BOTTOM: CommandId = CM_APP_BASE + 13;
-pub const CM_ZOOM_TOGGLE: CommandId = CM_APP_BASE + 14;
-pub const CM_TAB_NEXT: CommandId = CM_APP_BASE + 15;
-pub const CM_TAB_PREV: CommandId = CM_APP_BASE + 16;
-pub const CM_TAB_CLOSE: CommandId = CM_APP_BASE + 17;
-pub const CM_FOCUS_TAB: CommandId = CM_APP_BASE + 18;
-pub const CM_TAB_DROPDOWN: CommandId = CM_APP_BASE + 19;
-pub const CM_TAB_DROPDOWN_UP: CommandId = CM_APP_BASE + 20;
-pub const CM_TAB_DROPDOWN_DOWN: CommandId = CM_APP_BASE + 21;
-
 // Display
 pub const CM_SHOW_HELP: CommandId = CM_APP_BASE + 30;
 pub const CM_SHOW_MESSAGES: CommandId = CM_APP_BASE + 31;
+
+// Tab close (app-level: notifies broker, handles save prompts)
+pub const CM_TAB_CLOSE: CommandId = CM_APP_BASE + 17;
 
 // Command mode
 pub const CM_COMMAND_MODE: CommandId = CM_APP_BASE + 40;
@@ -103,11 +92,6 @@ pub const CM_TEST_AT_CURSOR: CommandId = CM_APP_BASE + 75;
 pub const CM_NEXT_ERROR: CommandId = CM_APP_BASE + 76;
 pub const CM_PREV_ERROR: CommandId = CM_APP_BASE + 77;
 
-// Panel resize
-pub const CM_PANEL_GROW: CommandId = CM_APP_BASE + 80;
-pub const CM_PANEL_SHRINK: CommandId = CM_APP_BASE + 81;
-pub const CM_PANEL_GROW_V: CommandId = CM_APP_BASE + 82;
-pub const CM_PANEL_SHRINK_V: CommandId = CM_APP_BASE + 83;
 pub const CM_SUSPEND: CommandId = CM_APP_BASE + 84;
 pub const CM_PEEK: CommandId = CM_APP_BASE + 85;
 
@@ -190,6 +174,8 @@ pub const CM_SPLIT_FOCUS: CommandId = CM_APP_BASE + 163;
 pub const CM_DIFF_SPLIT: CommandId = CM_APP_BASE + 164;
 pub const CM_LSP_STATUS_UPDATE: CommandId = CM_APP_BASE + 165;
 pub const CM_SPLIT_LINKED: CommandId = CM_APP_BASE + 166;
+pub const CM_GIT_LOG: CommandId = CM_APP_BASE + 167;
+pub const CM_TODO_ACTION: CommandId = CM_APP_BASE + 168;
 
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]

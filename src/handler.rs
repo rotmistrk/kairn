@@ -3,10 +3,12 @@
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
+use txv_widgets::tiled_workspace::commands::CM_TW_TAB_CLOSE;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub use crate::app_state::AppState;
 use crate::commands::*;
-use crate::slots::{Desktop, SlotId};
+use crate::slots::{focus_tab_by_title, insert_tab, next_tab_name, SlotId};
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
@@ -66,19 +68,27 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         crate::handler_drain::refresh_plugins(ctx, state);
     }
 
-    // Panel focus/tab/resize commands
-    if crate::handler_panel::handle_panel_command(ctx) {
-        return;
-    }
-
     match ctx.command {
         CM_TICK => crate::handler_context::broadcast_context(ctx, state),
+        CM_TW_TAB_CLOSE | CM_TAB_CLOSE => {
+            if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                let focused = desktop.focused_panel();
+                let title = desktop.panel(focused).and_then(|p| p.active_title().map(String::from));
+                if let Some(panel) = desktop.panel_mut(focused) {
+                    panel.close_active();
+                }
+                ctx.sink.push_command(
+                    CM_FILE_CLOSED,
+                    title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
+                );
+            }
+        }
         CM_OPEN_FILE => crate::handler_open::handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => crate::handler_open::handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),
         CM_SHOW_HELP => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if !desktop.focus_tab_by_title(SlotId::Center, "Help") {
+                if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
                     let help = HelpView::new();
                     crate::handler_evict::try_insert_tab(
                         desktop,
@@ -93,27 +103,27 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
         CM_SHOW_MESSAGES => {
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                if desktop.focus_tab_by_title(SlotId::Right, "Messages") {
-                    desktop.focus_slot(SlotId::Right);
+                if focus_tab_by_title(desktop, SlotId::Tools, "Messages") {
+                    desktop.focus_panel(SlotId::Tools as usize);
                 } else {
                     let messages = MessagesView::new(state.messages.clone());
                     crate::handler_evict::try_insert_tab(
                         desktop,
                         state,
                         ctx.sink,
-                        SlotId::Right,
+                        SlotId::Tools,
                         "Messages".into(),
                         Box::new(messages),
                     );
-                    desktop.focus_slot(SlotId::Right);
+                    desktop.focus_panel(SlotId::Tools as usize);
                 }
             }
         }
         CM_NEW_SHELL => {
             let term = new_shell_terminal();
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let name = desktop.next_tab_name(SlotId::Right, "Shell");
-                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Right, name.clone(), term);
+                let name = next_tab_name(desktop, SlotId::Tools, "Shell");
+                crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
                 ctx.sink.push_command(
                     txv_widgets::CM_STATUS_MESSAGE,
                     Some(Box::new(Message::info("shell", format!("Started: {name}")))),
@@ -133,8 +143,12 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             }
             if let Some(desktop) = downcast_desktop(ctx.desktop) {
                 crate::handler_evict::complete_pending_insert(desktop, state);
-                if desktop.tab_count(SlotId::Center) == 0 {
-                    desktop.insert_tab(
+                let empty = desktop
+                    .panel(SlotId::Center as usize)
+                    .is_none_or(|p| p.tab_count() == 0);
+                if empty {
+                    insert_tab(
+                        desktop,
                         SlotId::Center,
                         "Welcome",
                         Box::new(WelcomeView::new(state.root_dir.clone())),
@@ -159,6 +173,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_GIT_UNTRACK => crate::handler_git::handle_git_untrack(ctx, state),
         CM_GIT_COMMIT => crate::handler_git::handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => crate::handler_git::handle_git_commit_prompt(ctx, state),
+        CM_GIT_LOG => crate::handler_log::open_git_log(ctx, state, ""),
         CM_SPLIT => crate::handler_split::handle_split(ctx, state),
         CM_SPLIT_CLOSE => crate::handler_split::handle_split_close(ctx, state),
         CM_OPEN_IN_SPLIT => crate::handler_split_nav::handle_open_in_split(ctx, state),
@@ -205,16 +220,39 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TODO_NOTE_SAVE => crate::handler_drain::save_todo_note(ctx, state),
         CM_TODO_NOTE_OPEN => crate::handler_drain::open_todo_note(ctx, state),
         CM_TODO_NOTE_UPDATE => crate::handler_drain::update_todo_note(ctx, state),
+        CM_TODO_ACTION => {
+            if let Some(action) = ctx
+                .data
+                .as_ref()
+                .and_then(|d| d.downcast_ref::<crate::mcp::commands::McpAction>())
+            {
+                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                    if let Some(panel) = desktop.panel_mut(SlotId::Left as usize) {
+                        let todo_view = panel
+                            .view_at_mut(2)
+                            .and_then(|v| v.as_any_mut())
+                            .and_then(|a| a.downcast_mut::<crate::views::todo_tree::TodoTreeView>());
+                        if let Some(tv) = todo_view {
+                            if let Err(e) = tv.mcp_action(action) {
+                                let msg = txv_core::message::Message::error("todo", e);
+                                ctx.sink
+                                    .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
         _ => {}
     }
 }
 
-/// Downcast the desktop View to Desktop wrapper.
-pub fn downcast_workspace(view: &mut dyn View) -> Option<&mut Desktop> {
-    view.as_any_mut()?.downcast_mut::<Desktop>()
+/// Downcast the desktop View to TiledWorkspace.
+pub fn downcast_workspace(view: &mut dyn View) -> Option<&mut TiledWorkspace> {
+    view.as_any_mut()?.downcast_mut::<TiledWorkspace>()
 }
 
 /// Deprecated alias.
-pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut Desktop> {
+pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut TiledWorkspace> {
     downcast_workspace(view)
 }

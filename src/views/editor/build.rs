@@ -47,6 +47,7 @@ impl EditorView {
             diagnostics: None,
             blame_state: None,
             diff_state: None,
+            sbs_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
@@ -80,6 +81,7 @@ impl EditorView {
             diagnostics: None,
             blame_state: None,
             diff_state: None,
+            sbs_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
@@ -114,6 +116,7 @@ impl EditorView {
             diagnostics: None,
             blame_state: None,
             diff_state: None,
+            sbs_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
@@ -146,6 +149,7 @@ impl EditorView {
             diagnostics: None,
             blame_state: None,
             diff_state: None,
+            sbs_state: None,
             completion_popup: crate::lsp::completion::CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
@@ -214,6 +218,20 @@ impl EditorView {
         if self.state.bounds().h == 0 {
             self.editor.viewport_scroll = self.editor.cursor_line;
         }
+        self.state.mark_dirty();
+    }
+
+    /// Undo the last edit.
+    pub fn undo(&mut self) {
+        self.editor.buf().undo();
+        self.editor.clamp_cursor();
+        self.state.mark_dirty();
+    }
+
+    /// Redo the last undone edit.
+    pub fn redo(&mut self) {
+        self.editor.buf().redo();
+        self.editor.clamp_cursor();
         self.state.mark_dirty();
     }
 

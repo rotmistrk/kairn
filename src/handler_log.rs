@@ -2,7 +2,7 @@
 
 use txv_core::program::CommandContext;
 
-use crate::desktop::SlotId;
+use crate::desktop::{close_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
 /// Open the git log viewer as a singleton tab in the right panel.
@@ -10,11 +10,12 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    desktop.close_tab_by_title(SlotId::Right, "Log");
+    close_tab_by_title(desktop, SlotId::Tools, "Log");
 
     let filter_path = if arg == "%" {
         desktop
-            .active_view_mut(SlotId::Center)
+            .panel_mut(SlotId::Center as usize)
+            .and_then(|p| p.active_view_mut())
             .and_then(|v| v.as_any_mut())
             .and_then(|a| a.downcast_ref::<crate::views::editor::EditorView>())
             .map(|e| e.path().strip_prefix(&state.root_dir).unwrap_or(e.path()).to_path_buf())
@@ -33,9 +34,9 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
         desktop,
         state,
         ctx.sink,
-        SlotId::Right,
+        SlotId::Tools,
         "Log".to_string(),
         Box::new(view),
     );
-    desktop.focus_slot(SlotId::Right);
+    desktop.focus_panel(SlotId::Tools as usize);
 }

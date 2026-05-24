@@ -27,7 +27,17 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let panel = desktop.panel_mut(SlotId::Center);
+
+    // If focused panel is not Center, split via move-tab-to-subpanel
+    let focused = desktop.focused_panel();
+    if focused != SlotId::Center as usize {
+        desktop.move_tab_to_subpanel();
+        return;
+    }
+
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
 
     // If already in a split
     if let Some(view) = panel.active_view_mut() {
@@ -67,13 +77,16 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     // Focus the second pane (bottom/right) where the user was editing
     split.set_focused(1);
     panel.insert_tab_at(active_idx, &title, Box::new(split));
+    panel.set_active(active_idx);
 }
 
 pub(crate) fn handle_split_close(ctx: &mut CommandContext, _state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
     let active_idx = panel.active_index();
     let title = panel.active_title().map(String::from).unwrap_or_default();
 
@@ -100,7 +113,9 @@ pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
     let Some(view) = panel.active_view_mut() else {
         return;
     };
@@ -120,7 +135,9 @@ pub(crate) fn handle_split_linked(ctx: &mut CommandContext) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let panel = desktop.panel_mut(SlotId::Center);
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
     let Some(view) = panel.active_view_mut() else {
         return;
     };

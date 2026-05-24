@@ -54,9 +54,20 @@ Auto-switches between Wide and Tall based on terminal width (configurable thresh
 | `M-x` (Alt-x / ≈) | Command mode |
 | `Ctrl-Shift-←/→` | Focus prev/next panel |
 | `Ctrl-Shift-↑/↓` | Tab dropdown picker |
-| `Alt-0..9` | Select tab by number |
-| `≠/–` (Alt+=/Alt+-) | Grow/shrink panel width |
-| `±/—` (Alt+Shift) | Grow/shrink panel height |
+| `Alt-0` | Tab dropdown (list all tabs) |
+| `Alt-1..9` | Select tab by number |
+| `Alt-;` / `Alt-'` | Next / previous tab |
+| `Alt-w` | Close active tab |
+| `Alt-,` | Toggle tree panel |
+| `Alt-.` | Toggle tools panel |
+| `Alt-/` | Zoom toggle |
+| `Alt-\` | Cycle layout mode |
+| `Ctrl-W` | Cycle subpanel focus (in splits) |
+| `Alt-=` / `Alt--` | Grow / shrink subpanel |
+| `Alt-Shift-←/→` | Resize panel horizontally |
+| `Alt-Shift-↑/↓` | Resize panel vertically |
+| `≠/–` (macOS Alt+=/Alt+-) | Grow/shrink panel width |
+| `±/—` (macOS Alt+Shift) | Grow/shrink panel height |
 | `PgUp/PgDn` | Terminal scrollback |
 
 ### Editor (Vim)
@@ -69,7 +80,7 @@ Visual: extend selection, `d/c/y/>/<`, `:` for ex commands
 
 Search: `/pattern`, `n/N`, `*/#`
 
-Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:revert`, `:e <path>`
+Ex: `:w`, `:q`, `:wq`, `:%s/pat/rep/g`, `:set wrap`, `:diff`, `:diff -y` (side-by-side), `:diff -w` (ignore ws), `:diff --base <ref>`, `:revert`, `:nodiff`, `:blame`, `:noblame`, `:e <path>`, `:split`, `:vsplit`, `:only`
 
 Insert: `Esc` to exit, `Ctrl-N/P` for completion
 
@@ -85,6 +96,8 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 | `Esc` | Exit diff mode |
 | `/` | Search |
 
+Side-by-side diff (`:diff -y`): left=base, right=current, aligned with gaps. Same navigation keys; `q`/`Esc` exits.
+
 ### File Tree
 
 `j/k` navigate, `Enter/→` open/expand, `h/←` collapse, `Ctrl-.` toggle hidden
@@ -95,7 +108,19 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 
 ### Todo Panel
 
-`Space` toggle done, `!` toggle important, `e` edit, `n` new sibling, `b` new child, `d` delete, `J/K` swap, `H/L` promote/demote
+`Space` toggle done, `!` toggle important, `e` edit, `n` new sibling, `b` new child, `d` delete, `J/K` swap, `H/L` promote/demote, `N` open note, `/` filter
+
+### Results View (grep/references/errors)
+
+`j/k` navigate, `Enter` open (keep focus), `→` open (focus editor), `n/p` next/prev + open, `q` close
+
+### CSV/Table View
+
+`h/j/k/l` navigate cells, `g/G` first/last row, `0/$` first/last column, `Enter` edit cell, `s` sort, `f/F` filter/clear, `Ctrl-F` clear all filters
+
+### Structured View (JSON tree)
+
+`j/k` navigate, `Space/l/→` expand/collapse, `h/←` collapse/parent, `Tab` cycle column, `Enter` edit, `n` new sibling, `b` new child, `d` delete, `t/T` cycle type, `J/K` swap, `H/L` promote/demote, `u/Ctrl-R` undo/redo
 
 ## Commands (M-x)
 
@@ -119,9 +144,17 @@ Insert: `Esc` to exit, `Ctrl-N/P` for completion
 | `git-stage/unstage/untrack <f>` | Git operations |
 | `git-commit <msg>` | Commit |
 | `tab-rename <name>` | Rename tab |
-| `split` / `vsplit` | Split editor (experimental) |
+| `split [<file>]` / `vsplit [<file>]` | Split editor |
 | `struct` / `text` | Switch view mode |
 | `tab` | Open current file as CSV/TSV table |
+| `blame` / `noblame` | Show/hide git blame |
+| `log` | Show git log |
+| `zoom` | Zoom toggle (maximize panel) |
+| `layout` | Cycle layout mode (auto/wide/tall) |
+| `move-tab` | Move tab to other subpanel |
+| `toggle-tree` / `toggle-tools` | Show/hide side panels |
+| `grow` / `shrink` | Resize panel horizontally |
+| `grow-v` / `shrink-v` | Resize panel vertically |
 | *anything else* | Evaluated as Tcl script |
 
 ## Configuration
@@ -145,6 +178,7 @@ set theme.mode "dark"
 ```
 
 See `doc/example-init.tcl` for all settings including colors and LSP config.
+See `doc/tcl-reference.md` for the full scripting API reference.
 
 ## Tcl Scripting
 
@@ -152,12 +186,13 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 
 | Namespace | Operations |
 |-----------|-----------|
-| `editor` | open, save, save-all, close, goto, insert, undo, redo, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
+| `editor` | open, save, save-all, close, goto, insert, undo, redo, search, clear-highlight, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
 | `view` | focus, message, status |
 | `build` | run, test |
-| `lsp` | hover, definition, references, rename, format |
-| `git` | stage, unstage, commit |
+| `lsp` | hover, definition, references, rename, format, start, restart, stop, status, timeout, args |
+| `git` | stage, unstage, commit, blame, noblame |
 | `todo` | add, remove, complete |
+| `split` | vsplit, hsplit, close, focus, open, direction, linked |
 | `keymap` | bind, unbind |
 | `hook` | add, remove, list |
 | `system` | exec, env, set-env, root-dir, home-dir, platform, clipboard-get, clipboard-set |
@@ -201,12 +236,16 @@ hook add idle { lsp format }
 
 Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 
-- Read/write terminal content
-- List/switch tabs
-- Open/save files
-- Read editor state (cursor, selection, diagnostics)
-- Revert diff hunk under cursor (`diff_revert`)
-- Add todo items (including batch `add_subtree`)
+- **Tabs**: list, switch, close, get active
+- **Files**: open, create, save
+- **Editor**: read state (cursor, selection, diagnostics), edit buffer, insert text, set cursor
+- **Terminal**: read content (write/send not yet implemented)
+- **Build**: run build/test, get errors, search project (grep)
+- **Diff**: revert hunk under cursor
+- **Split**: create/close/focus/open/status/linked scroll
+- **Todo**: add (including batch `add_subtree`), toggle, remove, move, promote/demote, notes
+- **LSP**: start/restart/stop servers
+- **Messages**: read message log
 
 ## Tech Stack
 

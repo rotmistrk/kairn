@@ -1,11 +1,14 @@
 //! MCP edit operations — buffer edits, cursor, save, diagnostics.
 
-use crate::desktop::{Desktop, SlotId};
+use crate::desktop::SlotId;
 use crate::views::editor::EditorView;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 /// Find an editor view by tab name in the center panel.
-pub(crate) fn find_editor<'a>(desktop: &'a mut Desktop, name: &str) -> Result<&'a mut EditorView, String> {
-    let panel = desktop.panel_mut(SlotId::Center);
+pub(crate) fn find_editor<'a>(desktop: &'a mut TiledWorkspace, name: &str) -> Result<&'a mut EditorView, String> {
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return Err("Panel not found".to_string());
+    };
     for i in 0..panel.tab_count() {
         if panel.tab_title(i) == Some(name) {
             let view = panel.view_at_mut(i).ok_or("View not accessible")?;
@@ -19,7 +22,7 @@ pub(crate) fn find_editor<'a>(desktop: &'a mut Desktop, name: &str) -> Result<&'
 }
 
 pub(crate) fn mcp_edit_buffer(
-    desktop: &mut Desktop,
+    desktop: &mut TiledWorkspace,
     name: &str,
     start_line: usize,
     end_line: usize,
@@ -50,7 +53,7 @@ pub(crate) fn mcp_edit_buffer(
 }
 
 pub(crate) fn mcp_insert_text(
-    desktop: &mut Desktop,
+    desktop: &mut TiledWorkspace,
     name: &str,
     line: usize,
     col: usize,
@@ -62,7 +65,7 @@ pub(crate) fn mcp_insert_text(
 }
 
 pub(crate) fn mcp_set_cursor(
-    desktop: &mut Desktop,
+    desktop: &mut TiledWorkspace,
     name: &str,
     line: usize,
     col: usize,
@@ -72,14 +75,16 @@ pub(crate) fn mcp_set_cursor(
     Ok(serde_json::json!({"cursor": {"line": line, "col": col}}))
 }
 
-pub(crate) fn mcp_save_file(desktop: &mut Desktop, name: &str) -> Result<serde_json::Value, String> {
+pub(crate) fn mcp_save_file(desktop: &mut TiledWorkspace, name: &str) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
     editor.save().map_err(|e| format!("Save failed: {e}"))?;
     Ok(serde_json::json!({"saved": name}))
 }
 
-pub(crate) fn mcp_get_diagnostics(desktop: &mut Desktop, name: &str) -> Result<serde_json::Value, String> {
-    let panel = desktop.panel_mut(SlotId::Center);
+pub(crate) fn mcp_get_diagnostics(desktop: &mut TiledWorkspace, name: &str) -> Result<serde_json::Value, String> {
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return Err("Panel not found".to_string());
+    };
     let mut all_diags = Vec::new();
     for i in 0..panel.tab_count() {
         let title = panel.tab_title(i).unwrap_or_default().to_string();

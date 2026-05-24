@@ -65,8 +65,8 @@ fn enter_opens_file_without_focus_change() {
     let desktop = h.program.desktop_mut();
     let sd = kairn::handler::downcast_desktop(desktop).unwrap();
     assert_eq!(
-        sd.focused_slot(),
-        kairn::desktop::SlotId::Left,
+        sd.focused_panel(),
+        kairn::slots::SlotId::Left as usize,
         "focus should remain on tree"
     );
 }

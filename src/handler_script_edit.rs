@@ -13,8 +13,8 @@ pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
     let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let Some(view) = desktop.active_view_mut(slot) else {
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
         return;
     };
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
@@ -42,8 +42,8 @@ pub fn handle_delete_line(ctx: &mut CommandContext, _state: &AppState) {
     let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let Some(view) = desktop.active_view_mut(slot) else {
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
         return;
     };
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
@@ -74,8 +74,8 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
     let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let Some(view) = desktop.active_view_mut(slot) else {
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
         return;
     };
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
@@ -107,8 +107,8 @@ pub fn handle_search(ctx: &mut CommandContext, _state: &AppState, pattern: &str)
     let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let Some(view) = desktop.active_view_mut(slot) else {
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
         return;
     };
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
@@ -123,8 +123,8 @@ pub fn handle_clear_highlight(ctx: &mut CommandContext, _state: &AppState) {
     let Some(desktop) = crate::handler::downcast_desktop(ctx.desktop) else {
         return;
     };
-    let slot = desktop.focused_slot();
-    let Some(view) = desktop.active_view_mut(slot) else {
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
         return;
     };
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {

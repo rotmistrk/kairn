@@ -54,8 +54,10 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    for slot in [SlotId::Center, SlotId::Right] {
-        let panel = desktop.panel_mut(slot);
+    for slot in [SlotId::Center, SlotId::Tools] {
+        let Some(panel) = desktop.panel_mut(slot as usize) else {
+            return;
+        };
         for i in 0..panel.tab_count() {
             if let Some(view) = panel.view_at_mut(i) {
                 if let Some(any) = view.as_any_mut() {
