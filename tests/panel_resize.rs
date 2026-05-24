@@ -1,4 +1,4 @@
-//! Tests for panel resize (≠–) and other final features.
+//! Tests for panel resize (Alt-Shift-Arrow) and subpanel resize (≠–).
 
 mod helpers;
 
@@ -15,8 +15,15 @@ fn resize_grow_shrink_changes_layout() {
     h.run_cycles(1);
     // Get initial tree width by checking where content starts
     let row_before = h.row(1);
-    // Grow: ≠
-    h.inject_key(KeyCode::Char('≠'), KeyMod::default());
+    // Grow: Alt-Shift-Right
+    h.inject_key(
+        KeyCode::Right,
+        KeyMod {
+            alt: true,
+            shift: true,
+            ctrl: false,
+        },
+    );
     h.run_cycles(1);
     let row_after = h.row(1);
     // After grow, the tree area should be wider (more chars before divider)

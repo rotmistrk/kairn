@@ -76,7 +76,8 @@ fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
 /// App-specific bindings (not workspace navigation).
 fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     use txv_widgets::tiled_workspace::commands::{
-        CM_TW_FOCUS_PANEL, CM_TW_GROW_H, CM_TW_GROW_V, CM_TW_SHRINK_H, CM_TW_SHRINK_V, CM_TW_ZOOM,
+        CM_TW_FOCUS_PANEL, CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL,
+        CM_TW_SHRINK_V, CM_TW_ZOOM,
     };
     bar.add(KeyLabelItem::new(keys.help, CM_SHOW_HELP, "F1:Help"));
     bar.add(KeyLabelItem::new(keys.zoom, CM_TW_ZOOM, "F5:Zoom"));
@@ -85,11 +86,9 @@ fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.tree, CM_TW_FOCUS_PANEL, 0));
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.main, CM_TW_FOCUS_PANEL, 1));
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.term, CM_TW_FOCUS_PANEL, 2));
-    // macOS Option+=/- resize keys (Alt+Shift produces these chars on macOS)
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_TW_GROW_H));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_TW_SHRINK_H));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('±')), CM_TW_GROW_V));
-    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('—')), CM_TW_SHRINK_V));
+    // macOS Option+=/- resize keys — grow/shrink subpanel
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('≠')), CM_TW_GROW_SUBPANEL));
+    bar.add_active_only(KeyLabelItem::hidden(key(KeyCode::Char('–')), CM_TW_SHRINK_SUBPANEL));
     // Alt+Shift+Arrow resize keys
     let alt_shift = |code| KeyEvent {
         code,

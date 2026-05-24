@@ -25,10 +25,8 @@ pub fn help_global() -> String {
   Alt-Shift-Right   Move border right
   Alt-Shift-Up      Move border up
   Alt-Shift-Down    Move border down
-  ≠ (Alt+=)         Move border right
-  – (Alt+-)         Move border left
-  ± (Alt+Shift+=)   Move border down
-  — (Alt+Shift+-)   Move border up
+  ≠ (Alt+=)         Grow subpanel
+  – (Alt+-)         Shrink subpanel
 
 ─── Splits & Layout ──────────────────────────────────
   Ctrl-W            Cycle subpanel focus (in splits)
