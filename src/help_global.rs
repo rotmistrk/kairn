@@ -29,7 +29,15 @@ pub fn help_global() -> String {
   – (Alt+-)         Shrink subpanel
 
 ─── Splits & Layout ──────────────────────────────────
-  Ctrl-W            Cycle subpanel focus (in splits)
+  Ctrl-W …        Subpanel prefix:
+    s               Split horizontal
+    v               Split vertical
+    c               Close this subpanel
+    o               Close other (:only)
+    w / Ctrl-W      Cycle focus
+    m               Move tab to other
+    + / -           Grow / shrink
+    =               Equalize
   Alt-=             Grow subpanel
   Alt--             Shrink subpanel
   Alt-,             Toggle tree panel

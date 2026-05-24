@@ -64,8 +64,10 @@ fn narrow_tools_ctrl_w_cycles_focus() {
     h.inject_key(KeyCode::Char('w'), ctrl_alt());
     h.run_cycles(3);
 
-    // Ctrl-W cycles focus
+    // Ctrl-W w cycles focus
     h.inject_key(KeyCode::Char('w'), ctrl());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char('w'), KeyMod::default());
     h.run_cycles(2);
 
     // Should not crash

@@ -6,6 +6,7 @@ use txv_core::prelude::*;
 use txv_core::status::StatusBar;
 use txv_widgets::command_item::CommandItem;
 use txv_widgets::confirm_item::ConfirmItem;
+use txv_widgets::prefix_item::PrefixItem;
 use txv_widgets::status_indicators::BranchItem;
 use txv_widgets::status_items::{ClockItem, KeyLabelItem, MessageItem};
 use txv_widgets::tiled_workspace::commands::CM_TW_ACTIVATE_TAB;
@@ -59,6 +60,7 @@ pub fn build_status_bar(
 ) -> StatusBar {
     let mut bar = StatusBar::new();
     add_workspace_bindings(&mut bar, desktop);
+    add_prefix_bindings(&mut bar);
     add_app_bindings(&mut bar, keys);
     add_tab_digit_bindings(&mut bar);
     add_command_items(&mut bar, completer);
@@ -71,6 +73,25 @@ fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
     for (key, command, _payload) in desktop.default_bindings() {
         bar.add_active_only(KeyLabelItem::hidden(key, command));
     }
+}
+
+/// Ctrl-W prefix key sequence for subpanel management.
+fn add_prefix_bindings(bar: &mut StatusBar) {
+    use txv_widgets::tiled_workspace::commands::{
+        CM_TW_CLOSE_OTHER_SUBPANEL, CM_TW_CLOSE_SUBPANEL, CM_TW_CYCLE_SUBPANEL, CM_TW_EQUALIZE_SUBPANEL,
+        CM_TW_GROW_SUBPANEL, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_SUBPANEL, CM_TW_SPLIT_H, CM_TW_SPLIT_V,
+    };
+    let prefix = PrefixItem::new(ctrl('w'), "C-w")
+        .bind('s', CM_TW_SPLIT_H, "split")
+        .bind('v', CM_TW_SPLIT_V, "vsplit")
+        .bind('c', CM_TW_CLOSE_SUBPANEL, "close")
+        .bind('o', CM_TW_CLOSE_OTHER_SUBPANEL, "only")
+        .bind('w', CM_TW_CYCLE_SUBPANEL, "cycle")
+        .bind('m', CM_TW_MOVE_TAB_SUBPANEL, "move")
+        .bind('+', CM_TW_GROW_SUBPANEL, "grow")
+        .bind('-', CM_TW_SHRINK_SUBPANEL, "shrink")
+        .bind('=', CM_TW_EQUALIZE_SUBPANEL, "equal");
+    bar.add(prefix);
 }
 
 /// App-specific bindings (not workspace navigation).

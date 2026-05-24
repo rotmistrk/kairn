@@ -68,8 +68,10 @@ fn tools_ctrl_w_cycles_subpanel_focus() {
     h.inject_key(KeyCode::Char('w'), ctrl_alt());
     h.run_cycles(3);
 
-    // Ctrl-W should cycle focus between subpanels
+    // Ctrl-W w should cycle focus between subpanels
     h.inject_key(KeyCode::Char('w'), ctrl());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char('w'), KeyMod::default());
     h.run_cycles(2);
 
     // Should not crash, panel still visible

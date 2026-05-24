@@ -88,8 +88,10 @@ fn ctrl_w_cycles_focus_between_split_panes() {
     );
     h.run_cycles(3);
 
-    // Ctrl-W should cycle focus
+    // Ctrl-W w should cycle focus (two-key sequence)
     h.inject_key(KeyCode::Char('w'), ctrl());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char('w'), none());
     h.run_cycles(2);
 
     // Both files should be visible

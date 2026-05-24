@@ -165,3 +165,33 @@ fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
     ed.buffer_id = Some(state.buffers.register(Some(canon)));
     Box::new(ed)
 }
+
+pub(crate) fn handle_split_h(ctx: &mut CommandContext, state: &mut AppState) {
+    let req = crate::commands::SplitRequest {
+        vertical: false,
+        file: None,
+    };
+    let data = Some(Box::new(req) as Box<dyn std::any::Any + Send>);
+    let mut sub = CommandContext {
+        command: crate::commands::CM_SPLIT,
+        data: &data,
+        sink: ctx.sink,
+        desktop: ctx.desktop,
+    };
+    handle_split(&mut sub, state);
+}
+
+pub(crate) fn handle_split_v(ctx: &mut CommandContext, state: &mut AppState) {
+    let req = crate::commands::SplitRequest {
+        vertical: true,
+        file: None,
+    };
+    let data = Some(Box::new(req) as Box<dyn std::any::Any + Send>);
+    let mut sub = CommandContext {
+        command: crate::commands::CM_SPLIT,
+        data: &data,
+        sink: ctx.sink,
+        desktop: ctx.desktop,
+    };
+    handle_split(&mut sub, state);
+}

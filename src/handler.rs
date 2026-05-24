@@ -3,7 +3,7 @@
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
-use txv_widgets::tiled_workspace::commands::CM_TW_TAB_CLOSE;
+use txv_widgets::tiled_workspace::commands::{CM_TW_SPLIT_H, CM_TW_SPLIT_V, CM_TW_TAB_CLOSE};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub use crate::app_state::AppState;
@@ -180,6 +180,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_FOCUS => crate::handler_split::handle_split_focus(ctx),
         CM_SPLIT_LINKED => crate::handler_split::handle_split_linked(ctx, state),
         CM_DIFF_SPLIT => crate::handler_split_nav::handle_diff_split(ctx, state),
+        CM_TW_SPLIT_H => crate::handler_split::handle_split_h(ctx, state),
+        CM_TW_SPLIT_V => crate::handler_split::handle_split_v(ctx, state),
         CM_TOGGLE_THEME => crate::handler_theme::handle_toggle_theme(ctx, state),
         CM_SET_SYNTAX_THEME => crate::handler_theme::handle_set_syntax_theme(ctx, state),
         CM_SET_GLYPHS => {
