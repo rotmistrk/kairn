@@ -239,6 +239,15 @@ fn main() -> anyhow::Result<()> {
             kairn::commands::CM_OPEN_FILE_FOCUS,
             Some(Box::new(kairn::commands::OpenFileRequest::new(file_path.clone()))),
         );
+    } else if let Some(ref sess) = saved_session {
+        // Trigger LSP didOpen for session-restored files
+        for tab in &sess.editor_tabs {
+            let path = root_dir.join(&tab.path);
+            program.sink().push_command(
+                kairn::commands::CM_OPEN_FILE,
+                Some(Box::new(kairn::commands::OpenFileRequest::new(path))),
+            );
+        }
     }
 
     program.run(&mut backend, |ctx| {

@@ -78,10 +78,6 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
         sp.set_direction(direction);
     }
     desktop.split_in_place(new_pane, &title);
-    // Keep focus on original pane (child 0) where user was editing
-    if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
-        sp.set_focused(0);
-    }
 }
 
 pub(crate) fn handle_split_close(ctx: &mut CommandContext, _state: &mut AppState) {

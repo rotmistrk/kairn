@@ -87,6 +87,7 @@ fn restore_tabs_opens_editors() {
         }],
         unfolded_dirs: Vec::new(),
         kiro_sessions: Vec::new(),
+        split: None,
     };
 
     let mut desktop =
@@ -119,6 +120,7 @@ fn restore_skips_missing_files() {
         }],
         unfolded_dirs: Vec::new(),
         kiro_sessions: Vec::new(),
+        split: None,
     };
 
     let mut desktop =

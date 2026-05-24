@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Current schema version.
-pub const SESSION_VERSION: u32 = 1;
+pub const SESSION_VERSION: u32 = 2;
 
 /// Persisted workspace state.
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,6 +17,23 @@ pub struct SessionState {
     pub unfolded_dirs: Vec<String>,
     #[serde(default)]
     pub kiro_sessions: Vec<KiroSessionState>,
+    #[serde(default)]
+    pub split: Option<SplitState>,
+}
+
+/// Persisted split panel state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SplitState {
+    /// "horizontal" or "vertical"
+    pub direction: String,
+    /// Tab indices in the second subpanel (first subpanel has the rest).
+    pub second_tabs: Vec<usize>,
+    /// Active tab index in first subpanel.
+    pub active_first: usize,
+    /// Active tab index in second subpanel.
+    pub active_second: usize,
+    /// Focused subpanel (0 or 1).
+    pub focused: usize,
 }
 
 /// One editor tab's persisted state.
@@ -45,6 +62,7 @@ impl Default for SessionState {
             editor_tabs: Vec::new(),
             unfolded_dirs: Vec::new(),
             kiro_sessions: Vec::new(),
+            split: None,
         }
     }
 }
