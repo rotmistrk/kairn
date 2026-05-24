@@ -18,6 +18,7 @@ mod handle_completion;
 mod handle_diff;
 mod handle_tick;
 mod handle_viewport;
+mod methods;
 pub mod sbs_model;
 
 use std::path::PathBuf;

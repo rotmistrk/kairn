@@ -1,5 +1,6 @@
 //! Confirmation response handler — dispatches CM_CONFIRM_RESPONSE based on context.
 
+use txv_core::prelude::CM_QUIT;
 use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
@@ -22,6 +23,11 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
     match context {
         ConfirmContext::EditorClose(path) => handle_editor_close(ctx, state, &path, ch),
         ConfirmContext::FileReload(path) => handle_file_reload(ctx, &path, ch),
+        ConfirmContext::Quit => {
+            if ch == 'y' {
+                ctx.sink.push_command(CM_QUIT, None);
+            }
+        }
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
         ConfirmContext::TodoCrypto => handle_todo_crypto(ctx, state, ch),
     }

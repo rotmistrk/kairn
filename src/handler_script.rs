@@ -81,7 +81,7 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
             ctx.sink.push_command(CM_SAVE, None);
         }
         ScriptCommand::SaveAll => {
-            ctx.sink.push_command(CM_SAVE, None);
+            ctx.sink.push_command(CM_SAVE_ALL, None);
         }
         ScriptCommand::Close => ctx.sink.push_command(CM_TAB_CLOSE, None),
         ScriptCommand::Goto { line, col } => {

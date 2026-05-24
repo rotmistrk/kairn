@@ -70,19 +70,9 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
 
     match ctx.command {
         CM_TICK => crate::handler_context::broadcast_context(ctx, state),
-        CM_TW_TAB_CLOSE | CM_TAB_CLOSE => {
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let focused = desktop.focused_panel();
-                let title = desktop.panel(focused).and_then(|p| p.active_title().map(String::from));
-                if let Some(panel) = desktop.panel_mut(focused) {
-                    panel.close_active();
-                }
-                ctx.sink.push_command(
-                    CM_FILE_CLOSED,
-                    title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
-                );
-            }
-        }
+        CM_APP_QUIT => crate::handler_close::handle_app_quit(ctx, state),
+        CM_TW_TAB_CLOSE | CM_TAB_CLOSE => crate::handler_close::handle_tab_close(ctx, state),
+        CM_SAVE_ALL => crate::handler_close::handle_save_all(ctx),
         CM_OPEN_FILE => crate::handler_open::handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => crate::handler_open::handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => crate::handler_exec::handle_execute_command(ctx, state),

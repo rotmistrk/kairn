@@ -1,6 +1,5 @@
 //! Edit/action handler functions for M-x dispatch.
 
-use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
 use crate::commands::*;
@@ -156,7 +155,7 @@ pub(crate) fn cmd_prev_error(ctx: &mut CommandContext, _state: &mut AppState, _a
 }
 
 pub(crate) fn cmd_quit(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
-    ctx.sink.push_command(CM_QUIT, None);
+    ctx.sink.push_command(CM_APP_QUIT, None);
 }
 
 pub(crate) fn cmd_run(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {

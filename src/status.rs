@@ -103,7 +103,7 @@ fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(KeyLabelItem::new(keys.help, CM_SHOW_HELP, "F1:Help"));
     bar.add(KeyLabelItem::new(keys.zoom, CM_TW_ZOOM, "F5:Zoom"));
     bar.add(KeyLabelItem::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"));
-    bar.add(KeyLabelItem::new(keys.quit, CM_QUIT, "^Q:Quit"));
+    bar.add(KeyLabelItem::new(keys.quit, CM_APP_QUIT, "^Q:Quit"));
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.tree, CM_TW_FOCUS_PANEL, 0));
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.main, CM_TW_FOCUS_PANEL, 1));
     bar.add_active_only(KeyLabelItem::hidden_with_data(keys.term, CM_TW_FOCUS_PANEL, 2));

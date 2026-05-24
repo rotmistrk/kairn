@@ -139,6 +139,8 @@ pub enum ConfirmContext {
     EditorClose(String),
     /// File changed on disk: reload? (payload: file path)
     FileReload(String),
+    /// Quit with unsaved changes
+    Quit,
     /// Todo tree: delete item
     TodoDelete,
     /// Todo tree: crypto passphrase prompt
@@ -176,6 +178,10 @@ pub const CM_LSP_STATUS_UPDATE: CommandId = CM_APP_BASE + 165;
 pub const CM_SPLIT_LINKED: CommandId = CM_APP_BASE + 166;
 pub const CM_GIT_LOG: CommandId = CM_APP_BASE + 167;
 pub const CM_TODO_ACTION: CommandId = CM_APP_BASE + 168;
+
+// Quit (app-level, checks unsaved before emitting CM_QUIT)
+pub const CM_APP_QUIT: CommandId = CM_APP_BASE + 169;
+pub const CM_SAVE_ALL: CommandId = CM_APP_BASE + 170;
 
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]
