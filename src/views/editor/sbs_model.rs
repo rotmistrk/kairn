@@ -1,4 +1,7 @@
-//! Side-by-side diff model types and split logic.
+//! Side-by-side diff model — single-view two-column rendering.
+//!
+//! One EditorView holds both left (base) and right (current) columns.
+//! No structural split needed — this is a rendering mode.
 
 use super::diff_model::DiffLine;
 
@@ -16,13 +19,13 @@ pub enum SbsLine {
     Folded { count: usize },
 }
 
-/// Side-by-side diff state for one pane.
+/// Side-by-side diff state — both columns in one view.
 pub struct SbsDiffState {
-    pub lines: Vec<SbsLine>,
+    pub left: Vec<SbsLine>,
+    pub right: Vec<SbsLine>,
     pub scroll: usize,
     pub cursor: usize,
     pub base_ref: String,
-    pub is_left: bool,
 }
 
 /// Split unified diff lines into left (base) and right (current) streams.

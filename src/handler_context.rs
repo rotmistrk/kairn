@@ -48,24 +48,21 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         vc.mode = mode_for_slot(slot);
     }
 
-    // Determine split state
+    // Determine split state from TiledWorkspace's panel-level SplitPanel
     let (split_dir, split_linked) = {
-        let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
-            return;
-        };
-        if let Some(view) = panel.active_view_mut() {
-            if let Some(es) = view
-                .as_any_mut()
-                .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
-            {
-                let dir = match es.direction() {
+        let is_split = desktop
+            .split_panel(SlotId::Center as usize)
+            .map(|sp| sp.child_count() > 1)
+            .unwrap_or(false);
+        if is_split {
+            let dir = desktop
+                .split_panel(SlotId::Center as usize)
+                .map(|sp| match sp.direction() {
                     txv_widgets::tiled_workspace::types::SplitDir::Horizontal => "horizontal",
                     txv_widgets::tiled_workspace::types::SplitDir::Vertical => "vertical",
-                };
-                (dir, es.is_linked_scroll())
-            } else {
-                ("none", false)
-            }
+                })
+                .unwrap_or("none");
+            (dir, state.linked_scroll)
         } else {
             ("none", false)
         }

@@ -1,4 +1,7 @@
 //! Handler logic for diff-split and open-in-split (navigation) commands.
+//!
+//! Side-by-side diff is a rendering mode within a single EditorView (no split).
+//! Open-in-split uses TiledWorkspace's native subpanel mechanism.
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
@@ -9,8 +12,6 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::views::editor::diff_model::{build_diff_lines, DiffLine, DiffOpts, DiffState};
 use crate::views::editor::sbs_model::{split_for_side_by_side, SbsDiffState};
 use crate::views::editor::EditorView;
-use crate::views::editor_split::EditorSplit;
-use crate::views::scroll_map::ScrollMap;
 
 pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
@@ -27,42 +28,35 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
         return;
     };
-    let active_idx = panel.active_index();
-    let title = panel.active_title().map(String::from).unwrap_or_default();
-    let Some(mut current_view) = panel.take_tab(active_idx) else {
-        return;
-    };
 
-    // Create a read-only editor with the base content
-    let mut base_ev = EditorView::from_text(&base_content);
-    base_ev.editor.status = format!("[{base_ref}]");
-
-    // Get current content for scroll map before wrapping in split
-    let current_content = current_view
-        .as_any_mut()
+    // Get current content for diff computation
+    let current_content = panel
+        .active_view_mut()
+        .and_then(|v| v.as_any_mut())
         .and_then(|a| a.downcast_ref::<EditorView>())
         .map(|ev| ev.editor.buf().content());
 
-    // When files are identical, don't split — show folded summary in current pane
+    // When files are identical, show folded summary
     let identical = current_content.as_deref() == Some(&base_content);
     if identical {
         let line_count = base_content.lines().count();
-        if let Some(ev) = current_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-            ev.set_diff_state(DiffState {
-                lines: vec![DiffLine::Folded { count: line_count }],
-                scroll: 0,
-                cursor: 0,
-                base_ref: base_ref.clone(),
-                context_lines: 2,
-                ignore_ws: false,
-            });
-            ev.editor.status = format!("[no changes vs {}]", base_ref);
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                ev.set_diff_state(DiffState {
+                    lines: vec![DiffLine::Folded { count: line_count }],
+                    scroll: 0,
+                    cursor: 0,
+                    base_ref: base_ref.clone(),
+                    context_lines: 2,
+                    ignore_ws: false,
+                });
+                ev.editor.status = format!("[no changes vs {}]", base_ref);
+            }
         }
-        panel.insert_tab_at(active_idx, &title, current_view);
         return;
     }
 
-    // Non-identical: build side-by-side diff
+    // Build side-by-side diff — single view, two columns
     if let Some(current_text) = current_content.as_deref() {
         let opts = DiffOpts {
             base: base_ref.clone(),
@@ -73,36 +67,19 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
         let unified = build_diff_lines(&base_content, current_text, &opts);
         let (left_lines, right_lines) = split_for_side_by_side(&unified, &base_content, current_text);
 
-        base_ev.set_sbs_state(SbsDiffState {
-            lines: left_lines,
-            scroll: 0,
-            cursor: 0,
-            base_ref: base_ref.clone(),
-            is_left: true,
-        });
-        base_ev.editor.status = format!("[{base_ref}]");
-
-        if let Some(ev) = current_view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-            ev.set_sbs_state(SbsDiffState {
-                lines: right_lines,
-                scroll: 0,
-                cursor: 0,
-                base_ref: base_ref.clone(),
-                is_left: false,
-            });
-            ev.editor.status = format!("[DIFF vs {}]", base_ref);
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+                ev.set_sbs_state(SbsDiffState {
+                    left: left_lines,
+                    right: right_lines,
+                    scroll: 0,
+                    cursor: 0,
+                    base_ref: base_ref.clone(),
+                });
+                ev.editor.status = format!("[DIFF vs {}]", base_ref);
+            }
         }
     }
-
-    let map = current_content
-        .as_ref()
-        .map(|current| ScrollMap::from_diff(&base_content, current));
-    let mut split = EditorSplit::new(SplitDir::Horizontal, Box::new(base_ev), current_view);
-    split.set_linked_scroll(true, map);
-    // Focus the right (current) pane
-    split.set_focused(1);
-    panel.insert_tab_at(active_idx, &title, Box::new(split));
-    panel.set_active(active_idx);
 }
 
 pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppState) {
@@ -119,47 +96,60 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
-        return;
-    };
 
-    // If already in a split, navigate the unfocused pane
-    if let Some(view) = panel.active_view_mut() {
-        if let Some(es) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorSplit>()) {
-            let other_idx = 1 - es.focused_index();
-            if let Some(child) = es.child_mut(other_idx) {
-                if let Some(ev) = child.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                    open_into_editor(ev, &path, line, col, state);
-                    let word_range = word_cols_at(ev, line as usize, col as usize);
-                    ev.highlight_word = Some((line as usize, word_range.0, word_range.1));
-                    return;
-                }
-            }
-        }
+    // Check if already split
+    let is_split = desktop
+        .split_panel(SlotId::Center as usize)
+        .map(|sp| sp.child_count() > 1)
+        .unwrap_or(false);
+
+    if is_split {
+        // Navigate the unfocused subpanel
+        let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
+            return;
+        };
+        let other_idx = 1 - sp.focused_index();
+        let Some(other_child) = sp.child_mut(other_idx) else {
+            return;
+        };
+        let Some(other_tp) = other_child
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
+        else {
+            return;
+        };
+        let Some(view) = other_tp.active_view_mut() else {
+            return;
+        };
+        let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+            return;
+        };
+        open_into_editor(ev, &path, line, col, state);
+        let word_range = word_cols_at(ev, line as usize, col as usize);
+        ev.highlight_word = Some((line as usize, word_range.0, word_range.1));
+        return;
     }
 
-    // Not in a split — create one, then open target in the new pane
-    let active_idx = panel.active_index();
-    let title = panel.active_title().map(String::from).unwrap_or_default();
-    let Some(existing) = panel.take_tab(active_idx) else {
-        return;
-    };
-
+    // Not split — create one with target in new pane
     let mut new_pane = open_new_pane(state, &path, line, col);
-    let word_range = if let Some(ev) = new_pane.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+    if let Some(ev) = new_pane.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
         let wr = word_cols_at(ev, line as usize, col as usize);
         ev.highlight_word = Some((line as usize, wr.0, wr.1));
-        wr
-    } else {
-        (col as usize, col as usize + 1)
-    };
-    let _ = word_range;
+    }
 
-    let mut split = EditorSplit::new(SplitDir::Horizontal, new_pane, existing);
-    // Focus the second pane (right — where the user was editing)
-    split.set_focused(1);
-    panel.insert_tab_at(active_idx, &title, Box::new(split));
-    panel.set_active(active_idx);
+    let title = desktop
+        .panel(SlotId::Center as usize)
+        .and_then(|p| p.active_title().map(String::from))
+        .unwrap_or_default();
+
+    if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
+        sp.set_direction(SplitDir::Horizontal);
+    }
+    desktop.split_in_place(new_pane, &title);
+    // Keep focus on original pane (child 0)
+    if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
+        sp.set_focused(0);
+    }
 }
 
 pub(crate) fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line: u32, col: u32, state: &mut AppState) {

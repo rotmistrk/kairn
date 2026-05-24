@@ -71,6 +71,8 @@ pub struct AppState {
     pub lsp_status: crate::lsp::progress::LspStatusTracker,
     /// Path of the todo item whose note is currently open in the Notes tab.
     pub todo_note_path: Option<Vec<usize>>,
+    /// Whether the center panel's split has linked scrolling enabled.
+    pub linked_scroll: bool,
 }
 
 impl AppState {
@@ -106,6 +108,7 @@ impl AppState {
             deferred_lsp: Vec::new(),
             lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
+            linked_scroll: false,
         }
     }
 
@@ -142,6 +145,7 @@ impl AppState {
             deferred_lsp: Vec::new(),
             lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
+            linked_scroll: false,
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s

@@ -54,25 +54,23 @@ pub fn collect_snapshot(desktop: &mut TiledWorkspace) -> McpSnapshot {
         SlotId::Tools => "right",
     };
 
-    let (split_direction, split_linked) = if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
-        if let Some(view) = panel.active_view_mut() {
-            if let Some(es) = view
-                .as_any_mut()
-                .and_then(|a| a.downcast_ref::<crate::views::editor_split::EditorSplit>())
-            {
-                let dir = match es.direction() {
+    let (split_direction, split_linked) = {
+        let is_split = desktop
+            .split_panel(SlotId::Center as usize)
+            .map(|sp| sp.child_count() > 1)
+            .unwrap_or(false);
+        if is_split {
+            let dir = desktop
+                .split_panel(SlotId::Center as usize)
+                .map(|sp| match sp.direction() {
                     txv_widgets::tiled_workspace::types::SplitDir::Horizontal => "horizontal",
                     txv_widgets::tiled_workspace::types::SplitDir::Vertical => "vertical",
-                };
-                (dir.to_string(), es.is_linked_scroll())
-            } else {
-                ("none".to_string(), false)
-            }
+                })
+                .unwrap_or("none");
+            (dir.to_string(), false) // linked_scroll state is on AppState, not available here
         } else {
             ("none".to_string(), false)
         }
-    } else {
-        ("none".to_string(), false)
     };
 
     McpSnapshot {

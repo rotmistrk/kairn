@@ -178,7 +178,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_CLOSE => crate::handler_split::handle_split_close(ctx, state),
         CM_OPEN_IN_SPLIT => crate::handler_split_nav::handle_open_in_split(ctx, state),
         CM_SPLIT_FOCUS => crate::handler_split::handle_split_focus(ctx),
-        CM_SPLIT_LINKED => crate::handler_split::handle_split_linked(ctx),
+        CM_SPLIT_LINKED => crate::handler_split::handle_split_linked(ctx, state),
         CM_DIFF_SPLIT => crate::handler_split_nav::handle_diff_split(ctx, state),
         CM_TOGGLE_THEME => crate::handler_theme::handle_toggle_theme(ctx, state),
         CM_SET_SYNTAX_THEME => crate::handler_theme::handle_set_syntax_theme(ctx, state),

@@ -150,7 +150,7 @@ impl EditorView {
             KeyCode::Char('k') | KeyCode::Up => self.sbs_scroll(-1),
             KeyCode::Char('G') => {
                 if let Some(sbs) = &mut self.sbs_state {
-                    sbs.scroll = sbs.lines.len().saturating_sub(1);
+                    sbs.scroll = sbs.left.len().saturating_sub(1);
                 }
             }
             KeyCode::Char('g') => {
@@ -174,7 +174,7 @@ impl EditorView {
 
     fn sbs_scroll(&mut self, delta: i32) {
         if let Some(sbs) = &mut self.sbs_state {
-            let max = sbs.lines.len().saturating_sub(1);
+            let max = sbs.left.len().saturating_sub(1);
             let new = (sbs.scroll as i32 + delta).clamp(0, max as i32) as usize;
             sbs.scroll = new;
         }

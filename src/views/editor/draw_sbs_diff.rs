@@ -1,4 +1,4 @@
-//! Side-by-side diff rendering — one pane of a split diff view.
+//! Side-by-side diff rendering — both columns in a single view.
 
 use txv_core::prelude::*;
 
@@ -14,30 +14,13 @@ impl EditorView {
             None => return,
         };
 
-        let max_line = sbs
-            .lines
-            .iter()
-            .filter_map(|l| match l {
-                SbsLine::Content { line_no, .. } => Some(*line_no),
-                _ => None,
-            })
-            .max()
-            .unwrap_or(0);
-        let dw = digit_width(max_line);
-        let gutter_w = if self.editor.options.number {
-            (dw + 1) as u16
-        } else {
-            0
-        };
-        let text_x = gutter_w;
-        let _avail = w.saturating_sub(gutter_w) as usize;
-
         let app = crate::app_palette::app_palette();
         let added_style = app.diff.added.to_style();
         let deleted_style = app.diff.deleted.to_style();
         let context_style = Style::default();
         let fold_style = app.diff.fold.to_style();
         let gap_style = txv_core::palette::palette().base.dim.to_style();
+        let divider_style = txv_core::palette::palette().base.dim.to_style();
 
         let pal = txv_core::palette::palette();
         let cursor_style = if self.state.is_focused() {
@@ -46,59 +29,67 @@ impl EditorView {
             pal.interactive.cursor_unfocused.to_style()
         };
 
+        // Layout: [left_col] | [right_col]
+        let half_w = w.saturating_sub(1) / 2; // -1 for divider
+        let right_x = half_w + 1; // after divider
+        let right_w = w.saturating_sub(right_x);
+
         let height = h as usize;
         let scroll = sbs.scroll;
-        let is_left = sbs.is_left;
         let cursor_line = sbs.cursor;
+        let g = txv_core::glyphs::glyphs();
 
         for row in 0..height {
             let vi = scroll + row;
             let y = row as u16;
-            if vi >= sbs.lines.len() {
-                self.state.buffer_mut().print_line(0, y, "~", w, context_style);
+
+            // Draw divider
+            self.state.buffer_mut().put(half_w, y, g.ui.separator_v, divider_style);
+
+            if vi >= sbs.left.len() {
+                self.state.buffer_mut().print_line(0, y, "~", half_w, context_style);
+                self.state
+                    .buffer_mut()
+                    .print_line(right_x, y, "~", right_w, context_style);
                 continue;
             }
+
             let is_cursor = vi == cursor_line;
-            match &sbs.lines[vi] {
-                SbsLine::Content { line_no, text, changed } => {
-                    let st = if is_cursor {
-                        cursor_style
-                    } else if *changed {
-                        if is_left {
-                            deleted_style
-                        } else {
-                            added_style
-                        }
-                    } else {
-                        context_style
-                    };
-                    if self.editor.options.number {
-                        let gutter = format!("{:>width$} ", line_no + 1, width = dw);
-                        let gs = crate::app_palette::app_palette().editor.gutter.to_style();
-                        self.state.buffer_mut().print(0, y, &gutter, gs);
-                    }
-                    self.state
-                        .buffer_mut()
-                        .print_line(text_x, y, text, w.saturating_sub(text_x), st);
-                }
-                SbsLine::Gap => {
-                    let st = if is_cursor {
-                        cursor_style
-                    } else {
-                        gap_style
-                    };
-                    self.state.buffer_mut().print_line(0, y, "", w, st);
-                }
-                SbsLine::Folded { count } => {
-                    let st = if is_cursor {
-                        cursor_style
-                    } else {
-                        fold_style
-                    };
-                    let label = format!("--- {} lines ---", count);
-                    self.state.buffer_mut().print_line(0, y, &label, w, st);
-                }
-            }
+
+            // Left column
+            draw_sbs_line(
+                self.state.buffer_mut(),
+                &sbs.left[vi],
+                0,
+                half_w,
+                y,
+                is_cursor,
+                true,
+                cursor_style,
+                deleted_style,
+                added_style,
+                context_style,
+                gap_style,
+                fold_style,
+            );
+
+            // Right column
+            let right_line = sbs.right.get(vi).unwrap_or(&SbsLine::Gap);
+            draw_sbs_line(
+                self.state.buffer_mut(),
+                right_line,
+                right_x,
+                right_w,
+                y,
+                is_cursor,
+                false,
+                cursor_style,
+                deleted_style,
+                added_style,
+                context_style,
+                gap_style,
+                fold_style,
+            );
         }
 
         // Command/search prompt on last row
@@ -126,16 +117,53 @@ impl EditorView {
     }
 }
 
-fn digit_width(max: usize) -> usize {
-    if max < 10 {
-        1
-    } else if max < 100 {
-        2
-    } else if max < 1000 {
-        3
-    } else if max < 10000 {
-        4
-    } else {
-        5
+#[allow(clippy::too_many_arguments)]
+fn draw_sbs_line(
+    buf: &mut Buffer,
+    line: &SbsLine,
+    x: u16,
+    w: u16,
+    y: u16,
+    is_cursor: bool,
+    is_left: bool,
+    cursor_style: Style,
+    deleted_style: Style,
+    added_style: Style,
+    context_style: Style,
+    gap_style: Style,
+    fold_style: Style,
+) {
+    match line {
+        SbsLine::Content { text, changed, .. } => {
+            let st = if is_cursor {
+                cursor_style
+            } else if *changed {
+                if is_left {
+                    deleted_style
+                } else {
+                    added_style
+                }
+            } else {
+                context_style
+            };
+            buf.print_line(x, y, text, w, st);
+        }
+        SbsLine::Gap => {
+            let st = if is_cursor {
+                cursor_style
+            } else {
+                gap_style
+            };
+            buf.print_line(x, y, "", w, st);
+        }
+        SbsLine::Folded { count } => {
+            let st = if is_cursor {
+                cursor_style
+            } else {
+                fold_style
+            };
+            let label = format!("--- {} lines ---", count);
+            buf.print_line(x, y, &label, w, st);
+        }
     }
 }

@@ -2,7 +2,6 @@
 
 pub mod csv_view;
 pub mod editor;
-pub mod editor_split;
 pub mod git_changes;
 pub mod git_log;
 pub mod help;
