@@ -18,7 +18,10 @@ use crate::views::welcome::WelcomeView;
 pub fn create_workspace_shell() -> TiledWorkspace {
     let configs = vec![
         PanelConfig::fixed("Files", PanelPosition::Left),
-        PanelConfig::new("Editor", PanelPosition::Center),
+        PanelConfig {
+            splittable: true,
+            ..PanelConfig::new("Editor", PanelPosition::Center)
+        },
         PanelConfig {
             splittable: true,
             ..PanelConfig::new("Tools", PanelPosition::Right)

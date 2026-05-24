@@ -21,6 +21,7 @@ impl EditorView {
         let fold_style = app.diff.fold.to_style();
         let gap_style = txv_core::palette::palette().base.dim.to_style();
         let divider_style = txv_core::palette::palette().base.dim.to_style();
+        let gutter_style = app.editor.gutter.to_style();
 
         let pal = txv_core::palette::palette();
         let cursor_style = if self.state.is_focused() {
@@ -29,9 +30,32 @@ impl EditorView {
             pal.interactive.cursor_unfocused.to_style()
         };
 
-        // Layout: [left_col] | [right_col]
+        // Compute gutter width from max line number
+        let show_numbers = self.editor.options.number;
+        let dw = if show_numbers {
+            let max_line = sbs
+                .left
+                .iter()
+                .chain(sbs.right.iter())
+                .filter_map(|l| match l {
+                    SbsLine::Content { line_no, .. } => Some(*line_no),
+                    _ => None,
+                })
+                .max()
+                .unwrap_or(0);
+            digit_width(max_line)
+        } else {
+            0
+        };
+        let gutter_w = if show_numbers {
+            (dw + 1) as u16
+        } else {
+            0
+        };
+
+        // Layout: [gutter|left_text] | [gutter|right_text]
         let half_w = w.saturating_sub(1) / 2; // -1 for divider
-        let right_x = half_w + 1; // after divider
+        let right_x = half_w + 1;
         let right_w = w.saturating_sub(right_x);
 
         let height = h as usize;
@@ -65,6 +89,9 @@ impl EditorView {
                 y,
                 is_cursor,
                 true,
+                gutter_w,
+                dw,
+                gutter_style,
                 cursor_style,
                 deleted_style,
                 added_style,
@@ -83,6 +110,9 @@ impl EditorView {
                 y,
                 is_cursor,
                 false,
+                gutter_w,
+                dw,
+                gutter_style,
                 cursor_style,
                 deleted_style,
                 added_style,
@@ -126,6 +156,9 @@ fn draw_sbs_line(
     y: u16,
     is_cursor: bool,
     is_left: bool,
+    gutter_w: u16,
+    dw: usize,
+    gutter_style: Style,
     cursor_style: Style,
     deleted_style: Style,
     added_style: Style,
@@ -133,8 +166,11 @@ fn draw_sbs_line(
     gap_style: Style,
     fold_style: Style,
 ) {
+    let text_x = x + gutter_w;
+    let text_w = w.saturating_sub(gutter_w);
+
     match line {
-        SbsLine::Content { text, changed, .. } => {
+        SbsLine::Content { line_no, text, changed } => {
             let st = if is_cursor {
                 cursor_style
             } else if *changed {
@@ -146,7 +182,11 @@ fn draw_sbs_line(
             } else {
                 context_style
             };
-            buf.print_line(x, y, text, w, st);
+            if gutter_w > 0 {
+                let gutter = format!("{:>width$} ", line_no + 1, width = dw);
+                buf.print(x, y, &gutter, gutter_style);
+            }
+            buf.print_line(text_x, y, text, text_w, st);
         }
         SbsLine::Gap => {
             let st = if is_cursor {
@@ -165,5 +205,19 @@ fn draw_sbs_line(
             let label = format!("--- {} lines ---", count);
             buf.print_line(x, y, &label, w, st);
         }
+    }
+}
+
+fn digit_width(max: usize) -> usize {
+    if max < 10 {
+        1
+    } else if max < 100 {
+        2
+    } else if max < 1000 {
+        3
+    } else if max < 10000 {
+        4
+    } else {
+        5
     }
 }
