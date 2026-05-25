@@ -73,6 +73,8 @@ pub struct AppState {
     pub todo_note_path: Option<Vec<usize>>,
     /// Whether the center panel's split has linked scrolling enabled.
     pub linked_scroll: bool,
+    /// Last output timestamp per terminal tab index (for activity badges).
+    pub pty_last_output: std::collections::HashMap<usize, std::time::Instant>,
 }
 
 impl AppState {
@@ -109,6 +111,7 @@ impl AppState {
             lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
             linked_scroll: false,
+            pty_last_output: std::collections::HashMap::new(),
         }
     }
 
@@ -146,6 +149,7 @@ impl AppState {
             lsp_status: crate::lsp::progress::LspStatusTracker::new(),
             todo_note_path: None,
             linked_scroll: false,
+            pty_last_output: std::collections::HashMap::new(),
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s

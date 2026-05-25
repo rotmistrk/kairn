@@ -44,10 +44,13 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     crate::handler_mcp::drain_mcp(ctx, state);
 
     // Auto-close exited terminals
-    crate::handler_drain::auto_close_exited_terminals(ctx, state);
+    crate::handler_badges::auto_close_exited_terminals(ctx, state);
 
     // Sync dirty badges on tab bar
-    crate::handler_drain::sync_dirty_badges(ctx);
+    crate::handler_badges::sync_dirty_badges(ctx);
+
+    // Sync PTY activity badges on terminal tabs
+    crate::handler_badges::sync_pty_badges(ctx, state);
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     state.mcp_tick = state.mcp_tick.wrapping_add(1);

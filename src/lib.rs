@@ -31,6 +31,7 @@ pub mod git_watcher;
 pub mod glyphs;
 pub mod grep;
 pub mod handler;
+pub mod handler_badges;
 pub mod handler_build;
 pub mod handler_close;
 pub mod handler_confirm;
