@@ -25,6 +25,8 @@ set editor.cursor_command software
 
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
+# Shell tabs auto-update their title from the terminal's OSC title
+# (set by shell prompt hooks, e.g. \e]0;~/projects\a). Format: "Shell:<title>"
 
 # ─── Layout ──────────────────────────────────────────────────────────────────
 # Auto-switch thresholds (terminal width in columns):
