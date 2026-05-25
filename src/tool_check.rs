@@ -13,6 +13,7 @@ pub struct ToolStatus {
 /// Tools to check with their binary name and install hint.
 const TOOLS: &[(&str, &str)] = &[
     ("kiro-cli", "cargo install kiro-cli"),
+    ("rusticle-lsp", "make install-local (from rusticle repo)"),
     ("rust-analyzer", "rustup component add rust-analyzer"),
     ("gopls", "go install golang.org/x/tools/gopls@latest"),
     (
@@ -37,6 +38,7 @@ const EXT_TO_TOOL: &[(&str, &str)] = &[
     ("h", "clangd"),
     ("py", "pyright-langserver"),
     ("java", "jdtls"),
+    ("tcl", "rusticle-lsp"),
 ];
 
 /// Detect which tools are relevant and their status.
