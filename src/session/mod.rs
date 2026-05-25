@@ -46,6 +46,13 @@ pub fn load_session(root_dir: &Path) -> Option<SessionState> {
         }
     };
     if state.version != SESSION_VERSION && state.version != 1 {
+        if state.version == 3 {
+            // v3 had a save/restore order mismatch for proportions — clear them
+            let mut state = state;
+            state.wide_proportions.clear();
+            state.narrow_proportions.clear();
+            return Some(state);
+        }
         log::info!("session: version mismatch (got {})", state.version);
         return None;
     }

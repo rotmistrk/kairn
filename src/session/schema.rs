@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Current schema version.
-pub const SESSION_VERSION: u32 = 3;
+pub const SESSION_VERSION: u32 = 4;
 
 /// Persisted workspace state.
 #[derive(Debug, Serialize, Deserialize)]
