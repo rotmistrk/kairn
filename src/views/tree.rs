@@ -130,6 +130,7 @@ impl View for FileTreeView {
             match key.code {
                 KeyCode::Char('/') if !self.filter_active => {
                     self.filter_active = true;
+                    self.inner.data.ensure_all_loaded();
                     self.inner.mark_dirty();
                     return HandleResult::Consumed;
                 }
