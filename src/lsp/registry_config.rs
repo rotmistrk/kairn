@@ -13,6 +13,7 @@ impl LspRegistry {
             ("cpp", "clangd", &[]),
             ("java", "jdtls", &[]),
             ("python", "pyright-langserver", &["--stdio"]),
+            ("ruby", "ruby-lsp", &[]),
             ("tcl", "rusticle-lsp", &["--prelude", ".kairn/prelude.tcl"]),
         ]
     }

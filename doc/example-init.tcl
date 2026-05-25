@@ -136,6 +136,10 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #     command "typescript-language-server --stdio"
 #     filetypes {ts tsx js jsx}
 # }
+# lsp ruby-lsp {
+#     command "ruby-lsp"
+#     filetypes {rb}
+# }
 
 # ─── Hooks & Selection Scripting ─────────────────────────────────────────────
 
