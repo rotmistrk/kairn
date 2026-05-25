@@ -100,6 +100,9 @@ impl View for FileTreeView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
+            if self.filter_active {
+                return HandleResult::Ignored;
+            }
             self.refresh_counter += 1;
             // Immediate on watcher signal (git index/refs changed)
             if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
@@ -156,10 +159,6 @@ impl View for FileTreeView {
                     self.inner.data.set_filter(&f);
                     self.inner.cursor = 0;
                     self.inner.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                KeyCode::Left if self.filter_active => {
-                    // Suppress collapse during filter — filter controls visibility
                     return HandleResult::Consumed;
                 }
                 _ => {}
