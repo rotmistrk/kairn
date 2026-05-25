@@ -17,6 +17,7 @@ pub struct FileTreeView {
     watcher: Option<WatchHandle>,
     root: PathBuf,
     refresh_counter: u16,
+    filter_active: bool,
 }
 
 impl FileTreeView {
@@ -28,6 +29,7 @@ impl FileTreeView {
             watcher,
             root,
             refresh_counter: 0,
+            filter_active: false,
         };
         view.update_colors();
         view
@@ -46,6 +48,14 @@ impl FileTreeView {
     pub fn notify_save(&self) {
         if let Some(w) = &self.watcher {
             w.signal_change();
+        }
+    }
+
+    fn clear_filter(&mut self) {
+        if self.filter_active {
+            self.filter_active = false;
+            self.inner.data.set_filter("");
+            self.inner.mark_dirty();
         }
     }
 
@@ -73,10 +83,15 @@ fn status_color(status: FileStatus) -> Color {
 }
 
 impl View for FileTreeView {
-    delegate_view!(inner, override { title, handle });
+    delegate_view!(inner, override { title, handle, unselect });
 
     fn title(&self) -> &str {
         "Files"
+    }
+
+    fn unselect(&mut self) {
+        self.clear_filter();
+        self.inner.unselect();
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -111,6 +126,39 @@ impl View for FileTreeView {
         }
         if let Event::Key(key) = event {
             self.last_key_was_right = key.code == KeyCode::Right;
+            // Filter key handling
+            match key.code {
+                KeyCode::Char('/') if !self.filter_active => {
+                    self.filter_active = true;
+                    self.inner.mark_dirty();
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Esc if self.filter_active => {
+                    self.clear_filter();
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Backspace if self.filter_active => {
+                    let mut f = self.inner.data.filter().to_string();
+                    f.pop();
+                    if f.is_empty() {
+                        self.clear_filter();
+                    } else {
+                        self.inner.data.set_filter(&f);
+                        self.inner.cursor = 0;
+                        self.inner.mark_dirty();
+                    }
+                    return HandleResult::Consumed;
+                }
+                KeyCode::Char(c) if self.filter_active => {
+                    let mut f = self.inner.data.filter().to_string();
+                    f.push(c);
+                    self.inner.data.set_filter(&f);
+                    self.inner.cursor = 0;
+                    self.inner.mark_dirty();
+                    return HandleResult::Consumed;
+                }
+                _ => {}
+            }
         }
         // Intercept CM_OK from inner TreeView (re-dispatched)
         if let Event::Command { id, data } = event {
