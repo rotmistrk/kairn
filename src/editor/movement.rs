@@ -7,6 +7,7 @@ impl Editor {
     pub(super) fn move_left(&mut self) {
         if self.cursor_col > 0 {
             self.cursor_col -= 1;
+            self.desired_col = None;
         }
     }
 
@@ -19,11 +20,15 @@ impl Editor {
         };
         if self.cursor_col < max {
             self.cursor_col += 1;
+            self.desired_col = None;
         }
     }
 
     pub(super) fn move_up(&mut self) {
         if self.cursor_line > 0 {
+            if self.desired_col.is_none() {
+                self.desired_col = Some(self.cursor_col);
+            }
             self.cursor_line -= 1;
             self.clamp_col();
         }
@@ -31,6 +36,9 @@ impl Editor {
 
     pub(super) fn move_down(&mut self) {
         if self.cursor_line + 1 < self.buf().line_count() {
+            if self.desired_col.is_none() {
+                self.desired_col = Some(self.cursor_col);
+            }
             self.cursor_line += 1;
             self.clamp_col();
         }
@@ -40,37 +48,46 @@ impl Editor {
         let (l, c) = motions::word_forward(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
+        self.desired_col = None;
     }
 
     pub(super) fn move_word_backward(&mut self) {
         let (l, c) = motions::word_backward(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
+        self.desired_col = None;
     }
 
     pub(super) fn move_word_end(&mut self) {
         let (l, c) = motions::word_end(&self.buf(), self.cursor_line, self.cursor_col);
         self.cursor_line = l;
         self.cursor_col = c;
+        self.desired_col = None;
     }
 
     pub(super) fn move_line_end(&mut self) {
         let len = self.buf().line_len(self.cursor_line);
         self.cursor_col = len.saturating_sub(1);
+        self.desired_col = None;
     }
 
     pub(super) fn move_first_non_blank(&mut self) {
         let col = motions::first_non_blank(&self.buf(), self.cursor_line);
         self.cursor_col = col;
+        self.desired_col = None;
     }
 
     pub(super) fn goto_line(&mut self, n: usize) {
         let target = n.saturating_sub(1).min(self.buf().line_count().saturating_sub(1));
         self.cursor_line = target;
         self.cursor_col = 0;
+        self.desired_col = None;
     }
 
     pub(super) fn half_page_down(&mut self) {
+        if self.desired_col.is_none() {
+            self.desired_col = Some(self.cursor_col);
+        }
         let half = self.viewport_height / 2;
         let max_line = self.buf().line_count().saturating_sub(1);
         self.cursor_line = (self.cursor_line + half).min(max_line);
@@ -78,12 +95,18 @@ impl Editor {
     }
 
     pub(super) fn half_page_up(&mut self) {
+        if self.desired_col.is_none() {
+            self.desired_col = Some(self.cursor_col);
+        }
         let half = self.viewport_height / 2;
         self.cursor_line = self.cursor_line.saturating_sub(half);
         self.clamp_col();
     }
 
     pub(super) fn page_down(&mut self) {
+        if self.desired_col.is_none() {
+            self.desired_col = Some(self.cursor_col);
+        }
         let page = self.viewport_height.saturating_sub(2);
         let max_line = self.buf().line_count().saturating_sub(1);
         self.cursor_line = (self.cursor_line + page).min(max_line);
@@ -91,6 +114,9 @@ impl Editor {
     }
 
     pub(super) fn page_up(&mut self) {
+        if self.desired_col.is_none() {
+            self.desired_col = Some(self.cursor_col);
+        }
         let page = self.viewport_height.saturating_sub(2);
         self.cursor_line = self.cursor_line.saturating_sub(page);
         self.clamp_col();
@@ -101,6 +127,7 @@ impl Editor {
         if let Some((l, c)) = result {
             self.cursor_line = l;
             self.cursor_col = c;
+            self.desired_col = None;
         }
     }
 
@@ -121,6 +148,7 @@ impl Editor {
         };
         if let Some(col) = result {
             self.cursor_col = col;
+            self.desired_col = None;
         }
     }
 

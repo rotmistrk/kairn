@@ -68,6 +68,8 @@ pub struct Editor {
     pub buffer: Arc<Mutex<PieceTable>>,
     pub cursor_line: usize,
     pub cursor_col: usize,
+    /// Sticky column: remembered column for vertical movement.
+    pub desired_col: Option<usize>,
     pub mode: EditorMode,
     pub keymap: VimKeymap,
     pub register: String,
@@ -141,6 +143,7 @@ impl Editor {
             buffer,
             cursor_line: 0,
             cursor_col: 0,
+            desired_col: None,
             mode: EditorMode::Normal,
             keymap: VimKeymap::new(),
             register: String::new(),
@@ -185,9 +188,8 @@ impl Editor {
         } else {
             line_len.saturating_sub(1)
         };
-        if self.cursor_col > max {
-            self.cursor_col = max;
-        }
+        let target = self.desired_col.unwrap_or(self.cursor_col);
+        self.cursor_col = target.min(max);
     }
 
     pub fn clamp_cursor(&mut self) {
