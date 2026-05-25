@@ -69,7 +69,11 @@ pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppStat
     }
 }
 
+/// Animated spinner frames for busy terminals.
+const SPINNER: &[char] = &['◐', '◑', '◒', '◓'];
+
 /// Sync PTY activity badges on terminal tabs in the tools panel.
+/// Running: animated spinner (green), Idle: ○ (yellow), Exited: ● (red).
 pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_secs = state.settings.terminal_idle_timeout;
     let now = std::time::Instant::now();
@@ -77,6 +81,8 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let palette = &crate::app_palette::app_palette().badge;
     let busy_style = palette.busy.to_style();
     let idle_style = palette.idle.to_style();
+    let exited_style = palette.exited.to_style();
+    let frame = (state.mcp_tick / 4) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
@@ -85,22 +91,30 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     for i in 0..panel.tab_count() {
+        let title = panel.tab_title(i).unwrap_or_default().to_string();
         let has_output = panel.view_at_mut(i).is_some_and(|v| v.needs_redraw());
         if has_output {
             state.pty_last_output.insert(i, now);
         }
-        let is_busy = state
-            .pty_last_output
-            .get(&i)
-            .is_some_and(|&last| now.duration_since(last) <= idle_dur);
-        if is_busy {
+        if title.contains("[exited]") {
             panel
                 .bar_mut()
-                .set_badge_styled(i, Some(" ▶".to_string()), Some(busy_style));
-        } else if state.pty_last_output.contains_key(&i) {
-            panel
-                .bar_mut()
-                .set_badge_styled(i, Some(" ⏎".to_string()), Some(idle_style));
+                .set_badge_styled(i, Some(" ●".to_string()), Some(exited_style));
+        } else {
+            let is_busy = state
+                .pty_last_output
+                .get(&i)
+                .is_some_and(|&last| now.duration_since(last) <= idle_dur);
+            if is_busy {
+                let ch = SPINNER[frame];
+                panel
+                    .bar_mut()
+                    .set_badge_styled(i, Some(format!(" {ch}")), Some(busy_style));
+            } else if state.pty_last_output.contains_key(&i) {
+                panel
+                    .bar_mut()
+                    .set_badge_styled(i, Some(" ○".to_string()), Some(idle_style));
+            }
         }
     }
 }
