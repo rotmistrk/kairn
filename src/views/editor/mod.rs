@@ -143,9 +143,13 @@ impl View for EditorView {
                     self.state.mark_dirty();
                     return HandleResult::Consumed;
                 }
-                (KeyCode::Enter | KeyCode::Tab, _) => {
+                (KeyCode::Tab, _) => {
                     self.accept_completion();
                     return HandleResult::Consumed;
+                }
+                (KeyCode::Enter, _) => {
+                    self.completion_popup.hide();
+                    // fall through to normal insert-mode Enter handling
                 }
                 (KeyCode::Esc, _) => {
                     self.completion_popup.hide();

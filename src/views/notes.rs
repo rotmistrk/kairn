@@ -41,4 +41,8 @@ impl View for NotesView {
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         Some(self)
     }
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        self.editor.cursor()
+    }
 }
