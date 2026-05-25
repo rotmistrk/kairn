@@ -158,6 +158,10 @@ impl View for FileTreeView {
                     self.inner.mark_dirty();
                     return HandleResult::Consumed;
                 }
+                KeyCode::Left if self.filter_active => {
+                    // Suppress collapse during filter — filter controls visibility
+                    return HandleResult::Consumed;
+                }
                 _ => {}
             }
         }
