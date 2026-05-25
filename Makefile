@@ -8,7 +8,7 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 # removes any stale copies from ~/.cargo/bin on every install.
 # ─────────────────────────────────────────────────────────
 
-.PHONY: all check lint clippy test test-fast fmt clean build release \
+.PHONY: all check lint clippy test test-fast fmt clean build release run \
         install-local uninstall-local purge-cargo-bin \
         install-rusticle-tk install-kairn \
         install-demos verify setup check-hooks
@@ -36,6 +36,7 @@ verify: fmt clippy test
 
 BINARY := target/release/kairn
 SOURCES := $(shell find src -name '*.rs') \
+           $(if $(wildcard ../txv),$(shell find ../txv -name '*.rs' -not -path '*/target/*')) \
            Cargo.toml Cargo.lock
 
 check: check-hooks
@@ -48,6 +49,9 @@ release: check-hooks $(BINARY)
 
 $(BINARY): $(SOURCES)
 	cargo build --workspace --release
+
+run: $(BINARY)
+	./$(BINARY)
 
 # ── Quality ─────────────────────────────────────────────
 
