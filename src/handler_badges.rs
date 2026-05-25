@@ -94,9 +94,13 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
         let title = panel.tab_title(i).unwrap_or_default().to_string();
         let has_output = panel
             .view_at_mut(i)
-            .and_then(|v| v.as_any())
-            .and_then(|a| a.downcast_ref::<txv_widgets::pty_terminal::PtyTerminal>())
-            .is_some_and(|pty| pty.has_fresh_output());
+            .and_then(|v| v.as_any_mut())
+            .and_then(|a| a.downcast_mut::<txv_widgets::pty_terminal::PtyTerminal>())
+            .is_some_and(|pty| {
+                let fresh = pty.has_fresh_output();
+                pty.clear_output_flag();
+                fresh
+            });
         if has_output {
             state.pty_last_output.insert(i, now);
         }
