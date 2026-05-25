@@ -22,6 +22,7 @@ const TOOLS: &[(&str, &str)] = &[
     ),
     ("clangd", "brew install llvm (macOS) / apt install clangd"),
     ("pyright-langserver", "npm i -g pyright"),
+    ("ruby-lsp", "gem install ruby-lsp"),
     ("jdtls", "brew install jdtls / manual install"),
 ];
 
@@ -37,6 +38,7 @@ const EXT_TO_TOOL: &[(&str, &str)] = &[
     ("cpp", "clangd"),
     ("h", "clangd"),
     ("py", "pyright-langserver"),
+    ("rb", "ruby-lsp"),
     ("java", "jdtls"),
     ("tcl", "rusticle-lsp"),
 ];
