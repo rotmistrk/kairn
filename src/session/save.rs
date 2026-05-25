@@ -26,12 +26,14 @@ pub(super) fn collect_state(
     let active_tab = desktop.panel(SlotId::Center as usize).map_or(0, |p| p.active_index());
     let unfolded_dirs = collect_unfolded_dirs(desktop, root_dir);
     let kiro_sessions = kiro_registry.to_state();
+    let ws_state = desktop.save_state();
 
     SessionState {
         version: SESSION_VERSION,
         layout: layout.to_string(),
-        left_width: 24,
-        right_width: 60,
+        wide_proportions: ws_state.wide_proportions,
+        narrow_proportions: ws_state.narrow_proportions,
+        hidden_panels: ws_state.hidden,
         active_tab,
         editor_tabs,
         unfolded_dirs,

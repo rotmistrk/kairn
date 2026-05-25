@@ -12,13 +12,21 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use super::schema::{KiroSessionState, SessionState};
 
-/// Apply restored layout mode to the desktop.
+/// Apply restored layout mode and panel proportions to the desktop.
 pub fn restore_session(desktop: &mut TiledWorkspace, state: &SessionState) {
     desktop.set_layout_mode(match state.layout.as_str() {
         "wide" => crate::desktop::LayoutMode::Wide,
         "tall" => crate::desktop::LayoutMode::Narrow,
         _ => crate::desktop::LayoutMode::Auto,
     });
+    if !state.wide_proportions.is_empty() || !state.narrow_proportions.is_empty() {
+        let ws_state = txv_widgets::tiled_workspace::types::WorkspaceState {
+            wide_proportions: state.wide_proportions.clone(),
+            narrow_proportions: state.narrow_proportions.clone(),
+            hidden: state.hidden_panels.clone(),
+        };
+        desktop.restore_state(&ws_state);
+    }
 }
 
 /// Restore editor tabs, splits, and unfolded directories.

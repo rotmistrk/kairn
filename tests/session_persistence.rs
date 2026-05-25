@@ -77,8 +77,9 @@ fn restore_tabs_opens_editors() {
     let state = SessionState {
         version: SESSION_VERSION,
         layout: "auto".to_string(),
-        left_width: 24,
-        right_width: 60,
+        wide_proportions: Vec::new(),
+        narrow_proportions: Vec::new(),
+        hidden_panels: Vec::new(),
         active_tab: 0,
         editor_tabs: vec![EditorTabState {
             path: "foo.rs".to_string(),
@@ -110,8 +111,9 @@ fn restore_skips_missing_files() {
     let state = SessionState {
         version: SESSION_VERSION,
         layout: "auto".to_string(),
-        left_width: 24,
-        right_width: 60,
+        wide_proportions: Vec::new(),
+        narrow_proportions: Vec::new(),
+        hidden_panels: Vec::new(),
         active_tab: 0,
         editor_tabs: vec![EditorTabState {
             path: "nonexistent.rs".to_string(),

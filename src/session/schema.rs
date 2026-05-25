@@ -3,15 +3,19 @@
 use serde::{Deserialize, Serialize};
 
 /// Current schema version.
-pub const SESSION_VERSION: u32 = 2;
+pub const SESSION_VERSION: u32 = 3;
 
 /// Persisted workspace state.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionState {
     pub version: u32,
     pub layout: String,
-    pub left_width: u16,
-    pub right_width: u16,
+    #[serde(default)]
+    pub wide_proportions: Vec<f32>,
+    #[serde(default)]
+    pub narrow_proportions: Vec<f32>,
+    #[serde(default)]
+    pub hidden_panels: Vec<usize>,
     pub active_tab: usize,
     pub editor_tabs: Vec<EditorTabState>,
     pub unfolded_dirs: Vec<String>,
@@ -56,8 +60,9 @@ impl Default for SessionState {
         Self {
             version: SESSION_VERSION,
             layout: "auto".to_string(),
-            left_width: 24,
-            right_width: 60,
+            wide_proportions: Vec::new(),
+            narrow_proportions: Vec::new(),
+            hidden_panels: Vec::new(),
             active_tab: 0,
             editor_tabs: Vec::new(),
             unfolded_dirs: Vec::new(),
