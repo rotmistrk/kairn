@@ -84,8 +84,7 @@ pub(crate) fn handle_split_close(ctx: &mut CommandContext, _state: &mut AppState
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
     };
-    // Clear linked scroll state
-    desktop.collapse_subpanel();
+    desktop.collapse_other_subpanel();
 }
 
 pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
@@ -144,9 +143,15 @@ fn create_shared_pane(panel: &mut txv_widgets::tab_panel::TabPanel, state: &mut 
     let buf_id = ev.buffer_id;
     let shared_buf = ev.editor.buffer.clone();
     let file_path = ev.editor.buf().file_path.clone();
+    let cursor_line = ev.editor.cursor_line;
+    let cursor_col = ev.editor.cursor_col;
+    let scroll = ev.editor.viewport_scroll;
     let mut ed = EditorView::from_arc_buffer(shared_buf, file_path, &defaults, &syntax_theme);
     ed.set_root_dir(state.root_dir.clone());
     ed.buffer_id = buf_id;
+    ed.editor.cursor_line = cursor_line;
+    ed.editor.cursor_col = cursor_col;
+    ed.editor.viewport_scroll = scroll;
     Box::new(ed)
 }
 
