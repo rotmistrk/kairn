@@ -1828,7 +1828,10 @@ dependencies = [
 [[package]]
 name = "rusticle"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/rusticle.git#c85c101224d7549e122c0b30df64547c5762e333"
+source = "git+https://github.com/rotmistrk/rusticle.git#496de5fa265e7759c6914e0cbd7c8fcf3a10b727"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "rusticle-tk"
