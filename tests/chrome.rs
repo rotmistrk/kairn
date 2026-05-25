@@ -61,10 +61,10 @@ fn tall_layout_single_chrome_for_bottom_panel() {
     let dir = temp_project(&[("a.rs", "")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    // In tall mode (80 cols), Shell is at bottom. Count lines containing "Shell"
+    // In tall mode (80 cols), Shell is at bottom. Count lines containing "Shell:0"
     let mut shell_lines = 0;
     for y in 0..23 {
-        if h.row(y).contains("Shell") {
+        if h.row(y).contains("Shell:0") {
             shell_lines += 1;
         }
     }

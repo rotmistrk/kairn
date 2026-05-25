@@ -25,6 +25,8 @@ fn init_test_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
     // Ensure nerd glyphs are set (matches kairn's default)
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::nerd());
+    // Prevent spawning real PTY shells in tests
+    std::env::set_var("KAIRN_TEST", "1");
 }
 
 impl TestHarness {

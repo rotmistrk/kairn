@@ -187,3 +187,37 @@ fn e2e_lsp_find_references() {
         _ => panic!("Expected references response"),
     }
 }
+
+#[test]
+fn e2e_lsp_shebang_preamble_suppresses_unknown_command() {
+    // Spawn LSP WITHOUT --prelude to test shebang-based discovery
+    let path = PathBuf::from(env!("CARGO_BIN_EXE_rusticle-lsp"));
+    let mut client = LspClient::spawn(path.to_str().unwrap(), &[], txv_core::run::Waker::noop())
+        .expect("Failed to spawn rusticle-lsp");
+    init(&mut client);
+
+    // File with rusticle-tk shebang — "app" should be recognized via --lsp-preamble
+    let text = "#!/usr/bin/env rusticle-tk\napp run\n";
+    client.send_notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///shebang_test.tcl", "languageId": "tcl",
+                "version": 1, "text": text
+            }
+        }),
+    );
+
+    let msg = poll_notification(&mut client, "textDocument/publishDiagnostics", 3000).expect("No diagnostics");
+    if let LspMessage::Notification { params, .. } = msg {
+        let diags = params["diagnostics"].as_array().expect("diagnostics array");
+        // "app" should NOT be flagged as unknown (preamble registered it)
+        let has_app_error = diags
+            .iter()
+            .any(|d| d["message"].as_str().unwrap_or("").contains("app") && d["severity"].as_u64() == Some(1));
+        assert!(
+            !has_app_error,
+            "shebang preamble should suppress 'app' error: {diags:?}"
+        );
+    }
+}

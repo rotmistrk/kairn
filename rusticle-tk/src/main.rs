@@ -35,6 +35,10 @@ fn run(args: &[String]) -> Result<(), String> {
         return Err("usage: rusticle-tk <script.tcl> | -e 'script'".into());
     }
     match args[0].as_str() {
+        "--lsp-preamble" => {
+            dump_preamble();
+            Ok(())
+        }
         "-e" => {
             let script = args.get(1).ok_or("missing script after -e")?;
             run_script(script)
@@ -42,6 +46,21 @@ fn run(args: &[String]) -> Result<(), String> {
         path => {
             let content = std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))?;
             run_script(&content)
+        }
+    }
+}
+
+/// Dump all registered command names as proc stubs for LSP preamble.
+fn dump_preamble() {
+    let mut interp = rusticle::interpreter::Interpreter::new();
+    tk_bridge::register_all(&mut interp);
+    let builtins: std::collections::HashSet<String> = rusticle::interpreter::Interpreter::new()
+        .command_names()
+        .into_iter()
+        .collect();
+    for name in interp.command_names() {
+        if !builtins.contains(&name) {
+            println!("proc {name} {{args}} {{}}");
         }
     }
 }
