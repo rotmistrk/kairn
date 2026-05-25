@@ -124,11 +124,7 @@ impl EditorView {
     /// Update display_title based on dirty state.
     pub fn sync_title(&mut self) {
         let name = self.path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
-        if self.editor.buf().is_dirty() {
-            self.display_title = format!("*{name}");
-        } else {
-            self.display_title = name.to_string();
-        }
+        self.display_title = name.to_string();
     }
 
     /// Emit hook triggers for char-inserted and word-completed events.

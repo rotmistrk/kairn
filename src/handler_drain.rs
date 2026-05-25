@@ -96,6 +96,42 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
+/// Sync buffer dirty state to tab bar badges for center panel.
+pub fn sync_dirty_badges(ctx: &mut CommandContext) {
+    use crate::views::editor::EditorView;
+    use crate::views::struct_view::StructuredView;
+
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    for child_idx in 0..sp.child_count() {
+        let Some(child) = sp.child_mut(child_idx) else {
+            continue;
+        };
+        let Some(panel) = child
+            .as_any_mut()
+            .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
+        else {
+            continue;
+        };
+        for i in 0..panel.tab_count() {
+            let dirty = panel.view_at_mut(i).and_then(|v| v.as_any_mut()).is_some_and(|any| {
+                if let Some(ev) = any.downcast_ref::<EditorView>() {
+                    ev.editor.buf().is_dirty()
+                } else if let Some(sv) = any.downcast_ref::<StructuredView>() {
+                    sv.dirty
+                } else {
+                    false
+                }
+            });
+            panel.set_dirty(i, dirty);
+        }
+    }
+}
+
 /// Auto-close exited terminal tabs in the tools panel.
 pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppState) {
     if !state.settings.terminal_auto_close {

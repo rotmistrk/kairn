@@ -198,17 +198,12 @@ impl StructuredView {
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "structured".to_string());
-        let dirty_mark = if self.dirty {
-            " *"
-        } else {
-            ""
-        };
         let filter_mark = if self.filter_text.is_empty() {
             String::new()
         } else {
             format!(" [filter: {}]", self.filter_text)
         };
-        self.display_title = format!("{name}{dirty_mark}{filter_mark}");
+        self.display_title = format!("{name}{filter_mark}");
     }
 
     /// Save current document state as an undo point.
