@@ -139,10 +139,10 @@ Key format: `ctrl+x`, `alt+x`, `F1`–`F12`, `ctrl+shift+x`, etc.
 | Command | Description |
 |---------|-------------|
 | `hook add <event> ?-filter <pat>? <script>` | Register hook |
-| `hook remove <id>` | Remove hook by ID |
+| `hook remove <event>` | Remove all hooks for event |
 | `hook list ?<event>?` | List registered hooks |
 
-Events: `char-inserted`, `word-completed`, `idle`, `file-opened`, `file-saved`.
+Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `startup`, `char-inserted`, `char-deleted`, `word-completed`, `idle`, `paste`, `mode-changed`, `selection-changed`.
 
 ### system
 

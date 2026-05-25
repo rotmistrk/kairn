@@ -165,7 +165,6 @@ pub fn help_global() -> String {
   lsp start ?<pattern>?          Start LSP server
   lsp restart ?<pattern>?        Restart LSP server
   lsp stop ?<pattern>?           Stop LSP server
-  lsp status                     Show LSP status
 
   git stage <file> / unstage <file> / commit <msg>
   git blame / noblame
@@ -184,7 +183,10 @@ pub fn help_global() -> String {
   hook add <event> <body>        Register hook
   hook remove <event>            Unregister hooks
   Events: file-save, file-open, file-close,
-          build-done, tab-switched, startup
+          build-done, tab-switched, startup,
+          char-inserted, char-deleted,
+          word-completed, idle, paste,
+          mode-changed, selection-changed
 
   system exec <cmd>              Run shell command
   system env <var>               Get env variable

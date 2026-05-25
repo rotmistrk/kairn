@@ -62,7 +62,7 @@ Auto-switches between Wide and Tall based on terminal width (configurable thresh
 | `Alt-.` | Toggle tools panel |
 | `Alt-/` | Zoom toggle |
 | `Alt-\` | Cycle layout mode |
-| `Ctrl-W` | Cycle subpanel focus (in splits) |
+| `Ctrl-W` | Split prefix (s:split, v:vsplit, c:close, o:only, w:cycle, m:move, +/-:resize, =:equalize) |
 | `Alt-=` / `Alt--` | Grow / shrink subpanel |
 | `Alt-Shift-←/→` | Resize panel horizontally |
 | `Alt-Shift-↑/↓` | Resize panel vertically |
@@ -187,11 +187,11 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 | Namespace | Operations |
 |-----------|-----------|
 | `editor` | open, save, save-all, close, goto, insert, undo, redo, search, clear-highlight, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
-| `view` | focus, message, status |
-| `build` | run, test |
-| `lsp` | hover, definition, references, rename, format, start, restart, stop, status, timeout, args |
-| `git` | stage, unstage, commit, blame, noblame |
-| `todo` | add, remove, complete |
+| `view` | focus, message, status, theme, zoom, toggle-tree, toggle-tools, layout |
+| `build` | run, test, test-file, test-at-cursor, next-error, prev-error |
+| `lsp` | hover, definition, references, rename, format, start, restart, stop, timeout, args |
+| `git` | stage, unstage, commit, blame, noblame, untrack, log, diff |
+| `todo` | add, remove, complete, toggle-important, edit, swap, promote, demote, list |
 | `split` | vsplit, hsplit, close, focus, open, direction, linked |
 | `keymap` | bind, unbind |
 | `hook` | add, remove, list |
@@ -236,15 +236,17 @@ hook add idle { lsp format }
 
 Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 
-- **Tabs**: list, switch, close, get active
+- **Tabs**: list, close, get content
 - **Files**: open, create, save
-- **Editor**: read state (cursor, selection, diagnostics), edit buffer, insert text, set cursor
-- **Terminal**: read content (write/send not yet implemented)
+- **Editor**: read state (cursor, selection, diagnostics), edit buffer, insert text, set cursor, undo/redo
+- **Terminal**: read content, send input
 - **Build**: run build/test, get errors, search project (grep)
 - **Diff**: revert hunk under cursor
-- **Split**: create/close/focus/open/status/linked scroll
+- **Split**: create/close/focus/open/linked scroll
 - **Todo**: add (including batch `add_subtree`), toggle, remove, move, promote/demote, notes
-- **LSP**: start/restart/stop servers
+- **Git**: stage, unstage, commit
+- **LSP**: start/restart/stop, hover, definition, references, rename, code-action, semantic tokens
+- **Scripting**: eval Tcl
 - **Messages**: read message log
 
 ## Tech Stack
