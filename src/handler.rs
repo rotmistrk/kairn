@@ -43,8 +43,8 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
     // Drain MCP write commands
     crate::handler_mcp::drain_mcp(ctx, state);
 
-    // PTY activity badges + auto-close
-    crate::handler_drain::update_pty_badges(ctx, state);
+    // Auto-close exited terminals
+    crate::handler_drain::auto_close_exited_terminals(ctx, state);
 
     // MCP: update snapshot every 20 commands (~1s at 50ms tick)
     state.mcp_tick = state.mcp_tick.wrapping_add(1);

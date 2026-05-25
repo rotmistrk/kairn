@@ -96,8 +96,8 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
     }
 }
 
-/// Update PTY activity badges and auto-close exited terminals.
-pub fn update_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
+/// Auto-close exited terminal tabs in the tools panel.
+pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppState) {
     if !state.settings.terminal_auto_close {
         return;
     }
