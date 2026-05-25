@@ -74,7 +74,9 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_secs = state.settings.terminal_idle_timeout;
     let now = std::time::Instant::now();
     let idle_dur = std::time::Duration::from_secs(idle_secs);
-    let busy_style = crate::app_palette::app_palette().badge.busy.to_style();
+    let palette = &crate::app_palette::app_palette().badge;
+    let busy_style = palette.busy.to_style();
+    let idle_style = palette.idle.to_style();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
@@ -94,9 +96,11 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
         if is_busy {
             panel
                 .bar_mut()
-                .set_badge_styled(i, Some(" ●".to_string()), Some(busy_style));
-        } else {
-            panel.bar_mut().set_badge_styled(i, None, None);
+                .set_badge_styled(i, Some(" ▶".to_string()), Some(busy_style));
+        } else if state.pty_last_output.contains_key(&i) {
+            panel
+                .bar_mut()
+                .set_badge_styled(i, Some(" ⏎".to_string()), Some(idle_style));
         }
     }
 }
