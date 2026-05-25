@@ -248,3 +248,41 @@ The `eval_tcl` MCP tool allows AI agents to execute any Tcl command:
 ```
 
 This makes the entire Tcl API available to AI without needing dedicated MCP tools for every operation.
+
+## LSP Preamble
+
+The Tcl LSP (`rusticle-lsp`) needs to know which commands exist to avoid false
+"unknown command" diagnostics. Two mechanisms provide this:
+
+### Project Prelude (--prelude)
+
+Kairn passes `--prelude .kairn/prelude.tcl` when starting the LSP. This file
+contains stub `proc` declarations for all kairn bridge commands:
+
+```tcl
+# .kairn/prelude.tcl
+proc editor {subcmd args} {}
+proc view {subcmd args} {}
+proc build {subcmd args} {}
+# ... etc
+```
+
+The LSP evaluates these stubs at startup so it recognizes `editor`, `view`, etc.
+as valid commands. The stubs have no implementation — they only suppress diagnostics
+and enable completion.
+
+### Shebang Discovery (--lsp-preamble)
+
+For standalone Tcl scripts with a shebang (e.g. `#!/usr/bin/env rusticle-tk`),
+the LSP automatically discovers commands by running:
+
+```
+<interpreter> --lsp-preamble
+```
+
+The interpreter outputs its command stubs to stdout (one `proc name {args} {}`
+per line). Results are cached per interpreter for the LSP session lifetime.
+If the command fails or times out (2s), an empty preamble is cached.
+
+To support this in your own Tcl-based tool, add a `--lsp-preamble` flag that
+prints proc stubs for all custom commands your tool registers.
