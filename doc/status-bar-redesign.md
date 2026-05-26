@@ -2,134 +2,194 @@
 
 ## Core Idea
 
-The status bar is a **group** (container). Status bar items are **views** (teclynnau).
-Each item is self-contained: it draws itself AND handles its own key binding.
+The status bar is a flat container of **items**. Each item has:
 
-There is no separation between "what's displayed" and "what's bound" — they are
-the same object.
+- **priority** — determines visibility when space is tight (higher = shown first)
+- **min-width** — label length (or 0 for hidden items)
+- **stretch** — percentage of remaining space to claim (0 = fixed, 100 = fill)
+- **gravity** — `left` or `right` alignment
+- **label** — display text (may be dynamic, may be empty)
+- **action** — optional command to emit on activation key
+- **embed** — optional children (sub-keys or input line) shown when active
 
-## Teclyn Types
+There is no "exclusive mode" as a special concept. When an item activates
+(prefix key pressed, input line opened), its embedded content appears with
+its own priority and stretch. Lower-priority items yield space naturally.
 
-### CommandKey
+## Layout Algorithm
 
-A leaf that shows a label and intercepts a single key.
+1. Collect all currently-visible items (inactive items show their idle label;
+   active items show their embedded content)
+2. Sort by priority descending
+3. Allocate fixed-width items first (label length + padding)
+4. Distribute remaining space to stretch items proportionally
+5. Items that don't fit are hidden (lowest priority first)
+6. Render: left-gravity items from x=0 rightward, right-gravity from x=width leftward
 
-```
-CommandKey("C-q:Quit", Ctrl+'q', CMD_QUIT)
-```
+## Item Types
 
-- Draws: `C-q:Quit`
-- Intercepts: Ctrl+Q → emits CMD_QUIT
-- Pre-phase: catches key before any focused widget sees it
+### key
 
-### ModalKey
+A binding that intercepts a key and optionally shows a label.
 
-A prefix key that reveals its children when activated.
+Properties: key, label, action, priority, gravity, embed.
 
-```
-ModalKey("C-x:...", Ctrl+'x')
-├── CommandKey("s:Save", 's', CMD_SAVE)
-├── CommandKey("0:Only", '0', CMD_CLOSE_OTHERS)
-└── CommandKey("2:HSplit", '2', CMD_HSPLIT)
-```
+- Without `-embed`: simple key → command (like current `KeyLabelItem`)
+- With `-embed`: prefix key that reveals children when pressed
 
-- Draws: `C-x:...` in normal mode
-- On Ctrl+X: replaces status bar content with children
-- Children are CommandKeys (or nested ModalKeys for cascading prefixes)
-- Esc returns to parent level
-- Multi-key sequences = nested ModalKeys
+### cmdline
 
-### Custom Teclynnau
+An input line with completion and history. Always used inside `-embed`.
 
-Any teclyn can live in the status bar:
+Properties: priority, stretch, completer, history.
 
-- **Clock** — shows time, updates on tick
-- **EditorStatus** — "Ln 42, Col 7", listens to cursor commands
-- **GitBranch** — shows branch name, waker-driven
-- **MessageArea** — shows latest toast, auto-dismisses
-- **InputLine** — command line (`:` in vim, `M-x` in emacs)
+When active: renders the input text, handles typing/Tab/Enter/Esc.
+When deactivated: parent key reverts to its idle label.
 
-## Structure
+### indicator
 
-```
-StatusBar (Group, horizontal PackLayout with gravity)
-├── LeftGroup (gravity: Start)
-│   ├── CommandKey("q:Quit")
-│   ├── ModalKey("C-x:...")
-│   └── CommandKey("Esc:Tree")
-├── CenterGroup (gravity: Center)
-│   └── MessageArea / InputLine (toggled by ModalKey)
-└── RightGroup (gravity: End)
-    ├── GitBranch
-    └── Clock
-```
+A read-only display driven by editor/system state. Renders a formatted label.
 
-## Modal Behavior
+Properties: format, priority, gravity.
 
-When a ModalKey is activated:
-1. Its children become visible (replace or overlay the current group)
-2. The status bar shows available continuations
-3. User presses a child key → command executes, modal closes
-4. User presses Esc → modal closes, normal display restored
+Format variables are filled from context updates (cursor moved, mode changed, etc).
 
-This is the same mechanism for:
-- Emacs `C-x` prefix (ModalKey with file/buffer commands)
-- Vim `:` command mode (ModalKey that activates an InputLine)
-- WordStar `C-k` block prefix (ModalKey with block commands)
+### message
 
-## Command Line (InputLine in Status Bar)
+Toast area. Shows latest message, auto-dismisses after timeout.
 
-The command line is an InputLine that lives in the center group.
-It starts inactive (hidden). A ModalKey activates it:
+Properties: timeout, priority, gravity, stretch.
 
-```
-ModalKey("::cmd", ':', CMD_ACTIVATE_CMDLINE)
+## Tcl Configuration API
+
+Follows existing kairn pattern: `namespace verb args ?-option value?`
+
+### status add
+
+```tcl
+status add [key ctrl+q -label "^Q" -action quit -priority 10]
+status add [key F1 -label "F1:Help" -action help -priority 8]
+status add [key F5 -label "F5:Zoom" -action zoom -priority 5]
+
+# Hidden binding (no label, just intercepts)
+status add [key ctrl+z -action suspend]
+status add [key ctrl+d -action diff]
 ```
 
-When activated:
-- InputLine becomes visible and active
-- InputLine gets focus
-- User types command, Tab completes, Up/Down cycles history
-- Enter submits → command executes, InputLine deactivates
-- Esc cancels → InputLine deactivates
+### status add — prefix keys
 
-The InputLine has its own micro-bindings (Tab, Enter, arrows) that work
-while it's focused. These don't conflict with the status bar CommandKeys
-because the InputLine consumes them in Normal phase (after Pre-phase
-CommandKeys have had their chance).
+```tcl
+status add [key ctrl+w -label "C-w" -priority 7 -embed {
+    [key s -label "s:split" -action split]
+    [key v -label "v:vsplit" -action vsplit]
+    [key c -label "c:close" -action close]
+    [key o -label "o:only" -action only]
+    [key w -label "w:cycle" -action cycle]
+}]
 
-## Messages / Toast
-
-Three layers:
-1. **Status bar center** — latest message, shown for N seconds
-2. **Toast sidekick** — opens when messages stack up, shows recent N
-3. **Message viewer** — full ring buffer in a panel, opened on demand
-
-Messages carry timestamp. Toast shows "2 min ago". Viewer shows "14:32:07".
-App can also write to its own log from the same MsgEntry data.
-
-## Keymap Switching
-
-Switching keymap = rebuilding the status bar. An `AppKeymap` trait provides:
-- Widget-local bindings (InputBindings, TreeBindings, ListBindings)
-- Status bar construction (which CommandKeys/ModalKeys to add)
-
-```rust
-trait AppKeymap {
-    fn input_bindings(&self) -> InputBindings;
-    fn tree_bindings(&self) -> TreeBindings;
-    fn list_bindings(&self) -> ListBindings;
-    fn build_status_bar(&self, engine: &mut Engine, parent: NodeId) -> StatusBarIds;
-}
+# Nested prefix (C-x → sub-commands, 5 → frame sub-prefix)
+status add [key ctrl+x -label "C-x" -priority 7 -embed {
+    [key s -label "s:save" -action save]
+    [key 0 -label "0:only" -action only]
+    [key 5 -label "5:frame" -embed {
+        [key 2 -label "2:new" -action new-frame]
+        [key 0 -label "0:close" -action close-frame]
+    }]
+}]
 ```
 
-One trait, one swap, everything stays consistent.
+### status add — command line
 
-## Key Dispatch Order
+```tcl
+status add [key alt+x -label "M-x" -priority 9 -embed {
+    [cmdline -priority 20 -stretch 100 -completer commands -history command]
+}]
 
-1. **Pre-phase** (StatusBar CommandKeys/ModalKeys) — global shortcuts
-2. **Normal phase** (focused widget) — widget-local bindings
+# Vim-style ex command
+status add [key : -label ":" -priority 9 -embed {
+    [cmdline -priority 20 -stretch 100 -completer ex -history ex]
+}]
+
+# Search
+status add [key / -priority 6 -embed {
+    [cmdline -priority 18 -stretch 100 -completer search -history search]
+}]
+```
+
+### status add — indicators
+
+```tcl
+status add [indicator position -format "L:{line} C:{col}" -priority 8 -gravity right]
+status add [indicator mode -priority 10 -gravity right]
+status add [indicator modified -format "{mod}" -priority 9 -gravity right]
+status add [indicator language -priority 4 -gravity right]
+status add [indicator branch -priority 3 -gravity right]
+status add [indicator lsp -priority 2 -gravity right]
+status add [indicator clock -format "{H}:{M}" -priority 1 -gravity right]
+```
+
+### status add — message area
+
+```tcl
+status add [message -timeout 5 -priority 6 -gravity left -stretch 50]
+```
+
+### status clear
+
+```tcl
+status clear   ;# remove all items, start fresh
+```
+
+## Format String Variables
+
+| Variable | Source | Example |
+|----------|--------|---------|
+| `{line}` | Cursor line (1-indexed) | `42` |
+| `{col}` | Cursor column (1-indexed) | `7` |
+| `{mode}` | Editor mode | `NOR`, `INS`, `VIS` |
+| `{mod}` | Modified flag | `[+]` or empty |
+| `{lang}` | File language | `rust`, `go` |
+| `{branch}` | Git branch | `main` |
+| `{file}` | Current filename | `status.rs` |
+| `{H}` | Hour (24h) | `14` |
+| `{M}` | Minute | `32` |
+| `{S}` | Second | `07` |
+
+## Architecture Split
+
+### txv-core provides:
+
+- `StatusBar` container with priority-based layout
+- `StatusItem` trait: `priority()`, `min_width()`, `stretch()`, `gravity()`,
+  `label()`, `handle()`, `tick()`, `is_active()`
+- Layout algorithm (priority sort → allocate → hide overflow)
+
+### txv-widgets provides:
+
+- `KeyItem` — key binding with optional label and embed
+- `CmdlineItem` — input line with completion/history
+- `MessageItem` — toast with timeout
+- `ClockItem` — time display
+- Generic `FormatIndicator` — format-string driven label updated by commands
+
+### kairn provides:
+
+- App-specific indicators: `PositionIndicator`, `ModeIndicator`,
+  `ModifiedIndicator`, `LangIndicator`, `BranchIndicator`, `LspIndicator`
+- Tcl bridge: `status` namespace commands that construct items and add to bar
+- Default status bar config in `doc/example-init.tcl`
+
+## Key Dispatch (unchanged)
+
+1. **Pre-phase** — StatusBar items intercept global keys
+2. **Normal phase** — focused widget handles local keys
 3. **Post-phase** — fallback handlers
 
-If a CommandKey claims a key, the focused widget never sees it.
-Widget-local bindings handle everything else (arrows, Tab, typing).
+When a prefix key activates, its embedded children become the active
+handlers. Esc or timeout deactivates, reverting to idle state.
+
+## Migration
+
+Current `build_status_bar()` in `status.rs` becomes the **default config** —
+emitted as Tcl commands if no user config overrides `status`. Users can
+`status clear` and rebuild from scratch, or just add/remove individual items.
