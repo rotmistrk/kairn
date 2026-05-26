@@ -5,8 +5,9 @@
 The status bar is a flat container of **items**. Each item has:
 
 - **priority** — determines visibility when space is tight (higher = shown first)
-- **min-width** — label length (or 0 for hidden items)
-- **stretch** — percentage of remaining space to claim (0 = fixed, 100 = fill)
+- **min-sz** — minimum characters needed (default: label length)
+- **max-sz** — maximum characters to claim (0 = unbounded)
+- **stretch** — weight for distributing extra space (0 = fixed width)
 - **gravity** — `left` or `right` alignment
 - **label** — display text (may be dynamic, may be empty)
 - **action** — optional command to emit on activation key
@@ -18,13 +19,21 @@ its own priority and stretch. Lower-priority items yield space naturally.
 
 ## Layout Algorithm
 
-1. Collect all currently-visible items (inactive items show their idle label;
-   active items show their embedded content)
+Each item has sizing properties:
+
+- **min-sz** — minimum characters needed (default: label length)
+- **max-sz** — maximum characters to claim (0 = unbounded)
+- **stretch** — weight for distributing extra space (0 = fixed width)
+- **priority** — who survives when space is tight (higher = kept)
+
+Steps:
+
+1. Collect visible items (idle labels + active embedded content)
 2. Sort by priority descending
-3. Allocate fixed-width items first (label length + padding)
-4. Distribute remaining space to stretch items proportionally
-5. Items that don't fit are hidden (lowest priority first)
-6. Render: left-gravity items from x=0 rightward, right-gravity from x=width leftward
+3. Sum min-sz of all items; if exceeds width, drop lowest-priority until fits
+4. Allocate min-sz to each surviving item
+5. Distribute remaining space to stretch items proportionally (capped by max-sz)
+6. Render: left-gravity from x=0 rightward, right-gravity from x=width leftward
 
 ## Item Types
 
@@ -102,17 +111,17 @@ status add [key ctrl+x -label "C-x" -priority 7 -embed {
 
 ```tcl
 status add [key alt+x -label "M-x" -priority 9 -embed {
-    [cmdline -priority 20 -stretch 100 -completer commands -history command]
+    [cmdline -priority 20 -min-sz 10 -stretch 100 -completer commands -history command]
 }]
 
 # Vim-style ex command
 status add [key : -label ":" -priority 9 -embed {
-    [cmdline -priority 20 -stretch 100 -completer ex -history ex]
+    [cmdline -priority 20 -min-sz 10 -stretch 100 -completer ex -history ex]
 }]
 
 # Search
 status add [key / -priority 6 -embed {
-    [cmdline -priority 18 -stretch 100 -completer search -history search]
+    [cmdline -priority 18 -min-sz 10 -stretch 100 -completer search -history search]
 }]
 ```
 
