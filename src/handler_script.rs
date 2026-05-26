@@ -93,10 +93,7 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
                     if let Some(view) = panel.active_view_mut() {
                         if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
                             editor.goto(l, c);
-                            let pos = txv_widgets::CursorPos {
-                                line: l + 1,
-                                col: c + 1,
-                            };
+                            let pos = txv_widgets::CursorPos::new(l + 1, c + 1);
                             ctx.sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
                         }
                     }

@@ -31,7 +31,7 @@ pub fn new_command_list() -> CommandList {
 pub struct AppCompleter {
     root: PathBuf,
     commands: CommandList,
-    pub lsp_languages: LspLanguageList,
+    lsp_languages: LspLanguageList,
 }
 
 impl AppCompleter {
@@ -41,6 +41,10 @@ impl AppCompleter {
             commands,
             lsp_languages: Arc::new(Mutex::new(Vec::new())),
         }
+    }
+
+    pub fn set_lsp_languages(&mut self, langs: LspLanguageList) {
+        self.lsp_languages = langs;
     }
 }
 
@@ -66,11 +70,7 @@ impl Completer for AppCompleter {
         let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
         cmds.iter()
             .filter(|cmd| cmd.starts_with(trimmed))
-            .map(|cmd| Completion {
-                text: cmd.clone(),
-                display: cmd.clone(),
-                kind: "command",
-            })
+            .map(|cmd| Completion::new(cmd.clone(), cmd.clone(), "command"))
             .collect()
     }
 }
@@ -88,33 +88,21 @@ fn complete_theme(sub: &str) -> Vec<Completion> {
         return names
             .into_iter()
             .filter(|t| t.starts_with(partial))
-            .map(|t| Completion {
-                text: format!("theme syntax {t}"),
-                display: t.to_string(),
-                kind: "theme",
-            })
+            .map(|t| Completion::new(format!("theme syntax {t}"), t.to_string(), "theme"))
             .collect();
     }
     if let Some(partial) = sub.strip_prefix("glyphs ") {
         return GLYPH_OPTS
             .iter()
             .filter(|o| o.starts_with(partial))
-            .map(|o| Completion {
-                text: format!("theme glyphs {o}"),
-                display: o.to_string(),
-                kind: "option",
-            })
+            .map(|o| Completion::new(format!("theme glyphs {o}"), o.to_string(), "option"))
             .collect();
     }
     // Complete first-level sub-commands
     THEME_SUBS
         .iter()
         .filter(|s| s.starts_with(sub))
-        .map(|s| Completion {
-            text: format!("theme {s}"),
-            display: s.to_string(),
-            kind: "command",
-        })
+        .map(|s| Completion::new(format!("theme {s}"), s.to_string(), "command"))
         .collect()
 }
 
@@ -130,11 +118,7 @@ fn complete_lsp(sub: &str, langs: &LspLanguageList) -> Vec<Completion> {
             return languages
                 .iter()
                 .filter(|l| l.starts_with(partial))
-                .map(|l| Completion {
-                    text: format!("lsp {subcmd} {l}"),
-                    display: l.clone(),
-                    kind: "lang",
-                })
+                .map(|l| Completion::new(format!("lsp {subcmd} {l}"), l.clone(), "lang"))
                 .collect();
         }
         return Vec::new();
@@ -143,31 +127,29 @@ fn complete_lsp(sub: &str, langs: &LspLanguageList) -> Vec<Completion> {
     LSP_SUBS
         .iter()
         .filter(|s| s.starts_with(sub))
-        .map(|s| Completion {
-            text: format!("lsp {s}"),
-            display: s.to_string(),
-            kind: "command",
-        })
+        .map(|s| Completion::new(format!("lsp {s}"), s.to_string(), "command"))
         .collect()
 }
 
-fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
-    let (search_dir, prefix, dir_prefix) = if partial.is_empty() {
-        (root.to_path_buf(), "", String::new())
-    } else if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
-        // "src/" → list contents of src/
-        (root.join(partial), "", partial.to_string())
-    } else if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
-        // "src/ma" → list src/ filtered by "ma"
+fn resolve_path_parts<'a>(partial: &'a str, root: &Path) -> (PathBuf, &'a str, String) {
+    if partial.is_empty() {
+        return (root.to_path_buf(), "", String::new());
+    }
+    if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
+        return (root.join(partial), "", partial.to_string());
+    }
+    if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
         let p = Path::new(partial);
         let parent = p.parent().map(|d| d.to_str().unwrap_or(".")).unwrap_or(".");
         let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
         let dir_prefix = format!("{}/", parent);
-        (root.join(parent), prefix, dir_prefix)
-    } else {
-        // "READ" → list root filtered by "READ"
-        (root.to_path_buf(), partial, String::new())
-    };
+        return (root.join(parent), prefix, dir_prefix);
+    }
+    (root.to_path_buf(), partial, String::new())
+}
+
+fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
+    let (search_dir, prefix, dir_prefix) = resolve_path_parts(partial, root);
 
     let Ok(entries) = std::fs::read_dir(&search_dir) else {
         return Vec::new();
@@ -182,22 +164,23 @@ fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
         }
         let rel_path = format!("{dir_prefix}{name_str}");
         let text = format!("edit {rel_path}");
-        let display = if entry.path().is_dir() {
+        let is_dir = entry.path().is_dir();
+        let display = if is_dir {
             format!("{name_str}/")
         } else {
             name_str.to_string()
         };
-        results.push(Completion {
+        results.push(Completion::new(
             text,
             display,
-            kind: if entry.path().is_dir() {
+            if is_dir {
                 "dir"
             } else {
                 "file"
             },
-        });
+        ));
     }
-    results.sort_by(|a, b| a.display.cmp(&b.display));
+    results.sort_by(|a, b| a.display().cmp(b.display()));
     results
 }
 

@@ -208,7 +208,7 @@ fn main() -> anyhow::Result<()> {
 
     // Build status bar
     let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list.clone());
-    completer.lsp_languages = app_state.lsp_languages.clone();
+    completer.set_lsp_languages(app_state.lsp_languages.clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),

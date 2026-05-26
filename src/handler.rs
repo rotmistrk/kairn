@@ -196,7 +196,7 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
             if let Some(boxed) = ctx.data.as_ref() {
                 if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
                     // CursorPos is 1-indexed; LSP uses 0-indexed
-                    state.cursor_pos = (pos.line.saturating_sub(1), pos.col.saturating_sub(1));
+                    state.cursor_pos = (pos.line().saturating_sub(1), pos.col().saturating_sub(1));
                 }
             }
         }

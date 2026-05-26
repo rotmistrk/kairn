@@ -65,7 +65,7 @@ pub fn register_input(interp: &mut Interpreter, shared: &SendShared) {
             "get" => {
                 let id = require_arg(args, 1, "input get")?;
                 let inp = get_widget::<InputLine>(&mut st.desktop, &id, "input get")?;
-                Ok(TclValue::Str(inp.text.clone()))
+                Ok(TclValue::Str(inp.text().to_string()))
             }
             "set" => {
                 let id = require_arg(args, 1, "input set")?;

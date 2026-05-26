@@ -37,17 +37,13 @@ pub fn add_prefix_bindings(bar: &mut StatusBar) {
     bar.add(StatusSlot::new(Box::new(prefix)).priority(6));
 }
 
-/// App-specific bindings (not workspace navigation).
+/// Visible app bindings (shown in status bar).
 pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
-    use txv_widgets::tiled_workspace::commands::{
-        CM_TW_FOCUS_PANEL, CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL,
-        CM_TW_SHRINK_V, CM_TW_ZOOM,
-    };
+    use txv_widgets::tiled_workspace::commands::{CM_TW_FOCUS_PANEL, CM_TW_ZOOM};
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.help, CM_SHOW_HELP, "F1:Help"))).priority(6));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.zoom, CM_TW_ZOOM, "F5:Zoom"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "^Q:Quit"))).priority(9));
-    // Hidden bindings
     bar.add(StatusSlot::new(Box::new(
         KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "").with_data(0),
     )));
@@ -57,7 +53,15 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(
         KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "").with_data(2),
     )));
-    // macOS Option+=/- resize
+    add_hidden_bindings(bar);
+}
+
+/// Hidden bindings (resize, layout, suspend — no visible label).
+fn add_hidden_bindings(bar: &mut StatusBar) {
+    use txv_widgets::tiled_workspace::commands::{
+        CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL,
+        CM_TW_SHRINK_V,
+    };
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
         key(KeyCode::Char('≠')),
         CM_TW_GROW_SUBPANEL,
@@ -68,7 +72,6 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
         CM_TW_SHRINK_SUBPANEL,
         "",
     ))));
-    // Alt+Shift+Arrow resize
     let alt_shift = |code| KeyEvent {
         code,
         modifiers: KeyMod {
@@ -101,8 +104,6 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('o'), CM_PEEK, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('d'), CM_DIFF, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('l'), CM_REPAINT, ""))));
-    // Alt-\ layout cycle
-    use txv_widgets::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE;
     let alt_backslash = KeyEvent {
         code: KeyCode::Char('\\'),
         modifiers: KeyMod {

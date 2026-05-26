@@ -107,10 +107,10 @@ impl EditorView {
                 .put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
         }
         if self.editor.cursor_line != old_line || self.editor.cursor_col != old_col {
-            let pos = CursorPos {
-                line: (self.editor.cursor_line + 1) as u32,
-                col: (self.editor.cursor_col + 1) as u32,
-            };
+            let pos = CursorPos::new(
+                (self.editor.cursor_line + 1) as u32,
+                (self.editor.cursor_col + 1) as u32,
+            );
             self.state.put_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
         }
         // Emit diagnostic message if cursor is on a diagnostic line
