@@ -100,7 +100,7 @@ Side-by-side diff (`:diff -y`): left=base, right=current, aligned with gaps. Sam
 
 ### File Tree
 
-`j/k` navigate, `Enter/→` open/expand, `h/←` collapse, `Ctrl-.` toggle hidden
+`j/k` navigate, `Enter/→` open/expand, `h/←` collapse, `Ctrl-.` toggle hidden, `/` filter (fuzzy match)
 
 ### Git Panel
 
