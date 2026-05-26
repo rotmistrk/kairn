@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use txv_core::prelude::*;
 use txv_core::status_bar::{Gravity, StatusBar, StatusSlot};
 use txv_widgets::tiled_workspace::TiledWorkspace;
-use txv_widgets::{BranchView, ClockView, CommandLineView, ConfirmView, MessageView};
+use txv_widgets::{BranchView, ClockView, ConfirmView, InputLine, MessageView, ModalKey};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
@@ -34,15 +34,15 @@ pub fn build_status_bar(
 
 fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
     bar.add(StatusSlot::new(Box::new(ConfirmView::new(CM_CONFIRM, CM_CONFIRM_RESPONSE))).priority(10));
-    bar.add(
-        StatusSlot::new(Box::new(
-            CommandLineView::new(&[ALT_X, APPROX], CM_EXECUTE_COMMAND)
-                .with_label("M-x")
-                .with_prefill_command(CM_COMMAND_PREFILL)
-                .with_completer(completer),
-        ))
-        .priority(10),
-    );
+    let input = InputLine::new()
+        .with_command(CM_EXECUTE_COMMAND)
+        .with_completer(completer);
+    let command_line = ModalKey::new("M-x", ":")
+        .trigger_key(ALT_X)
+        .trigger_key(APPROX)
+        .prefill_command(CM_COMMAND_PREFILL)
+        .add_child(Box::new(input));
+    bar.add(StatusSlot::new(Box::new(command_line)).priority(10));
 }
 
 fn add_right_side(bar: &mut StatusBar, root_dir: PathBuf, clock_interval: u16) {

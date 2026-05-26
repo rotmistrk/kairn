@@ -4,7 +4,7 @@ use txv_core::prelude::*;
 use txv_core::status_bar::{StatusBar, StatusSlot};
 use txv_widgets::tiled_workspace::commands::CM_TW_ACTIVATE_TAB;
 use txv_widgets::tiled_workspace::TiledWorkspace;
-use txv_widgets::{KeyLabelView, PrefixView};
+use txv_widgets::{KeyLabelView, ModalKey};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
@@ -24,16 +24,19 @@ pub fn add_prefix_bindings(bar: &mut StatusBar) {
         CM_TW_CLOSE_OTHER_SUBPANEL, CM_TW_CLOSE_SUBPANEL, CM_TW_CYCLE_SUBPANEL, CM_TW_EQUALIZE_SUBPANEL,
         CM_TW_GROW_SUBPANEL, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_SUBPANEL, CM_TW_SPLIT_H, CM_TW_SPLIT_V,
     };
-    let prefix = PrefixView::new(ctrl('w'), "C-w")
-        .bind('s', CM_TW_SPLIT_H, "split")
-        .bind('v', CM_TW_SPLIT_V, "vsplit")
-        .bind('c', CM_TW_CLOSE_SUBPANEL, "close")
-        .bind('o', CM_TW_CLOSE_OTHER_SUBPANEL, "only")
-        .bind('w', CM_TW_CYCLE_SUBPANEL, "cycle")
-        .bind('m', CM_TW_MOVE_TAB_SUBPANEL, "move")
-        .bind('+', CM_TW_GROW_SUBPANEL, "grow")
-        .bind('-', CM_TW_SHRINK_SUBPANEL, "shrink")
-        .bind('=', CM_TW_EQUALIZE_SUBPANEL, "equal");
+    let b = |ch: char, cmd, label| -> Box<dyn View> { Box::new(KeyLabelView::new(key(KeyCode::Char(ch)), cmd, label)) };
+    let prefix = ModalKey::new("C-w", "C-w: ")
+        .trigger_key(ctrl('w'))
+        .cancel_on_miss()
+        .add_child(b('s', CM_TW_SPLIT_H, "split"))
+        .add_child(b('v', CM_TW_SPLIT_V, "vsplit"))
+        .add_child(b('c', CM_TW_CLOSE_SUBPANEL, "close"))
+        .add_child(b('o', CM_TW_CLOSE_OTHER_SUBPANEL, "only"))
+        .add_child(b('w', CM_TW_CYCLE_SUBPANEL, "cycle"))
+        .add_child(b('m', CM_TW_MOVE_TAB_SUBPANEL, "move"))
+        .add_child(b('+', CM_TW_GROW_SUBPANEL, "grow"))
+        .add_child(b('-', CM_TW_SHRINK_SUBPANEL, "shrink"))
+        .add_child(b('=', CM_TW_EQUALIZE_SUBPANEL, "equal"));
     bar.add(StatusSlot::new(Box::new(prefix)).priority(6));
 }
 
@@ -58,20 +61,17 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
 
 /// Hidden bindings (resize, layout, suspend — no visible label).
 fn add_hidden_bindings(bar: &mut StatusBar) {
+    add_hidden_resize(bar);
+    add_hidden_misc(bar);
+}
+
+fn add_hidden_resize(bar: &mut StatusBar) {
     use txv_widgets::tiled_workspace::commands::{
-        CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL,
-        CM_TW_SHRINK_V,
+        CM_TW_GROW_H, CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_SHRINK_H, CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V,
     };
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        key(KeyCode::Char('≠')),
-        CM_TW_GROW_SUBPANEL,
-        "",
-    ))));
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        key(KeyCode::Char('–')),
-        CM_TW_SHRINK_SUBPANEL,
-        "",
-    ))));
+    let h = |k: KeyEvent, cmd| StatusSlot::new(Box::new(KeyLabelView::new(k, cmd, "")));
+    bar.add(h(key(KeyCode::Char('≠')), CM_TW_GROW_SUBPANEL));
+    bar.add(h(key(KeyCode::Char('–')), CM_TW_SHRINK_SUBPANEL));
     let alt_shift = |code| KeyEvent {
         code,
         modifiers: KeyMod {
@@ -80,26 +80,14 @@ fn add_hidden_bindings(bar: &mut StatusBar) {
             alt: true,
         },
     };
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        alt_shift(KeyCode::Right),
-        CM_TW_GROW_H,
-        "",
-    ))));
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        alt_shift(KeyCode::Left),
-        CM_TW_SHRINK_H,
-        "",
-    ))));
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        alt_shift(KeyCode::Down),
-        CM_TW_GROW_V,
-        "",
-    ))));
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        alt_shift(KeyCode::Up),
-        CM_TW_SHRINK_V,
-        "",
-    ))));
+    bar.add(h(alt_shift(KeyCode::Right), CM_TW_GROW_H));
+    bar.add(h(alt_shift(KeyCode::Left), CM_TW_SHRINK_H));
+    bar.add(h(alt_shift(KeyCode::Down), CM_TW_GROW_V));
+    bar.add(h(alt_shift(KeyCode::Up), CM_TW_SHRINK_V));
+}
+
+fn add_hidden_misc(bar: &mut StatusBar) {
+    use txv_widgets::tiled_workspace::commands::CM_TW_LAYOUT_CYCLE;
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('z'), CM_SUSPEND, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('o'), CM_PEEK, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('d'), CM_DIFF, ""))));
