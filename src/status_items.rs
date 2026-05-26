@@ -53,6 +53,9 @@ impl VisibleItem for CtxPositionItem {
     fn gravity(&self) -> Gravity {
         Gravity::Right
     }
+    fn priority(&self) -> u8 {
+        7
+    }
 }
 
 /// Displays editor mode: "NOR", "INS", "VIS", etc.
@@ -99,6 +102,9 @@ impl VisibleItem for CtxModeItem {
     }
     fn gravity(&self) -> Gravity {
         Gravity::Right
+    }
+    fn priority(&self) -> u8 {
+        8
     }
 }
 
