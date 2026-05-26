@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use txv_core::prelude::*;
 use txv_core::program::{CommandContext, Program};
 use txv_core::run::Backend;
-use txv_core::status::StatusBar;
-use txv_widgets::status_items::{ClockItem, KeyLabelItem};
+use txv_core::status_bar::{Gravity, StatusBar, StatusSlot};
+use txv_widgets::{ClockView, KeyLabelView};
 
 use crate::desktop::TkDesktop;
 use crate::keyspec::{format_key_label, parse_keyspec};
@@ -71,14 +71,14 @@ fn build_status_bar(events: &EventState) -> StatusBar {
         if let Some(key_event) = parse_keyspec(keyspec) {
             let cmd_id = CM_SCRIPT_BASE + i as u16;
             let label = format_key_label(keyspec);
-            if label.is_empty() {
-                bar.add_active_only(KeyLabelItem::hidden(key_event, cmd_id));
-            } else {
-                bar.add(KeyLabelItem::new(key_event, cmd_id, label));
-            }
+            bar.add(StatusSlot::new(Box::new(KeyLabelView::new(key_event, cmd_id, label))));
         }
     }
-    bar.add_visible_only(ClockItem::new(60));
+    bar.add(
+        StatusSlot::new(Box::new(ClockView::new(60)))
+            .priority(2)
+            .gravity(Gravity::Right),
+    );
     bar
 }
 

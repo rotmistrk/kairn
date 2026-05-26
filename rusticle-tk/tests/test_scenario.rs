@@ -94,12 +94,12 @@ fn desktop_focus_switches_child() {
 #[test]
 fn program_quit_via_command() {
     use txv_core::program::Program;
-    use txv_core::status::StatusBar;
-    use txv_widgets::status_items::KeyLabelItem;
+    use txv_core::status_bar::{StatusBar, StatusSlot};
+    use txv_widgets::KeyLabelView;
 
     let desktop = build_desktop("test");
     let mut bar = StatusBar::new();
-    bar.add(KeyLabelItem::new(
+    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
         KeyEvent {
             code: KeyCode::Char('q'),
             modifiers: KeyMod {
@@ -110,7 +110,7 @@ fn program_quit_via_command() {
         },
         CM_QUIT,
         "^Q",
-    ));
+    ))));
 
     let mut program = Program::new(Box::new(bar), Box::new(desktop));
     let mut backend = MockBackend::new(80, 24);
