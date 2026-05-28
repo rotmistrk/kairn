@@ -171,6 +171,10 @@ fn main() -> anyhow::Result<()> {
     };
     let theme = kairn::theme_state::ThemeState::new(theme_mode);
     theme.apply();
+    // Apply chrome color overrides from Tcl config
+    let framework_pal = txv_core::palette::palette();
+    let custom_pal = kairn::config_colors::apply_chrome_config(app_state.script.interpreter(), framework_pal);
+    txv_core::palette::set_palette(custom_pal);
     app_state.theme_state = Some(std::cell::RefCell::new(theme));
 
     // Initialize glyphs

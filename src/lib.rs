@@ -20,6 +20,7 @@ pub mod config;
 pub mod config_colors;
 pub mod config_keys;
 pub mod csv_parse;
+pub mod custom_palette;
 pub mod desktop;
 pub mod diff;
 pub mod editor;

@@ -113,6 +113,11 @@ impl ScriptEngine {
         Ok(())
     }
 
+    /// Access the underlying interpreter (for config variable reads).
+    pub fn interpreter(&self) -> &Interpreter {
+        &self.interp
+    }
+
     /// Drain pending commands produced by scripts.
     pub fn drain_commands(&self) -> Vec<ScriptCommand> {
         if let Ok(mut cmds) = self.commands.lock() {

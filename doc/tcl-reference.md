@@ -293,3 +293,45 @@ If the command fails or times out (2s), an empty preamble is cached.
 
 To support this in your own Tcl-based tool, add a `--lsp-preamble` flag that
 prints proc stubs for all custom commands your tool registers.
+
+## Color Configuration
+
+Chrome and framework colors use `"fg bg [attrs]"` format:
+
+| Component | Description |
+|-----------|-------------|
+| `fg` / `bg` | `0-15` (ansi), `p:N` (palette 0-255), `rgb:RRGGBB` |
+| `attrs` | `bold`, `italic`, `underline`, `dim` (space-separated) |
+
+### Chrome Variables
+
+| Variable | Default (dark) | Description |
+|----------|---------------|-------------|
+| `color.chrome.status_bar` | `"7 p:236"` | Status bar text/bg |
+| `color.chrome.status_bar_modal` | `"15 p:18"` | Active modal (prefix key) bg |
+| `color.chrome.bar` | `"7 0"` | Tab bar |
+| `color.chrome.tab_focused` | `"14 4 bold"` | Focused tab |
+| `color.chrome.tab_active` | `"0 rgb:c0c0c0 bold"` | Active tab |
+| `color.chrome.scrollbar_track` | `"8"` | Scrollbar track |
+| `color.chrome.scrollbar_thumb` | `"0 7"` | Scrollbar thumb |
+| `color.popup.background` | `"15 0"` | Popup/dialog bg |
+| `color.popup.border` | `"6 0"` | Popup border |
+| `color.popup.selected` | `"15 4 underline"` | Popup selection |
+| `color.interactive.cursor_focused` | `"0 4 underline"` | Focused cursor |
+| `color.interactive.input_cursor` | `"0 7"` | Input cursor |
+| `color.interactive.search_match` | `"0 3"` | Search highlight |
+
+### App-Level Colors (fg only)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `color.git.added` | `2` | Git added files |
+| `color.git.modified` | `3` | Git modified files |
+| `color.git.untracked` | `1` | Git untracked files |
+| `color.diff.added` | `2` | Diff added lines |
+| `color.diff.deleted` | `1` | Diff deleted lines |
+| `color.editor.gutter` | `8` | Line number gutter |
+| `color.diag.error` | `9` | Diagnostic errors |
+| `color.tree.directory` | `14` | Directory names |
+| `color.todo.done` | `8` | Completed todos |
+| `color.todo.important` | `1` | Important todos |

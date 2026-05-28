@@ -107,10 +107,26 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #   todo:   normal, done, important
 #   msg:    error, warning, info, debug
 #
+# Chrome/framework styles use "fg bg [attrs]" format:
+#   fg/bg: ansi number (0-15), p:N (palette 0-255), rgb:RRGGBB
+#   attrs: bold, italic, underline, dim (space-separated)
+#
 # Example overrides (uncomment to customize):
-# set color.base.dim 8
-# set color.chrome.bar.fg 7
-# set color.chrome.bar.bg 0
+# set color.chrome.status_bar       "7 p:236"
+# set color.chrome.status_bar_modal "15 p:18"
+# set color.chrome.bar              "7 0"
+# set color.chrome.tab_focused      "14 4 bold"
+# set color.chrome.tab_active       "0 rgb:c0c0c0 bold"
+# set color.chrome.scrollbar_track  "8"
+# set color.chrome.scrollbar_thumb  "0 7"
+# set color.popup.background        "15 0"
+# set color.popup.border            "6 0"
+# set color.popup.selected          "15 4 underline"
+# set color.interactive.cursor_focused  "0 4 underline"
+# set color.interactive.input_cursor    "0 7"
+# set color.interactive.search_match    "0 3"
+#
+# App-level colors (fg only, ansi number):
 # set color.git.added 2
 # set color.git.modified 12
 # set color.git.untracked 1
@@ -121,8 +137,6 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # set color.tree.directory 14
 # set color.todo.done 8
 # set color.todo.important 1
-# set color.state.error 1
-# set color.state.warning 3
 # set color.state.success 2
 
 # ─── LSP ─────────────────────────────────────────────────────────────────────
