@@ -112,7 +112,7 @@ fn e2e_lsp_completion() {
         } => {
             assert_eq!(rid, id);
             let items = requests::parse_completion(&r);
-            let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
+            let labels: Vec<&str> = items.iter().map(|i| i.label()).collect();
             assert!(labels.contains(&"editor"), "should complete 'editor': {labels:?}");
         }
         _ => panic!("Expected completion response"),
@@ -162,7 +162,7 @@ fn e2e_lsp_goto_definition() {
             assert_eq!(rid, id);
             let locs = requests::parse_locations(&r);
             assert_eq!(locs.len(), 1);
-            assert_eq!(locs[0].line, 0);
+            assert_eq!(locs[0].line(), 0);
         }
         _ => panic!("Expected definition response"),
     }

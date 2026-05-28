@@ -20,8 +20,8 @@ fn paste_is_undoable() {
 #[test]
 fn insert_enter_creates_newline() {
     let mut ed = Editor::from_text("hello");
-    ed.mode = EditorMode::Insert;
-    ed.cursor_col = 3;
+    ed.set_mode(EditorMode::Insert);
+    ed.set_cursor_col(3);
     ed.execute(Command::InsertNewline);
     assert_eq!(ed.buf().content(), "hel\nlo");
 }
@@ -29,7 +29,7 @@ fn insert_enter_creates_newline() {
 #[test]
 fn insert_delete_forward() {
     let mut ed = Editor::from_text("hello");
-    ed.mode = EditorMode::Insert;
+    ed.set_mode(EditorMode::Insert);
     ed.execute(Command::DeleteCharForward);
     assert_eq!(ed.buf().content(), "ello");
 }
@@ -95,7 +95,7 @@ fn keymap_no_count_g_is_file_end() {
 #[test]
 fn a_inserts_after_cursor() {
     let mut ed = Editor::from_text("abc");
-    ed.cursor_col = 1; // on 'b'
+    ed.set_cursor_col(1); // on 'b'
     ed.execute(Command::EnterInsertAfter);
     ed.execute(Command::InsertChar('X'));
     assert_eq!(ed.buf().content(), "abXc");
@@ -104,7 +104,7 @@ fn a_inserts_after_cursor() {
 #[test]
 fn big_i_inserts_at_line_start() {
     let mut ed = Editor::from_text("  hello");
-    ed.cursor_col = 4;
+    ed.set_cursor_col(4);
     ed.execute(Command::EnterInsertLineStart);
     ed.execute(Command::InsertChar('X'));
     // I inserts before first non-blank (col 2)
@@ -124,17 +124,17 @@ fn o_opens_line_below() {
     let mut ed = Editor::from_text("line1\nline2");
     ed.execute(Command::EnterInsertBelow);
     ed.execute(Command::InsertChar('X'));
-    assert_eq!(ed.mode, EditorMode::Insert);
+    assert_eq!(ed.mode(), EditorMode::Insert);
     assert!(ed.buf().content().contains("line1\nX\nline2"));
 }
 
 #[test]
 fn big_o_opens_line_above() {
     let mut ed = Editor::from_text("line1\nline2");
-    ed.cursor_line = 1;
+    ed.set_cursor_line(1);
     ed.execute(Command::EnterInsertAbove);
     ed.execute(Command::InsertChar('X'));
-    assert_eq!(ed.mode, EditorMode::Insert);
+    assert_eq!(ed.mode(), EditorMode::Insert);
     assert!(ed.buf().content().contains("line1\nX\nline2"));
 }
 
@@ -145,8 +145,8 @@ fn insert_arrow_keys_move() {
     ed.execute(Command::MoveRight);
     ed.execute(Command::MoveRight);
     ed.execute(Command::MoveDown);
-    assert_eq!(ed.cursor_line, 1);
-    assert_eq!(ed.cursor_col, 2);
+    assert_eq!(ed.cursor_line(), 1);
+    assert_eq!(ed.cursor_col(), 2);
 }
 
 // === Movement: e, ^, Ctrl-D/U, PgUp/PgDn ===
@@ -155,52 +155,52 @@ fn insert_arrow_keys_move() {
 fn e_moves_to_word_end() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::MoveWordEnd);
-    assert_eq!(ed.cursor_col, 4); // end of "hello"
+    assert_eq!(ed.cursor_col(), 4); // end of "hello"
 }
 
 #[test]
 fn caret_moves_to_first_nonblank() {
     let mut ed = Editor::from_text("   hello");
-    ed.cursor_col = 6;
+    ed.set_cursor_col(6);
     ed.execute(Command::MoveFirstNonBlank);
-    assert_eq!(ed.cursor_col, 3);
+    assert_eq!(ed.cursor_col(), 3);
 }
 
 #[test]
 fn ctrl_d_moves_half_page_down() {
     let text = (0..40).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let mut ed = Editor::from_text(&text);
-    ed.viewport_height = 20;
+    ed.set_viewport_height(20);
     ed.execute(Command::HalfPageDown);
-    assert_eq!(ed.cursor_line, 10); // half of 20
+    assert_eq!(ed.cursor_line(), 10); // half of 20
 }
 
 #[test]
 fn ctrl_u_moves_half_page_up() {
     let text = (0..40).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let mut ed = Editor::from_text(&text);
-    ed.viewport_height = 20;
-    ed.cursor_line = 20;
+    ed.set_viewport_height(20);
+    ed.set_cursor_line(20);
     ed.execute(Command::HalfPageUp);
-    assert_eq!(ed.cursor_line, 10);
+    assert_eq!(ed.cursor_line(), 10);
 }
 
 #[test]
 fn page_down_moves_full_page() {
     let text = (0..40).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let mut ed = Editor::from_text(&text);
-    ed.viewport_height = 20;
+    ed.set_viewport_height(20);
     ed.execute(Command::PageDown);
     // vim keeps 2 context lines, so moves viewport_height - 2
-    assert_eq!(ed.cursor_line, 18);
+    assert_eq!(ed.cursor_line(), 18);
 }
 
 #[test]
 fn page_up_moves_full_page() {
     let text = (0..40).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let mut ed = Editor::from_text(&text);
-    ed.viewport_height = 20;
-    ed.cursor_line = 30;
+    ed.set_viewport_height(20);
+    ed.set_cursor_line(30);
     ed.execute(Command::PageUp);
-    assert_eq!(ed.cursor_line, 12); // 30 - 18
+    assert_eq!(ed.cursor_line(), 12); // 30 - 18
 }

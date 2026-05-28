@@ -29,7 +29,7 @@ fn external_file_broker_key_matches_session_path() {
     // Now simulate what session restore does: broker.open with the stored path.
     // Session stores: path.strip_prefix(root).unwrap_or(path) — for external files, full path.
     let session_key = ext_file.to_string_lossy().to_string();
-    let result = h.state.broker.open(&session_key, SlotId::Center, 0);
+    let result = h.state.broker_open(&session_key, SlotId::Center, 0);
 
     // Must be AlreadyOpen — not Opened (which would mean key mismatch)
     assert!(

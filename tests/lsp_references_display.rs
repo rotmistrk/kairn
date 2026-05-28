@@ -18,18 +18,8 @@ fn references_show_relative_paths_and_context() {
 
     // Simulate LSP references result with absolute paths and context text
     let entries = vec![
-        ResultEntry {
-            path: dir.path().join("src/main.rs"),
-            line: 0,
-            col: 13,
-            text: "greet();".to_string(),
-        },
-        ResultEntry {
-            path: dir.path().join("src/lib.rs"),
-            line: 0,
-            col: 7,
-            text: "pub fn greet()".to_string(),
-        },
+        ResultEntry::new(dir.path().join("src/main.rs"), 0, 13, "greet();".to_string()),
+        ResultEntry::new(dir.path().join("src/lib.rs"), 0, 7, "pub fn greet()".to_string()),
     ];
     h.dispatch_command(
         CM_SHOW_RESULTS,

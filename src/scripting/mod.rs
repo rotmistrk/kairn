@@ -32,7 +32,7 @@ pub struct ScriptEngine {
     interp: Interpreter,
     commands: Arc<Mutex<Vec<ScriptCommand>>>,
     snapshot: Arc<Mutex<StateSnapshot>>,
-    pub hook_registry: Arc<Mutex<HookRegistry>>,
+    pub(crate) hook_registry: Arc<Mutex<HookRegistry>>,
 }
 
 impl ScriptEngine {

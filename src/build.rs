@@ -13,10 +13,10 @@ use crate::views::results::ResultEntry;
 /// A parsed error location from build output (kept for backward compat).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ErrorLocation {
-    pub file: String,
-    pub line: u32,
-    pub col: u32,
-    pub message: String,
+    pub(crate) file: String,
+    pub(crate) line: u32,
+    pub(crate) col: u32,
+    pub(crate) message: String,
 }
 
 /// Spawn an async build/test command. Parses output lines for errors.

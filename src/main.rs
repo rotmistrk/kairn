@@ -150,21 +150,21 @@ fn main() -> anyhow::Result<()> {
     let saved_session = session::load_session(&root_dir);
 
     // Build desktop
-    let git_keys = settings.git_keys.clone();
+    let git_keys = settings.git_keys().clone();
     let mut app_state = AppState::with_settings(root_dir.clone(), settings);
-    app_state.mcp_snapshot = Some(std::sync::Arc::clone(&mcp_snapshot));
-    let _ = PANIC_MESSAGES.set(app_state.messages.clone());
+    app_state.set_mcp_snapshot(std::sync::Arc::clone(&mcp_snapshot));
+    let _ = PANIC_MESSAGES.set(app_state.messages().clone());
     // Load Tcl config files (plugins may define new commands)
-    app_state.script.load_config(&root_dir);
-    app_state.plugins.add_plugin_dir(root_dir.join(".kairn/plugins"));
-    let plugin_warnings = app_state.plugins.refresh(&mut app_state.script);
+    app_state.script_mut().load_config(&root_dir);
+    app_state.add_plugin_dir(root_dir.join(".kairn/plugins"));
+    let plugin_warnings = app_state.refresh_plugins();
     for w in &plugin_warnings {
         log::warn!("plugin: {w}");
     }
-    kairn::completer::refresh_commands(&app_state.command_list, &app_state.script);
+    kairn::completer::refresh_commands(app_state.command_list(), app_state.script());
     kairn::handler_lsp_cmd::refresh_lsp_languages(&app_state);
     // Initialize theme
-    let theme_mode = match app_state.settings.theme_mode.as_str() {
+    let theme_mode = match app_state.settings().theme_mode() {
         "dark" => txv_core::palette::ThemeMode::Dark,
         "light" => txv_core::palette::ThemeMode::Light,
         _ => txv_core::palette::ThemeMode::Auto,
@@ -173,12 +173,12 @@ fn main() -> anyhow::Result<()> {
     theme.apply();
     // Apply chrome color overrides from Tcl config
     let framework_pal = txv_core::palette::palette();
-    let custom_pal = kairn::config_colors::apply_chrome_config(app_state.script.interpreter(), framework_pal);
+    let custom_pal = kairn::config_colors::apply_chrome_config(app_state.script().interpreter(), framework_pal);
     txv_core::palette::set_palette(custom_pal);
-    app_state.theme_state = Some(std::cell::RefCell::new(theme));
+    app_state.set_theme_state(theme);
 
     // Initialize glyphs
-    let glyph_tier = match app_state.settings.theme_glyphs.as_str() {
+    let glyph_tier = match app_state.settings().theme_glyphs() {
         "ascii" => txv_core::glyphs::GlyphTier::Ascii,
         "utf" => txv_core::glyphs::GlyphTier::Unicode,
         "nerd" => txv_core::glyphs::GlyphTier::Nerd,
@@ -186,7 +186,7 @@ fn main() -> anyhow::Result<()> {
     };
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
     let mut desktop = build_workspace(&root_dir, git_keys);
-    desktop.set_wide_threshold(app_state.settings.layout_wide_threshold);
+    desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
 
     // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
     if let Some(ref sess) = saved_session {
@@ -195,30 +195,30 @@ fn main() -> anyhow::Result<()> {
             &mut desktop,
             sess,
             &root_dir,
-            &app_state.settings.editor_defaults,
+            app_state.settings().editor_defaults(),
             app_state.current_syntax_theme(),
         );
         // Register restored tabs with broker
-        for tab in &sess.editor_tabs {
-            app_state.broker.open(&tab.path, kairn::desktop::SlotId::Center, 0);
+        for tab in sess.editor_tabs() {
+            app_state.broker_open(tab.path(), kairn::desktop::SlotId::Center, 0);
         }
         session::restore_kiro_tabs(
             &mut desktop,
-            &sess.kiro_sessions,
+            sess.kiro_sessions(),
             &root_dir,
-            &mut app_state.kiro_registry,
+            app_state.kiro_registry_mut(),
         );
     }
 
     // Build status bar
-    let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list.clone());
-    completer.set_lsp_languages(app_state.lsp_languages.clone());
+    let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list().clone());
+    completer.set_lsp_languages(app_state.lsp_languages().clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),
-        app_state.settings.clock_interval,
+        app_state.settings().clock_interval(),
         root_dir.clone(),
-        &app_state.settings.status_keys,
+        app_state.settings().status_keys(),
     );
 
     // Build program
@@ -227,12 +227,12 @@ fn main() -> anyhow::Result<()> {
     // Run
     let color_mode = detect_truecolor_mode();
     let mut backend = CrosstermBackend::new(color_mode);
-    app_state.waker = Some(backend.waker());
-    app_state.lsp.set_waker(backend.waker());
+    app_state.set_waker(backend.waker());
+    app_state.lsp_set_waker(backend.waker());
 
     // Now that waker is available, set up MCP command queue for write operations
     let cmd_queue = kairn::mcp::commands::McpCommandQueue::new(backend.waker());
-    app_state.mcp_commands = Some(cmd_queue.clone());
+    app_state.set_mcp_commands(cmd_queue.clone());
     if let Ok(mut guard) = mcp_cmd_queue.lock() {
         *guard = Some(cmd_queue);
     }
@@ -245,8 +245,8 @@ fn main() -> anyhow::Result<()> {
         );
     } else if let Some(ref sess) = saved_session {
         // Trigger LSP didOpen for session-restored files
-        for tab in &sess.editor_tabs {
-            let path = root_dir.join(&tab.path);
+        for tab in sess.editor_tabs() {
+            let path = root_dir.join(tab.path());
             program.sink().push_command(
                 kairn::commands::CM_OPEN_FILE,
                 Some(Box::new(kairn::commands::OpenFileRequest::new(path))),
@@ -259,7 +259,7 @@ fn main() -> anyhow::Result<()> {
     });
 
     // Shutdown all LSP servers gracefully
-    app_state.lsp.shutdown_all();
+    app_state.lsp_shutdown_all();
 
     // Save session on quit
     if let Some(desktop) = program
@@ -267,7 +267,7 @@ fn main() -> anyhow::Result<()> {
         .as_any_mut()
         .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
     {
-        session::save_session(desktop, &root_dir, &app_state.kiro_registry);
+        session::save_session(desktop, &root_dir, app_state.kiro_registry());
     }
 
     // Clean up MCP socket

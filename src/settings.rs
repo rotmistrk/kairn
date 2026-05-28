@@ -5,15 +5,21 @@ use txv_core::prelude::*;
 /// Per-editor-instance settings, cloned from AppSettings::editor_defaults on creation.
 #[derive(Debug, Clone)]
 pub struct EditorSettings {
-    pub wrap: bool,
-    pub list: bool,
-    pub tabstop: u16,
-    pub number: bool,
-    pub autosave: bool,
-    pub autosave_delay: u16,
-    pub cursor_insert: CursorStyle,
-    pub cursor_normal: CursorStyle,
-    pub cursor_command: CursorStyle,
+    pub(crate) wrap: bool,
+    pub(crate) list: bool,
+    pub(crate) tabstop: u16,
+    pub(crate) number: bool,
+    pub(crate) autosave: bool,
+    pub(crate) autosave_delay: u16,
+    pub(crate) cursor_insert: CursorStyle,
+    pub(crate) cursor_normal: CursorStyle,
+    pub(crate) cursor_command: CursorStyle,
+}
+
+impl EditorSettings {
+    pub fn set_autosave(&mut self, v: bool) {
+        self.autosave = v;
+    }
 }
 
 /// Cursor style: software (reverse block) or hardware (bar/block/underline).
@@ -44,10 +50,10 @@ impl Default for EditorSettings {
 /// Key bindings for the git changes panel.
 #[derive(Debug, Clone)]
 pub struct GitKeys {
-    pub stage: KeyEvent,
-    pub unstage: KeyEvent,
-    pub untrack: KeyEvent,
-    pub commit: KeyEvent,
+    pub(crate) stage: KeyEvent,
+    pub(crate) unstage: KeyEvent,
+    pub(crate) untrack: KeyEvent,
+    pub(crate) commit: KeyEvent,
 }
 
 impl Default for GitKeys {
@@ -76,44 +82,44 @@ impl Default for GitKeys {
 /// Global application settings.
 #[derive(Debug, Clone)]
 pub struct AppSettings {
-    pub clock_interval: u16,
-    pub scrollback_lines: u16,
-    pub max_tabs: u16,
-    pub theme_mode: String,
-    pub theme_syntax_dark: String,
-    pub theme_syntax_light: String,
-    pub theme_glyphs: String,
-    pub editor_defaults: EditorSettings,
-    pub build_command: Option<String>,
-    pub run_command: Option<String>,
-    pub test_command: Option<String>,
-    pub lsp_timeout: u64,
-    pub git_keys: GitKeys,
-    pub status_keys: StatusKeys,
+    pub(crate) clock_interval: u16,
+    pub(crate) scrollback_lines: u16,
+    pub(crate) max_tabs: u16,
+    pub(crate) theme_mode: String,
+    pub(crate) theme_syntax_dark: String,
+    pub(crate) theme_syntax_light: String,
+    pub(crate) theme_glyphs: String,
+    pub(crate) editor_defaults: EditorSettings,
+    pub(crate) build_command: Option<String>,
+    pub(crate) run_command: Option<String>,
+    pub(crate) test_command: Option<String>,
+    pub(crate) lsp_timeout: u64,
+    pub(crate) git_keys: GitKeys,
+    pub(crate) status_keys: StatusKeys,
     /// Seconds before a terminal tab is considered idle.
-    pub terminal_idle_timeout: u64,
+    pub(crate) terminal_idle_timeout: u64,
     /// Auto-close terminal tabs on exit.
-    pub terminal_auto_close: bool,
+    pub(crate) terminal_auto_close: bool,
     /// Width threshold to switch from tall to wide layout.
-    pub layout_wide_threshold: u16,
+    pub(crate) layout_wide_threshold: u16,
     /// Width threshold to switch from wide to tall layout.
-    pub layout_tall_threshold: u16,
+    pub(crate) layout_tall_threshold: u16,
 }
 
 /// Key bindings for the status bar (visible labels).
 #[derive(Debug, Clone)]
 pub struct StatusKeys {
-    pub help: KeyEvent,
-    pub tree: KeyEvent,
-    pub main: KeyEvent,
-    pub term: KeyEvent,
-    pub zoom: KeyEvent,
-    pub messages: KeyEvent,
-    pub quit: KeyEvent,
-    pub subpanel_focus: KeyEvent,
-    pub subpanel_move: KeyEvent,
-    pub subpanel_grow: KeyEvent,
-    pub subpanel_shrink: KeyEvent,
+    pub(crate) help: KeyEvent,
+    pub(crate) tree: KeyEvent,
+    pub(crate) main: KeyEvent,
+    pub(crate) term: KeyEvent,
+    pub(crate) zoom: KeyEvent,
+    pub(crate) messages: KeyEvent,
+    pub(crate) quit: KeyEvent,
+    pub(crate) subpanel_focus: KeyEvent,
+    pub(crate) subpanel_move: KeyEvent,
+    pub(crate) subpanel_grow: KeyEvent,
+    pub(crate) subpanel_shrink: KeyEvent,
 }
 
 impl Default for StatusKeys {
@@ -189,6 +195,33 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    pub fn git_keys(&self) -> &GitKeys {
+        &self.git_keys
+    }
+    pub fn theme_mode(&self) -> &str {
+        &self.theme_mode
+    }
+    pub fn theme_glyphs(&self) -> &str {
+        &self.theme_glyphs
+    }
+    pub fn layout_wide_threshold(&self) -> u16 {
+        self.layout_wide_threshold
+    }
+    pub fn editor_defaults(&self) -> &EditorSettings {
+        &self.editor_defaults
+    }
+    pub fn editor_defaults_mut(&mut self) -> &mut EditorSettings {
+        &mut self.editor_defaults
+    }
+    pub fn clock_interval(&self) -> u16 {
+        self.clock_interval
+    }
+    pub fn status_keys(&self) -> &StatusKeys {
+        &self.status_keys
+    }
+    pub fn set_max_tabs(&mut self, v: u16) {
+        self.max_tabs = v;
+    }
     /// Returns the syntax theme name for the current mode.
     pub fn syntax_theme_for_mode(&self, is_light: bool) -> &str {
         if is_light {

@@ -54,9 +54,9 @@ fn lsp_goto_def_parses_single_location() {
     });
     let locs = requests::parse_locations(&result);
     assert_eq!(locs.len(), 1);
-    assert_eq!(locs[0].uri, "file:///home/user/src/main.rs");
-    assert_eq!(locs[0].line, 42);
-    assert_eq!(locs[0].character, 4);
+    assert_eq!(locs[0].uri(), "file:///home/user/src/main.rs");
+    assert_eq!(locs[0].line(), 42);
+    assert_eq!(locs[0].character(), 4);
 }
 
 #[test]
@@ -73,8 +73,8 @@ fn lsp_goto_def_parses_location_link_array() {
     ]);
     let locs = requests::parse_locations(&result);
     assert_eq!(locs.len(), 2);
-    assert_eq!(locs[0].line, 10);
-    assert_eq!(locs[1].uri, "file:///b.rs");
+    assert_eq!(locs[0].line(), 10);
+    assert_eq!(locs[1].uri(), "file:///b.rs");
 }
 
 #[test]
@@ -95,8 +95,8 @@ fn lsp_find_refs_parses_multiple_locations() {
     ]);
     let locs = requests::parse_locations(&result);
     assert_eq!(locs.len(), 3);
-    assert_eq!(locs[2].uri, "file:///tests/test.rs");
-    assert_eq!(locs[2].line, 1);
+    assert_eq!(locs[2].uri(), "file:///tests/test.rs");
+    assert_eq!(locs[2].line(), 1);
 }
 
 // --- Test 5: hover response parsing ---
@@ -141,10 +141,10 @@ fn lsp_completion_parses_items_array() {
     });
     let items = requests::parse_completion(&result);
     assert_eq!(items.len(), 2);
-    assert_eq!(items[0].label, "println!");
-    assert_eq!(items[0].insert_text.as_deref(), Some("println!($0)"));
-    assert_eq!(items[1].detail.as_deref(), Some("macro"));
-    assert!(items[1].insert_text.is_none());
+    assert_eq!(items[0].label(), "println!");
+    assert_eq!(items[0].insert_text(), Some("println!($0)"));
+    assert_eq!(items[1].detail(), Some("macro"));
+    assert!(items[1].insert_text().is_none());
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn lsp_completion_parses_flat_array() {
     ]);
     let items = requests::parse_completion(&result);
     assert_eq!(items.len(), 2);
-    assert_eq!(items[1].label, "bar");
+    assert_eq!(items[1].label(), "bar");
 }
 
 #[test]

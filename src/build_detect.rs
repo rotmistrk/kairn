@@ -4,9 +4,9 @@ use std::path::Path;
 
 /// Detected build system with associated commands.
 pub struct BuildSystem {
-    pub build: &'static str,
-    pub test: &'static str,
-    pub test_file: Option<&'static str>,
+    pub(crate) build: &'static str,
+    pub(crate) test: &'static str,
+    pub(crate) test_file: Option<&'static str>,
 }
 
 /// Detect build system by scanning workspace root for marker files.

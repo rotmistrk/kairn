@@ -11,7 +11,7 @@ use crate::desktop::SlotId;
 
 /// A pending tab insertion waiting for the LRU tab's close to complete.
 pub struct PendingTab {
-    pub slot: SlotId,
-    pub title: String,
-    pub view: Box<dyn View>,
+    pub(crate) slot: SlotId,
+    pub(crate) title: String,
+    pub(crate) view: Box<dyn View>,
 }

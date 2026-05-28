@@ -6,17 +6,17 @@ use crate::app_palette::{set_app_palette, AppPalette};
 
 /// Runtime theme state — holds both palettes and supports hot-swap.
 pub struct ThemeState {
-    pub active: AppPalette,
-    pub dark: AppPalette,
-    pub light: AppPalette,
-    pub mode: ThemeMode,
+    pub(crate) active: AppPalette,
+    pub(crate) dark: AppPalette,
+    pub(crate) light: AppPalette,
+    pub(crate) mode: ThemeMode,
 }
 
 impl ThemeState {
     pub fn new(mode: ThemeMode) -> Self {
         let resolved = match mode {
             ThemeMode::Auto => txv_core::palette::detect_system_theme(),
-            ref m => m.clone(),
+            ref m => *m,
         };
         let dark = AppPalette::dark();
         let light = AppPalette::light();

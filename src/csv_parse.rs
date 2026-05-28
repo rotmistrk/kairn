@@ -9,10 +9,10 @@ pub enum ColType {
 
 /// Parsed CSV data.
 pub struct CsvData {
-    pub delimiter: char,
-    pub headers: Option<Vec<String>>,
-    pub rows: Vec<Vec<String>>,
-    pub col_types: Vec<ColType>,
+    pub(crate) delimiter: char,
+    pub(crate) headers: Option<Vec<String>>,
+    pub(crate) rows: Vec<Vec<String>>,
+    pub(crate) col_types: Vec<ColType>,
 }
 
 /// Detect delimiter from first few lines.

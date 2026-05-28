@@ -140,6 +140,14 @@ impl super::EditorView {
             self.state
                 .buffer_mut()
                 .print_line(0, prompt_y, &prompt_text, w, prompt_style);
+            // Draw cursor on prompt
+            if self.state.is_focused() {
+                let cx = prompt_text.len() as u16;
+                if cx < w {
+                    let cursor_style = txv_core::palette::palette().style(txv_core::palette::StyleId::InputCursor);
+                    self.state.buffer_mut().put(cx, prompt_y, ' ', cursor_style);
+                }
+            }
         }
     }
 }

@@ -21,11 +21,11 @@ pub enum SbsLine {
 
 /// Side-by-side diff state — both columns in one view.
 pub struct SbsDiffState {
-    pub left: Vec<SbsLine>,
-    pub right: Vec<SbsLine>,
-    pub scroll: usize,
-    pub cursor: usize,
-    pub base_ref: String,
+    pub(crate) left: Vec<SbsLine>,
+    pub(crate) right: Vec<SbsLine>,
+    pub(crate) scroll: usize,
+    pub(crate) cursor: usize,
+    pub(crate) base_ref: String,
 }
 
 /// Split unified diff lines into left (base) and right (current) streams.

@@ -49,10 +49,7 @@ fn cursor_present_after_split() {
     // Split
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: false,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::horizontal())),
     );
     h.run_cycles(3);
 
@@ -71,10 +68,7 @@ fn cursor_present_after_vsplit() {
     // Vsplit
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical())),
     );
     h.run_cycles(3);
 

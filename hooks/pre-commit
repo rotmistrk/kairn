@@ -75,4 +75,19 @@ if [ -n "$COLOR_VIOLATIONS" ]; then
     exit 1
 fi
 
+# 6. No bare `pub` fields in structs (use pub(crate) or accessors)
+echo "  pub fields..."
+PUB_FIELD_VIOLATIONS=""
+for f in $(find src -name '*.rs' 2>/dev/null); do
+    # Match lines with `pub <identifier>:` that are NOT pub(crate), pub(super), pub fn, pub struct, etc.
+    HITS=$(grep -n '^\s*pub [a-z_][a-z0-9_]*\s*:' "$f" | grep -v 'pub(crate)\|pub(super)\|pub(in ' || true)
+    if [ -n "$HITS" ]; then
+        PUB_FIELD_VIOLATIONS="$PUB_FIELD_VIOLATIONS\n  $f:\n$HITS"
+    fi
+done
+if [ -n "$PUB_FIELD_VIOLATIONS" ]; then
+    echo -e "❌ Bare pub fields found (use pub(crate) + accessors):$PUB_FIELD_VIOLATIONS"
+    exit 1
+fi
+
 echo "✅ All checks passed"

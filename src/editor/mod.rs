@@ -16,6 +16,7 @@ pub mod keymap_vim;
 mod keymap_vim_modes;
 pub mod motions;
 mod movement;
+pub mod options;
 pub mod save;
 mod search;
 mod visual;
@@ -24,12 +25,12 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
-use crate::settings::CursorStyle;
 
 use self::command::Command;
 use self::highlight_state::HighlightState;
 use self::keymap::EditorMode;
 use self::keymap_vim::VimKeymap;
+pub use self::options::EditorOptions;
 
 /// Result of executing a command.
 #[derive(Debug, PartialEq, Eq)]
@@ -65,66 +66,78 @@ pub enum EditorAction {
 
 /// The editor core — buffer + cursor + mode + registers + search.
 pub struct Editor {
-    pub buffer: Arc<Mutex<PieceTable>>,
-    pub cursor_line: usize,
-    pub cursor_col: usize,
+    pub(crate) buffer: Arc<Mutex<PieceTable>>,
+    pub(crate) cursor_line: usize,
+    pub(crate) cursor_col: usize,
     /// Sticky column: remembered column for vertical movement.
-    pub desired_col: Option<usize>,
-    pub mode: EditorMode,
-    pub keymap: VimKeymap,
-    pub register: String,
-    pub viewport_scroll: usize,
-    pub viewport_height: usize,
-    pub h_scroll: usize,
-    pub visual_anchor: Option<(usize, usize)>,
-    pub search_pattern: String,
-    pub search_direction_forward: bool,
-    pub command_buf: String,
-    pub command_history: Vec<String>,
-    pub history_index: Option<usize>,
-    pub history_prefix: String,
-    pub last_find: Option<(char, char)>,
-    pub last_command: Option<Command>,
-    pub status: String,
-    pub options: EditorOptions,
-    pub highlight: Option<HighlightState>,
-}
-
-/// Editor display options controlled by :set.
-#[derive(Debug, Clone)]
-pub struct EditorOptions {
-    pub list: bool,
-    pub number: bool,
-    pub wrap: bool,
-    pub tab_width: usize,
-    pub incsearch: bool,
-    pub matchparen: bool,
-    pub rainbow: bool,
-    pub guides: bool,
-    pub cursor_insert: CursorStyle,
-    pub cursor_normal: CursorStyle,
-    pub cursor_command: CursorStyle,
-}
-
-impl Default for EditorOptions {
-    fn default() -> Self {
-        Self {
-            list: false,
-            number: true,
-            wrap: true,
-            tab_width: 4,
-            incsearch: true,
-            matchparen: true,
-            rainbow: false,
-            guides: false,
-            cursor_insert: CursorStyle::Bar,
-            cursor_normal: CursorStyle::Software,
-            cursor_command: CursorStyle::Software,
-        }
-    }
+    pub(crate) desired_col: Option<usize>,
+    pub(crate) mode: EditorMode,
+    pub(crate) keymap: VimKeymap,
+    pub(crate) register: String,
+    pub(crate) viewport_scroll: usize,
+    pub(crate) viewport_height: usize,
+    pub(crate) h_scroll: usize,
+    pub(crate) visual_anchor: Option<(usize, usize)>,
+    pub(crate) search_pattern: String,
+    pub(crate) search_direction_forward: bool,
+    pub(crate) command_buf: String,
+    pub(crate) command_history: Vec<String>,
+    pub(crate) history_index: Option<usize>,
+    pub(crate) history_prefix: String,
+    pub(crate) last_find: Option<(char, char)>,
+    pub(crate) last_command: Option<Command>,
+    pub(crate) status: String,
+    pub(crate) options: EditorOptions,
+    pub(crate) highlight: Option<HighlightState>,
 }
 
 impl Editor {
+    pub fn cursor_line(&self) -> usize {
+        self.cursor_line
+    }
+    pub fn set_cursor_line(&mut self, v: usize) {
+        self.cursor_line = v;
+    }
+    pub fn cursor_col(&self) -> usize {
+        self.cursor_col
+    }
+    pub fn set_cursor_col(&mut self, v: usize) {
+        self.cursor_col = v;
+    }
+    pub fn set_viewport_height(&mut self, v: usize) {
+        self.viewport_height = v;
+    }
+    pub fn mode(&self) -> EditorMode {
+        self.mode
+    }
+    pub fn set_mode(&mut self, v: EditorMode) {
+        self.mode = v;
+    }
+    pub fn register(&self) -> &str {
+        &self.register
+    }
+    pub fn search_pattern(&self) -> &str {
+        &self.search_pattern
+    }
+    pub fn set_search_pattern(&mut self, pat: impl Into<String>) {
+        self.search_pattern = pat.into();
+    }
+    pub fn visual_anchor(&self) -> Option<(usize, usize)> {
+        self.visual_anchor
+    }
+    pub fn options(&self) -> &EditorOptions {
+        &self.options
+    }
+    pub fn options_mut(&mut self) -> &mut EditorOptions {
+        &mut self.options
+    }
+    pub fn command_buf(&self) -> &str {
+        &self.command_buf
+    }
+    pub fn status(&self) -> &str {
+        &self.status
+    }
+
     pub fn open(path: &Path) -> std::io::Result<Self> {
         let buffer = PieceTable::from_file(path.to_str().unwrap_or(""))?;
         Ok(Self::with_buffer(buffer))

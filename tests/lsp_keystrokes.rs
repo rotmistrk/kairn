@@ -145,12 +145,12 @@ fn results_view_shows_grep_title() {
         kairn::commands::CM_SHOW_RESULTS,
         Some(Box::new((
             "grep: todo".to_string(),
-            vec![kairn::views::results::ResultEntry {
-                path: dir.path().join("src/main.rs"),
-                line: 0,
-                col: 13,
-                text: "todo!();".to_string(),
-            }],
+            vec![kairn::views::results::ResultEntry::new(
+                dir.path().join("src/main.rs"),
+                0,
+                13,
+                "todo!();".to_string(),
+            )],
         ))),
     );
     h.run_cycles(2);
@@ -170,12 +170,12 @@ fn results_view_enter_opens_file() {
         kairn::commands::CM_SHOW_RESULTS,
         Some(Box::new((
             "References: bar".to_string(),
-            vec![kairn::views::results::ResultEntry {
-                path: dir.path().join("src/foo.rs"),
-                line: 1,
-                col: 0,
-                text: "line2".to_string(),
-            }],
+            vec![kairn::views::results::ResultEntry::new(
+                dir.path().join("src/foo.rs"),
+                1,
+                0,
+                "line2".to_string(),
+            )],
         ))),
     );
     h.run_cycles(2);

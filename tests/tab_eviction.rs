@@ -7,13 +7,8 @@ use kairn::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn open_file(h: &mut TestHarness, name: &str) {
-    let path = h.state.root_dir.join(name);
-    let req = OpenFileRequest {
-        path,
-        line: None,
-        col: None,
-        diff: false,
-    };
+    let path = h.state.root_dir().join(name);
+    let req = OpenFileRequest::new(path);
     h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }
 
@@ -21,7 +16,7 @@ fn open_file(h: &mut TestHarness, name: &str) {
 fn clean_lru_tab_evicted_when_at_limit() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.settings.max_tabs = 2;
+    h.state.settings_mut().set_max_tabs(2);
 
     open_file(&mut h, "a.rs");
     h.run_cycles(1);
@@ -38,8 +33,8 @@ fn clean_lru_tab_evicted_when_at_limit() {
 fn dirty_lru_triggers_close_prompt() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.settings.max_tabs = 2;
-    h.state.settings.editor_defaults.autosave = false;
+    h.state.settings_mut().set_max_tabs(2);
+    h.state.settings_mut().editor_defaults_mut().set_autosave(false);
 
     open_file(&mut h, "a.rs");
     h.run_cycles(2);
@@ -58,7 +53,7 @@ fn dirty_lru_triggers_close_prompt() {
     h.run_cycles(2);
 
     // pending_tab should be set (waiting for close prompt resolution)
-    assert!(h.state.pending_tab.is_some());
+    assert!(h.state.pending_tab().is_some());
     // a.rs should be the active tab (activated for close prompt)
     assert!(h.content_contains("Xaaa"));
 }
@@ -67,8 +62,8 @@ fn dirty_lru_triggers_close_prompt() {
 fn cancel_drops_new_tab() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.settings.max_tabs = 2;
-    h.state.settings.editor_defaults.autosave = false;
+    h.state.settings_mut().set_max_tabs(2);
+    h.state.settings_mut().editor_defaults_mut().set_autosave(false);
 
     open_file(&mut h, "a.rs");
     h.run_cycles(2);
@@ -98,8 +93,8 @@ fn cancel_drops_new_tab() {
 fn discard_evicts_and_opens_new() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb"), ("c.rs", "ccc")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.settings.max_tabs = 2;
-    h.state.settings.editor_defaults.autosave = false;
+    h.state.settings_mut().set_max_tabs(2);
+    h.state.settings_mut().editor_defaults_mut().set_autosave(false);
 
     open_file(&mut h, "a.rs");
     h.run_cycles(2);

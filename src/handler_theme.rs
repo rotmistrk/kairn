@@ -26,7 +26,7 @@ pub fn handle_toggle_theme(ctx: &mut CommandContext, state: &mut AppState) {
         }
         Some("auto") => {
             let detected = txv_core::palette::detect_system_theme();
-            ts.mode = detected.clone();
+            ts.mode = detected;
             ts.active = match detected {
                 txv_core::palette::ThemeMode::Light => ts.light.clone(),
                 _ => ts.dark.clone(),

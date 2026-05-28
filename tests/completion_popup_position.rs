@@ -32,12 +32,7 @@ fn ex(h: &mut TestHarness, cmd: &str) {
 fn inject_completion(h: &mut TestHarness, labels: &[&str]) {
     let items: Vec<CompletionItem> = labels
         .iter()
-        .map(|l| CompletionItem {
-            label: l.to_string(),
-            detail: None,
-            insert_text: None,
-            kind: CompletionKind::Other,
-        })
+        .map(|l| CompletionItem::new(l.to_string(), None, None, CompletionKind::Other))
         .collect();
     h.backend.inject(Event::Command {
         id: CM_LSP_COMPLETION,

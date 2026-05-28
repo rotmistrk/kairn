@@ -8,10 +8,10 @@ use kairn::mcp::commands::{McpAction, McpCommandQueue, McpRequest};
 use txv_core::run::Waker;
 
 fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json::Value, String> {
-    let queue = h.state.mcp_commands.as_ref().unwrap();
+    let queue = h.state.mcp_commands().as_ref().unwrap();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     if let Ok(mut q) = queue.queue_handle().lock() {
-        q.push_back(McpRequest { action, reply: tx });
+        q.push_back(McpRequest::new(action, tx));
     }
     h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     rx.recv().map_err(|e| e.to_string())?
@@ -23,7 +23,7 @@ fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json:
 fn mcp_eval_tcl_returns_result() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -39,7 +39,7 @@ fn mcp_eval_tcl_returns_result() {
 fn mcp_eval_tcl_error_returns_err() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -55,7 +55,7 @@ fn mcp_eval_tcl_error_returns_err() {
 fn mcp_eval_tcl_set_and_get_variable() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     exec_mcp_action(
         &mut h,
@@ -80,7 +80,7 @@ fn mcp_eval_tcl_set_and_get_variable() {
 fn mcp_git_stage_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -96,7 +96,7 @@ fn mcp_git_stage_dispatches() {
 fn mcp_git_unstage_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -112,7 +112,7 @@ fn mcp_git_unstage_dispatches() {
 fn mcp_git_commit_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -130,7 +130,7 @@ fn mcp_git_commit_dispatches() {
 fn mcp_lsp_hover_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::LspHover { name: String::new() });
     assert!(result.is_ok());
@@ -141,7 +141,7 @@ fn mcp_lsp_hover_dispatches() {
 fn mcp_lsp_definition_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::LspDefinition { name: String::new() });
     assert!(result.is_ok());
@@ -152,7 +152,7 @@ fn mcp_lsp_definition_dispatches() {
 fn mcp_lsp_references_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::LspReferences { name: String::new() });
     assert!(result.is_ok());
@@ -163,7 +163,7 @@ fn mcp_lsp_references_dispatches() {
 fn mcp_lsp_rename_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -182,7 +182,7 @@ fn mcp_lsp_rename_dispatches() {
 fn mcp_lsp_code_action_dispatches() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::LspCodeAction { name: String::new() });
     assert!(result.is_ok());
@@ -195,7 +195,7 @@ fn mcp_lsp_code_action_dispatches() {
 fn mcp_undo_on_active_editor() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     // Open a file first
     exec_mcp_action(
@@ -221,7 +221,7 @@ fn mcp_undo_on_active_editor() {
 fn mcp_redo_on_active_editor() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     exec_mcp_action(
         &mut h,

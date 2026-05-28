@@ -34,13 +34,13 @@ use crate::settings::{CursorStyle, EditorSettings};
 /// Per-line diff tag for inline diff rendering.
 pub struct EditorView {
     pub(crate) state: ViewState,
-    pub editor: Editor,
+    pub(crate) editor: Editor,
     pub(crate) path: PathBuf,
     root_dir: PathBuf,
     highlighter: Highlighter,
     hl_cache: std::cell::RefCell<crate::highlight_cache::HighlightCache>,
     pub(crate) file_ext: String,
-    pub settings: EditorSettings,
+    pub(crate) settings: EditorSettings,
     last_edit_tick: u64,
     tick_counter: u64,
     eviction_close: bool,
@@ -54,11 +54,11 @@ pub struct EditorView {
     /// Completion popup overlay.
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
-    pub buffer_id: Option<crate::buffer_registry::BufferId>,
+    pub(crate) buffer_id: Option<crate::buffer_registry::BufferId>,
     /// Persistence backend.
     store: Box<dyn crate::buffer_store::BufferStore>,
     /// Highlighted word (from gs — clears on next keypress). (line, col_start, col_end)
-    pub highlight_word: Option<(usize, usize, usize)>,
+    pub(crate) highlight_word: Option<(usize, usize, usize)>,
     /// Last known mtime of the file on disk (for external change detection).
     disk_mtime: Option<std::time::SystemTime>,
 }

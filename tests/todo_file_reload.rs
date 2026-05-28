@@ -21,8 +21,8 @@ fn reload_detects_external_change() {
     let dir = TempDir::new().unwrap();
     let path = setup_todo(&dir);
     let mut data = TodoTreeData::new(&path);
-    assert_eq!(data.file.items.len(), 1);
-    assert_eq!(data.file.items[0].title, "Task A");
+    assert_eq!(data.file().items.len(), 1);
+    assert_eq!(data.file().items[0].title, "Task A");
 
     // Simulate external modification
     thread::sleep(Duration::from_millis(50));
@@ -30,8 +30,8 @@ fn reload_detects_external_change() {
     fs::write(&path, new_content).unwrap();
 
     assert!(data.reload_if_changed());
-    assert_eq!(data.file.items.len(), 2);
-    assert_eq!(data.file.items[1].title, "Task B");
+    assert_eq!(data.file().items.len(), 2);
+    assert_eq!(data.file().items[1].title, "Task B");
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn save_updates_mtime() {
     let mut data = TodoTreeData::new(&path);
 
     // Modify in memory and save
-    data.file.items[0].title = "Modified".to_string();
+    data.file_mut().items[0].title = "Modified".to_string();
     data.save();
 
     // After save, no external change detected

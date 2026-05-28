@@ -20,8 +20,8 @@ pub enum LspMessage {
 /// JSON-RPC error object.
 #[derive(Debug, Clone)]
 pub struct RpcError {
-    pub code: i64,
-    pub message: String,
+    pub(crate) code: i64,
+    pub(crate) message: String,
 }
 
 /// Encode a JSON-RPC request with Content-Length header.

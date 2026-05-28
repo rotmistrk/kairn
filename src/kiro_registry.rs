@@ -7,8 +7,8 @@ use crate::session::schema::KiroSessionState;
 /// Metadata for a single kiro tab.
 #[derive(Debug, Clone)]
 pub struct KiroSession {
-    pub display_name: String,
-    pub session_id: Option<String>,
+    pub(crate) display_name: String,
+    pub(crate) session_id: Option<String>,
 }
 
 /// Registry of active kiro tabs, keyed by tab title (e.g. "Kiro:0").

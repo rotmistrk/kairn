@@ -10,17 +10,17 @@ use kairn::editor::{Editor, EditorAction};
 fn visual_mode_enter_exit() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::EnterVisual);
-    assert_eq!(ed.mode, EditorMode::Visual);
+    assert_eq!(ed.mode(), EditorMode::Visual);
     ed.execute(Command::ExitVisual);
-    assert_eq!(ed.mode, EditorMode::Normal);
+    assert_eq!(ed.mode(), EditorMode::Normal);
 }
 
 #[test]
 fn visual_line_mode_enter() {
     let mut ed = Editor::from_text("line1\nline2\nline3");
     ed.execute(Command::EnterVisualLine);
-    assert_eq!(ed.mode, EditorMode::VisualLine);
-    assert_eq!(ed.visual_anchor, Some((0, 0)));
+    assert_eq!(ed.mode(), EditorMode::VisualLine);
+    assert_eq!(ed.visual_anchor(), Some((0, 0)));
 }
 
 #[test]
@@ -32,9 +32,9 @@ fn visual_delete_chars() {
         ed.execute(Command::MoveRight);
     }
     ed.execute(Command::VisualDelete);
-    assert_eq!(ed.mode, EditorMode::Normal);
+    assert_eq!(ed.mode(), EditorMode::Normal);
     assert_eq!(ed.buf().content(), " world");
-    assert_eq!(ed.register, "hello");
+    assert_eq!(ed.register(), "hello");
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn visual_delete_across_lines() {
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualDelete);
     // Should delete from (0,0) to (1,0) inclusive
-    assert_eq!(ed.mode, EditorMode::Normal);
+    assert_eq!(ed.mode(), EditorMode::Normal);
     // The exact result depends on selection range
     assert!(!ed.buf().content().starts_with("abc"));
 }
@@ -55,7 +55,7 @@ fn visual_line_delete() {
     ed.execute(Command::EnterVisualLine);
     ed.execute(Command::MoveDown); // select line1 and line2
     ed.execute(Command::VisualDelete);
-    assert_eq!(ed.mode, EditorMode::Normal);
+    assert_eq!(ed.mode(), EditorMode::Normal);
     assert_eq!(ed.buf().content(), "line3");
 }
 
@@ -67,8 +67,8 @@ fn visual_yank() {
         ed.execute(Command::MoveRight);
     }
     ed.execute(Command::VisualYank);
-    assert_eq!(ed.mode, EditorMode::Normal);
-    assert_eq!(ed.register, "hello");
+    assert_eq!(ed.mode(), EditorMode::Normal);
+    assert_eq!(ed.register(), "hello");
     // Buffer unchanged
     assert_eq!(ed.buf().content(), "hello world");
 }
@@ -100,35 +100,35 @@ fn visual_unindent() {
 fn search_forward_finds_match() {
     let mut ed = Editor::from_text("hello world hello");
     ed.execute(Command::SearchForward("world".to_string()));
-    assert_eq!(ed.cursor_col, 6);
-    assert_eq!(ed.cursor_line, 0);
+    assert_eq!(ed.cursor_col(), 6);
+    assert_eq!(ed.cursor_line(), 0);
 }
 
 #[test]
 fn search_forward_wraps() {
     let mut ed = Editor::from_text("abc def abc");
-    ed.cursor_col = 5; // past first "abc"
+    ed.set_cursor_col(5); // past first "abc"
     ed.execute(Command::SearchForward("abc".to_string()));
     // Should find second "abc" at col 8
-    assert_eq!(ed.cursor_col, 8);
+    assert_eq!(ed.cursor_col(), 8);
 }
 
 #[test]
 fn search_next_repeats() {
     let mut ed = Editor::from_text("aaa bbb aaa bbb");
     ed.execute(Command::SearchForward("bbb".to_string()));
-    assert_eq!(ed.cursor_col, 4);
+    assert_eq!(ed.cursor_col(), 4);
     ed.execute(Command::SearchNext);
-    assert_eq!(ed.cursor_col, 12);
+    assert_eq!(ed.cursor_col(), 12);
 }
 
 #[test]
 fn search_prev_goes_backward() {
     let mut ed = Editor::from_text("abc xyz abc xyz");
-    ed.cursor_col = 10;
-    ed.search_pattern = "abc".to_string();
+    ed.set_cursor_col(10);
+    ed.set_search_pattern("abc");
     ed.execute(Command::SearchPrev);
-    assert_eq!(ed.cursor_col, 0);
+    assert_eq!(ed.cursor_col(), 0);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn search_word_under_cursor() {
     // cursor on "foo" at col 0
     ed.execute(Command::SearchWordForward);
     // Should jump to second "foo" at col 8
-    assert_eq!(ed.cursor_col, 8);
+    assert_eq!(ed.cursor_col(), 8);
 }
 
 // --- Ex command tests ---
@@ -147,7 +147,7 @@ fn ex_goto_line() {
     let mut ed = Editor::from_text("a\nb\nc\nd\ne");
     let action = ed.execute(Command::ExCommand("3".to_string()));
     assert_eq!(action, EditorAction::CursorMoved);
-    assert_eq!(ed.cursor_line, 2); // 0-indexed
+    assert_eq!(ed.cursor_line(), 2); // 0-indexed
 }
 
 #[test]
@@ -184,8 +184,8 @@ fn ex_delete_lines() {
 fn ex_yank_lines() {
     let mut ed = Editor::from_text("line1\nline2\nline3");
     ed.execute(Command::ExCommand("%y".to_string()));
-    assert!(ed.register.contains("line1"));
-    assert!(ed.register.contains("line3"));
+    assert!(ed.register().contains("line1"));
+    assert!(ed.register().contains("line3"));
 }
 
 #[test]
@@ -247,23 +247,23 @@ fn indent_unindent() {
 fn find_char_forward() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::FindChar('o'));
-    assert_eq!(ed.cursor_col, 4);
+    assert_eq!(ed.cursor_col(), 4);
 }
 
 #[test]
 fn find_char_backward() {
     let mut ed = Editor::from_text("hello world");
-    ed.cursor_col = 8;
+    ed.set_cursor_col(8);
     ed.execute(Command::FindCharBack('o'));
     // 'o' in "world" is at col 7, which is the first 'o' before col 8
-    assert_eq!(ed.cursor_col, 7);
+    assert_eq!(ed.cursor_col(), 7);
 }
 
 #[test]
 fn match_bracket_works() {
     let mut ed = Editor::from_text("(hello)");
     ed.execute(Command::MatchBracket);
-    assert_eq!(ed.cursor_col, 6);
+    assert_eq!(ed.cursor_col(), 6);
     ed.execute(Command::MatchBracket);
-    assert_eq!(ed.cursor_col, 0);
+    assert_eq!(ed.cursor_col(), 0);
 }

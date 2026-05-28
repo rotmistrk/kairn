@@ -52,9 +52,9 @@ impl AppCompleter {
 
 /// A concrete completion candidate.
 pub(crate) struct Entry {
-    pub text: String,
-    pub display: String,
-    pub kind: &'static str,
+    pub(crate) text: String,
+    pub(crate) display: String,
+    pub(crate) kind: &'static str,
 }
 
 impl Completion for Entry {

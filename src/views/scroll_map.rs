@@ -6,9 +6,9 @@
 /// Bidirectional line mapping for synchronized scrolling.
 pub struct ScrollMap {
     /// For each line in pane 0, the corresponding line in pane 1.
-    pub left_to_right: Vec<usize>,
+    pub(crate) left_to_right: Vec<usize>,
     /// For each line in pane 1, the corresponding line in pane 0.
-    pub right_to_left: Vec<usize>,
+    pub(crate) right_to_left: Vec<usize>,
 }
 
 impl ScrollMap {

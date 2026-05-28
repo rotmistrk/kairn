@@ -38,10 +38,10 @@ fn read_todo(dir: &std::path::Path) -> duir_core::TodoFile {
 
 /// Helper: push an MCP action and trigger drain via dispatch_command.
 fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json::Value, String> {
-    let queue = h.state.mcp_commands.as_ref().unwrap();
+    let queue = h.state.mcp_commands().as_ref().unwrap();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     if let Ok(mut q) = queue.queue_handle().lock() {
-        q.push_back(McpRequest { action, reply: tx });
+        q.push_back(McpRequest::new(action, tx));
     }
     h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     rx.recv().map_err(|e| e.to_string())?
@@ -51,7 +51,7 @@ fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json:
 fn mcp_update_todo_toggle() {
     let dir = temp_project_with_todo(&[("task one", false), ("task two", true)]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::TodoToggle { path: vec![0] });
     assert!(result.is_ok(), "toggle failed: {result:?}");
@@ -73,7 +73,7 @@ fn mcp_update_todo_toggle() {
 fn mcp_update_todo_add() {
     let dir = temp_project_with_todo(&[("existing", false)]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -93,7 +93,7 @@ fn mcp_update_todo_add() {
 fn mcp_update_todo_remove() {
     let dir = temp_project_with_todo(&[("keep", false), ("remove me", true)]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::TodoRemove { path: vec![1] });
     assert!(result.is_ok(), "remove failed: {result:?}");
@@ -107,7 +107,7 @@ fn mcp_update_todo_remove() {
 fn mcp_update_todo_move_down() {
     let dir = temp_project_with_todo(&[("first", false), ("second", false)]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::TodoMoveDown { path: vec![0] });
     assert!(result.is_ok(), "move_down failed: {result:?}");
@@ -122,7 +122,7 @@ fn mcp_list_tabs_includes_active_field() {
     let dir = temp_project_with_todo(&[]);
     let mut h = TestHarness::new(dir.path());
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
 
     for _ in 0..25 {
         h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));

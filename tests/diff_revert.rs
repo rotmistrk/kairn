@@ -6,14 +6,7 @@ use txv_core::event::{KeyCode, KeyEvent, KeyMod};
 use txv_core::prelude::*;
 
 fn make_diff_state(lines: Vec<DiffLine>, cursor: usize) -> DiffState {
-    DiffState {
-        lines,
-        scroll: 0,
-        cursor,
-        base_ref: "HEAD".to_string(),
-        context_lines: 2,
-        ignore_ws: false,
-    }
+    DiffState::new(lines, cursor, "HEAD", 2, false)
 }
 
 #[test]
@@ -38,7 +31,7 @@ fn revert_added_lines() {
 
     let result = view.revert_hunk();
     assert!(result.is_ok(), "revert_hunk failed: {:?}", result);
-    assert_eq!(view.editor.buf().content(), "aaa\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nccc\n");
 }
 
 #[test]
@@ -66,7 +59,7 @@ fn revert_deleted_lines() {
 
     let result = view.revert_hunk();
     assert!(result.is_ok(), "revert_hunk failed: {:?}", result);
-    assert_eq!(view.editor.buf().content(), "aaa\nbbb\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nbbb\nccc\n");
 }
 
 #[test]
@@ -95,7 +88,7 @@ fn revert_replaced_lines() {
 
     let result = view.revert_hunk();
     assert!(result.is_ok(), "revert_hunk failed: {:?}", result);
-    assert_eq!(view.editor.buf().content(), "aaa\nbbb\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nbbb\nccc\n");
 }
 
 #[test]
@@ -161,7 +154,7 @@ fn revert_via_r_hotkey() {
     });
     view.handle(&key);
 
-    assert_eq!(view.editor.buf().content(), "aaa\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nccc\n");
 }
 
 #[test]
@@ -188,7 +181,7 @@ fn revert_multi_line_added() {
 
     let result = view.revert_hunk();
     assert!(result.is_ok());
-    assert_eq!(view.editor.buf().content(), "aaa\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nccc\n");
 }
 
 #[test]
@@ -226,5 +219,5 @@ fn revert_multi_line_replacement() {
 
     let result = view.revert_hunk();
     assert!(result.is_ok());
-    assert_eq!(view.editor.buf().content(), "aaa\nold1\nold2\nold3\nccc\n");
+    assert_eq!(view.editor().buf().content(), "aaa\nold1\nold2\nold3\nccc\n");
 }

@@ -16,11 +16,23 @@ pub enum Severity {
 /// A single diagnostic (error/warning) at a location.
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
-    pub line: usize,
-    pub col_start: usize,
-    pub col_end: usize,
-    pub severity: Severity,
-    pub message: String,
+    pub(crate) line: usize,
+    pub(crate) col_start: usize,
+    pub(crate) col_end: usize,
+    pub(crate) severity: Severity,
+    pub(crate) message: String,
+}
+
+impl Diagnostic {
+    pub fn new(line: usize, col_start: usize, col_end: usize, severity: Severity, message: impl Into<String>) -> Self {
+        Self {
+            line,
+            col_start,
+            col_end,
+            severity,
+            message: message.into(),
+        }
+    }
 }
 
 /// Diagnostics storage — maps file URI to diagnostics list.

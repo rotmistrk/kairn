@@ -53,12 +53,12 @@ fn completion_replaces_entire_word_under_cursor() {
 
     inject_completion(
         &mut h,
-        vec![CompletionItem {
-            label: "GetLogLevel".into(),
-            detail: None,
-            insert_text: Some("GetLogLevel".into()),
-            kind: kairn::lsp::requests::CompletionKind::Other,
-        }],
+        vec![CompletionItem::new(
+            "GetLogLevel",
+            None,
+            Some("GetLogLevel".into()),
+            kairn::lsp::requests::CompletionKind::Other,
+        )],
     );
     accept(&mut h);
 
@@ -84,12 +84,12 @@ fn completion_replaces_prefix_at_end_of_word() {
 
     inject_completion(
         &mut h,
-        vec![CompletionItem {
-            label: "println".into(),
-            detail: None,
-            insert_text: Some("println".into()),
-            kind: kairn::lsp::requests::CompletionKind::Other,
-        }],
+        vec![CompletionItem::new(
+            "println",
+            None,
+            Some("println".into()),
+            kairn::lsp::requests::CompletionKind::Other,
+        )],
     );
     accept(&mut h);
 
@@ -114,18 +114,8 @@ fn completion_popup_draws_near_cursor() {
     inject_completion(
         &mut h,
         vec![
-            CompletionItem {
-                label: "println".into(),
-                detail: None,
-                insert_text: None,
-                kind: kairn::lsp::requests::CompletionKind::Other,
-            },
-            CompletionItem {
-                label: "print".into(),
-                detail: None,
-                insert_text: None,
-                kind: kairn::lsp::requests::CompletionKind::Other,
-            },
+            CompletionItem::new("println", None, None, kairn::lsp::requests::CompletionKind::Other),
+            CompletionItem::new("print", None, None, kairn::lsp::requests::CompletionKind::Other),
         ],
     );
     h.run_cycles(1);
@@ -150,12 +140,12 @@ fn cursor_at_end_after_completion() {
 
     inject_completion(
         &mut h,
-        vec![CompletionItem {
-            label: "hello_world".into(),
-            detail: None,
-            insert_text: Some("hello_world".into()),
-            kind: kairn::lsp::requests::CompletionKind::Other,
-        }],
+        vec![CompletionItem::new(
+            "hello_world",
+            None,
+            Some("hello_world".into()),
+            kairn::lsp::requests::CompletionKind::Other,
+        )],
     );
     accept(&mut h);
 

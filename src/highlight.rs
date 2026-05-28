@@ -9,8 +9,8 @@ use txv_core::prelude::{Color, Style};
 
 /// A span of highlighted text.
 pub struct HlSpan {
-    pub text: String,
-    pub style: Style,
+    pub(crate) text: String,
+    pub(crate) style: Style,
 }
 
 impl HlSpan {

@@ -6,11 +6,11 @@ use std::sync::{Arc, Mutex};
 /// A single commit entry for display.
 #[derive(Debug, Clone)]
 pub struct CommitEntry {
-    pub hash: String,
-    pub summary: String,
-    pub author: String,
-    pub time_secs: i64,
-    pub decorations: Vec<String>,
+    pub(crate) hash: String,
+    pub(crate) summary: String,
+    pub(crate) author: String,
+    pub(crate) time_secs: i64,
+    pub(crate) decorations: Vec<String>,
 }
 
 /// State of the log loading.

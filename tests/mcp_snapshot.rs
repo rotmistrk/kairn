@@ -30,17 +30,17 @@ fn mcp_snapshot_collects_editor_tabs() {
         .expect("desktop is Desktop");
     let snap = collect_snapshot(lg);
 
-    assert!(!snap.tabs.is_empty(), "Expected tabs in snapshot");
-    let editor_tab = snap.tabs.iter().find(|t| t.tab_type == "editor");
+    assert!(!snap.tabs().is_empty(), "Expected tabs in snapshot");
+    let editor_tab = snap.tabs().iter().find(|t| t.tab_type() == "editor");
     assert!(editor_tab.is_some(), "Expected an editor tab in snapshot");
 
     // New fields: cursor, modified, order
     let tab = editor_tab.unwrap();
-    assert!(tab.cursor.is_some(), "Editor tab should have cursor");
-    assert_eq!(tab.cursor.as_ref().unwrap().line, 0);
-    assert_eq!(tab.cursor.as_ref().unwrap().col, 0);
-    assert!(!tab.modified, "Freshly opened file should not be modified");
-    assert!(tab.path.is_some());
+    assert!(tab.cursor().is_some(), "Editor tab should have cursor");
+    assert_eq!(tab.cursor().unwrap().line(), 0);
+    assert_eq!(tab.cursor().unwrap().col(), 0);
+    assert!(!tab.modified(), "Freshly opened file should not be modified");
+    assert!(tab.path().is_some());
 }
 
 #[test]
@@ -48,7 +48,7 @@ fn mcp_snapshot_handler_updates_arc() {
     let dir = temp_project(&[("a.txt", "hello\n")]);
     let mut h = TestHarness::new(dir.path());
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
 
     // Open file to generate commands
     h.dispatch_command(
@@ -65,7 +65,7 @@ fn mcp_snapshot_handler_updates_arc() {
 
     let locked = snap.lock().unwrap();
     assert!(
-        !locked.tabs.is_empty(),
+        !locked.tabs().is_empty(),
         "Expected snapshot populated after 20+ commands"
     );
 }
@@ -104,9 +104,9 @@ fn mcp_snapshot_tracks_focus_and_slot() {
         .unwrap();
     let snap = collect_snapshot(lg);
 
-    assert_eq!(snap.focused_slot, "center");
+    assert_eq!(snap.focused_slot(), "center");
     // Exactly one tab should be focused
-    let focused_count = snap.tabs.iter().filter(|t| t.focused).count();
+    let focused_count = snap.tabs().iter().filter(|t| t.focused()).count();
     assert_eq!(focused_count, 1, "Exactly one tab should be focused");
 }
 
@@ -124,8 +124,8 @@ fn mcp_snapshot_terminal_index() {
     let snap = collect_snapshot(lg);
 
     // Terminal tabs should have sequential indices
-    for (i, term) in snap.terminals.iter().enumerate() {
-        assert_eq!(term.index, i);
+    for (i, term) in snap.terminals().iter().enumerate() {
+        assert_eq!(term.index(), i);
     }
 }
 
@@ -137,7 +137,7 @@ fn mcp_tool_list_tabs_includes_new_fields() {
     let dir = temp_project(&[("x.rs", "fn x() {}\n")]);
     let mut h = TestHarness::new(dir.path());
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
 
     h.dispatch_command(
         kairn::commands::CM_OPEN_FILE,
@@ -167,14 +167,14 @@ fn mcp_tool_get_terminal_by_index() {
     let dir = temp_project(&[]);
     let mut h = TestHarness::new(dir.path());
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
 
     for _ in 0..25 {
         h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     }
 
     let locked = snap.lock().unwrap();
-    if locked.terminals.is_empty() {
+    if locked.terminals().is_empty() {
         return; // No terminals in test env (no PTY)
     }
     drop(locked);

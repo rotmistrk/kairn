@@ -7,9 +7,9 @@ use similar::{ChangeTag, TextDiff};
 /// Options for diff generation.
 pub struct DiffOptions {
     /// Number of context lines around changes (default 3).
-    pub context: usize,
+    pub(crate) context: usize,
     /// Ignore whitespace differences.
-    pub ignore_whitespace: bool,
+    pub(crate) ignore_whitespace: bool,
 }
 
 impl Default for DiffOptions {

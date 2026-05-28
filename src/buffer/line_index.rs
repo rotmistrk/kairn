@@ -3,7 +3,7 @@
 /// Tracks line start byte offsets for fast line↔offset conversion.
 pub struct LineIndex {
     /// Byte offset of the start of each line. line_starts[0] is always 0.
-    pub line_starts: Vec<usize>,
+    pub(crate) line_starts: Vec<usize>,
 }
 
 impl LineIndex {

@@ -77,7 +77,7 @@ fn no_pty_badge_on_fallback_terminal() {
 
     // Even with pty_last_output set, FallbackTerminal won't get badges
     // because downcast to PtyTerminal fails
-    h.state.pty_last_output.insert(0, std::time::Instant::now());
+    h.state.record_pty_output(0, std::time::Instant::now());
     h.run_cycles(2);
 
     let screen = h.screen_text();

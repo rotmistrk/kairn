@@ -1,50 +1,13 @@
 //! Kairn-specific command identifiers.
 //! Core commands (CM_QUIT, CM_CLOSE, etc.) live in txv_core::commands.
 
-use std::path::PathBuf;
+mod context;
+mod data;
+
+pub use context::{ViewContext, ViewContextBuilder};
+pub use data::{ConfirmContext, ContentChanged, DiffSplitRequest, OpenFileRequest, SplitRequest};
 
 use txv_core::event::CommandId;
-
-/// Data payload for CM_OPEN_FILE / CM_OPEN_FILE_FOCUS commands.
-#[derive(Debug, Clone)]
-pub struct OpenFileRequest {
-    pub path: PathBuf,
-    /// 0-indexed line to jump to after opening.
-    pub line: Option<u32>,
-    /// 0-indexed column to jump to after opening.
-    pub col: Option<u32>,
-    /// Open in diff mode (vs HEAD).
-    pub diff: bool,
-}
-
-impl OpenFileRequest {
-    pub fn new(path: PathBuf) -> Self {
-        Self {
-            path,
-            line: None,
-            col: None,
-            diff: false,
-        }
-    }
-
-    pub fn at(path: PathBuf, line: u32, col: u32) -> Self {
-        Self {
-            path,
-            line: Some(line),
-            col: Some(col),
-            diff: false,
-        }
-    }
-
-    pub fn with_diff(path: PathBuf) -> Self {
-        Self {
-            path,
-            line: None,
-            col: None,
-            diff: true,
-        }
-    }
-}
 
 // File operations
 pub const CM_APP_BASE: CommandId = txv_core::commands::CM_TXV_MAX + 1;
@@ -111,13 +74,6 @@ pub const CM_NOBLAME: CommandId = CM_APP_BASE + 98;
 /// Editor content changed — triggers didChange to LSP server.
 pub const CM_CONTENT_CHANGED: CommandId = CM_APP_BASE + 100;
 
-/// Payload for CM_CONTENT_CHANGED.
-#[derive(Debug, Clone)]
-pub struct ContentChanged {
-    pub path: PathBuf,
-    pub content: String,
-}
-
 /// Show results in a quickfix-style list (data: Vec<ResultEntry>).
 pub const CM_SHOW_RESULTS: CommandId = CM_APP_BASE + 101;
 pub const CM_GOTO_LINE: CommandId = CM_APP_BASE + 102;
@@ -131,21 +87,6 @@ pub const CM_CONFIRM: CommandId = CM_APP_BASE + 110;
 pub const CM_CONFIRM_RESPONSE: CommandId = CM_APP_BASE + 111;
 /// Sets the confirm context (data: ConfirmContext). Handled by main handler.
 pub const CM_SET_CONFIRM_CONTEXT: CommandId = CM_APP_BASE + 112;
-
-/// Context for which confirmation is active — used to route CM_CONFIRM_RESPONSE.
-#[derive(Debug, Clone)]
-pub enum ConfirmContext {
-    /// Editor close: save? (payload: file path)
-    EditorClose(String),
-    /// File changed on disk: reload? (payload: file path)
-    FileReload(String),
-    /// Quit with unsaved changes
-    Quit,
-    /// Todo tree: delete item
-    TodoDelete,
-    /// Todo tree: crypto passphrase prompt
-    TodoCrypto,
-}
 
 // Context broadcast
 pub const CM_CONTEXT_UPDATE: CommandId = CM_APP_BASE + 120;
@@ -193,34 +134,3 @@ pub const CM_TREE_MARK: CommandId = CM_APP_BASE + 176;
 pub const CM_TREE_UNMARK_ALL: CommandId = CM_APP_BASE + 177;
 pub const CM_TREE_MOVE_MARKED: CommandId = CM_APP_BASE + 178;
 pub const CM_TREE_COPY_MARKED: CommandId = CM_APP_BASE + 179;
-
-/// Payload for CM_SPLIT.
-#[derive(Debug, Clone)]
-pub struct SplitRequest {
-    /// true = vertical (left|right), false = horizontal (top/bottom)
-    pub vertical: bool,
-    /// Optional file to open in the new pane (None = same file).
-    pub file: Option<String>,
-}
-
-/// Payload for CM_DIFF_SPLIT — side-by-side diff.
-#[derive(Debug, Clone)]
-pub struct DiffSplitRequest {
-    pub base_content: String,
-    pub base_ref: String,
-}
-
-/// Context collected from the active view each tick.
-#[derive(Debug, Clone, Default)]
-pub struct ViewContext {
-    pub file: Option<String>,
-    pub line: u32,
-    pub col: u32,
-    pub mode: String,
-    pub modified: bool,
-    pub language: String,
-    pub title: String,
-    pub selection_lines: u32,
-    pub git_branch: String,
-    pub lsp_status: String,
-}

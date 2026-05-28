@@ -11,10 +11,10 @@ use txv_core::run::Waker;
 
 /// Push an MCP action and trigger drain via dispatch_command.
 fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json::Value, String> {
-    let queue = h.state.mcp_commands.as_ref().unwrap();
+    let queue = h.state.mcp_commands().as_ref().unwrap();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     if let Ok(mut q) = queue.queue_handle().lock() {
-        q.push_back(McpRequest { action, reply: tx });
+        q.push_back(McpRequest::new(action, tx));
     }
     h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     rx.recv().map_err(|e| e.to_string())?
@@ -24,7 +24,7 @@ fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json:
 fn mcp_open_file_creates_tab() {
     let dir = temp_project(&[("src/lib.rs", "pub fn hello() {}\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -36,12 +36,12 @@ fn mcp_open_file_creates_tab() {
 
     // Verify tab exists via snapshot
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
     for _ in 0..25 {
         h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     }
     let locked = snap.lock().unwrap();
-    let has_tab = locked.tabs.iter().any(|t| t.name.contains("lib.rs"));
+    let has_tab = locked.tabs().iter().any(|t| t.name().contains("lib.rs"));
     assert!(has_tab, "Expected lib.rs tab in snapshot");
 }
 
@@ -49,7 +49,7 @@ fn mcp_open_file_creates_tab() {
 fn mcp_create_file_writes_and_opens() {
     let dir = temp_project(&[("dummy.txt", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -70,7 +70,7 @@ fn mcp_create_file_writes_and_opens() {
 fn mcp_close_tab_removes_tab() {
     let dir = temp_project(&[("a.txt", "aaa\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     // First open the file via MCP
     let result = exec_mcp_action(
@@ -95,7 +95,7 @@ fn mcp_close_tab_removes_tab() {
 fn mcp_open_file_not_found_returns_error() {
     let dir = temp_project(&[("dummy.txt", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -111,7 +111,7 @@ fn mcp_open_file_not_found_returns_error() {
 fn mcp_edit_buffer_replaces_lines() {
     let dir = temp_project(&[("a.txt", "line1\nline2\nline3\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     // Open the file
     exec_mcp_action(
@@ -150,7 +150,7 @@ fn mcp_edit_buffer_replaces_lines() {
 fn mcp_insert_text_at_position() {
     let dir = temp_project(&[("b.txt", "hello world\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     exec_mcp_action(
         &mut h,
@@ -186,7 +186,7 @@ fn mcp_insert_text_at_position() {
 fn mcp_set_cursor_moves_position() {
     let dir = temp_project(&[("c.txt", "aaa\nbbb\nccc\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     exec_mcp_action(
         &mut h,
@@ -211,7 +211,7 @@ fn mcp_set_cursor_moves_position() {
 fn mcp_save_file_persists() {
     let dir = temp_project(&[("d.txt", "original\n")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     exec_mcp_action(
         &mut h,

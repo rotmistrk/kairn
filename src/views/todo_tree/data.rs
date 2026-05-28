@@ -18,16 +18,23 @@ struct FlatNode {
 
 /// Data provider for the todo tree.
 pub struct TodoTreeData {
-    pub file: TodoFile,
+    pub(crate) file: TodoFile,
     file_path: PathBuf,
     nodes: Vec<FlatNode>,
     visible: Vec<usize>,
-    pub filter_text: String,
+    pub(crate) filter_text: String,
     /// Last known mtime of the file on disk.
     last_mtime: Option<SystemTime>,
 }
 
 impl TodoTreeData {
+    pub fn file(&self) -> &TodoFile {
+        &self.file
+    }
+    pub fn file_mut(&mut self) -> &mut TodoFile {
+        &mut self.file
+    }
+
     pub fn new(file_path: &Path) -> Self {
         let file = model::load_todo_file(file_path);
         let mtime = Self::read_mtime(file_path);

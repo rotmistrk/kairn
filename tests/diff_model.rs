@@ -4,12 +4,7 @@ use kairn::views::editor::diff_model::*;
 
 #[test]
 fn no_changes() {
-    let opts = DiffOpts {
-        base: "HEAD".into(),
-        context: usize::MAX,
-        ignore_ws: false,
-        side_by_side: false,
-    };
+    let opts = DiffOpts::new("HEAD", usize::MAX, false, false);
     let lines = build_diff_lines("a\nb\n", "a\nb\n", &opts);
     assert_eq!(lines.len(), 2);
     assert!(matches!(
@@ -23,12 +18,7 @@ fn no_changes() {
 
 #[test]
 fn added_line() {
-    let opts = DiffOpts {
-        base: "HEAD".into(),
-        context: usize::MAX,
-        ignore_ws: false,
-        side_by_side: false,
-    };
+    let opts = DiffOpts::new("HEAD", usize::MAX, false, false);
     let lines = build_diff_lines("a\n", "a\nb\n", &opts);
     assert_eq!(lines.len(), 2);
     assert!(matches!(lines[1], DiffLine::Added { buf_line: 1 }));
@@ -36,12 +26,7 @@ fn added_line() {
 
 #[test]
 fn deleted_line() {
-    let opts = DiffOpts {
-        base: "HEAD".into(),
-        context: usize::MAX,
-        ignore_ws: false,
-        side_by_side: false,
-    };
+    let opts = DiffOpts::new("HEAD", usize::MAX, false, false);
     let lines = build_diff_lines("a\nb\n", "a\n", &opts);
     assert_eq!(lines.len(), 2);
     if let DiffLine::Deleted { text, base_line } = &lines[1] {
@@ -54,12 +39,7 @@ fn deleted_line() {
 
 #[test]
 fn fold_hides_distant_context() {
-    let opts = DiffOpts {
-        base: "HEAD".into(),
-        context: 1,
-        ignore_ws: false,
-        side_by_side: false,
-    };
+    let opts = DiffOpts::new("HEAD", 1, false, false);
     let base = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
     let current = "1\n2\n3\n4\n5\nNEW\n6\n7\n8\n9\n10\n";
     let lines = build_diff_lines(base, current, &opts);
@@ -86,14 +66,7 @@ fn cursor_buf_line_on_deleted() {
             base_line: 2,
         },
     ];
-    let ds = DiffState {
-        lines,
-        scroll: 0,
-        cursor: 1,
-        base_ref: "HEAD".into(),
-        context_lines: usize::MAX,
-        ignore_ws: false,
-    };
+    let ds = DiffState::new(lines, 1, "HEAD", usize::MAX, false);
     assert_eq!(ds.cursor_buf_line(), 0);
 }
 
@@ -118,18 +91,11 @@ fn next_prev_hunk() {
             base_line: 3,
         },
     ];
-    let mut ds = DiffState {
-        lines,
-        scroll: 0,
-        cursor: 0,
-        base_ref: "HEAD".into(),
-        context_lines: usize::MAX,
-        ignore_ws: false,
-    };
+    let mut ds = DiffState::new(lines, 0, "HEAD", usize::MAX, false);
     assert_eq!(ds.next_hunk(), Some(1));
-    ds.cursor = 1;
+    ds.set_cursor(1);
     assert_eq!(ds.next_hunk(), Some(3));
-    ds.cursor = 3;
+    ds.set_cursor(3);
     assert_eq!(ds.next_hunk(), None);
     assert_eq!(ds.prev_hunk(), Some(1));
 }
@@ -137,20 +103,15 @@ fn next_prev_hunk() {
 #[test]
 fn parse_args() {
     let opts = parse_diff_args("-U5 -w main");
-    assert_eq!(opts.base, "main");
-    assert_eq!(opts.context, 5);
-    assert!(opts.ignore_ws);
-    assert!(!opts.side_by_side);
+    assert_eq!(opts.base(), "main");
+    assert_eq!(opts.context(), 5);
+    assert!(opts.ignore_ws());
+    assert!(!opts.side_by_side());
 }
 
 #[test]
 fn ignore_whitespace() {
-    let opts = DiffOpts {
-        base: "HEAD".into(),
-        context: usize::MAX,
-        ignore_ws: true,
-        side_by_side: false,
-    };
+    let opts = DiffOpts::new("HEAD", usize::MAX, true, false);
     let lines = build_diff_lines("a  b\n", "a b\n", &opts);
     // Should be context (whitespace ignored)
     assert_eq!(lines.len(), 1);
@@ -160,10 +121,10 @@ fn ignore_whitespace() {
 #[test]
 fn parse_args_side_by_side() {
     let opts = parse_diff_args("-y");
-    assert!(opts.side_by_side);
-    assert_eq!(opts.base, "HEAD");
+    assert!(opts.side_by_side());
+    assert_eq!(opts.base(), "HEAD");
 
     let opts2 = parse_diff_args("-y main");
-    assert!(opts2.side_by_side);
-    assert_eq!(opts2.base, "main");
+    assert!(opts2.side_by_side());
+    assert_eq!(opts2.base(), "main");
 }

@@ -35,12 +35,12 @@ fn save_and_load_session_roundtrip() {
 
     // Load
     let loaded = session::load_session(&root).unwrap();
-    assert_eq!(loaded.version, SESSION_VERSION);
-    assert_eq!(loaded.layout, "wide");
-    assert_eq!(loaded.editor_tabs.len(), 1);
-    assert_eq!(loaded.editor_tabs[0].path, "hello.rs");
-    assert_eq!(loaded.editor_tabs[0].line, 0);
-    assert_eq!(loaded.editor_tabs[0].col, 5);
+    assert_eq!(loaded.version(), SESSION_VERSION);
+    assert_eq!(loaded.layout(), "wide");
+    assert_eq!(loaded.editor_tabs().len(), 1);
+    assert_eq!(loaded.editor_tabs()[0].path(), "hello.rs");
+    assert_eq!(loaded.editor_tabs()[0].line(), 0);
+    assert_eq!(loaded.editor_tabs()[0].col(), 5);
 }
 
 #[test]
@@ -59,10 +59,7 @@ fn load_corrupt_state_returns_none() {
 #[test]
 fn load_wrong_version_returns_none() {
     let tmp = tempfile::tempdir().unwrap();
-    let state = SessionState {
-        version: 999,
-        ..SessionState::default()
-    };
+    let state = SessionState::builder().version(999).build();
     let json = serde_json::to_string(&state).unwrap();
     std::fs::write(tmp.path().join(".kairn.state"), json).unwrap();
     assert!(session::load_session(tmp.path()).is_none());
@@ -74,22 +71,12 @@ fn restore_tabs_opens_editors() {
     let root = tmp.path().to_path_buf();
     std::fs::write(root.join("foo.rs"), "let x = 1;\nlet y = 2;\n").unwrap();
 
-    let state = SessionState {
-        version: SESSION_VERSION,
-        layout: "auto".to_string(),
-        wide_proportions: Vec::new(),
-        narrow_proportions: Vec::new(),
-        hidden_panels: Vec::new(),
-        active_tab: 0,
-        editor_tabs: vec![EditorTabState {
-            path: "foo.rs".to_string(),
-            line: 1,
-            col: 4,
-        }],
-        unfolded_dirs: Vec::new(),
-        kiro_sessions: Vec::new(),
-        split: None,
-    };
+    let state = SessionState::builder()
+        .version(SESSION_VERSION)
+        .layout("auto")
+        .active_tab(0)
+        .editor_tabs(vec![EditorTabState::new("foo.rs", 1, 4)])
+        .build();
 
     let mut desktop =
         kairn::build_desktop::build_workspace(&std::path::PathBuf::from("."), kairn::settings::GitKeys::default());
@@ -108,22 +95,12 @@ fn restore_skips_missing_files() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
 
-    let state = SessionState {
-        version: SESSION_VERSION,
-        layout: "auto".to_string(),
-        wide_proportions: Vec::new(),
-        narrow_proportions: Vec::new(),
-        hidden_panels: Vec::new(),
-        active_tab: 0,
-        editor_tabs: vec![EditorTabState {
-            path: "nonexistent.rs".to_string(),
-            line: 0,
-            col: 0,
-        }],
-        unfolded_dirs: Vec::new(),
-        kiro_sessions: Vec::new(),
-        split: None,
-    };
+    let state = SessionState::builder()
+        .version(SESSION_VERSION)
+        .layout("auto")
+        .active_tab(0)
+        .editor_tabs(vec![EditorTabState::new("nonexistent.rs", 0, 0)])
+        .build();
 
     let mut desktop =
         kairn::build_desktop::build_workspace(&std::path::PathBuf::from("."), kairn::settings::GitKeys::default());

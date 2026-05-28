@@ -38,7 +38,7 @@ impl TestHarness {
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
             &desktop,
-            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
+            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list().clone())),
             0,
             root_dir.to_path_buf(),
             &StatusKeys::default(),
@@ -59,7 +59,7 @@ impl TestHarness {
         let state = AppState::new(root_dir.to_path_buf());
         let status = build_status_bar(
             &desktop,
-            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list.clone())),
+            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list().clone())),
             0,
             root_dir.to_path_buf(),
             &StatusKeys::default(),

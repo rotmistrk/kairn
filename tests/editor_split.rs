@@ -29,10 +29,7 @@ fn split_creates_second_pane() {
     // Execute :split via command
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: false,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::horizontal())),
     );
     h.run_cycles(3);
 
@@ -56,10 +53,7 @@ fn vsplit_creates_vertical_pane() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical())),
     );
     h.run_cycles(3);
 
@@ -85,10 +79,9 @@ fn split_with_different_file() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: Some("src/lib.rs".to_string()),
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical_with_file(
+            "src/lib.rs".to_string(),
+        ))),
     );
     h.run_cycles(3);
 
@@ -105,10 +98,7 @@ fn split_close_returns_to_single_pane() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: false,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::horizontal())),
     );
     h.run_cycles(3);
 

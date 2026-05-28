@@ -16,6 +16,7 @@ mod registry_config;
 pub mod requests;
 pub mod resource_ops;
 mod response;
+pub mod response_parse;
 mod send;
 mod send_sync;
 pub mod signature_help;

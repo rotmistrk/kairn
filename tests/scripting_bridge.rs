@@ -41,14 +41,13 @@ fn editor_goto_produces_command() {
 #[test]
 fn editor_query_returns_snapshot_data() {
     let mut engine = ScriptEngine::new();
-    let ctx = kairn::commands::ViewContext {
-        file: Some("src/main.rs".into()),
-        line: 42,
-        col: 7,
-        modified: true,
-        language: "rust".into(),
-        ..Default::default()
-    };
+    let ctx = kairn::commands::ViewContext::builder()
+        .file("src/main.rs")
+        .line(42)
+        .col(7)
+        .modified(true)
+        .language("rust")
+        .build();
     engine.update_snapshot(&ctx, "/project", "", "", "none", false);
     assert_eq!(engine.eval("editor current-file").unwrap(), "src/main.rs");
     assert_eq!(engine.eval("editor current-line").unwrap(), "42");

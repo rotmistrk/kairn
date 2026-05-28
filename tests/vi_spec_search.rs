@@ -9,24 +9,24 @@ use kairn::editor::Editor;
 fn f_finds_char_forward() {
     let mut ed = Editor::from_text("hello world");
     ed.execute(Command::FindChar('o'));
-    assert_eq!(ed.cursor_col, 4);
+    assert_eq!(ed.cursor_col(), 4);
 }
 
 #[test]
 fn big_f_finds_char_backward() {
     let mut ed = Editor::from_text("hello world");
-    ed.cursor_col = 10; // at 'd'
+    ed.set_cursor_col(10); // at 'd'
     ed.execute(Command::FindCharBack('o'));
-    assert_eq!(ed.cursor_col, 7); // 'o' in "world"
+    assert_eq!(ed.cursor_col(), 7); // 'o' in "world"
 }
 
 #[test]
 fn semicolon_repeats_find() {
     let mut ed = Editor::from_text("abacada");
     ed.execute(Command::FindChar('a'));
-    assert_eq!(ed.cursor_col, 2); // second 'a'
+    assert_eq!(ed.cursor_col(), 2); // second 'a'
     ed.execute(Command::RepeatFind);
-    assert_eq!(ed.cursor_col, 4); // third 'a'
+    assert_eq!(ed.cursor_col(), 4); // third 'a'
 }
 
 // === Bracket match ===
@@ -35,9 +35,9 @@ fn semicolon_repeats_find() {
 fn percent_matches_bracket() {
     let mut ed = Editor::from_text("(hello)");
     ed.execute(Command::MatchBracket);
-    assert_eq!(ed.cursor_col, 6); // closing )
+    assert_eq!(ed.cursor_col(), 6); // closing )
     ed.execute(Command::MatchBracket);
-    assert_eq!(ed.cursor_col, 0); // back to opening (
+    assert_eq!(ed.cursor_col(), 0); // back to opening (
 }
 
 // === Search ===
@@ -46,15 +46,15 @@ fn percent_matches_bracket() {
 fn search_word_forward() {
     let mut ed = Editor::from_text("foo bar foo baz");
     ed.execute(Command::SearchWordForward);
-    assert_eq!(ed.cursor_col, 8); // second "foo"
+    assert_eq!(ed.cursor_col(), 8); // second "foo"
 }
 
 #[test]
 fn search_word_backward() {
     let mut ed = Editor::from_text("foo bar foo baz");
-    ed.cursor_col = 8; // second "foo"
+    ed.set_cursor_col(8); // second "foo"
     ed.execute(Command::SearchWordBackward);
-    assert_eq!(ed.cursor_col, 0); // first "foo"
+    assert_eq!(ed.cursor_col(), 0); // first "foo"
 }
 
 // === Dot repeat ===
@@ -74,7 +74,7 @@ fn dot_repeats_last_edit() {
 fn s_substitutes_char() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::Substitute);
-    assert_eq!(ed.mode, EditorMode::Insert);
+    assert_eq!(ed.mode(), EditorMode::Insert);
     assert_eq!(ed.buf().content(), "ello");
 }
 
@@ -82,7 +82,7 @@ fn s_substitutes_char() {
 fn big_s_substitutes_line() {
     let mut ed = Editor::from_text("hello\nworld");
     ed.execute(Command::SubstituteLine);
-    assert_eq!(ed.mode, EditorMode::Insert);
+    assert_eq!(ed.mode(), EditorMode::Insert);
     // Line content cleared, newline preserved
     assert!(ed.buf().content().starts_with('\n') || ed.buf().content() == "world" || ed.buf().content() == "\nworld");
 }
@@ -103,7 +103,7 @@ fn r_replaces_char() {
     let mut ed = Editor::from_text("hello");
     ed.execute(Command::ReplaceChar('X'));
     assert_eq!(ed.buf().content(), "Xello");
-    assert_eq!(ed.mode, EditorMode::Normal); // stays in normal
+    assert_eq!(ed.mode(), EditorMode::Normal); // stays in normal
 }
 
 // === Ex: substitute ===
@@ -134,7 +134,7 @@ fn ex_goto_line() {
     let text = (1..=20).map(|i| format!("line{i}")).collect::<Vec<_>>().join("\n");
     let mut ed = Editor::from_text(&text);
     ed.execute(Command::ExCommand("15".to_string()));
-    assert_eq!(ed.cursor_line, 14);
+    assert_eq!(ed.cursor_line(), 14);
 }
 
 // === Undo delete ===
@@ -153,7 +153,7 @@ fn undo_reverses_delete_line() {
 #[test]
 fn big_p_pastes_before() {
     let mut ed = Editor::from_text("line1\nline2");
-    ed.cursor_line = 1;
+    ed.set_cursor_line(1);
     ed.execute(Command::YankLine);
     ed.execute(Command::PasteBefore);
     // Should paste "line2" above current line

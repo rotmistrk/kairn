@@ -13,9 +13,9 @@ pub(super) enum Source {
 
 #[derive(Clone, Debug)]
 pub(super) struct Piece {
-    pub source: Source,
-    pub start: usize,
-    pub len: usize,
+    pub(crate) source: Source,
+    pub(crate) start: usize,
+    pub(crate) len: usize,
 }
 
 /// Piece table text buffer.
@@ -27,7 +27,7 @@ pub struct PieceTable {
     history: UndoHistory,
     modified: bool,
     grouping: bool,
-    pub file_path: Option<String>,
+    pub(crate) file_path: Option<String>,
 }
 
 impl Default for PieceTable {

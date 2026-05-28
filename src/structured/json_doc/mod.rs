@@ -10,15 +10,15 @@ use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 /// A single node in the JSON document arena.
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub kind: NodeKind,
-    pub key: Option<String>,
-    pub value: String,
-    pub meta: String,
-    pub children: Vec<NodeId>,
-    pub parent: Option<NodeId>,
-    pub expanded: bool,
-    pub inline: bool,
-    pub scalar_type: ScalarType,
+    pub(crate) kind: NodeKind,
+    pub(crate) key: Option<String>,
+    pub(crate) value: String,
+    pub(crate) meta: String,
+    pub(crate) children: Vec<NodeId>,
+    pub(crate) parent: Option<NodeId>,
+    pub(crate) expanded: bool,
+    pub(crate) inline: bool,
+    pub(crate) scalar_type: ScalarType,
 }
 
 /// Arena-backed JSON document.

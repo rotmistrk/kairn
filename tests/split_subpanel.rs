@@ -36,10 +36,7 @@ fn vsplit_shows_vertical_divider() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical())),
     );
     h.run_cycles(3);
 
@@ -61,10 +58,7 @@ fn split_shows_horizontal_divider() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: false,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::horizontal())),
     );
     h.run_cycles(3);
 
@@ -81,10 +75,9 @@ fn ctrl_w_cycles_focus_between_split_panes() {
     // Split with different file
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: Some("b.rs".to_string()),
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical_with_file(
+            "b.rs".to_string(),
+        ))),
     );
     h.run_cycles(3);
 
@@ -107,10 +100,7 @@ fn split_close_returns_to_single_pane() {
 
     h.dispatch_command(
         kairn::commands::CM_SPLIT,
-        Some(Box::new(kairn::commands::SplitRequest {
-            vertical: true,
-            file: None,
-        })),
+        Some(Box::new(kairn::commands::SplitRequest::vertical())),
     );
     h.run_cycles(3);
 

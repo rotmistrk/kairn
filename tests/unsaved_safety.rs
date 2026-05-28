@@ -16,13 +16,13 @@ fn temp_project(files: &[(&str, &str)]) -> TempDir {
 }
 
 fn open_file(h: &mut TestHarness, name: &str) {
-    let path = h.state.root_dir.join(name);
+    let path = h.state.root_dir().join(name);
     h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(OpenFileRequest::new(path))));
 }
 
 /// Disable autosave so dirty buffers trigger the confirm prompt.
 fn disable_autosave(h: &mut TestHarness) {
-    h.state.settings.editor_defaults.autosave = false;
+    h.state.settings_mut().editor_defaults_mut().set_autosave(false);
 }
 
 fn alt(code: KeyCode) -> (KeyCode, KeyMod) {

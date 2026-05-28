@@ -114,10 +114,10 @@ pub fn parse_capabilities(result: &Value) -> ServerCapabilities {
 /// Server capabilities extracted from initialize response.
 #[derive(Debug, Default, Clone)]
 pub struct ServerCapabilities {
-    pub completion: bool,
-    pub hover: bool,
-    pub definition: bool,
-    pub references: bool,
+    pub(crate) completion: bool,
+    pub(crate) hover: bool,
+    pub(crate) definition: bool,
+    pub(crate) references: bool,
 }
 
 #[cfg(test)]

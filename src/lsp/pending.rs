@@ -8,7 +8,7 @@ use txv_core::prelude::*;
 /// Tracks pending LSP requests so responses can be routed.
 pub struct PendingRequests {
     map: HashMap<u64, (PendingKind, String, Instant)>,
-    pub timeout_secs: u64,
+    pub(crate) timeout_secs: u64,
 }
 
 impl Default for PendingRequests {
@@ -89,7 +89,7 @@ fn friendly_kind_label(kind: &PendingKind) -> &'static str {
 /// Request for jdt:// class file contents from jdtls.
 #[derive(Debug, Clone)]
 pub(crate) struct JdtRequest {
-    pub uri: String,
-    pub line: u32,
-    pub character: u32,
+    pub(crate) uri: String,
+    pub(crate) line: u32,
+    pub(crate) character: u32,
 }

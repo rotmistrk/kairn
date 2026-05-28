@@ -2,13 +2,13 @@
 //! Default: Nerd Font. Future: configurable via .kairnrc "glyphs": "ascii".
 
 pub struct Glyphs {
-    pub tab_left: &'static str,
-    pub tab_right: &'static str,
-    pub dropdown_arrow: &'static str,
-    pub badge_left: &'static str,
-    pub badge_right: &'static str,
-    pub check: &'static str,
-    pub cross: &'static str,
+    pub(crate) tab_left: &'static str,
+    pub(crate) tab_right: &'static str,
+    pub(crate) dropdown_arrow: &'static str,
+    pub(crate) badge_left: &'static str,
+    pub(crate) badge_right: &'static str,
+    pub(crate) check: &'static str,
+    pub(crate) cross: &'static str,
 }
 
 /// Nerd Font / Powerline glyphs (default).

@@ -15,20 +15,62 @@ pub enum DiffLine {
 
 /// Diff mode state stored in EditorView.
 pub struct DiffState {
-    pub lines: Vec<DiffLine>,
-    pub scroll: usize,
-    pub cursor: usize,
-    pub base_ref: String,
-    pub context_lines: usize,
-    pub ignore_ws: bool,
+    pub(crate) lines: Vec<DiffLine>,
+    pub(crate) scroll: usize,
+    pub(crate) cursor: usize,
+    pub(crate) base_ref: String,
+    pub(crate) context_lines: usize,
+    pub(crate) ignore_ws: bool,
+}
+
+impl DiffState {
+    pub fn new(
+        lines: Vec<DiffLine>,
+        cursor: usize,
+        base_ref: impl Into<String>,
+        context_lines: usize,
+        ignore_ws: bool,
+    ) -> Self {
+        Self {
+            lines,
+            scroll: 0,
+            cursor,
+            base_ref: base_ref.into(),
+            context_lines,
+            ignore_ws,
+        }
+    }
 }
 
 /// Options parsed from :diff args.
 pub struct DiffOpts {
-    pub base: String,
-    pub context: usize,
-    pub ignore_ws: bool,
-    pub side_by_side: bool,
+    pub(crate) base: String,
+    pub(crate) context: usize,
+    pub(crate) ignore_ws: bool,
+    pub(crate) side_by_side: bool,
+}
+
+impl DiffOpts {
+    pub fn new(base: &str, context: usize, ignore_ws: bool, side_by_side: bool) -> Self {
+        Self {
+            base: base.to_string(),
+            context,
+            ignore_ws,
+            side_by_side,
+        }
+    }
+    pub fn base(&self) -> &str {
+        &self.base
+    }
+    pub fn context(&self) -> usize {
+        self.context
+    }
+    pub fn ignore_ws(&self) -> bool {
+        self.ignore_ws
+    }
+    pub fn side_by_side(&self) -> bool {
+        self.side_by_side
+    }
 }
 
 pub fn parse_diff_args(args: &str) -> DiffOpts {
@@ -60,6 +102,12 @@ pub fn is_change(line: &DiffLine) -> bool {
 }
 
 impl DiffState {
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+    pub fn set_cursor(&mut self, v: usize) {
+        self.cursor = v;
+    }
     /// Buffer line at current cursor (for jump-and-exit).
     pub fn cursor_buf_line(&self) -> usize {
         for i in (0..=self.cursor).rev() {

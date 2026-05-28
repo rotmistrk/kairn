@@ -145,7 +145,7 @@ fn parse_range(range: &str, cursor: usize, total: usize) -> Option<(usize, usize
 
 fn parse_address(addr: &str, cursor: usize, total: usize) -> Option<usize> {
     match addr {
-        "." => Some(cursor),
+        "" | "." => Some(cursor),
         "$" => Some(total.saturating_sub(1)),
         _ => {
             // Check relative offsets BEFORE plain number ("+2".parse::<usize>() succeeds in Rust!)

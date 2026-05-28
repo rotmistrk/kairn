@@ -5,52 +5,109 @@ use serde::Serialize;
 /// A tab entry visible to MCP clients.
 #[derive(Debug, Clone, Serialize)]
 pub struct TabInfo {
-    pub name: String,
-    pub tab_type: String,
-    pub path: Option<String>,
-    pub focused: bool,
-    pub active: bool,
-    pub modified: bool,
-    pub cursor: Option<CursorPos>,
-    pub selection: Option<SelectionRange>,
-    pub order: usize,
+    pub(crate) name: String,
+    pub(crate) tab_type: String,
+    pub(crate) path: Option<String>,
+    pub(crate) focused: bool,
+    pub(crate) active: bool,
+    pub(crate) modified: bool,
+    pub(crate) cursor: Option<CursorPos>,
+    pub(crate) selection: Option<SelectionRange>,
+    pub(crate) order: usize,
+}
+
+impl TabInfo {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn tab_type(&self) -> &str {
+        &self.tab_type
+    }
+    pub fn path(&self) -> Option<&str> {
+        self.path.as_deref()
+    }
+    pub fn focused(&self) -> bool {
+        self.focused
+    }
+    pub fn modified(&self) -> bool {
+        self.modified
+    }
+    pub fn cursor(&self) -> Option<&CursorPos> {
+        self.cursor.as_ref()
+    }
 }
 
 /// Cursor position in an editor tab.
 #[derive(Debug, Clone, Serialize)]
 pub struct CursorPos {
-    pub line: usize,
-    pub col: usize,
+    pub(crate) line: usize,
+    pub(crate) col: usize,
+}
+
+impl CursorPos {
+    pub fn line(&self) -> usize {
+        self.line
+    }
+    pub fn col(&self) -> usize {
+        self.col
+    }
 }
 
 /// Selection range in an editor tab.
 #[derive(Debug, Clone, Serialize)]
 pub struct SelectionRange {
-    pub start_line: usize,
-    pub start_col: usize,
-    pub end_line: usize,
-    pub end_col: usize,
+    pub(crate) start_line: usize,
+    pub(crate) start_col: usize,
+    pub(crate) end_line: usize,
+    pub(crate) end_col: usize,
 }
 
 /// A terminal tab entry with content access.
 #[derive(Debug, Clone, Serialize)]
 pub struct TerminalInfo {
-    pub name: String,
-    pub terminal_type: String,
-    pub index: usize,
-    pub content: String,
+    pub(crate) name: String,
+    pub(crate) terminal_type: String,
+    pub(crate) index: usize,
+    pub(crate) content: String,
+}
+
+impl TerminalInfo {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn terminal_type(&self) -> &str {
+        &self.terminal_type
+    }
+    pub fn index(&self) -> usize {
+        self.index
+    }
+    pub fn content(&self) -> &str {
+        &self.content
+    }
 }
 
 /// Snapshot of kairn state, updated on each Tick from the main thread.
 #[derive(Debug, Clone, Default)]
 pub struct McpSnapshot {
-    pub tabs: Vec<TabInfo>,
-    pub terminals: Vec<TerminalInfo>,
-    pub focused_slot: String,
-    pub messages: Vec<String>,
+    pub(crate) tabs: Vec<TabInfo>,
+    pub(crate) terminals: Vec<TerminalInfo>,
+    pub(crate) focused_slot: String,
+    pub(crate) messages: Vec<String>,
     /// Content of center-panel tabs (keyed by tab name).
-    pub tab_contents: std::collections::HashMap<String, String>,
+    pub(crate) tab_contents: std::collections::HashMap<String, String>,
     /// Split state: "none", "horizontal", or "vertical".
-    pub split_direction: String,
-    pub split_linked: bool,
+    pub(crate) split_direction: String,
+    pub(crate) split_linked: bool,
+}
+
+impl McpSnapshot {
+    pub fn tabs(&self) -> &[TabInfo] {
+        &self.tabs
+    }
+    pub fn terminals(&self) -> &[TerminalInfo] {
+        &self.terminals
+    }
+    pub fn focused_slot(&self) -> &str {
+        &self.focused_slot
+    }
 }

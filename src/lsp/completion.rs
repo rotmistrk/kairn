@@ -6,11 +6,11 @@ use super::requests::{CompletionItem, CompletionKind};
 
 /// Completion popup state.
 pub struct CompletionPopup {
-    pub items: Vec<CompletionItem>,
-    pub selected: usize,
-    pub visible: bool,
-    pub anchor_x: u16,
-    pub anchor_y: u16,
+    pub(crate) items: Vec<CompletionItem>,
+    pub(crate) selected: usize,
+    pub(crate) visible: bool,
+    pub(crate) anchor_x: u16,
+    pub(crate) anchor_y: u16,
     pub(crate) scroll: usize,
 }
 

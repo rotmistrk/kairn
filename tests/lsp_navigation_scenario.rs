@@ -82,24 +82,9 @@ fn find_references_multiple_results_opens_results_view() {
 
     // Simulate multiple reference results via CM_SHOW_RESULTS
     let entries = vec![
-        ResultEntry {
-            path: dir.path().join("src/main.rs"),
-            line: 0,
-            col: 13,
-            text: "foo();".to_string(),
-        },
-        ResultEntry {
-            path: dir.path().join("src/lib.rs"),
-            line: 0,
-            col: 7,
-            text: "pub fn foo() {}".to_string(),
-        },
-        ResultEntry {
-            path: dir.path().join("src/util.rs"),
-            line: 1,
-            col: 11,
-            text: "foo();".to_string(),
-        },
+        ResultEntry::new(dir.path().join("src/main.rs"), 0, 13, "foo();".to_string()),
+        ResultEntry::new(dir.path().join("src/lib.rs"), 0, 7, "pub fn foo() {}".to_string()),
+        ResultEntry::new(dir.path().join("src/util.rs"), 1, 11, "foo();".to_string()),
     ];
     h.dispatch_command(
         CM_SHOW_RESULTS,

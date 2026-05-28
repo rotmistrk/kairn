@@ -7,15 +7,9 @@ use txv_core::prelude::*;
 #[test]
 fn diagnostic_underlines_error_range() {
     let mut view = EditorView::from_text("fn main() {\n    let x = bad;\n}\n");
-    view.editor.options.number = false;
+    view.editor_mut().options_mut().set_number(false);
     view.set_bounds(Rect::new(0, 0, 40, 5));
-    view.set_diagnostics(vec![Diagnostic {
-        line: 1,
-        col_start: 12,
-        col_end: 15,
-        severity: Severity::Error,
-        message: "not found".into(),
-    }]);
+    view.set_diagnostics(vec![Diagnostic::new(1, 12, 15, Severity::Error, "not found")]);
 
     view.draw();
 
@@ -28,27 +22,21 @@ fn diagnostic_underlines_error_range() {
 #[test]
 fn diagnostic_at_cursor_returns_message() {
     let mut view = EditorView::from_text("line1\nline2\nline3\n");
-    view.set_diagnostics(vec![Diagnostic {
-        line: 1,
-        col_start: 0,
-        col_end: 5,
-        severity: Severity::Warning,
-        message: "unused variable".into(),
-    }]);
+    view.set_diagnostics(vec![Diagnostic::new(1, 0, 5, Severity::Warning, "unused variable")]);
 
     // Cursor at line 0 — no diagnostic
-    view.editor.cursor_line = 0;
+    view.editor_mut().set_cursor_line(0);
     assert!(view.diagnostic_at_cursor().is_none());
 
     // Cursor at line 1 — has diagnostic
-    view.editor.cursor_line = 1;
+    view.editor_mut().set_cursor_line(1);
     assert_eq!(view.diagnostic_at_cursor(), Some("unused variable"));
 }
 
 #[test]
 fn no_diagnostics_no_crash() {
     let mut view = EditorView::from_text("hello\n");
-    view.editor.options.number = false;
+    view.editor_mut().options_mut().set_number(false);
     view.set_bounds(Rect::new(0, 0, 20, 3));
 
     // Should not crash with no diagnostics set
@@ -58,15 +46,9 @@ fn no_diagnostics_no_crash() {
 #[test]
 fn gutter_marker_shows_for_error_line() {
     let mut view = EditorView::from_text("line1\nline2\nline3\n");
-    view.editor.options.number = true;
+    view.editor_mut().options_mut().set_number(true);
     view.set_bounds(Rect::new(0, 0, 40, 5));
-    view.set_diagnostics(vec![Diagnostic {
-        line: 1,
-        col_start: 0,
-        col_end: 5,
-        severity: Severity::Error,
-        message: "err".into(),
-    }]);
+    view.set_diagnostics(vec![Diagnostic::new(1, 0, 5, Severity::Error, "err")]);
 
     view.draw();
 
@@ -79,15 +61,9 @@ fn gutter_marker_shows_for_error_line() {
 #[test]
 fn gutter_marker_absent_for_clean_line() {
     let mut view = EditorView::from_text("line1\nline2\nline3\n");
-    view.editor.options.number = true;
+    view.editor_mut().options_mut().set_number(true);
     view.set_bounds(Rect::new(0, 0, 40, 5));
-    view.set_diagnostics(vec![Diagnostic {
-        line: 1,
-        col_start: 0,
-        col_end: 5,
-        severity: Severity::Error,
-        message: "err".into(),
-    }]);
+    view.set_diagnostics(vec![Diagnostic::new(1, 0, 5, Severity::Error, "err")]);
 
     view.draw();
 
@@ -100,15 +76,9 @@ fn gutter_marker_absent_for_clean_line() {
 #[test]
 fn clear_diagnostics_removes_markers() {
     let mut view = EditorView::from_text("line1\nline2\n");
-    view.editor.options.number = true;
+    view.editor_mut().options_mut().set_number(true);
     view.set_bounds(Rect::new(0, 0, 40, 5));
-    view.set_diagnostics(vec![Diagnostic {
-        line: 0,
-        col_start: 0,
-        col_end: 5,
-        severity: Severity::Error,
-        message: "err".into(),
-    }]);
+    view.set_diagnostics(vec![Diagnostic::new(0, 0, 5, Severity::Error, "err")]);
     view.draw();
 
     // Marker present
@@ -126,23 +96,11 @@ fn clear_diagnostics_removes_markers() {
 #[test]
 fn highest_severity_wins_for_gutter_marker() {
     let mut view = EditorView::from_text("line1\n");
-    view.editor.options.number = true;
+    view.editor_mut().options_mut().set_number(true);
     view.set_bounds(Rect::new(0, 0, 40, 5));
     view.set_diagnostics(vec![
-        Diagnostic {
-            line: 0,
-            col_start: 0,
-            col_end: 2,
-            severity: Severity::Warning,
-            message: "warn".into(),
-        },
-        Diagnostic {
-            line: 0,
-            col_start: 3,
-            col_end: 5,
-            severity: Severity::Error,
-            message: "err".into(),
-        },
+        Diagnostic::new(0, 0, 2, Severity::Warning, "warn"),
+        Diagnostic::new(0, 3, 5, Severity::Error, "err"),
     ]);
 
     view.draw();

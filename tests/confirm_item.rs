@@ -16,7 +16,7 @@ fn temp_project(files: &[(&str, &str)]) -> TempDir {
 }
 
 fn open_file(h: &mut TestHarness, name: &str) {
-    let path = h.state.root_dir.join(name);
+    let path = h.state.root_dir().join(name);
     h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(OpenFileRequest::new(path))));
 }
 
@@ -181,7 +181,7 @@ fn mcp_list_tabs_includes_selection_field() {
     let dir = temp_project(&[("x.rs", "hello world\nsecond line\n")]);
     let mut h = TestHarness::new(dir.path());
     let snap = Arc::new(Mutex::new(McpSnapshot::default()));
-    h.state.mcp_snapshot = Some(Arc::clone(&snap));
+    h.state.set_mcp_snapshot(Arc::clone(&snap));
 
     open_file(&mut h, "x.rs");
     h.run_cycles(2);

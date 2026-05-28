@@ -24,13 +24,8 @@ fn git_project(filename: &str, initial_content: &str) -> tempfile::TempDir {
 }
 
 fn open_file(h: &mut TestHarness, name: &str) {
-    let path = h.state.root_dir.join(name);
-    let req = OpenFileRequest {
-        path,
-        line: None,
-        col: None,
-        diff: false,
-    };
+    let path = h.state.root_dir().join(name);
+    let req = OpenFileRequest::new(path);
     h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
     h.run_cycles(2);
 }

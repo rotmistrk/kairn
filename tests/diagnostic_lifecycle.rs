@@ -44,13 +44,7 @@ fn diagnostics_appear_for_matching_uri() {
     inject_diagnostics(
         &mut h,
         &uri,
-        vec![Diagnostic {
-            line: 1,
-            col_start: 4,
-            col_end: 12,
-            severity: Severity::Error,
-            message: "not found".into(),
-        }],
+        vec![Diagnostic::new(1, 4, 12, Severity::Error, "not found")],
     );
     h.run_cycles(1);
 
@@ -69,13 +63,7 @@ fn diagnostics_ignored_for_wrong_uri() {
     inject_diagnostics(
         &mut h,
         "file:///some/other/file.rs",
-        vec![Diagnostic {
-            line: 0,
-            col_start: 0,
-            col_end: 5,
-            severity: Severity::Error,
-            message: "wrong file".into(),
-        }],
+        vec![Diagnostic::new(0, 0, 5, Severity::Error, "wrong file")],
     );
     h.run_cycles(1);
 
@@ -91,17 +79,7 @@ fn edit_clears_diagnostics() {
     open_file(&mut h, dir.path(), "f.rs");
 
     let uri = format!("file://{}", dir.path().join("f.rs").canonicalize().unwrap().display());
-    inject_diagnostics(
-        &mut h,
-        &uri,
-        vec![Diagnostic {
-            line: 0,
-            col_start: 9,
-            col_end: 12,
-            severity: Severity::Error,
-            message: "err".into(),
-        }],
-    );
+    inject_diagnostics(&mut h, &uri, vec![Diagnostic::new(0, 9, 12, Severity::Error, "err")]);
     h.run_cycles(1);
     assert!(h.content_contains("●"));
 

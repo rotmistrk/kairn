@@ -5,12 +5,12 @@ use crate::commands::ViewContext;
 /// Read-only snapshot of app state, updated each tick for Tcl queries.
 #[derive(Clone, Default)]
 pub struct StateSnapshot {
-    pub context: ViewContext,
-    pub root_dir: String,
-    pub selection_text: String,
-    pub current_line_text: String,
-    pub split_direction: String,
-    pub split_linked: bool,
+    pub(crate) context: ViewContext,
+    pub(crate) root_dir: String,
+    pub(crate) selection_text: String,
+    pub(crate) current_line_text: String,
+    pub(crate) split_direction: String,
+    pub(crate) split_linked: bool,
 }
 
 /// Commands produced by Tcl scripts, drained by the handler.

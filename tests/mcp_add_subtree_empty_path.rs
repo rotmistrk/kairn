@@ -22,10 +22,10 @@ fn read_todo(dir: &std::path::Path) -> duir_core::TodoFile {
 }
 
 fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json::Value, String> {
-    let queue = h.state.mcp_commands.as_ref().unwrap();
+    let queue = h.state.mcp_commands().as_ref().unwrap();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     if let Ok(mut q) = queue.queue_handle().lock() {
-        q.push_back(McpRequest { action, reply: tx });
+        q.push_back(McpRequest::new(action, tx));
     }
     h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     rx.recv().map_err(|e| e.to_string())?
@@ -35,7 +35,7 @@ fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json:
 fn add_subtree_empty_path_adds_top_level_items() {
     let dir = temp_project_with_todo(&["existing"]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let items = vec![
         json!({"title": "new-top-1"}),

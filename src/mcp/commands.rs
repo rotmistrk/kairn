@@ -8,8 +8,14 @@ use txv_core::run::Waker;
 
 /// A request from an MCP tool to mutate app state.
 pub struct McpRequest {
-    pub action: McpAction,
-    pub reply: std::sync::mpsc::SyncSender<Result<Value, String>>,
+    pub(crate) action: McpAction,
+    pub(crate) reply: std::sync::mpsc::SyncSender<Result<Value, String>>,
+}
+
+impl McpRequest {
+    pub fn new(action: McpAction, reply: std::sync::mpsc::SyncSender<Result<Value, String>>) -> Self {
+        Self { action, reply }
+    }
 }
 
 /// Actions the MCP server can request.

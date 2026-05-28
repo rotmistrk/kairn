@@ -53,12 +53,12 @@ fn completion_prefix_removal() {
     h.run_cycles(1);
 
     // Send completion items to the editor view
-    let items: Vec<CompletionItem> = vec![CompletionItem {
-        label: "println".into(),
-        detail: None,
-        insert_text: Some("println".into()),
-        kind: kairn::lsp::requests::CompletionKind::Other,
-    }];
+    let items: Vec<CompletionItem> = vec![CompletionItem::new(
+        "println",
+        None,
+        Some("println".into()),
+        kairn::lsp::requests::CompletionKind::Other,
+    )];
     send_to_view(&mut h, CM_LSP_COMPLETION, Some(Box::new(items)));
     h.run_cycles(1);
 
@@ -94,12 +94,12 @@ fn completion_insert_text_differs_from_label() {
     h.run_cycles(1);
 
     // Send completion with label != insert_text
-    let items: Vec<CompletionItem> = vec![CompletionItem {
-        label: "inner : State".into(),
-        detail: Some("field".into()),
-        insert_text: Some("inner".into()),
-        kind: kairn::lsp::requests::CompletionKind::Other,
-    }];
+    let items: Vec<CompletionItem> = vec![CompletionItem::new(
+        "inner : State",
+        Some("field".into()),
+        Some("inner".into()),
+        kairn::lsp::requests::CompletionKind::Other,
+    )];
     send_to_view(&mut h, CM_LSP_COMPLETION, Some(Box::new(items)));
     h.run_cycles(1);
 

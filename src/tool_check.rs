@@ -4,10 +4,10 @@ use std::path::Path;
 use std::process::Command;
 
 pub struct ToolStatus {
-    pub name: &'static str,
-    pub found: bool,
-    pub version: Option<String>,
-    pub install_hint: &'static str,
+    pub(crate) name: &'static str,
+    pub(crate) found: bool,
+    pub(crate) version: Option<String>,
+    pub(crate) install_hint: &'static str,
 }
 
 /// Tools to check with their binary name and install hint.

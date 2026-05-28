@@ -10,6 +10,13 @@ use crate::highlight::{self, Highlighter};
 use crate::settings::EditorSettings;
 
 impl EditorView {
+    pub fn editor(&self) -> &Editor {
+        &self.editor
+    }
+    pub fn editor_mut(&mut self) -> &mut Editor {
+        &mut self.editor
+    }
+
     pub fn open(path: &Path, settings: &EditorSettings) -> anyhow::Result<Self> {
         let editor = Editor::open(path).map_err(|e| anyhow::anyhow!("{}", e))?;
         let mut view = Self::build(editor, path, settings);

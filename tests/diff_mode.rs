@@ -29,7 +29,7 @@ fn diff_does_not_modify_content() {
     let mut view = EditorView::from_text("hello\nworld\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
-    assert_eq!(view.editor.buf().content(), "hello\nworld\n");
+    assert_eq!(view.editor().buf().content(), "hello\nworld\n");
 }
 
 #[test]
@@ -39,9 +39,9 @@ fn diff_sets_status() {
     send_ex(&mut view, "diff");
     // No git repo → diff against empty base, enters diff mode
     assert!(
-        view.editor.status.contains("DIFF"),
+        view.editor().status().contains("DIFF"),
         "status should mention DIFF: {:?}",
-        view.editor.status
+        view.editor().status()
     );
 }
 
@@ -52,7 +52,7 @@ fn nodiff_clears_diff_mode() {
     // Force diff_lines to simulate being in diff mode
     send_ex(&mut view, "diff");
     send_ex(&mut view, "nodiff");
-    assert!(view.editor.status.is_empty());
+    assert!(view.editor().status().is_empty());
 }
 
 #[test]
@@ -72,8 +72,8 @@ fn toggle_diff_via_command() {
     assert_eq!(result, HandleResult::Consumed);
     // Status should mention DIFF (enters diff mode against empty base)
     assert!(
-        view.editor.status.contains("DIFF"),
+        view.editor().status().contains("DIFF"),
         "CM_DIFF should trigger diff: {:?}",
-        view.editor.status
+        view.editor().status()
     );
 }

@@ -7,11 +7,11 @@ use crate::handler::AppState;
 /// A dispatch table entry. The table IS the command list.
 pub struct ExecEntry {
     /// Command names (first is canonical, rest are aliases).
-    pub names: &'static [&'static str],
+    pub(crate) names: &'static [&'static str],
     /// If true, the command requires a non-empty argument.
-    pub requires_arg: bool,
+    pub(crate) requires_arg: bool,
     /// Handler function: receives context, state, and the argument string.
-    pub handler: fn(&mut CommandContext, &mut AppState, &str),
+    pub(crate) handler: fn(&mut CommandContext, &mut AppState, &str),
 }
 
 /// The dispatch table — single source of truth for M-x commands.

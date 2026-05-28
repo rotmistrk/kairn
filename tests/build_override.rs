@@ -14,13 +14,13 @@ fn build_command_override_via_tcl_proc() {
 
     // Define override proc
     h.state
-        .script
+        .script_mut()
         .eval("proc build-command {} { return {echo custom-build} }")
         .unwrap();
 
     // Verify the proc is callable and returns the override
-    assert!(h.state.script.has_command("build-command"));
-    let result = h.state.script.eval("build-command").unwrap();
+    assert!(h.state.script().has_command("build-command"));
+    let result = h.state.script_mut().eval("build-command").unwrap();
     assert_eq!(result, "echo custom-build");
 }
 
@@ -33,10 +33,10 @@ fn test_command_override_via_tcl_proc() {
     let mut h = TestHarness::new(dir.path());
 
     h.state
-        .script
+        .script_mut()
         .eval("proc test-command {} { return {echo custom-test} }")
         .unwrap();
-    let result = h.state.script.eval("test-command").unwrap();
+    let result = h.state.script_mut().eval("test-command").unwrap();
     assert_eq!(result, "echo custom-test");
 }
 
@@ -46,10 +46,10 @@ fn run_command_override_via_tcl_proc() {
     let mut h = TestHarness::new(dir.path());
 
     h.state
-        .script
+        .script_mut()
         .eval("proc run-command {} { return {./my-app --debug} }")
         .unwrap();
-    let result = h.state.script.eval("run-command").unwrap();
+    let result = h.state.script_mut().eval("run-command").unwrap();
     assert_eq!(result, "./my-app --debug");
 }
 
@@ -62,8 +62,11 @@ fn build_command_empty_return_falls_through() {
     let mut h = TestHarness::new(dir.path());
 
     // Empty return means "use default"
-    h.state.script.eval("proc build-command {} { return {} }").unwrap();
-    let result = h.state.script.eval("build-command").unwrap();
+    h.state
+        .script_mut()
+        .eval("proc build-command {} { return {} }")
+        .unwrap();
+    let result = h.state.script_mut().eval("build-command").unwrap();
     assert_eq!(result, "");
 }
 
@@ -74,7 +77,7 @@ fn build_command_override_can_use_editor_context() {
 
     // Override that uses editor context
     h.state
-        .script
+        .script_mut()
         .eval(
             r#"
         proc build-command {} {
@@ -88,20 +91,17 @@ fn build_command_override_can_use_editor_context() {
     // With no file open, returns "echo building "
     let ctx = kairn::commands::ViewContext::default();
     h.state
-        .script
+        .script_mut()
         .update_snapshot(&ctx, dir.path().to_str().unwrap(), "", "", "none", false);
-    let result = h.state.script.eval("build-command").unwrap();
+    let result = h.state.script_mut().eval("build-command").unwrap();
     assert_eq!(result, "echo building ");
 
     // With a file open, returns custom command with file name
-    let ctx = kairn::commands::ViewContext {
-        file: Some("src/main.rs".into()),
-        ..Default::default()
-    };
+    let ctx = kairn::commands::ViewContext::builder().file("src/main.rs").build();
     h.state
-        .script
+        .script_mut()
         .update_snapshot(&ctx, dir.path().to_str().unwrap(), "", "", "none", false);
-    let result = h.state.script.eval("build-command").unwrap();
+    let result = h.state.script_mut().eval("build-command").unwrap();
     assert_eq!(result, "echo building src/main.rs");
 }
 
@@ -114,9 +114,9 @@ fn project_init_tcl_overrides_global() {
     let mut h = TestHarness::new(dir.path());
 
     // Load project config (simulates what the app does on startup)
-    h.state.script.load_config(dir.path());
+    h.state.script_mut().load_config(dir.path());
 
-    assert!(h.state.script.has_command("build-command"));
-    let result = h.state.script.eval("build-command").unwrap();
+    assert!(h.state.script().has_command("build-command"));
+    let result = h.state.script_mut().eval("build-command").unwrap();
     assert_eq!(result, "make -j4");
 }

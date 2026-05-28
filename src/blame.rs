@@ -6,10 +6,10 @@ use std::sync::{Arc, Mutex};
 /// A single line's blame annotation.
 #[derive(Debug, Clone)]
 pub struct BlameLine {
-    pub hash: String,
-    pub author: String,
-    pub date: String,
-    pub line: usize,
+    pub(crate) hash: String,
+    pub(crate) author: String,
+    pub(crate) date: String,
+    pub(crate) line: usize,
 }
 
 /// Blame state for a file.

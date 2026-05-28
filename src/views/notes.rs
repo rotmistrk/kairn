@@ -6,7 +6,7 @@ use super::editor::EditorView;
 
 /// A notes editor, identifiable by type for lookup via `as_any_mut`.
 pub struct NotesView {
-    pub editor: EditorView,
+    pub(crate) editor: EditorView,
 }
 
 impl NotesView {

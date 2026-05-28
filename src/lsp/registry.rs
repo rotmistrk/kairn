@@ -12,9 +12,9 @@ use super::protocol;
 /// Configuration for a language server.
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
-    pub command: String,
-    pub args: Vec<String>,
-    pub env: HashMap<String, String>,
+    pub(crate) command: String,
+    pub(crate) args: Vec<String>,
+    pub(crate) env: HashMap<String, String>,
 }
 
 /// Lifecycle state of a single LSP server.
@@ -34,7 +34,7 @@ pub struct LspRegistry {
     pub(super) configs: HashMap<String, ServerConfig>,
     pub(super) servers: HashMap<String, ServerState>,
     pub(super) timeouts: HashMap<String, u64>,
-    pub last_error: Option<String>,
+    pub(crate) last_error: Option<String>,
     /// Files to send didOpen for after initialization completes.
     pub(super) pending_opens: Vec<(String, PathBuf)>,
     /// Languages that have had their lsp-start hook fired.

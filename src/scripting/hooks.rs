@@ -70,9 +70,9 @@ pub enum CompiledFilter {
 
 /// A single registered hook.
 pub struct Hook {
-    pub event: HookEvent,
-    pub filter: Option<CompiledFilter>,
-    pub body: String,
+    pub(crate) event: HookEvent,
+    pub(crate) filter: Option<CompiledFilter>,
+    pub(crate) body: String,
 }
 
 /// Registry of all hooks, fired in declaration order.

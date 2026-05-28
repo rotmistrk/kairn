@@ -10,10 +10,10 @@ pub enum CommentKind {
 /// A comment extracted from JSONC input.
 #[derive(Debug, Clone)]
 pub struct Comment {
-    pub line: usize,
-    pub col: usize,
-    pub text: String,
-    pub kind: CommentKind,
+    pub(crate) line: usize,
+    pub(crate) col: usize,
+    pub(crate) text: String,
+    pub(crate) kind: CommentKind,
 }
 
 /// Strip comments from JSONC input, returning clean JSON and extracted comments.

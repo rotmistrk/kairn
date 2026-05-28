@@ -36,7 +36,7 @@ fn open_note_sets_state_and_tab() {
     h.run_cycles(4);
 
     // Verify state has the tree path stored
-    assert_eq!(h.state.todo_note_path, Some(vec![0]));
+    assert_eq!(*h.state.todo_note_path(), Some(vec![0]));
 
     // Verify Notes tab is active with the note content in the buffer
     use kairn::handler::downcast_desktop;

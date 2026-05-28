@@ -29,10 +29,10 @@ fn diff_sbs_enters_mode_without_split() {
     // Trigger side-by-side diff with different base content
     h.dispatch_command(
         kairn::commands::CM_DIFF_SPLIT,
-        Some(Box::new(kairn::commands::DiffSplitRequest {
-            base_content: "fn main() {\n    new();\n}\n".to_string(),
-            base_ref: "HEAD".to_string(),
-        })),
+        Some(Box::new(kairn::commands::DiffSplitRequest::new(
+            "fn main() {\n    new();\n}\n".to_string(),
+            "HEAD".to_string(),
+        ))),
     );
     h.run_cycles(3);
 
@@ -66,10 +66,10 @@ fn diff_sbs_exit_with_esc() {
 
     h.dispatch_command(
         kairn::commands::CM_DIFF_SPLIT,
-        Some(Box::new(kairn::commands::DiffSplitRequest {
-            base_content: "fn main() {\n    new();\n}\n".to_string(),
-            base_ref: "HEAD".to_string(),
-        })),
+        Some(Box::new(kairn::commands::DiffSplitRequest::new(
+            "fn main() {\n    new();\n}\n".to_string(),
+            "HEAD".to_string(),
+        ))),
     );
     h.run_cycles(3);
 
@@ -90,10 +90,10 @@ fn diff_sbs_identical_shows_no_changes() {
 
     h.dispatch_command(
         kairn::commands::CM_DIFF_SPLIT,
-        Some(Box::new(kairn::commands::DiffSplitRequest {
-            base_content: "fn main() {}\n".to_string(),
-            base_ref: "HEAD".to_string(),
-        })),
+        Some(Box::new(kairn::commands::DiffSplitRequest::new(
+            "fn main() {}\n".to_string(),
+            "HEAD".to_string(),
+        ))),
     );
     h.run_cycles(3);
 

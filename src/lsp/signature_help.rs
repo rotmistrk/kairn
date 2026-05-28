@@ -16,10 +16,10 @@ pub fn signature_help(client: &mut LspClient, uri: &str, line: u32, character: u
 /// Parsed signature help result.
 #[derive(Debug, Clone)]
 pub struct SignatureHelp {
-    pub label: String,
-    pub active_param: Option<usize>,
-    pub params: Vec<(usize, usize)>,
-    pub documentation: Option<String>,
+    pub(crate) label: String,
+    pub(crate) active_param: Option<usize>,
+    pub(crate) params: Vec<(usize, usize)>,
+    pub(crate) documentation: Option<String>,
 }
 
 /// Parse a signatureHelp response.

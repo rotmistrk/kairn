@@ -6,7 +6,7 @@ use super::piece_table::Piece;
 #[derive(Clone)]
 pub struct EditRecord {
     pub(super) pieces: Vec<Piece>,
-    pub line_starts: Vec<usize>,
+    pub(crate) line_starts: Vec<usize>,
 }
 
 /// Undo/redo stack.

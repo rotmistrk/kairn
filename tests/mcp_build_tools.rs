@@ -9,10 +9,10 @@ use txv_core::run::Waker;
 
 /// Push an MCP action and trigger drain via dispatch_command.
 fn exec_mcp_action(h: &mut TestHarness, action: McpAction) -> Result<serde_json::Value, String> {
-    let queue = h.state.mcp_commands.as_ref().unwrap();
+    let queue = h.state.mcp_commands().as_ref().unwrap();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     if let Ok(mut q) = queue.queue_handle().lock() {
-        q.push_back(McpRequest { action, reply: tx });
+        q.push_back(McpRequest::new(action, tx));
     }
     h.dispatch_command(kairn::commands::CM_CURSOR_MOVED, Some(Box::new((0u32, 0u32))));
     rx.recv().map_err(|e| e.to_string())?
@@ -25,7 +25,7 @@ fn mcp_search_project_finds_matches() {
         ("src/lib.rs", "pub fn hello() {}\n"),
     ]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,
@@ -43,7 +43,7 @@ fn mcp_search_project_finds_matches() {
 fn mcp_get_build_errors_returns_empty() {
     let dir = temp_project(&[("dummy.txt", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(&mut h, McpAction::GetBuildErrors);
     assert!(result.is_ok());
@@ -56,7 +56,7 @@ fn mcp_get_build_errors_returns_empty() {
 fn mcp_search_project_invalid_regex_returns_error() {
     let dir = temp_project(&[("dummy.txt", "")]);
     let mut h = TestHarness::new(dir.path());
-    h.state.mcp_commands = Some(McpCommandQueue::new(Waker::noop()));
+    h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
     let result = exec_mcp_action(
         &mut h,

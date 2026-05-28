@@ -2,11 +2,11 @@
 
 /// Tracks search matches and the current (primary) match index.
 pub struct HighlightState {
-    pub pattern: String,
+    pub(crate) pattern: String,
     /// (start_offset, end_offset) pairs in the buffer.
-    pub matches: Vec<(usize, usize)>,
+    pub(crate) matches: Vec<(usize, usize)>,
     /// Index into `matches` for the primary highlight.
-    pub current: usize,
+    pub(crate) current: usize,
 }
 
 impl HighlightState {
