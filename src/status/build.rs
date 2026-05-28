@@ -25,6 +25,7 @@ pub fn build_status_bar(
     let mut bar = StatusBar::new();
     keys::add_workspace_bindings(&mut bar, desktop);
     keys::add_prefix_bindings(&mut bar);
+    keys::add_dired_prefix(&mut bar);
     keys::add_app_bindings(&mut bar, status_keys);
     keys::add_tab_digit_bindings(&mut bar);
     add_command_items(&mut bar, completer);

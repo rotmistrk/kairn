@@ -24,9 +24,19 @@ pub static TABLE_PART1: &[ExecEntry] = &[
         handler: crate::handler_exec_edit::cmd_code_action,
     },
     ExecEntry {
+        names: &["copy-file"],
+        requires_arg: true,
+        handler: crate::handler_dired::cmd_copy_file,
+    },
+    ExecEntry {
         names: &["cycle-subpanel"],
         requires_arg: false,
         handler: crate::handler_exec_nav::cmd_cycle_subpanel,
+    },
+    ExecEntry {
+        names: &["delete-file"],
+        requires_arg: true,
+        handler: crate::handler_dired::cmd_delete_file,
     },
     ExecEntry {
         names: &["diff"],

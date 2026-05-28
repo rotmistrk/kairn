@@ -9,13 +9,31 @@ use txv_widgets::{KeyLabelView, ModalKey};
 use crate::commands::*;
 use crate::settings::StatusKeys;
 
-use super::helpers::{ctrl, key};
+use super::helpers::{alt, ctrl, key};
 
 /// Register TiledWorkspace's default key→command bindings (hidden).
 pub fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
     for (k, command, _payload) in desktop.default_bindings() {
         bar.add(StatusSlot::new(Box::new(KeyLabelView::new(k, command, ""))));
     }
+}
+
+/// Alt-f prefix key sequence for file tree dired operations.
+pub fn add_dired_prefix(bar: &mut StatusBar) {
+    let b = |ch: char, cmd, label| -> Box<dyn View> { Box::new(KeyLabelView::new(key(KeyCode::Char(ch)), cmd, label)) };
+    let prefix = ModalKey::new("M-f", "File: ")
+        .trigger_key(alt('f'))
+        .cancel_on_miss()
+        .add_child(b('n', CM_TREE_NEW_FILE, "new"))
+        .add_child(b('N', CM_TREE_NEW_DIR, "dir"))
+        .add_child(b('d', CM_TREE_DELETE, "del"))
+        .add_child(b('r', CM_TREE_RENAME, "ren"))
+        .add_child(b('c', CM_TREE_COPY, "copy"))
+        .add_child(b('m', CM_TREE_MARK, "mark"))
+        .add_child(b('u', CM_TREE_UNMARK_ALL, "unmark"))
+        .add_child(b('M', CM_TREE_MOVE_MARKED, "Move"))
+        .add_child(b('C', CM_TREE_COPY_MARKED, "Copy"));
+    bar.add(StatusSlot::new(Box::new(prefix)).priority(5));
 }
 
 /// Ctrl-W prefix key sequence for subpanel management.

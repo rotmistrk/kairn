@@ -1,5 +1,8 @@
 //! FileTreeView — wraps TreeView<FileTreeData>, emits CM_OPEN_FILE on Enter.
 
+#[path = "tree_dired.rs"]
+mod tree_dired;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -7,17 +10,20 @@ use txv_core::cell::Color;
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
-use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_SAVE};
+use crate::commands::{OpenFileRequest, CM_COMMAND_PREFILL, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_SAVE};
+use std::collections::HashSet;
+
 use crate::git_status::{collect_git_status, FileStatus};
 use crate::git_watcher::WatchHandle;
 
 pub struct FileTreeView {
-    inner: TreeView<FileTreeData>,
+    pub(super) inner: TreeView<FileTreeData>,
     last_key_was_right: bool,
     watcher: Option<WatchHandle>,
-    root: PathBuf,
+    pub(super) root: PathBuf,
     refresh_counter: u16,
     filter_active: bool,
+    pub(super) marked: HashSet<PathBuf>,
 }
 
 impl FileTreeView {
@@ -30,6 +36,7 @@ impl FileTreeView {
             root,
             refresh_counter: 0,
             filter_active: false,
+            marked: HashSet::new(),
         };
         view.update_colors();
         view
@@ -162,6 +169,18 @@ impl View for FileTreeView {
                     return HandleResult::Consumed;
                 }
                 _ => {}
+            }
+        }
+        // Intercept dired commands from Alt-f prefix
+        if let Event::Command { id, .. } = event {
+            if self.handle_mark_cmd(*id) {
+                return HandleResult::Consumed;
+            }
+            if let Some(prefill) = self.dired_prefill(*id) {
+                self.inner
+                    .state
+                    .put_command(CM_COMMAND_PREFILL, Some(Box::new(prefill)));
+                return HandleResult::Consumed;
             }
         }
         // Intercept CM_OK from inner TreeView (re-dispatched)

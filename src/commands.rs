@@ -183,6 +183,17 @@ pub const CM_TODO_ACTION: CommandId = CM_APP_BASE + 168;
 pub const CM_APP_QUIT: CommandId = CM_APP_BASE + 169;
 pub const CM_SAVE_ALL: CommandId = CM_APP_BASE + 170;
 
+// File tree dired operations
+pub const CM_TREE_NEW_FILE: CommandId = CM_APP_BASE + 171;
+pub const CM_TREE_NEW_DIR: CommandId = CM_APP_BASE + 172;
+pub const CM_TREE_DELETE: CommandId = CM_APP_BASE + 173;
+pub const CM_TREE_RENAME: CommandId = CM_APP_BASE + 174;
+pub const CM_TREE_COPY: CommandId = CM_APP_BASE + 175;
+pub const CM_TREE_MARK: CommandId = CM_APP_BASE + 176;
+pub const CM_TREE_UNMARK_ALL: CommandId = CM_APP_BASE + 177;
+pub const CM_TREE_MOVE_MARKED: CommandId = CM_APP_BASE + 178;
+pub const CM_TREE_COPY_MARKED: CommandId = CM_APP_BASE + 179;
+
 /// Payload for CM_SPLIT.
 #[derive(Debug, Clone)]
 pub struct SplitRequest {

@@ -36,6 +36,7 @@ pub mod handler_build;
 pub mod handler_close;
 pub mod handler_confirm;
 pub mod handler_context;
+pub mod handler_dired;
 pub mod handler_drain;
 pub mod handler_evict;
 pub mod handler_exec;

@@ -37,3 +37,14 @@ pub fn ctrl(ch: char) -> KeyEvent {
         },
     }
 }
+
+pub fn alt(ch: char) -> KeyEvent {
+    KeyEvent {
+        code: KeyCode::Char(ch),
+        modifiers: KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    }
+}

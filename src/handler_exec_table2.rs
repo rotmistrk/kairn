@@ -9,6 +9,16 @@ pub static TABLE_PART2: &[ExecEntry] = &[
         handler: crate::handler_exec_nav::cmd_move_tab,
     },
     ExecEntry {
+        names: &["new-dir"],
+        requires_arg: true,
+        handler: crate::handler_dired::cmd_new_dir,
+    },
+    ExecEntry {
+        names: &["new-file"],
+        requires_arg: true,
+        handler: crate::handler_dired::cmd_new_file,
+    },
+    ExecEntry {
         names: &["next-error"],
         requires_arg: false,
         handler: crate::handler_exec_edit::cmd_next_error,
@@ -32,6 +42,11 @@ pub static TABLE_PART2: &[ExecEntry] = &[
         names: &["quit"],
         requires_arg: false,
         handler: crate::handler_exec_edit::cmd_quit,
+    },
+    ExecEntry {
+        names: &["rename-file"],
+        requires_arg: true,
+        handler: crate::handler_dired::cmd_rename_file,
     },
     ExecEntry {
         names: &["run"],
