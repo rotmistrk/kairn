@@ -82,7 +82,7 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let busy_style = palette.badge().busy();
     let idle_style = palette.badge().idle();
     let exited_style = palette.badge().exited();
-    let frame = (state.mcp_tick / 4) as usize % SPINNER.len();
+    let frame = (state.mcp_tick / 16) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;
