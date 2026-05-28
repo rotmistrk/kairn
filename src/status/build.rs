@@ -80,7 +80,7 @@ fn add_right_side(bar: &mut StatusBar, root_dir: PathBuf, clock_interval: u16) {
     );
     bar.add(
         StatusSlot::new(Box::new(ClockView::new(clock_interval)))
-            .priority(2)
+            .priority(4)
             .gravity(Gravity::Right),
     );
 }

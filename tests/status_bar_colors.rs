@@ -141,3 +141,118 @@ fn status_bar_active_modal_no_black_after_cap() {
         );
     }
 }
+
+/// Clock must appear in status bar at reasonable terminal widths.
+#[test]
+fn clock_visible_at_120_cols() {
+    let dir = temp_project(&[("main.rs", "fn main() {}")]);
+    // Create a .git/HEAD to simulate a branch
+    std::fs::create_dir(dir.path().join(".git")).unwrap();
+    std::fs::write(
+        dir.path().join(".git/HEAD"),
+        "ref: refs/heads/feature/long-branch-name\n",
+    )
+    .unwrap();
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
+    h.run_cycles(2);
+    let screen = h.screen_text();
+    let has_time = regex::Regex::new(r"\d\d:\d\d").unwrap().is_match(&screen);
+    assert!(
+        has_time,
+        "clock should be visible at 120 cols. Status bar: {}",
+        h.row(23)
+    );
+}
+
+/// After executing a command via M-x, reopening M-x should show old text selected.
+/// Typing should replace it.
+#[test]
+fn mx_reopen_selects_old_text_typing_replaces() {
+    let dir = temp_project(&[("main.rs", "fn main() {}")]);
+    let mut h = TestHarness::new(dir.path());
+    h.run_cycles(2);
+
+    // Open M-x, type "help", press Enter
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
+    h.run_cycles(1);
+    h.inject_str("help");
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(2);
+
+    // Reopen M-x — old text "help" should be there but selected
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
+    h.run_cycles(2);
+
+    // Type "e" — should replace "help" with "e"
+    h.inject_key(KeyCode::Char('e'), KeyMod::default());
+    h.run_cycles(1);
+
+    let row = h.row(23);
+    assert!(
+        row.contains("e"),
+        "after typing 'e', should see 'e' in prompt, got: {row}"
+    );
+    assert!(!row.contains("help"), "old text 'help' should be replaced, got: {row}");
+}
+
+/// After reopening M-x, pressing Left should deselect and allow editing.
+#[test]
+fn mx_reopen_nav_deselects() {
+    let dir = temp_project(&[("main.rs", "fn main() {}")]);
+    let mut h = TestHarness::new(dir.path());
+    h.run_cycles(2);
+
+    // Open M-x, type "test", press Enter
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
+    h.run_cycles(1);
+    h.inject_str("test");
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(2);
+
+    // Reopen M-x
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
+    h.run_cycles(2);
+
+    // Press Left to deselect, then type "X"
+    h.inject_key(KeyCode::Left, KeyMod::default());
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char('X'), KeyMod::default());
+    h.run_cycles(1);
+
+    let row = h.row(23);
+    // "test" should still be there with "X" inserted
+    assert!(
+        row.contains("tesX") || row.contains("teXt") || row.contains("tXst") || row.contains("Xest"),
+        "after Left+X, should have X inserted into 'test', got: {row}"
+    );
+}
