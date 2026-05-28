@@ -1821,7 +1821,7 @@ dependencies = [
 [[package]]
 name = "rusticle"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/rusticle.git#496de5fa265e7759c6914e0cbd7c8fcf3a10b727"
+source = "git+https://github.com/rotmistrk/rusticle.git#2743605454ddca4809cf331777a41e11f62a82fd"
 dependencies = [
  "serde_json",
 ]
