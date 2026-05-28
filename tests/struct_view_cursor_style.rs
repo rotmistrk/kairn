@@ -21,8 +21,8 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
 
     let surface = h.backend.surface().expect("surface should exist");
     let pal = txv_core::palette::palette();
-    let dim_style = pal.base().dim();
-    let cursor_style = pal.interactive().cursor_focused();
+    let dim_style = pal.style(txv_core::palette::StyleId::Dim);
+    let cursor_style = pal.style(txv_core::palette::StyleId::CursorFocused);
 
     // Find the cursor row by looking for a cell with cursor_focused style
     let mut cursor_y: Option<u16> = None;

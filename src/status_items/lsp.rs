@@ -53,7 +53,7 @@ impl View for LspStatusItem {
     delegate_view_state!(state, override { draw, handle });
 
     fn draw(&mut self) {
-        let style = txv_core::palette::palette().chrome().status_bar();
+        let style = txv_core::palette::palette().style(txv_core::palette::StyleId::StatusBar);
         self.state.buffer_mut().fill(' ', style);
         if !self.label.is_empty() {
             self.state.buffer_mut().print(1, 0, &self.label, style);

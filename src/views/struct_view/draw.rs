@@ -22,13 +22,13 @@ pub fn draw_struct_view(view: &mut StructuredView) {
     let pal = txv_core::palette::palette();
     let focused = view.state.is_focused();
     let cursor_style = if focused {
-        pal.interactive().cursor_focused()
+        pal.style(txv_core::palette::StyleId::CursorFocused)
     } else {
-        pal.interactive().cursor_unfocused()
+        pal.style(txv_core::palette::StyleId::CursorUnfocused)
     };
     let cursor_row_style = normal;
-    let sep_style = pal.base().dim();
-    let edit_style = pal.interactive().edit_overlay();
+    let sep_style = pal.style(txv_core::palette::StyleId::Dim);
+    let edit_style = pal.style(txv_core::palette::StyleId::EditOverlay);
 
     // Pre-collect row data to avoid borrow issues
     struct RowData {

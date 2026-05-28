@@ -130,7 +130,7 @@ impl super::EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = h.saturating_sub(1);
-            let prompt_style = txv_core::palette::palette().chrome().status_bar();
+            let prompt_style = txv_core::palette::palette().style(txv_core::palette::StyleId::StatusBar);
             let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                 "/"
             } else {
@@ -146,7 +146,9 @@ impl super::EditorView {
 
 /// Paint highlight background on a single row (for gs target line).
 pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: u16, to_x: u16) {
-    let bg = txv_core::palette::palette().interactive().search_match().bg;
+    let bg = txv_core::palette::palette()
+        .style(txv_core::palette::StyleId::SearchMatch)
+        .bg;
     if bg == Color::Reset {
         return;
     }

@@ -30,9 +30,9 @@ impl EditorView {
         let hl_match_style = app.editor().highlight_match();
         let hl_other_bg = app.editor().highlight_other().bg;
         let visual_bg = if self.state.is_focused() {
-            pal.interactive().visual_selection().bg
+            pal.style(txv_core::palette::StyleId::VisualSelection).bg
         } else {
-            pal.interactive().cursor_unfocused().bg
+            pal.style(txv_core::palette::StyleId::CursorUnfocused).bg
         };
 
         let scroll = self.editor.viewport_scroll;

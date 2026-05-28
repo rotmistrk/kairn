@@ -22,13 +22,13 @@ pub fn draw_csv_view(view: &mut CsvView) {
     let pal = txv_core::palette::palette();
     let styles = DrawStyles {
         normal: Style::default(),
-        header: pal.base().bright(),
+        header: pal.style(txv_core::palette::StyleId::Bright),
         cursor: if view.state.is_focused() {
-            pal.interactive().cursor_focused()
+            pal.style(txv_core::palette::StyleId::CursorFocused)
         } else {
-            pal.interactive().cursor_unfocused()
+            pal.style(txv_core::palette::StyleId::CursorUnfocused)
         },
-        cursor_row: pal.base().dim(),
+        cursor_row: pal.style(txv_core::palette::StyleId::Dim),
     };
 
     let mut y: u16 = 0;

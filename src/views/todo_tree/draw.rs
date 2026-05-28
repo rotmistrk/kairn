@@ -14,7 +14,7 @@ impl TodoTreeView {
             return;
         }
         if self.inner.data.visible_count() == 0 {
-            let dim = txv_core::palette::palette().base().dim();
+            let dim = txv_core::palette::palette().style(txv_core::palette::StyleId::Dim);
             self.inner.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
@@ -48,14 +48,14 @@ impl TodoTreeView {
             }
             let style = if idx == self.inner.cursor {
                 if self.inner.is_focused() {
-                    let cs = pal.interactive().cursor_focused();
+                    let cs = pal.style(txv_core::palette::StyleId::CursorFocused);
                     Style {
                         fg: node_style.fg,
                         bg: cs.bg,
                         attrs: cs.attrs,
                     }
                 } else {
-                    let cs = pal.interactive().cursor_unfocused();
+                    let cs = pal.style(txv_core::palette::StyleId::CursorUnfocused);
                     Style {
                         fg: node_style.fg,
                         bg: cs.bg,
@@ -93,7 +93,7 @@ impl TodoTreeView {
                     let indent = (depth * 2 + 6) as u16;
                     let ex = indent;
                     let ew = w.saturating_sub(indent);
-                    let style = pal.interactive().edit_overlay();
+                    let style = pal.style(txv_core::palette::StyleId::EditOverlay);
                     editor.draw(self.inner.buffer_mut(), ex, y, ew, style);
                 }
             }
@@ -101,7 +101,7 @@ impl TodoTreeView {
         // Filter bar at top
         if filter_offset > 0 {
             let y = 0;
-            let style = pal.interactive().edit_overlay();
+            let style = pal.style(txv_core::palette::StyleId::EditOverlay);
             self.inner.buffer_mut().hline(0, y, w, ' ', style);
             self.inner.buffer_mut().print(0, y, "/", style);
             if let Some(ref editor) = self.filter_editor {

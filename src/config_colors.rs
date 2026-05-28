@@ -2,7 +2,7 @@
 
 use rusticle::interpreter::Interpreter;
 use txv_core::cell::{Attrs, Color, Style};
-use txv_core::palette::style_id::StyleId;
+use txv_core::palette::StyleId;
 
 use crate::app_palette::AppPalette;
 use crate::custom_palette::CustomPalette;

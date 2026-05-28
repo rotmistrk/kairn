@@ -105,11 +105,11 @@ impl View for GitLogView {
         }
         let pal = txv_core::palette::palette();
         let normal = Style::default();
-        let dim = pal.base().dim();
+        let dim = pal.style(txv_core::palette::StyleId::Dim);
         let cursor_style = if self.state.is_focused() {
-            pal.interactive().cursor_focused()
+            pal.style(txv_core::palette::StyleId::CursorFocused)
         } else {
-            pal.interactive().cursor_unfocused()
+            pal.style(txv_core::palette::StyleId::CursorUnfocused)
         };
 
         if !self.done {
