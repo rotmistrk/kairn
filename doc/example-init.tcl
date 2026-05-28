@@ -23,8 +23,15 @@ set editor.cursor_insert bar
 set editor.cursor_normal software
 set editor.cursor_command software
 
+# NOTE: editor.autosave and editor.autosave_delay are not yet configurable via Tcl.
+
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
+# Seconds before terminal is considered idle (default: 3)
+# set terminal.idle-timeout 3
+# Auto-close shell tabs when the shell process exits (default: true)
+# set terminal.auto-close-on-exit true
+
 # Shell tabs auto-update their title from the terminal's OSC title
 # (set by shell prompt hooks, e.g. \e]0;~/projects\a). Format: "Shell:<title>"
 
@@ -88,26 +95,12 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # Colors use ANSI 256 numbers (0-255) or "reset" for terminal default.
 # Format: set color.<role> <ansi-number>
 #
-# Framework palette (txv-core):
-#   base:        text, dim, bright, border, separator
-#   interactive: cursor_focused, cursor_unfocused, input_cursor,
-#                edit_overlay, search_match, visual_selection, disabled
-#   chrome:      bar, tab_focused, tab_focused_arrow, tab_focused_badge,
-#                tab_active, tab_active_arrow, tab_active_badge,
-#                status_bar, scrollbar_track, scrollbar_thumb
-#   popup:       background, border, selected, table_header
-#   state:       error, warning, info, success, hint
+# Chrome/framework styles (configurable via "fg bg [attrs]" format):
+#   chrome:      status_bar, status_bar_modal, bar, tab_focused, tab_active,
+#                scrollbar_track, scrollbar_thumb
+#   popup:       background, border, selected
+#   interactive: cursor_focused, input_cursor, search_match
 #
-# Application palette (kairn):
-#   git:    added, modified, untracked, ignored, conflict
-#   diff:   added, deleted, fold
-#   editor: gutter, list_chars, cursor
-#   diag:   error, warning, info, hint
-#   tree:   directory
-#   todo:   normal, done, important
-#   msg:    error, warning, info, debug
-#
-# Chrome/framework styles use "fg bg [attrs]" format:
 #   fg/bg: ansi number (0-15), p:N (palette 0-255), rgb:RRGGBB
 #   attrs: bold, italic, underline, dim (space-separated)
 #
@@ -127,6 +120,14 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # set color.interactive.search_match    "0 3"
 #
 # App-level colors (fg only, ansi number):
+#   git:    added, modified, untracked, ignored, conflict
+#   diff:   added, deleted, fold
+#   editor: gutter, list_chars
+#   diag:   error, warning, info, hint
+#   tree:   directory
+#   todo:   normal, done, important
+#   msg:    error, warning, info, debug
+#
 # set color.git.added 2
 # set color.git.modified 12
 # set color.git.untracked 1
@@ -137,13 +138,17 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # set color.tree.directory 14
 # set color.todo.done 8
 # set color.todo.important 1
-# set color.state.success 2
 
 # ─── LSP ─────────────────────────────────────────────────────────────────────
 # set lsp.timeout 10          ;# seconds to wait for LSP response (default: 10)
-# LSP servers are auto-detected. Override with:
-# lsp args rust rust-analyzer --target-dir /tmp/target
-# lsp args python pyright --stdio
+#
+# LSP servers are auto-detected. Override with lsp-server command:
+# lsp-server rust rust-analyzer --target-dir /tmp/target
+# lsp-server python pyright --stdio
+# lsp-server typescript typescript-language-server --stdio
+#
+# Disable LSP for a language:
+# lsp-disable markdown
 #
 # Set environment variables for LSP servers:
 # lsp env rust CARGO_TARGET_DIR "/tmp/kairn-target"
@@ -155,6 +160,47 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #     if {$target ne ""} { lsp env rust CARGO_TARGET_DIR $target }
 # }
 
+# ─── Hooks ───────────────────────────────────────────────────────────────────
+# Available hook events:
+#   file-save          Fires after a file is saved
+#   file-open          Fires when a file is opened
+#   file-close         Fires when a file tab is closed
+#   build-done         Fires when a build/test command completes
+#   tab-switched       Fires when the active tab changes
+#   startup            Fires once at application startup
+#   char-inserted      Fires after a character is typed (filter = the char)
+#   char-deleted       Fires after a character is deleted (filter = the char)
+#   word-completed     Fires when a word boundary is reached (filter = the word)
+#   idle               Fires after no keystrokes for idle timeout (filter = ms)
+#   paste              Fires after text is pasted
+#   mode-changed       Fires when editor mode changes (filter = mode name)
+#   selection-changed  Fires when editor selection changes
+#   lsp-start          Fires when an LSP server starts (filter = language)
+#
+# Syntax: hook add <event> ?-filter <pattern>? { body }
+#
+# Examples:
+# hook add file-save { build run }
+# hook add file-open -filter "*.rs" { lsp start }
+# hook add build-done { view message info build "Build finished" }
+# hook add startup { view status "Welcome!" }
+# hook add char-inserted -filter "(" { editor insert ")" }
+# hook add char-inserted -filter "{" { editor insert "}" }
+# hook add char-deleted -filter "(" { }
+# hook add word-completed -filter "todo" { editor replace-word "// TODO(user): " }
+# hook add idle { lsp format }
+# hook add paste { view status "Pasted" }
+# hook add mode-changed -filter "insert" { view status "-- INSERT --" }
+# hook add selection-changed { }
+# hook add tab-switched { view status [editor current-file] }
+
+# ─── Key Bindings ────────────────────────────────────────────────────────────
+# Quote the current selection:
+# keymap bind ctrl+q {
+#   set sel [editor get-selection]
+#   editor replace-selection "\"$sel\""
+# }
+
 # ─── File Operations (Alt-f / ƒ prefix in tree) ──────────────────────────────
 # Alt-f (ƒ on macOS) opens file ops prefix in tree panel:
 #   n:new  N:dir  d:del  r:rename  c:copy  m:mark  u:unmark  M:Move  C:Copy
@@ -164,8 +210,6 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #   delete-file <path>      ;# delete file or directory
 #   rename-file <old> <new> ;# rename/move
 #   copy-file <src> <dest>  ;# copy file or directory
-
-# ─── Hooks & Selection Scripting ─────────────────────────────────────────────
 
 # ─── View Commands ───────────────────────────────────────────────────────────
 # view theme dark|light|auto|toggle
@@ -269,23 +313,3 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #     }
 #     return ""
 # }
-
-# ─── Hooks & Key Bindings ────────────────────────────────────────────────────
-# Auto-close brackets via char-inserted hook with filter:
-# hook add char-inserted -filter "(" { editor insert ")" }
-# hook add char-inserted -filter "{" { editor insert "}" }
-# hook add char-inserted -filter "[" { editor insert "]" }
-
-# Quote the current selection:
-# keymap bind ctrl+q {
-#   set sel [editor get-selection]
-#   editor replace-selection "\"$sel\""
-# }
-
-# Word expansion via word-completed hook:
-# hook add word-completed -filter "todo" {
-#   editor replace-word "// TODO(user): "
-# }
-
-# Format on idle (fires after no keystrokes for idle timeout):
-# hook add idle { lsp format }

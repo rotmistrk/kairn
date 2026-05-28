@@ -140,6 +140,8 @@ File operations via `Alt-f` (ƒ on macOS) prefix:
 
 | Command | Description |
 |---------|-------------|
+| `help` | Show help |
+| `quit` | Quit |
 | `edit <path>` / `e <path>` | Open file |
 | `save` | Save current file |
 | `close` | Close current tab |
@@ -154,7 +156,7 @@ File operations via `Alt-f` (ƒ on macOS) prefix:
 | `lsp-status` | Show LSP status |
 | `code-action` | LSP code actions |
 | `paste` | System clipboard paste |
-| `theme dark/light/toggle` | Switch theme |
+| `theme dark/light/auto/toggle` | Switch theme |
 | `git-stage/unstage/untrack <f>` | Git operations |
 | `git-commit <msg>` | Commit |
 | `new-file <path>` | Create file (and parent dirs) |
@@ -163,17 +165,22 @@ File operations via `Alt-f` (ƒ on macOS) prefix:
 | `rename-file <old> <new>` | Rename/move file |
 | `copy-file <src> <dest>` | Copy file or directory |
 | `tab-rename <name>` | Rename tab |
+| `tab-next` / `tab-prev` | Switch tabs |
 | `split [<file>]` / `vsplit [<file>]` | Split editor |
 | `struct` / `text` | Switch view mode |
 | `tab` | Open current file as CSV/TSV table |
 | `blame` / `noblame` | Show/hide git blame |
 | `log` | Show git log |
+| `messages` | Show messages window |
 | `zoom` | Zoom toggle (maximize panel) |
 | `layout` | Cycle layout mode (auto/wide/tall) |
 | `move-tab` | Move tab to other subpanel |
+| `cycle-subpanel` | Cycle focus between subpanels |
 | `toggle-tree` / `toggle-tools` | Show/hide side panels |
 | `grow` / `shrink` | Resize panel horizontally |
 | `grow-v` / `shrink-v` | Resize panel vertically |
+| `grow-subpanel` / `shrink-subpanel` | Resize subpanel |
+| `focus-left/right/up/down` | Directional focus |
 | *anything else* | Evaluated as Tcl script |
 
 ## Configuration
@@ -183,8 +190,9 @@ Config is Tcl. Loaded in order (later overrides earlier):
 ```
 ~/.config/kairn/init.tcl     Global settings
 ~/.kairn/config.tcl          User preferences
-~/.kairn/plugins/*/init.tcl  Plugins (alphabetical)
 .kairn/init.tcl              Project-local overrides
+~/.kairn/plugins/*/init.tcl  Plugins (alphabetical)
+.kairn/plugins/*/init.tcl    Project plugins (alphabetical)
 ```
 
 Example (`~/.kairn/config.tcl`):
@@ -264,18 +272,18 @@ Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 - **Files**: open, create, save
 - **Editor**: read state (cursor, selection, diagnostics), edit buffer, insert text, set cursor, undo/redo
 - **Terminal**: read content, send input
-- **Build**: run build/test, get errors, search project (grep)
+- **Build**: run build/test, get errors, diagnostics, search project (grep)
 - **Diff**: revert hunk under cursor
 - **Split**: create/close/focus/open/linked scroll
 - **Todo**: add (including batch `add_subtree`), toggle, remove, move, promote/demote, notes
 - **Git**: stage, unstage, commit
-- **LSP**: start/restart/stop, hover, definition, references, rename, code-action, semantic tokens
+- **LSP**: start/restart/stop/timeout/args/status, hover/definition/references/rename/code-action
 - **Scripting**: eval Tcl
 - **Messages**: read message log
 
 ## Tech Stack
 
-Rust · txv (custom TUI framework) · crossterm · syntect · git2 · similar · rusticle (Tcl) · duir (todo)
+Rust · txv (custom TUI framework) · crossterm · syntect · git2 · similar · rusticle (Tcl) · duir-core (todo)
 
 External (in txv-widgets): vte · portable-pty · nucleo
 

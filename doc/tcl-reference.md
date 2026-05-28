@@ -5,9 +5,18 @@ Any M-x command that isn't a built-in is evaluated as Tcl.
 
 ## Configuration
 
-Scripts are loaded in order:
-1. `~/.kairn/config.tcl` — global user config
-2. `.kairn/init.tcl` — project-specific config
+Scripts are loaded in order (later overrides earlier):
+
+```
+~/.config/kairn/init.tcl     Global settings (XDG path)
+~/.kairn/config.tcl          User preferences (Tcl commands, hooks, bindings)
+~/.kairn/plugins/*/init.tcl  Plugins (alphabetical order)
+.kairn/init.tcl              Project-local overrides
+```
+
+The first file (`~/.config/kairn/init.tcl`) is loaded for application settings
+(editor defaults, theme, layout). The remaining files are loaded by the Tcl
+scripting engine for runtime commands, hooks, and keybindings.
 
 Settings use `set variable value` syntax. See `doc/example-init.tcl` for all options.
 
@@ -119,6 +128,9 @@ Paths are dot-separated indices (e.g., `0.2.1` = first item → third child → 
 | `split open <path>` | Open file in other pane |
 | `split linked ?<bool>?` | Get/set linked scroll |
 | `split direction` | Returns current split direction |
+| `split vertical ?<file>?` | Alias for `split vsplit` |
+| `split horizontal ?<file>?` | Alias for `split hsplit` |
+| `split only` | Alias for `split close` |
 
 ### grep
 
@@ -142,6 +154,10 @@ Key format: `ctrl+x`, `alt+x`, `F1`–`F12`, `ctrl+shift+x`, etc.
 | `hook add <event> ?-filter <pat>? <script>` | Register hook |
 | `hook remove <event>` | Remove all hooks for event |
 | `hook list ?<event>?` | List registered hooks |
+
+Filter syntax variants:
+- `hook add <event> -filter <pattern> <body>` — flag syntax
+- `hook add <event> <filter> <body>` — positional syntax (2 args after event = filter + body)
 
 Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `startup`, `char-inserted`, `char-deleted`, `word-completed`, `idle`, `paste`, `mode-changed`, `selection-changed`, `lsp-start`.
 
@@ -225,11 +241,10 @@ keymap bind ctrl+q {
     editor replace-selection "\"$sel\""
 }
 
-# Bind Alt+G to grep word under cursor
+# Bind Alt+G to grep selection
 keymap bind alt+g {
     set word [editor get-selection]
-    if {$word eq ""} { set word [editor current-word] }
-    grep $word
+    if {$word ne ""} { grep $word }
 }
 ```
 
