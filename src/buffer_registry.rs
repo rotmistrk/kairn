@@ -10,27 +10,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Unique identifier for a buffer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct BufferId(u64);
-
-impl BufferId {
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-}
-
-impl std::fmt::Display for BufferId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "buf#{}", self.0)
-    }
-}
-
-/// Metadata for a registered buffer.
-struct BufferEntry {
-    path: Option<PathBuf>,
-    ref_count: usize,
-}
+use crate::buffer_entry::BufferEntry;
+pub use crate::buffer_id::BufferId;
 
 /// Registry that assigns IDs and tracks buffer metadata.
 pub struct BufferRegistry {
@@ -50,7 +31,7 @@ impl BufferRegistry {
 
     /// Register a new buffer with an optional file path. Returns its unique ID.
     pub fn register(&mut self, path: Option<PathBuf>) -> BufferId {
-        let id = BufferId(self.next_id);
+        let id = BufferId::new(self.next_id);
         self.next_id += 1;
         if let Some(ref p) = path {
             self.path_index.insert(p.clone(), id);

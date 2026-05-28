@@ -8,14 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// State of a loaded plugin.
-#[derive(Debug)]
-struct PluginEntry {
-    path: PathBuf,
-    mtime: SystemTime,
-    /// Proc names defined by this plugin.
-    procs: Vec<String>,
-}
+use super::plugin_entry::PluginEntry;
 
 /// Manages plugin lifecycle: load, reload, unload.
 pub struct PluginManager {

@@ -1,83 +1,8 @@
-//! Application and editor settings (3-tier: global → editor_defaults → instance).
+//! Global application settings.
 
-use txv_core::prelude::*;
-
-/// Per-editor-instance settings, cloned from AppSettings::editor_defaults on creation.
-#[derive(Debug, Clone)]
-pub struct EditorSettings {
-    pub(crate) wrap: bool,
-    pub(crate) list: bool,
-    pub(crate) tabstop: u16,
-    pub(crate) number: bool,
-    pub(crate) autosave: bool,
-    pub(crate) autosave_delay: u16,
-    pub(crate) cursor_insert: CursorStyle,
-    pub(crate) cursor_normal: CursorStyle,
-    pub(crate) cursor_command: CursorStyle,
-}
-
-impl EditorSettings {
-    pub fn set_autosave(&mut self, v: bool) {
-        self.autosave = v;
-    }
-}
-
-/// Cursor style: software (reverse block) or hardware (bar/block/underline).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CursorStyle {
-    Software,
-    Bar,
-    Block,
-    Underline,
-}
-
-impl Default for EditorSettings {
-    fn default() -> Self {
-        Self {
-            wrap: true,
-            list: false,
-            tabstop: 4,
-            number: true,
-            autosave: true,
-            autosave_delay: 5,
-            cursor_insert: CursorStyle::Bar,
-            cursor_normal: CursorStyle::Software,
-            cursor_command: CursorStyle::Software,
-        }
-    }
-}
-
-/// Key bindings for the git changes panel.
-#[derive(Debug, Clone)]
-pub struct GitKeys {
-    pub(crate) stage: KeyEvent,
-    pub(crate) unstage: KeyEvent,
-    pub(crate) untrack: KeyEvent,
-    pub(crate) commit: KeyEvent,
-}
-
-impl Default for GitKeys {
-    fn default() -> Self {
-        Self {
-            stage: KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyMod::default(),
-            },
-            unstage: KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyMod::default(),
-            },
-            untrack: KeyEvent {
-                code: KeyCode::Char('x'),
-                modifiers: KeyMod::default(),
-            },
-            commit: KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyMod::default(),
-            },
-        }
-    }
-}
+pub use crate::editor_settings::{CursorStyle, EditorSettings};
+pub use crate::git_keys::GitKeys;
+pub use crate::status_keys::StatusKeys;
 
 /// Global application settings.
 #[derive(Debug, Clone)]
@@ -96,77 +21,10 @@ pub struct AppSettings {
     pub(crate) lsp_timeout: u64,
     pub(crate) git_keys: GitKeys,
     pub(crate) status_keys: StatusKeys,
-    /// Seconds before a terminal tab is considered idle.
     pub(crate) terminal_idle_timeout: u64,
-    /// Auto-close terminal tabs on exit.
     pub(crate) terminal_auto_close: bool,
-    /// Width threshold to switch from tall to wide layout.
     pub(crate) layout_wide_threshold: u16,
-    /// Width threshold to switch from wide to tall layout.
     pub(crate) layout_tall_threshold: u16,
-}
-
-/// Key bindings for the status bar (visible labels).
-#[derive(Debug, Clone)]
-pub struct StatusKeys {
-    pub(crate) help: KeyEvent,
-    pub(crate) tree: KeyEvent,
-    pub(crate) main: KeyEvent,
-    pub(crate) term: KeyEvent,
-    pub(crate) zoom: KeyEvent,
-    pub(crate) messages: KeyEvent,
-    pub(crate) quit: KeyEvent,
-    pub(crate) subpanel_focus: KeyEvent,
-    pub(crate) subpanel_move: KeyEvent,
-    pub(crate) subpanel_grow: KeyEvent,
-    pub(crate) subpanel_shrink: KeyEvent,
-}
-
-impl Default for StatusKeys {
-    fn default() -> Self {
-        Self {
-            help: fkey(1),
-            tree: fkey(2),
-            main: fkey(3),
-            term: fkey(4),
-            zoom: fkey(5),
-            messages: fkey(6),
-            quit: ctrl_key('q'),
-            subpanel_focus: ctrl_key('w'),
-            subpanel_move: ctrl_alt_key('w'),
-            subpanel_grow: ctrl_alt_key('='),
-            subpanel_shrink: ctrl_alt_key('-'),
-        }
-    }
-}
-
-fn fkey(n: u8) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::F(n),
-        modifiers: KeyMod::default(),
-    }
-}
-
-fn ctrl_key(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    }
-}
-
-fn ctrl_alt_key(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: true,
-            shift: false,
-        },
-    }
 }
 
 impl Default for AppSettings {
@@ -222,7 +80,6 @@ impl AppSettings {
     pub fn set_max_tabs(&mut self, v: u16) {
         self.max_tabs = v;
     }
-    /// Returns the syntax theme name for the current mode.
     pub fn syntax_theme_for_mode(&self, is_light: bool) -> &str {
         if is_light {
             &self.theme_syntax_light

@@ -6,7 +6,9 @@ mod path;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use txv_core::complete::{Completer, Completion, CompletionVisitor};
+use txv_core::complete::{Completer, CompletionVisitor};
+
+pub(crate) use crate::completer_entry::Entry;
 
 /// Built-in commands (always available).
 pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
@@ -47,25 +49,6 @@ impl AppCompleter {
 
     pub fn set_lsp_languages(&mut self, langs: LspLanguageList) {
         self.lsp_languages = langs;
-    }
-}
-
-/// A concrete completion candidate.
-pub(crate) struct Entry {
-    pub(crate) text: String,
-    pub(crate) display: String,
-    pub(crate) kind: &'static str,
-}
-
-impl Completion for Entry {
-    fn text(&self) -> &str {
-        &self.text
-    }
-    fn display(&self) -> &str {
-        &self.display
-    }
-    fn kind(&self) -> &str {
-        self.kind
     }
 }
 

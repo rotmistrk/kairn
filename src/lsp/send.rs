@@ -222,12 +222,14 @@ fn defer(
             format!("Waiting for LSP ({lang})..."),
         ))),
     );
-    state.deferred_lsp.push(crate::app_state::DeferredLspRequest {
-        command,
-        data,
-        language: lang.to_string(),
-        created: std::time::Instant::now(),
-    });
+    state
+        .deferred_lsp
+        .push(crate::deferred_lsp_request::DeferredLspRequest {
+            command,
+            data,
+            language: lang.to_string(),
+            created: std::time::Instant::now(),
+        });
 }
 
 fn emit_last_error(ctx: &mut CommandContext, state: &mut AppState) {

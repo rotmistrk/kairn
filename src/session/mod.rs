@@ -1,8 +1,12 @@
 //! Session persistence — save/restore workspace state.
 
+mod editor_tab_state;
+mod kiro_session_state;
 mod restore;
 mod save;
 pub mod schema;
+mod session_state_builder;
+mod split_state;
 
 use std::path::Path;
 

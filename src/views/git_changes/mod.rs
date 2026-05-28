@@ -11,6 +11,7 @@ use crate::git_watcher::WatchHandle;
 use crate::settings::GitKeys;
 
 pub use self::data::GitChangesData;
+mod change_node;
 mod data;
 
 /// The git changes view — wraps TreeView<GitChangesData>.

@@ -1,11 +1,21 @@
 //! Kairn-specific command identifiers.
 //! Core commands (CM_QUIT, CM_CLOSE, etc.) live in txv_core::commands.
 
+mod content_changed;
 mod context;
 mod data;
+mod diff_split_request;
+mod open_file_request;
+mod split_request;
+mod view_context_builder;
 
-pub use context::{ViewContext, ViewContextBuilder};
-pub use data::{ConfirmContext, ContentChanged, DiffSplitRequest, OpenFileRequest, SplitRequest};
+pub use content_changed::ContentChanged;
+pub use context::ViewContext;
+pub use data::ConfirmContext;
+pub use diff_split_request::DiffSplitRequest;
+pub use open_file_request::OpenFileRequest;
+pub use split_request::SplitRequest;
+pub use view_context_builder::ViewContextBuilder;
 
 use txv_core::event::CommandId;
 

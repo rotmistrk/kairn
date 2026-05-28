@@ -1,6 +1,7 @@
 //! LspRegistry — configuration, query, and lifecycle management methods.
 
-use super::registry::{LspRegistry, ServerConfig, ServerState};
+use super::registry::{LspRegistry, ServerState};
+use super::server_config::ServerConfig;
 
 impl LspRegistry {
     pub(super) fn defaults() -> Vec<(&'static str, &'static str, &'static [&'static str])> {

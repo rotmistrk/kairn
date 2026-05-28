@@ -12,6 +12,7 @@ use self::handle::HandleAction;
 mod apply_action;
 pub mod data;
 mod draw;
+mod flat_node;
 mod handle;
 mod mcp;
 pub mod model;

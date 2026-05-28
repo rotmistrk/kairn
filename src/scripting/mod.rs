@@ -11,7 +11,9 @@ mod bridge_system;
 mod bridge_todo;
 mod bridge_view;
 mod commands;
+pub mod hook_registry;
 pub mod hooks;
+mod plugin_entry;
 pub mod plugins;
 
 pub use self::commands::{ScriptCommand, StateSnapshot};

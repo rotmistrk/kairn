@@ -3,7 +3,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use txv_core::prelude::EventSink;
+pub use crate::command_store::CommandStore;
 
 /// Abstraction for persisting editor buffer content.
 pub trait BufferStore: Send {
@@ -29,26 +29,6 @@ impl FileStore {
 impl BufferStore for FileStore {
     fn save(&mut self, content: &str) -> Result<(), String> {
         write_atomic(&self.path, content).map_err(|e| e.to_string())
-    }
-}
-
-/// Emits a command with the content string (for virtual buffers like todo notes).
-pub struct CommandStore {
-    command_id: u16,
-    sink: EventSink,
-}
-
-impl CommandStore {
-    pub fn new(command_id: u16, sink: EventSink) -> Self {
-        Self { command_id, sink }
-    }
-}
-
-impl BufferStore for CommandStore {
-    fn save(&mut self, content: &str) -> Result<(), String> {
-        self.sink
-            .push_command(self.command_id, Some(Box::new(content.to_string())));
-        Ok(())
     }
 }
 

@@ -5,20 +5,13 @@ use std::sync::{Arc, Mutex};
 
 use crate::broker::FileBroker;
 use crate::buffer_registry::BufferRegistry;
+use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::registry::LspRegistry;
 use crate::message_ring::MessageRing;
 use crate::scripting::hooks::HookTrigger;
 use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
-
-/// A deferred LSP request waiting for server initialization.
-pub struct DeferredLspRequest {
-    pub(crate) command: txv_core::prelude::CommandId,
-    pub(crate) data: Box<dyn std::any::Any + Send>,
-    pub(crate) language: String,
-    pub(crate) created: std::time::Instant,
-}
 
 /// Application state shared across command handler invocations.
 pub struct AppState {

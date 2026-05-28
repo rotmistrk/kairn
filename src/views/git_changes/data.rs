@@ -9,17 +9,7 @@ use txv_widgets::tree_view::TreeData;
 
 use crate::git_status::{collect_git_status, FileStatus};
 
-/// A node in the git changes tree.
-#[derive(Clone)]
-struct ChangeNode {
-    label: String,
-    depth: usize,
-    expandable: bool,
-    expanded: bool,
-    file_path: Option<PathBuf>,
-    color: Color,
-    status: Option<FileStatus>,
-}
+use super::change_node::ChangeNode;
 
 /// Data provider for the git changes tree.
 pub struct GitChangesData {

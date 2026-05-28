@@ -6,15 +6,8 @@ use std::time::SystemTime;
 use txv_core::cell::Style;
 use txv_widgets::tree_view::TreeData;
 
+use super::flat_node::FlatNode;
 use super::model::{self, Completion, TodoFile, TodoItem, TreePath};
-
-/// Flattened node for display in the tree.
-struct FlatNode {
-    depth: usize,
-    path: TreePath,
-    expandable: bool,
-    expanded: bool,
-}
 
 /// Data provider for the todo tree.
 pub struct TodoTreeData {

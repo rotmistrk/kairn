@@ -8,14 +8,7 @@ use std::path::{Path, PathBuf};
 
 use super::client::LspClient;
 use super::protocol;
-
-/// Configuration for a language server.
-#[derive(Debug, Clone)]
-pub struct ServerConfig {
-    pub(crate) command: String,
-    pub(crate) args: Vec<String>,
-    pub(crate) env: HashMap<String, String>,
-}
+use super::server_config::ServerConfig;
 
 /// Lifecycle state of a single LSP server.
 pub(super) enum ServerState {

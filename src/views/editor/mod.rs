@@ -4,6 +4,7 @@ mod build;
 mod cursor;
 mod diff;
 pub mod diff_model;
+pub mod diff_opts;
 mod draw;
 mod draw_blame;
 mod draw_diagnostics;

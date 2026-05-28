@@ -12,12 +12,7 @@ use crate::highlight::{ensure_readable, HlSpan};
 
 const LINES_PER_SNAPSHOT: usize = 50;
 
-/// Cached parse state at a specific line boundary.
-#[derive(Clone)]
-struct Snapshot {
-    parse: ParseState,
-    scope: ScopeStack,
-}
+use crate::highlight_snapshot::Snapshot;
 
 /// Per-file highlight cache. Stores ParseState snapshots every 50 lines.
 pub struct HighlightCache {

@@ -1,5 +1,6 @@
 //! JSON implementation of StructuredDoc.
 
+mod node;
 mod node_lines;
 mod ops;
 mod serialize;
@@ -7,19 +8,7 @@ mod serialize;
 use crate::structured::jsonc_parse;
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
-/// A single node in the JSON document arena.
-#[derive(Debug, Clone)]
-pub struct Node {
-    pub(crate) kind: NodeKind,
-    pub(crate) key: Option<String>,
-    pub(crate) value: String,
-    pub(crate) meta: String,
-    pub(crate) children: Vec<NodeId>,
-    pub(crate) parent: Option<NodeId>,
-    pub(crate) expanded: bool,
-    pub(crate) inline: bool,
-    pub(crate) scalar_type: ScalarType,
-}
+pub use self::node::Node;
 
 /// Arena-backed JSON document.
 #[derive(Debug, Clone)]

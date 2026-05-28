@@ -86,10 +86,4 @@ fn friendly_kind_label(kind: &PendingKind) -> &'static str {
     }
 }
 
-/// Request for jdt:// class file contents from jdtls.
-#[derive(Debug, Clone)]
-pub(crate) struct JdtRequest {
-    pub(crate) uri: String,
-    pub(crate) line: u32,
-    pub(crate) character: u32,
-}
+pub(crate) use super::jdt_request::JdtRequest;

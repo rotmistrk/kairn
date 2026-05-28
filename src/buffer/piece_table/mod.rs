@@ -2,8 +2,9 @@
 
 mod ops;
 
+use super::edit_record::EditRecord;
 use super::line_index::LineIndex;
-use super::undo::{EditRecord, UndoHistory};
+use super::undo::UndoHistory;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) enum Source {

@@ -1,13 +1,6 @@
 //! UndoHistory — snapshot-based undo/redo.
 
-use super::piece_table::Piece;
-
-/// A snapshot of buffer state for undo.
-#[derive(Clone)]
-pub struct EditRecord {
-    pub(super) pieces: Vec<Piece>,
-    pub(crate) line_starts: Vec<usize>,
-}
+use super::edit_record::EditRecord;
 
 /// Undo/redo stack.
 pub struct UndoHistory {
