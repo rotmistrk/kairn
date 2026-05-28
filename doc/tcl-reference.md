@@ -77,6 +77,7 @@ Settings use `set variable value` syntax. See `doc/example-init.tcl` for all opt
 | `lsp stop ?<pattern>?` | Stop LSP server |
 | `lsp timeout <pattern> ?<secs>?` | Get/set LSP timeout |
 | `lsp args <pattern> <command>` | Override LSP server command |
+| `lsp env <pattern> <key> <value>` | Set environment variable for LSP server |
 
 ### git
 
@@ -142,7 +143,7 @@ Key format: `ctrl+x`, `alt+x`, `F1`–`F12`, `ctrl+shift+x`, etc.
 | `hook remove <event>` | Remove all hooks for event |
 | `hook list ?<event>?` | List registered hooks |
 
-Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `startup`, `char-inserted`, `char-deleted`, `word-completed`, `idle`, `paste`, `mode-changed`, `selection-changed`.
+Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `startup`, `char-inserted`, `char-deleted`, `word-completed`, `idle`, `paste`, `mode-changed`, `selection-changed`, `lsp-start`.
 
 ### system
 
@@ -207,6 +208,12 @@ hook add word-completed -filter "todo" {
 
 # Format on idle
 hook add idle { lsp format }
+
+# Customize LSP launch (set env vars, override args)
+hook add lsp-start -filter "rust" {
+    lsp env rust CARGO_TARGET_DIR "/tmp/kairn-target"
+    lsp args rust rust-analyzer
+}
 ```
 
 ## Key Bindings

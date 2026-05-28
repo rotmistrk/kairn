@@ -128,17 +128,17 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # ─── LSP ─────────────────────────────────────────────────────────────────────
 # set lsp.timeout 10          ;# seconds to wait for LSP response (default: 10)
 # LSP servers are auto-detected. Override with:
-# lsp rust-analyzer {
-#     command "rust-analyzer"
-#     filetypes {rs}
-# }
-# lsp typescript-language-server {
-#     command "typescript-language-server --stdio"
-#     filetypes {ts tsx js jsx}
-# }
-# lsp ruby-lsp {
-#     command "ruby-lsp"
-#     filetypes {rb}
+# lsp args rust rust-analyzer --target-dir /tmp/target
+# lsp args python pyright --stdio
+#
+# Set environment variables for LSP servers:
+# lsp env rust CARGO_TARGET_DIR "/tmp/kairn-target"
+# lsp env rust RUST_BACKTRACE 1
+#
+# Use lsp-start hook for dynamic configuration:
+# hook add lsp-start -filter "rust" {
+#     set target [system exec "cargo metadata --format-version=1 2>/dev/null | jq -r .target_directory"]
+#     if {$target ne ""} { lsp env rust CARGO_TARGET_DIR $target }
 # }
 
 # ─── Hooks & Selection Scripting ─────────────────────────────────────────────

@@ -189,7 +189,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 | `editor` | open, save, save-all, close, goto, insert, undo, redo, search, clear-highlight, current-file, current-line, current-col, modified?, filetype, get-selection, replace-selection, get-line, delete-line, replace-word, diff-revert |
 | `view` | focus, message, status, theme, zoom, toggle-tree, toggle-tools, layout |
 | `build` | run, test, test-file, test-at-cursor, next-error, prev-error |
-| `lsp` | hover, definition, references, rename, format, start, restart, stop, timeout, args |
+| `lsp` | hover, definition, references, rename, format, start, restart, stop, timeout, args, env |
 | `git` | stage, unstage, commit, blame, noblame, untrack, log, diff |
 | `todo` | add, remove, complete, toggle-important, edit, swap, promote, demote, list |
 | `split` | vsplit, hsplit, close, focus, open, direction, linked |
@@ -222,6 +222,11 @@ hook add char-inserted -filter "(" { editor insert ")" }
 
 # Format on idle
 hook add idle { lsp format }
+
+# Customize LSP server launch
+hook add lsp-start -filter "rust" {
+  lsp env rust CARGO_TARGET_DIR "/tmp/target"
+}
 ```
 
 ## Environment Variables
