@@ -138,9 +138,9 @@ impl CompletionPopup {
         }
 
         let pal = txv_core::palette::palette();
-        let normal = pal.popup.background.to_style();
-        let selected = pal.popup.selected.to_style();
-        let dim_fg = pal.base.dim.to_style().fg;
+        let normal = pal.popup().background();
+        let selected = pal.popup().selected();
+        let dim_fg = pal.base().dim().fg;
         let detail_style = Style { fg: dim_fg, ..normal };
         let detail_sel_style = Style { fg: dim_fg, ..selected };
 

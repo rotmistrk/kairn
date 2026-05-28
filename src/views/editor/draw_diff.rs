@@ -28,14 +28,14 @@ impl EditorView {
 
         let app = crate::app_palette::app_palette();
         let pal = txv_core::palette::palette();
-        let added_style = app.diff.added.to_style();
-        let deleted_style = app.diff.deleted.to_style();
+        let added_style = app.diff().added();
+        let deleted_style = app.diff().deleted();
         let context_style = Style::default();
-        let fold_style = app.diff.fold.to_style();
+        let fold_style = app.diff().fold();
         let cursor_style = if self.state.is_focused() {
-            pal.interactive.cursor_focused.to_style()
+            pal.interactive().cursor_focused()
         } else {
-            pal.interactive.cursor_unfocused.to_style()
+            pal.interactive().cursor_unfocused()
         };
 
         let height = h as usize;
@@ -155,13 +155,7 @@ impl EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let prompt_style = txv_core::palette::palette().chrome().status_bar();
             let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                 "/"
             } else {
@@ -178,7 +172,7 @@ impl EditorView {
         if !self.editor.options.number {
             return;
         }
-        let gs = crate::app_palette::app_palette().editor.gutter.to_style();
+        let gs = crate::app_palette::app_palette().editor().gutter();
         let left = match base_line {
             Some(n) => format!("{:>width$}", n + 1, width = dw),
             None => " ".repeat(dw),

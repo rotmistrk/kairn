@@ -1,7 +1,6 @@
 //! Style helpers for editor draw — computes per-character style overlays.
 
-use txv_core::palette::PaletteStyle;
-use txv_core::prelude::{Attrs, Color, Style};
+use txv_core::prelude::{Color, Style};
 
 /// Compute the effective style for a character at `byte_pos`, applying
 /// visual selection and search highlight overlays.
@@ -37,11 +36,23 @@ pub(super) fn bracket_overlay(
     char_idx: usize,
     cursor_line: usize,
     matchparen_pos: Option<(usize, usize)>,
-    matchparen_style: &PaletteStyle,
+    matchparen_style: &Style,
     rainbow_map: &[(usize, Color)],
 ) -> Style {
     if matchparen_pos == Some((line_idx, char_idx)) {
-        matchparen_style.resolve(&base)
+        Style {
+            fg: if matchparen_style.fg != Color::Reset {
+                matchparen_style.fg
+            } else {
+                base.fg
+            },
+            bg: if matchparen_style.bg != Color::Reset {
+                matchparen_style.bg
+            } else {
+                base.bg
+            },
+            attrs: matchparen_style.attrs,
+        }
     } else if line_idx == cursor_line {
         if let Some(&(_, color)) = rainbow_map.iter().find(|(col, _)| *col == char_idx) {
             Style { fg: color, ..base }
@@ -119,13 +130,7 @@ impl super::EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let prompt_style = txv_core::palette::palette().chrome().status_bar();
             let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                 "/"
             } else {
@@ -141,9 +146,10 @@ impl super::EditorView {
 
 /// Paint highlight background on a single row (for gs target line).
 pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: u16, to_x: u16) {
-    let Some(bg) = txv_core::palette::palette().interactive.search_match.bg else {
+    let bg = txv_core::palette::palette().interactive().search_match().bg;
+    if bg == Color::Reset {
         return;
-    };
+    }
     let bw = buf.width() as usize;
     let cells = buf.cells_mut();
     let base = y as usize * bw;
@@ -172,7 +178,7 @@ impl super::EditorView {
             return;
         }
         let app = crate::app_palette::app_palette();
-        let bg = app.editor.highlight_match.to_style().bg;
+        let bg = app.editor().highlight_match().bg;
         let x_start = gutter_w + col_start as u16;
         let x_end = gutter_w + (col_end as u16).min(w.saturating_sub(gutter_w));
         let y = vis_row as u16;

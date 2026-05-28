@@ -15,19 +15,19 @@ impl EditorView {
         };
 
         let app = crate::app_palette::app_palette();
-        let added_style = app.diff.added.to_style();
-        let deleted_style = app.diff.deleted.to_style();
+        let added_style = app.diff().added();
+        let deleted_style = app.diff().deleted();
         let context_style = Style::default();
-        let fold_style = app.diff.fold.to_style();
-        let gap_style = txv_core::palette::palette().base.dim.to_style();
-        let divider_style = txv_core::palette::palette().base.dim.to_style();
-        let gutter_style = app.editor.gutter.to_style();
+        let fold_style = app.diff().fold();
+        let gap_style = txv_core::palette::palette().base().dim();
+        let divider_style = txv_core::palette::palette().base().dim();
+        let gutter_style = app.editor().gutter();
 
         let pal = txv_core::palette::palette();
         let cursor_style = if self.state.is_focused() {
-            pal.interactive.cursor_focused.to_style()
+            pal.interactive().cursor_focused()
         } else {
-            pal.interactive.cursor_unfocused.to_style()
+            pal.interactive().cursor_unfocused()
         };
 
         // Compute gutter width from max line number
@@ -127,13 +127,7 @@ impl EditorView {
             || self.editor.mode == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = h.saturating_sub(1);
-            let prompt_style = Style {
-                attrs: Attrs {
-                    reverse: true,
-                    ..Attrs::default()
-                },
-                ..Style::default()
-            };
+            let prompt_style = txv_core::palette::palette().chrome().status_bar();
             let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
                 "/"
             } else {

@@ -40,7 +40,9 @@ fn has_software_cursor(h: &TestHarness) -> bool {
                     // Found line 1 row. Now check for reverse cells after the gutter
                     let content_start = nx + 2; // past "1 "
                     for cx in content_start..w {
-                        if surface.cell(cx, y).style.attrs.reverse {
+                        if surface.cell(cx, y).style.bg == txv_core::cell::Color::Ansi(7)
+                            && surface.cell(cx, y).style.fg == txv_core::cell::Color::Ansi(0)
+                        {
                             return true;
                         }
                     }

@@ -13,7 +13,7 @@ impl EditorView {
             return;
         };
         let app = crate::app_palette::app_palette();
-        let style = app.editor.gutter.to_style();
+        let style = app.editor().gutter();
         let h = self.state.buffer_mut().height();
         let scroll = self.editor.viewport_scroll;
 

@@ -44,8 +44,8 @@ impl View for WelcomeView {
             return;
         }
         let pal = txv_core::palette::palette();
-        let dim = pal.base.dim.to_style();
-        let bright = pal.base.bright.to_style();
+        let dim = pal.base().dim();
+        let bright = pal.base().bright();
 
         // Build all lines to render
         let mut lines: Vec<(String, Style)> = vec![
@@ -64,9 +64,9 @@ impl View for WelcomeView {
         if let Some(tools) = &self.tools {
             lines.push((String::new(), dim));
             let g = glyphs();
-            let pal = crate::app_palette::app_palette();
-            let green = pal.base.state.success.to_style();
-            let gray = pal.base.base.dim.to_style();
+            let fpal = txv_core::palette::palette();
+            let green = fpal.state().success();
+            let gray = fpal.base().dim();
             for tool in tools {
                 if tool.found {
                     let ver = tool.version.as_deref().unwrap_or("");

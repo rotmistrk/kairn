@@ -117,7 +117,7 @@ fn cursor_visible_on_tab_in_nolist_mode() {
     for y in 1..23u16 {
         for x in 0..80u16 {
             let cell = surface.cell(x, y);
-            if cell.style.attrs.reverse {
+            if cell.style.bg == txv_core::cell::Color::Ansi(7) && cell.style.fg == txv_core::cell::Color::Ansi(0) {
                 cursor_x = Some(x);
                 cursor_y = Some(y);
                 break;

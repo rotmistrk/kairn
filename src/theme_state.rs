@@ -48,7 +48,11 @@ impl ThemeState {
 
     /// Apply the active palette to the global state.
     pub fn apply(&self) {
-        txv_core::palette::set_palette(self.active.base.clone());
+        let framework_pal: std::sync::Arc<dyn txv_core::palette::Palette> = match self.mode {
+            ThemeMode::Light => std::sync::Arc::new(txv_core::palette::light::LightPalette),
+            _ => std::sync::Arc::new(txv_core::palette::dark::DarkPalette),
+        };
+        txv_core::palette::set_palette(framework_pal);
         set_app_palette(&self.active);
     }
 }

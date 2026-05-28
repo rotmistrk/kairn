@@ -110,10 +110,10 @@ impl EditorView {
 fn diag_style(severity: Severity) -> Style {
     let app = crate::app_palette::app_palette();
     match severity {
-        Severity::Error => app.diag.error.to_style(),
-        Severity::Warning => app.diag.warning.to_style(),
-        Severity::Info => app.diag.info.to_style(),
-        Severity::Hint => app.diag.hint.to_style(),
+        Severity::Error => app.diag().error(),
+        Severity::Warning => app.diag().warning(),
+        Severity::Info => app.diag().info(),
+        Severity::Hint => app.diag().hint(),
     }
 }
 
@@ -121,13 +121,13 @@ fn diag_style(severity: Severity) -> Style {
 pub(super) fn diag_marker_style(severity: Severity) -> Style {
     let app = crate::app_palette::app_palette();
     let ps = match severity {
-        Severity::Error => &app.diag.error,
-        Severity::Warning => &app.diag.warning,
-        Severity::Info => &app.diag.info,
-        Severity::Hint => &app.diag.hint,
+        Severity::Error => app.diag().error(),
+        Severity::Warning => app.diag().warning(),
+        Severity::Info => app.diag().info(),
+        Severity::Hint => app.diag().hint(),
     };
     Style {
-        fg: ps.to_style().fg,
+        fg: ps.fg,
         ..Style::default()
     }
 }

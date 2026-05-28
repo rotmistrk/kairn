@@ -78,10 +78,10 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_secs = state.settings.terminal_idle_timeout;
     let now = std::time::Instant::now();
     let idle_dur = std::time::Duration::from_secs(idle_secs);
-    let palette = &crate::app_palette::app_palette().badge;
-    let busy_style = palette.busy.to_style();
-    let idle_style = palette.idle.to_style();
-    let exited_style = palette.exited.to_style();
+    let palette = &crate::app_palette::app_palette();
+    let busy_style = palette.badge().busy();
+    let idle_style = palette.badge().idle();
+    let exited_style = palette.badge().exited();
     let frame = (state.mcp_tick / 4) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {

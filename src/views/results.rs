@@ -124,12 +124,12 @@ impl View for ResultsView {
             return;
         }
         let pal = txv_core::palette::palette();
-        let dim = pal.base.dim.to_style();
+        let dim = pal.base().dim();
         let normal = Style::default();
         let cursor_style = if self.state.is_focused() {
-            pal.interactive.cursor_focused.to_style()
+            pal.interactive().cursor_focused()
         } else {
-            pal.interactive.cursor_unfocused.to_style()
+            pal.interactive().cursor_unfocused()
         };
 
         let content_h = h.saturating_sub(1) as usize;
@@ -181,11 +181,11 @@ impl View for ResultsView {
             format!("✓ {} results", self.entries.len())
         };
         let status_style = if !self.done {
-            pal.state.warning.to_style()
+            pal.state().warning()
         } else if self.entries.is_empty() {
-            pal.state.error.to_style()
+            pal.state().error()
         } else {
-            pal.state.success.to_style()
+            pal.state().success()
         };
         self.state.buffer_mut().hline(0, status_y, w, ' ', status_style);
         self.state.buffer_mut().print(0, status_y, &status, status_style);

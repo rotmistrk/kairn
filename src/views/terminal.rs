@@ -110,7 +110,7 @@ impl txv_core::view::View for FallbackTerminal {
 
     fn draw(&mut self) {
         let style = txv_core::cell::Style::default();
-        let err_style = txv_core::palette::palette().state.error.resolve(&style);
+        let err_style = txv_core::palette::palette().state().error();
         self.state.buffer_mut().print(0, 0, &format!("[{}]", self.title), style);
         if !self.message.is_empty() {
             self.state.buffer_mut().print(0, 1, &self.message, err_style);

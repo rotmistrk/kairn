@@ -25,14 +25,14 @@ impl EditorView {
         let app = crate::app_palette::app_palette();
         let normal = Style::default();
         let gutter_w = self.gutter_width();
-        let gutter_style = app.editor.gutter.to_style();
-        let cursor_style = app.editor.cursor.to_style();
-        let hl_match_style = app.editor.highlight_match.to_style();
-        let hl_other_bg = app.editor.highlight_other.to_style().bg;
+        let gutter_style = app.editor().gutter();
+        let cursor_style = app.editor().cursor();
+        let hl_match_style = app.editor().highlight_match();
+        let hl_other_bg = app.editor().highlight_other().bg;
         let visual_bg = if self.state.is_focused() {
-            pal.interactive.visual_selection.bg.unwrap_or(Color::Ansi(4))
+            pal.interactive().visual_selection().bg
         } else {
-            pal.interactive.cursor_unfocused.bg.unwrap_or(Color::Ansi(8))
+            pal.interactive().cursor_unfocused().bg
         };
 
         let scroll = self.editor.viewport_scroll;
@@ -61,7 +61,7 @@ impl EditorView {
         } else {
             None
         };
-        let matchparen_style = app.editor.matchparen;
+        let matchparen_style = app.editor().matchparen();
         let rainbow_map = if self.editor.options.rainbow {
             super::draw_style::rainbow_brackets(&self.editor.buf().line(self.editor.cursor_line).unwrap_or_default())
         } else {
@@ -120,7 +120,10 @@ impl EditorView {
                                 let x = text_x + (col_offset - h_off) as u16;
                                 let vy = visual_row as u16;
                                 if self.editor.options.list {
-                                    let ls = app.editor.list_chars.resolve(&st);
+                                    let ls = Style {
+                                        fg: app.editor().list_chars().fg,
+                                        ..st
+                                    };
                                     let c = if ti == tab_width - 1 {
                                         '\u{2192}'
                                     } else {
@@ -181,7 +184,10 @@ impl EditorView {
                     );
 
                     let (display_ch, display_style) = if self.editor.options.list {
-                        let list_style = app.editor.list_chars.resolve(&style);
+                        let list_style = Style {
+                            fg: app.editor().list_chars().fg,
+                            ..style
+                        };
                         match ch {
                             ' ' => ('\u{00B7}', list_style),
                             _ => (ch, style),
@@ -213,7 +219,7 @@ impl EditorView {
             // End-of-line marker in list mode
             if self.editor.options.list && col_offset >= h_off && col_offset - h_off < avail && visual_row < h as usize
             {
-                let list_style = app.editor.list_chars.to_style();
+                let list_style = app.editor().list_chars();
                 let x = text_x + (col_offset - h_off) as u16;
                 self.state.buffer_mut().put(x, visual_row as u16, '$', list_style);
                 col_offset += 1;

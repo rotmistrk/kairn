@@ -1,9 +1,16 @@
 //! Application-level palette — extends txv-core Palette with domain-specific roles.
 
-use std::sync::OnceLock;
+#[path = "app_palette_defaults.rs"]
+mod defaults;
+#[path = "app_palette_roles.rs"]
+mod roles;
+#[path = "app_palette_roles2.rs"]
+mod roles2;
 
-use txv_core::cell::Color;
-use txv_core::palette::{Palette, PaletteStyle};
+pub use roles::*;
+pub use roles2::*;
+
+use std::sync::OnceLock;
 
 static APP_PALETTE: OnceLock<std::sync::RwLock<AppPalette>> = OnceLock::new();
 
@@ -32,211 +39,84 @@ pub fn set_app_palette(p: &AppPalette) {
 /// kairn-specific palette extending the framework palette.
 #[derive(Clone, Debug)]
 pub struct AppPalette {
-    pub base: Palette,
-    pub git: GitPalette,
-    pub diff: DiffPalette,
-    pub editor: EditorPalette,
-    pub diag: DiagPalette,
-    pub tree: TreePalette,
-    pub todo: TodoPalette,
-    pub msg: MsgPalette,
-    pub badge: BadgePalette,
-}
-
-#[derive(Clone, Debug)]
-pub struct GitPalette {
-    pub added: PaletteStyle,
-    pub modified: PaletteStyle,
-    pub untracked: PaletteStyle,
-    pub ignored: PaletteStyle,
-    pub conflict: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct DiffPalette {
-    pub added: PaletteStyle,
-    pub deleted: PaletteStyle,
-    pub fold: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct EditorPalette {
-    pub gutter: PaletteStyle,
-    pub list_chars: PaletteStyle,
-    pub cursor: PaletteStyle,
-    pub highlight_match: PaletteStyle,
-    pub highlight_other: PaletteStyle,
-    pub matchparen: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct DiagPalette {
-    pub error: PaletteStyle,
-    pub warning: PaletteStyle,
-    pub info: PaletteStyle,
-    pub hint: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct TreePalette {
-    pub directory: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct TodoPalette {
-    pub normal: PaletteStyle,
-    pub done: PaletteStyle,
-    pub important: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct MsgPalette {
-    pub error: PaletteStyle,
-    pub warning: PaletteStyle,
-    pub info: PaletteStyle,
-    pub debug: PaletteStyle,
-}
-
-#[derive(Clone, Debug)]
-pub struct BadgePalette {
-    pub busy: PaletteStyle,
-    pub idle: PaletteStyle,
-    pub exited: PaletteStyle,
-}
-
-const fn ansi(n: u8) -> Color {
-    Color::Ansi(n)
+    git: GitPalette,
+    diff: DiffPalette,
+    editor: EditorPalette,
+    diag: DiagPalette,
+    tree: TreePalette,
+    todo: TodoPalette,
+    msg: MsgPalette,
+    badge: BadgePalette,
 }
 
 impl AppPalette {
-    pub fn dark() -> Self {
-        Self::default()
-    }
-
-    pub fn light() -> Self {
-        let mut p = Self::dark();
-        p.base = Palette::light();
-        p.git.modified = PaletteStyle::fg(ansi(4));
-        p.tree.directory = PaletteStyle::fg(ansi(4));
-        p
-    }
-}
-
-impl Default for AppPalette {
-    fn default() -> Self {
-        let mut base = Palette::dark();
-        // Darker backgrounds for interactive elements
-        base.interactive.cursor_focused = PaletteStyle {
-            fg: None,
-            bg: Some(Color::Rgb(0x00, 0x00, 0x66)),
-            attrs: None,
-        };
-        base.interactive.visual_selection = PaletteStyle {
-            fg: None,
-            bg: Some(Color::Rgb(0x00, 0x44, 0x44)),
-            attrs: None,
-        };
-        base.interactive.edit_overlay = PaletteStyle {
-            fg: None,
-            bg: Some(Color::Rgb(0x00, 0x44, 0x00)),
-            attrs: None,
-        };
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        git: GitPalette,
+        diff: DiffPalette,
+        editor: EditorPalette,
+        diag: DiagPalette,
+        tree: TreePalette,
+        todo: TodoPalette,
+        msg: MsgPalette,
+        badge: BadgePalette,
+    ) -> Self {
         Self {
-            base,
-            git: GitPalette {
-                added: PaletteStyle::fg(ansi(2)),
-                modified: PaletteStyle::fg(ansi(12)),
-                untracked: PaletteStyle::fg(ansi(1)),
-                ignored: PaletteStyle::fg(ansi(8)),
-                conflict: PaletteStyle::fg(ansi(5)),
-            },
-            diff: DiffPalette {
-                added: PaletteStyle::fg(ansi(2)),
-                deleted: PaletteStyle::fg(ansi(1)),
-                fold: PaletteStyle::fg(ansi(8)),
-            },
-            editor: EditorPalette {
-                gutter: PaletteStyle::fg(ansi(8)),
-                list_chars: PaletteStyle::fg(ansi(8)),
-                cursor: PaletteStyle {
-                    attrs: Some(txv_core::cell::Attrs {
-                        reverse: true,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                highlight_match: PaletteStyle {
-                    fg: None,
-                    bg: Some(Color::Rgb(0x44, 0x44, 0x00)),
-                    attrs: None,
-                },
-                highlight_other: PaletteStyle {
-                    fg: None,
-                    bg: Some(Color::Rgb(0x00, 0x44, 0x00)),
-                    attrs: None,
-                },
-                matchparen: PaletteStyle {
-                    fg: None,
-                    bg: Some(ansi(8)),
-                    attrs: Some(txv_core::cell::Attrs {
-                        bold: true,
-                        ..Default::default()
-                    }),
-                },
-            },
-            diag: DiagPalette {
-                error: PaletteStyle {
-                    fg: Some(ansi(1)),
-                    attrs: Some(txv_core::cell::Attrs {
-                        underline: true,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                warning: PaletteStyle {
-                    fg: Some(ansi(3)),
-                    attrs: Some(txv_core::cell::Attrs {
-                        underline: true,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                info: PaletteStyle {
-                    fg: Some(ansi(6)),
-                    attrs: Some(txv_core::cell::Attrs {
-                        underline: true,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-                hint: PaletteStyle {
-                    fg: Some(ansi(8)),
-                    attrs: Some(txv_core::cell::Attrs {
-                        underline: true,
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                },
-            },
-            tree: TreePalette {
-                directory: PaletteStyle::fg(ansi(14)),
-            },
-            todo: TodoPalette {
-                normal: PaletteStyle::fg(ansi(7)),
-                done: PaletteStyle::fg(ansi(8)),
-                important: PaletteStyle::fg(ansi(1)),
-            },
-            msg: MsgPalette {
-                error: PaletteStyle::fg(ansi(9)),
-                warning: PaletteStyle::fg(ansi(11)),
-                info: PaletteStyle::fg(ansi(7)),
-                debug: PaletteStyle::fg(ansi(8)),
-            },
-            badge: BadgePalette {
-                busy: PaletteStyle::fg(ansi(2)),
-                idle: PaletteStyle::fg(ansi(3)),
-                exited: PaletteStyle::fg(ansi(1)),
-            },
+            git,
+            diff,
+            editor,
+            diag,
+            tree,
+            todo,
+            msg,
+            badge,
         }
+    }
+
+    pub fn git(&self) -> &GitPalette {
+        &self.git
+    }
+    pub fn diff(&self) -> &DiffPalette {
+        &self.diff
+    }
+    pub fn editor(&self) -> &EditorPalette {
+        &self.editor
+    }
+    pub fn diag(&self) -> &DiagPalette {
+        &self.diag
+    }
+    pub fn tree(&self) -> &TreePalette {
+        &self.tree
+    }
+    pub fn todo(&self) -> &TodoPalette {
+        &self.todo
+    }
+    pub fn msg(&self) -> &MsgPalette {
+        &self.msg
+    }
+    pub fn badge(&self) -> &BadgePalette {
+        &self.badge
+    }
+
+    pub fn git_mut(&mut self) -> &mut GitPalette {
+        &mut self.git
+    }
+    pub fn diff_mut(&mut self) -> &mut DiffPalette {
+        &mut self.diff
+    }
+    pub fn editor_mut(&mut self) -> &mut EditorPalette {
+        &mut self.editor
+    }
+    pub fn diag_mut(&mut self) -> &mut DiagPalette {
+        &mut self.diag
+    }
+    pub fn tree_mut(&mut self) -> &mut TreePalette {
+        &mut self.tree
+    }
+    pub fn todo_mut(&mut self) -> &mut TodoPalette {
+        &mut self.todo
+    }
+    pub fn msg_mut(&mut self) -> &mut MsgPalette {
+        &mut self.msg
     }
 }

@@ -36,15 +36,9 @@ pub(super) fn sync_bounds(state: &mut ViewState, label: &str) {
     }
 }
 
-/// Draw label into buffer with reversed style.
+/// Draw label into buffer with status bar style.
 pub(super) fn draw_label(state: &mut ViewState, label: &str) {
-    let style = Style {
-        attrs: Attrs {
-            reverse: true,
-            ..Attrs::default()
-        },
-        ..Style::default()
-    };
+    let style = txv_core::palette::palette().chrome().status_bar();
     state.buffer_mut().fill(' ', style);
     if !label.is_empty() {
         state.buffer_mut().print(1, 0, label, style);

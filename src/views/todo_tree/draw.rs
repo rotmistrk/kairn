@@ -1,5 +1,6 @@
 //! Draw logic for TodoTreeView.
 
+use txv_core::cell::Style;
 use txv_widgets::tree_view::TreeData;
 
 use super::model;
@@ -13,7 +14,7 @@ impl TodoTreeView {
             return;
         }
         if self.inner.data.visible_count() == 0 {
-            let dim = txv_core::palette::palette().base.dim.to_style();
+            let dim = txv_core::palette::palette().base().dim();
             self.inner.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
@@ -47,9 +48,19 @@ impl TodoTreeView {
             }
             let style = if idx == self.inner.cursor {
                 if self.inner.is_focused() {
-                    pal.interactive.cursor_focused.resolve(&node_style)
+                    let cs = pal.interactive().cursor_focused();
+                    Style {
+                        fg: node_style.fg,
+                        bg: cs.bg,
+                        attrs: cs.attrs,
+                    }
                 } else {
-                    pal.interactive.cursor_unfocused.resolve(&node_style)
+                    let cs = pal.interactive().cursor_unfocused();
+                    Style {
+                        fg: node_style.fg,
+                        bg: cs.bg,
+                        attrs: node_style.attrs,
+                    }
                 }
             } else {
                 node_style
@@ -82,7 +93,7 @@ impl TodoTreeView {
                     let indent = (depth * 2 + 6) as u16;
                     let ex = indent;
                     let ew = w.saturating_sub(indent);
-                    let style = pal.interactive.edit_overlay.to_style();
+                    let style = pal.interactive().edit_overlay();
                     editor.draw(self.inner.buffer_mut(), ex, y, ew, style);
                 }
             }
@@ -90,7 +101,7 @@ impl TodoTreeView {
         // Filter bar at top
         if filter_offset > 0 {
             let y = 0;
-            let style = pal.interactive.edit_overlay.to_style();
+            let style = pal.interactive().edit_overlay();
             self.inner.buffer_mut().hline(0, y, w, ' ', style);
             self.inner.buffer_mut().print(0, y, "/", style);
             if let Some(ref editor) = self.filter_editor {

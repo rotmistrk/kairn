@@ -154,7 +154,7 @@ pub fn cursor_at(h: &TestHarness) -> Option<(usize, usize)> {
     for y in 1..height.saturating_sub(1) {
         for x in 0..w {
             let cell = surface.cell(x, y);
-            if cell.style.attrs.reverse {
+            if cell.style.bg == txv_core::cell::Color::Ansi(7) && cell.style.fg == txv_core::cell::Color::Ansi(0) {
                 let editor_x_start = find_editor_x_start(surface, y);
                 if editor_x_start == 0 && x < 25 {
                     continue; // tree cursor

@@ -1,12 +1,14 @@
 //! Completers — dynamic command completion + file path completion for kairn.
 
-use std::path::{Path, PathBuf};
+#[path = "completer_path.rs"]
+mod path;
+
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use txv_core::complete::{Completer, Completion};
+use txv_core::complete::{Completer, Completion, CompletionVisitor};
 
 /// Built-in commands (always available).
-/// Extra commands not in the dispatch table (ex-mode aliases handled elsewhere).
 pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
 
 /// Shared command list that can be updated at runtime (e.g. from plugins).
@@ -48,140 +50,142 @@ impl AppCompleter {
     }
 }
 
+/// A concrete completion candidate.
+pub(crate) struct Entry {
+    pub text: String,
+    pub display: String,
+    pub kind: &'static str,
+}
+
+impl Completion for Entry {
+    fn text(&self) -> &str {
+        &self.text
+    }
+    fn display(&self) -> &str {
+        &self.display
+    }
+    fn kind(&self) -> &str {
+        self.kind
+    }
+}
+
 impl Completer for AppCompleter {
-    fn complete(&self, input: &str, _cursor: usize) -> Vec<Completion> {
+    fn complete(
+        &self,
+        input: &str,
+        _cursor: usize,
+        visitor: &mut CompletionVisitor<'_>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let trimmed = input.trim();
-        // If input starts with a file-editing command, complete paths
         if let Some(path_part) = trimmed.strip_prefix("edit ") {
-            return complete_path(path_part, &self.root);
+            return path::complete_path(path_part, &self.root, visitor);
         }
         if let Some(path_part) = trimmed.strip_prefix("e ") {
-            return complete_path(path_part, &self.root);
+            return path::complete_path(path_part, &self.root, visitor);
         }
-        // Theme sub-commands
         if let Some(sub) = trimmed.strip_prefix("theme ") {
-            return complete_theme(sub);
+            return complete_theme(sub, visitor);
         }
-        // LSP sub-commands
         if let Some(sub) = trimmed.strip_prefix("lsp ") {
-            return complete_lsp(sub, &self.lsp_languages);
+            return complete_lsp(sub, &self.lsp_languages, visitor);
         }
-        // Otherwise complete command names
         let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
-        cmds.iter()
-            .filter(|cmd| cmd.starts_with(trimmed))
-            .map(|cmd| Completion::new(cmd.clone(), cmd.clone(), "command"))
-            .collect()
+        for cmd in cmds.iter().filter(|c| c.starts_with(trimmed)) {
+            let e = Entry {
+                text: cmd.clone(),
+                display: cmd.clone(),
+                kind: "command",
+            };
+            if !visitor(&e)? {
+                break;
+            }
+        }
+        Ok(())
     }
 }
 
 /// Theme sub-argument completions.
-fn complete_theme(sub: &str) -> Vec<Completion> {
+fn complete_theme(sub: &str, visitor: &mut CompletionVisitor<'_>) -> Result<(), Box<dyn std::error::Error>> {
     const THEME_SUBS: &[&str] = &["auto", "dark", "glyphs", "light", "syntax"];
     const GLYPH_OPTS: &[&str] = &["ascii", "nerd", "utf"];
 
     if let Some(partial) = sub.strip_prefix("syntax ") {
-        // Complete syntax theme names
         let themes = crate::highlight::Highlighter::new();
         let mut names: Vec<&str> = themes.available_themes();
         names.sort();
-        return names
-            .into_iter()
-            .filter(|t| t.starts_with(partial))
-            .map(|t| Completion::new(format!("theme syntax {t}"), t.to_string(), "theme"))
-            .collect();
+        for t in names.into_iter().filter(|t| t.starts_with(partial)) {
+            let e = Entry {
+                text: format!("theme syntax {t}"),
+                display: t.to_string(),
+                kind: "theme",
+            };
+            if !visitor(&e)? {
+                break;
+            }
+        }
+        return Ok(());
     }
     if let Some(partial) = sub.strip_prefix("glyphs ") {
-        return GLYPH_OPTS
-            .iter()
-            .filter(|o| o.starts_with(partial))
-            .map(|o| Completion::new(format!("theme glyphs {o}"), o.to_string(), "option"))
-            .collect();
+        for o in GLYPH_OPTS.iter().filter(|o| o.starts_with(partial)) {
+            let e = Entry {
+                text: format!("theme glyphs {o}"),
+                display: o.to_string(),
+                kind: "option",
+            };
+            if !visitor(&e)? {
+                break;
+            }
+        }
+        return Ok(());
     }
-    // Complete first-level sub-commands
-    THEME_SUBS
-        .iter()
-        .filter(|s| s.starts_with(sub))
-        .map(|s| Completion::new(format!("theme {s}"), s.to_string(), "command"))
-        .collect()
+    for s in THEME_SUBS.iter().filter(|s| s.starts_with(sub)) {
+        let e = Entry {
+            text: format!("theme {s}"),
+            display: s.to_string(),
+            kind: "command",
+        };
+        if !visitor(&e)? {
+            break;
+        }
+    }
+    Ok(())
 }
 
-/// Complete filesystem paths relative to root dir.
 /// LSP sub-argument completions.
-fn complete_lsp(sub: &str, langs: &LspLanguageList) -> Vec<Completion> {
+fn complete_lsp(
+    sub: &str,
+    langs: &LspLanguageList,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
     const LSP_SUBS: &[&str] = &["args", "restart", "start", "status", "stop", "timeout"];
 
-    // Check if we're past the subcommand (e.g. "start ru")
     if let Some((subcmd, partial)) = sub.split_once(' ') {
         if LSP_SUBS.contains(&subcmd) && subcmd != "status" {
             let languages = langs.lock().unwrap_or_else(|e| e.into_inner());
-            return languages
-                .iter()
-                .filter(|l| l.starts_with(partial))
-                .map(|l| Completion::new(format!("lsp {subcmd} {l}"), l.clone(), "lang"))
-                .collect();
+            for l in languages.iter().filter(|l| l.starts_with(partial)) {
+                let e = Entry {
+                    text: format!("lsp {subcmd} {l}"),
+                    display: l.clone(),
+                    kind: "lang",
+                };
+                if !visitor(&e)? {
+                    break;
+                }
+            }
         }
-        return Vec::new();
+        return Ok(());
     }
-    // Complete subcommand names
-    LSP_SUBS
-        .iter()
-        .filter(|s| s.starts_with(sub))
-        .map(|s| Completion::new(format!("lsp {s}"), s.to_string(), "command"))
-        .collect()
-}
-
-fn resolve_path_parts<'a>(partial: &'a str, root: &Path) -> (PathBuf, &'a str, String) {
-    if partial.is_empty() {
-        return (root.to_path_buf(), "", String::new());
-    }
-    if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
-        return (root.join(partial), "", partial.to_string());
-    }
-    if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
-        let p = Path::new(partial);
-        let parent = p.parent().map(|d| d.to_str().unwrap_or(".")).unwrap_or(".");
-        let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        let dir_prefix = format!("{}/", parent);
-        return (root.join(parent), prefix, dir_prefix);
-    }
-    (root.to_path_buf(), partial, String::new())
-}
-
-fn complete_path(partial: &str, root: &Path) -> Vec<Completion> {
-    let (search_dir, prefix, dir_prefix) = resolve_path_parts(partial, root);
-
-    let Ok(entries) = std::fs::read_dir(&search_dir) else {
-        return Vec::new();
-    };
-
-    let mut results = Vec::new();
-    for entry in entries.flatten() {
-        let name = entry.file_name();
-        let name_str = name.to_string_lossy();
-        if !name_str.starts_with(prefix) {
-            continue;
-        }
-        let rel_path = format!("{dir_prefix}{name_str}");
-        let text = format!("edit {rel_path}");
-        let is_dir = entry.path().is_dir();
-        let display = if is_dir {
-            format!("{name_str}/")
-        } else {
-            name_str.to_string()
+    for s in LSP_SUBS.iter().filter(|s| s.starts_with(sub)) {
+        let e = Entry {
+            text: format!("lsp {s}"),
+            display: s.to_string(),
+            kind: "command",
         };
-        results.push(Completion::new(
-            text,
-            display,
-            if is_dir {
-                "dir"
-            } else {
-                "file"
-            },
-        ));
+        if !visitor(&e)? {
+            break;
+        }
     }
-    results.sort_by(|a, b| a.display().cmp(b.display()));
-    results
+    Ok(())
 }
 
 /// Refresh the command list with Tcl commands from the script engine.
@@ -214,15 +218,12 @@ mod tests {
         let script = ScriptEngine::new();
         refresh_commands(&list, &script);
         let cmds = list.lock().unwrap();
-        // Should contain built-in kairn commands
         assert!(cmds.contains(&"build".to_string()), "should contain builtin 'build'");
         assert!(cmds.contains(&"quit".to_string()), "should contain builtin 'quit'");
-        // Should contain Tcl bridge namespace commands (registered by ScriptEngine)
         assert!(
             cmds.contains(&"editor".to_string()),
             "should contain Tcl bridge 'editor'"
         );
-        // Verify sorted
         let sorted: Vec<String> = {
             let mut c = cmds.clone();
             c.sort();

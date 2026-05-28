@@ -68,10 +68,10 @@ impl View for MessagesView {
                     );
                     let app = crate::app_palette::app_palette();
                     let style = match msg.level {
-                        MsgLevel::Error => app.msg.error.to_style(),
-                        MsgLevel::Warn => app.msg.warning.to_style(),
-                        MsgLevel::Debug => app.msg.debug.to_style(),
-                        MsgLevel::Info => app.msg.info.to_style(),
+                        MsgLevel::Error => app.msg().error(),
+                        MsgLevel::Warn => app.msg().warning(),
+                        MsgLevel::Debug => app.msg().debug(),
+                        MsgLevel::Info => app.msg().info(),
                     };
                     (line, style)
                 } else {

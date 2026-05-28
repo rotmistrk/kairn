@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use txv_core::cell::{Color, Style};
+use txv_core::cell::Style;
 use txv_widgets::tree_view::TreeData;
 
 use super::model::{self, Completion, TodoFile, TodoItem, TreePath};
@@ -237,9 +237,9 @@ impl TreeData for TodoTreeData {
         };
         let app = crate::app_palette::app_palette();
         let fg = match (&item.completed, item.important) {
-            (Completion::Done, _) => app.todo.done.fg.unwrap_or(Color::Ansi(8)),
-            (_, true) => app.todo.important.fg.unwrap_or(Color::Ansi(1)),
-            _ => app.todo.normal.fg.unwrap_or(Color::Ansi(7)),
+            (Completion::Done, _) => app.todo().done().fg,
+            (_, true) => app.todo().important().fg,
+            _ => app.todo().normal().fg,
         };
         Style { fg, ..Style::default() }
     }

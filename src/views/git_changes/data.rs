@@ -74,22 +74,10 @@ impl GitChangesData {
 
         let app = crate::app_palette::app_palette();
         let categories = [
-            (
-                FileStatus::Conflict,
-                "Conflicts",
-                app.git.conflict.fg.unwrap_or(Color::Ansi(5)),
-            ),
-            (
-                FileStatus::Modified,
-                "Modified",
-                app.git.modified.fg.unwrap_or(Color::Ansi(12)),
-            ),
-            (FileStatus::Added, "Added", app.git.added.fg.unwrap_or(Color::Ansi(2))),
-            (
-                FileStatus::Untracked,
-                "Untracked",
-                app.git.untracked.fg.unwrap_or(Color::Ansi(1)),
-            ),
+            (FileStatus::Conflict, "Conflicts", app.git().conflict().fg),
+            (FileStatus::Modified, "Modified", app.git().modified().fg),
+            (FileStatus::Added, "Added", app.git().added().fg),
+            (FileStatus::Untracked, "Untracked", app.git().untracked().fg),
         ];
 
         for (status, name, color) in &categories {
