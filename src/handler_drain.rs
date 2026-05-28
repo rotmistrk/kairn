@@ -3,8 +3,16 @@
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 
+use crate::buffer_store::CommandStore;
+use crate::build::ErrorLocation;
+use crate::commands::CM_TODO_NOTE_SAVE;
+use crate::completer::refresh_commands;
 use crate::desktop::{find_view_mut, focus_view_mut, SlotId};
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_evict::try_insert_tab;
+use crate::views::results::ResultsView;
+use crate::views::todo_tree::model::{get_item_mut, load_todo_file, save_todo_file};
+use crate::views::todo_tree::TodoTreeView;
 
 /// Drain grep results from background thread into the ResultsView.
 pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
@@ -12,25 +20,14 @@ pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     if let Some(err) = gs.take_error() {
-        let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "grep", err);
+        let msg = Message::new(MsgLevel::Error, "grep", err);
         ctx.sink
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = gs.take_entries();
     let done = gs.is_done();
     if !entries.is_empty() || done {
-        if let Some(desktop) = downcast_desktop(ctx.desktop) {
-            if let Some(panel) = desktop.panel_mut(SlotId::Tools as usize) {
-                if let Some(view) = panel.active_view_mut() {
-                    if let Some(rv) = view
-                        .as_any_mut()
-                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
-                    {
-                        rv.append(entries, done);
-                    }
-                }
-            }
-        }
+        append_to_active_results(ctx, entries, done);
     }
     if !done {
         state.grep_pending = Some((title, gs, root));
@@ -43,53 +40,64 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     if let Some(err) = task.take_error() {
-        let msg = txv_core::message::Message::new(txv_core::message::MsgLevel::Error, "build", err);
+        let msg = Message::new(MsgLevel::Error, "build", err);
         ctx.sink
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = task.take_entries();
     let done = task.is_done();
     if !entries.is_empty() || done {
-        for e in &entries {
-            if !e.path.as_os_str().is_empty() {
-                state.build_errors.push(crate::build::ErrorLocation {
-                    file: e
-                        .path
-                        .strip_prefix(&root)
-                        .unwrap_or(&e.path)
-                        .to_string_lossy()
-                        .to_string(),
-                    line: e.line + 1,
-                    col: e.col + 1,
-                    message: e.text.clone(),
-                });
-            }
-        }
-        if let Some(desktop) = downcast_desktop(ctx.desktop) {
-            if let Some(panel) = desktop.panel_mut(SlotId::Tools as usize) {
-                if let Some(view) = panel.active_view_mut() {
-                    if let Some(rv) = view
-                        .as_any_mut()
-                        .and_then(|a| a.downcast_mut::<crate::views::results::ResultsView>())
-                    {
-                        rv.append(entries, done);
-                    }
-                }
-            }
-        }
+        collect_build_errors(&entries, &root, state);
+        append_to_results_view(ctx, entries, done);
     }
     if !done {
         state.build_pending = Some((title, task, root));
     }
 }
 
+fn collect_build_errors(entries: &[crate::views::results::ResultEntry], root: &std::path::Path, state: &mut AppState) {
+    for e in entries {
+        if !e.path.as_os_str().is_empty() {
+            state.build_errors.push(ErrorLocation {
+                file: e
+                    .path
+                    .strip_prefix(root)
+                    .unwrap_or(&e.path)
+                    .to_string_lossy()
+                    .to_string(),
+                line: e.line + 1,
+                col: e.col + 1,
+                message: e.text.clone(),
+            });
+        }
+    }
+}
+
+fn append_to_active_results(ctx: &mut CommandContext, entries: Vec<crate::views::results::ResultEntry>, done: bool) {
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let rv = desktop
+        .panel_mut(SlotId::Tools as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<ResultsView>());
+    if let Some(rv) = rv {
+        rv.append(entries, done);
+    }
+}
+
+fn append_to_results_view(ctx: &mut CommandContext, entries: Vec<crate::views::results::ResultEntry>, done: bool) {
+    append_to_active_results(ctx, entries, done);
+}
+
 /// Refresh plugins: scan dirs, reload changed, unload removed.
 pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
     let warnings = state.plugins.refresh(&mut state.script);
     if !warnings.is_empty() {
-        crate::completer::refresh_commands(&state.command_list, &state.script);
+        refresh_commands(&state.command_list, &state.script);
         for w in warnings {
-            let msg = txv_core::message::Message::warn("plugin", w);
+            let msg = Message::warn("plugin", w);
             ctx.sink
                 .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
@@ -121,10 +129,10 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     } else {
         // Create new Notes tab
         let mut nv = NotesView::new(note);
-        let store = crate::buffer_store::CommandStore::new(crate::commands::CM_TODO_NOTE_SAVE, ctx.sink.clone());
+        let store = CommandStore::new(CM_TODO_NOTE_SAVE, ctx.sink.clone());
         nv.set_store(Box::new(store));
         let view: Box<dyn View> = Box::new(nv);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Notes".to_string(), view);
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Notes".to_string(), view);
         focus_view_mut::<NotesView>(desktop, SlotId::Center);
         if *focus {
             desktop.focus_panel(SlotId::Center as usize);
@@ -164,9 +172,32 @@ pub fn save_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     let todo_path = state.root_dir.join(".kairn.todo");
-    let mut file = crate::views::todo_tree::model::load_todo_file(&todo_path);
-    if let Some(item) = crate::views::todo_tree::model::get_item_mut(&mut file, path) {
+    let mut file = load_todo_file(&todo_path);
+    if let Some(item) = get_item_mut(&mut file, path) {
         item.note.clone_from(content);
-        crate::views::todo_tree::model::save_todo_file(&todo_path, &file);
+        save_todo_file(&todo_path, &file);
+    }
+}
+
+/// Handle CM_TODO_ACTION — dispatch MCP todo actions.
+pub fn handle_todo_action(ctx: &mut CommandContext, _state: &mut AppState) {
+    use crate::mcp::commands::McpAction;
+    let Some(action) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<McpAction>()) else {
+        return;
+    };
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let todo_view = desktop
+        .panel_mut(SlotId::Left as usize)
+        .and_then(|p| p.view_at_mut(2))
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<TodoTreeView>());
+    if let Some(tv) = todo_view {
+        if let Err(e) = tv.mcp_action(action) {
+            let msg = Message::new(MsgLevel::Error, "todo", e);
+            ctx.sink
+                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
     }
 }

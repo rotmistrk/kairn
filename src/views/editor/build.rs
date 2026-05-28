@@ -1,12 +1,17 @@
 //! EditorView constructors.
 
+use std::cell::RefCell;
+use std::fs::metadata;
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
 use super::EditorView;
+use crate::buffer_store::FileStore;
 use crate::editor::Editor;
 use crate::highlight::{self, Highlighter};
+use crate::highlight_cache::HighlightCache;
+use crate::lsp::completion::CompletionPopup;
 use crate::settings::EditorSettings;
 
 impl EditorView {
@@ -44,7 +49,7 @@ impl EditorView {
             path: PathBuf::from("[cmd output]"),
             root_dir: PathBuf::from("."),
             highlighter: Highlighter::new(),
-            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new("")),
+            hl_cache: RefCell::new(HighlightCache::new("")),
             file_ext: String::new(),
             settings: EditorSettings::default(),
             last_edit_tick: 0,
@@ -55,11 +60,11 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             sbs_state: None,
-            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            completion_popup: CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
             disk_mtime: None,
-            store: Box::new(crate::buffer_store::FileStore::new(PathBuf::from("[cmd output]"))),
+            store: Box::new(FileStore::new(PathBuf::from("[cmd output]"))),
         }
     }
 
@@ -78,7 +83,7 @@ impl EditorView {
             path: path.clone(),
             root_dir: path.parent().unwrap_or(Path::new(".")).to_path_buf(),
             highlighter: Highlighter::with_theme(syntax_theme),
-            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
+            hl_cache: RefCell::new(HighlightCache::new(&file_ext)),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,
@@ -89,11 +94,11 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             sbs_state: None,
-            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            completion_popup: CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
-            disk_mtime: std::fs::metadata(&path).and_then(|m| m.modified()).ok(),
-            store: Box::new(crate::buffer_store::FileStore::new(path.clone())),
+            disk_mtime: metadata(&path).and_then(|m| m.modified()).ok(),
+            store: Box::new(FileStore::new(path.clone())),
         };
         view.apply_settings();
         view
@@ -113,7 +118,7 @@ impl EditorView {
             path: path.to_path_buf(),
             root_dir,
             highlighter: Highlighter::new(),
-            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
+            hl_cache: RefCell::new(HighlightCache::new(&file_ext)),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,
@@ -124,11 +129,11 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             sbs_state: None,
-            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            completion_popup: CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
-            disk_mtime: std::fs::metadata(path).and_then(|m| m.modified()).ok(),
-            store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
+            disk_mtime: metadata(path).and_then(|m| m.modified()).ok(),
+            store: Box::new(FileStore::new(path.to_path_buf())),
         }
     }
 
@@ -146,7 +151,7 @@ impl EditorView {
             path: path.to_path_buf(),
             root_dir,
             highlighter: Highlighter::with_theme(syntax_theme),
-            hl_cache: std::cell::RefCell::new(crate::highlight_cache::HighlightCache::new(&file_ext)),
+            hl_cache: RefCell::new(HighlightCache::new(&file_ext)),
             file_ext,
             settings: settings.clone(),
             last_edit_tick: 0,
@@ -157,11 +162,11 @@ impl EditorView {
             blame_state: None,
             diff_state: None,
             sbs_state: None,
-            completion_popup: crate::lsp::completion::CompletionPopup::new(),
+            completion_popup: CompletionPopup::new(),
             buffer_id: None,
             highlight_word: None,
-            disk_mtime: std::fs::metadata(path).and_then(|m| m.modified()).ok(),
-            store: Box::new(crate::buffer_store::FileStore::new(path.to_path_buf())),
+            disk_mtime: metadata(path).and_then(|m| m.modified()).ok(),
+            store: Box::new(FileStore::new(path.to_path_buf())),
         }
     }
 

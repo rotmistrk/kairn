@@ -1,26 +1,30 @@
 //! Session restore — apply saved state to workspace.
 
+use std::collections::HashSet;
 use std::path::Path;
 
-use crate::desktop::{close_tab_by_title, insert_tab, SlotId};
+use txv_widgets::tab_panel::TabPanel;
+use txv_widgets::tiled_workspace::types::WorkspaceState;
+use txv_widgets::tiled_workspace::TiledWorkspace;
+
+use crate::desktop::{close_tab_by_title, insert_tab, LayoutMode, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;
 use crate::views::terminal::new_kiro_terminal_with_resume;
 use crate::views::tree::FileTreeView;
-use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use super::schema::{KiroSessionState, SessionState};
 
 /// Apply restored layout mode and panel proportions to the desktop.
 pub fn restore_session(desktop: &mut TiledWorkspace, state: &SessionState) {
     desktop.set_layout_mode(match state.layout.as_str() {
-        "wide" => crate::desktop::LayoutMode::Wide,
-        "tall" => crate::desktop::LayoutMode::Narrow,
-        _ => crate::desktop::LayoutMode::Auto,
+        "wide" => LayoutMode::Wide,
+        "tall" => LayoutMode::Narrow,
+        _ => LayoutMode::Auto,
     });
     if !state.wide_proportions.is_empty() || !state.narrow_proportions.is_empty() {
-        let ws_state = txv_widgets::tiled_workspace::types::WorkspaceState {
+        let ws_state = WorkspaceState {
             wide_proportions: state.wide_proportions.clone(),
             narrow_proportions: state.narrow_proportions.clone(),
             hidden: state.hidden_panels.clone(),
@@ -42,21 +46,38 @@ pub fn restore_tabs(
     }
     close_tab_by_title(desktop, SlotId::Center, "Welcome");
 
-    let second_set: std::collections::HashSet<usize> = state
+    let second_set: HashSet<usize> = state
         .split
         .as_ref()
         .map(|s| s.second_tabs.iter().copied().collect())
         .unwrap_or_default();
 
-    // Open tabs in first subpanel
+    open_first_panel_tabs(desktop, state, &second_set, root_dir, editor_defaults, syntax_theme);
+    set_first_panel_active(desktop, state);
+
+    if let Some(ref split) = state.split {
+        restore_split(desktop, state, split, root_dir, editor_defaults, syntax_theme);
+    }
+    restore_unfolded_dirs(desktop, state, root_dir);
+}
+
+fn open_first_panel_tabs(
+    desktop: &mut TiledWorkspace,
+    state: &SessionState,
+    second_set: &HashSet<usize>,
+    root_dir: &Path,
+    editor_defaults: &EditorSettings,
+    syntax_theme: &str,
+) {
     for (i, tab) in state.editor_tabs.iter().enumerate() {
         if second_set.contains(&i) {
             continue;
         }
         open_tab_in_panel(desktop, tab, root_dir, editor_defaults, syntax_theme);
     }
+}
 
-    // Set active tab in first subpanel
+fn set_first_panel_active(desktop: &mut TiledWorkspace, state: &SessionState) {
     if let Some(split) = &state.split {
         if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
             if split.active_first < panel.tab_count() {
@@ -68,14 +89,6 @@ pub fn restore_tabs(
             panel.set_active(state.active_tab);
         }
     }
-
-    // Restore split if present
-    if let Some(ref split) = state.split {
-        restore_split(desktop, state, split, root_dir, editor_defaults, syntax_theme);
-    }
-
-    // Restore unfolded directories
-    restore_unfolded_dirs(desktop, state, root_dir);
 }
 
 fn restore_split(
@@ -95,6 +108,18 @@ fn restore_split(
         sp.set_direction(dir);
     }
 
+    open_second_panel_tabs(desktop, state, split, root_dir, editor_defaults, syntax_theme);
+    set_second_panel_active(desktop, split);
+}
+
+fn open_second_panel_tabs(
+    desktop: &mut TiledWorkspace,
+    state: &SessionState,
+    split: &super::schema::SplitState,
+    root_dir: &Path,
+    editor_defaults: &EditorSettings,
+    syntax_theme: &str,
+) {
     for &i in &split.second_tabs {
         let Some(tab) = state.editor_tabs.get(i) else {
             continue;
@@ -108,40 +133,49 @@ fn restore_split(
         editor.set_root_dir(root_dir.to_path_buf());
         editor.goto(tab.line, tab.col);
         let title = tab.path.clone();
+        insert_into_second_panel(desktop, editor, &title);
+    }
+}
 
-        if desktop
-            .split_panel(SlotId::Center as usize)
-            .is_none_or(|sp| sp.child_count() <= 1)
-        {
-            desktop.split_in_place(Box::new(editor), &title);
-        } else if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
-            if let Some(child) = sp.child_mut(1) {
-                if let Some(tp) = child
-                    .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
-                {
-                    tp.insert_tab(&title, Box::new(editor));
-                }
-            }
+fn insert_into_second_panel(desktop: &mut TiledWorkspace, editor: EditorView, title: &str) {
+    if desktop
+        .split_panel(SlotId::Center as usize)
+        .is_none_or(|sp| sp.child_count() <= 1)
+    {
+        desktop.split_in_place(Box::new(editor), title);
+        return;
+    }
+    let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    let Some(child) = sp.child_mut(1) else {
+        return;
+    };
+    let Some(tp) = child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) else {
+        return;
+    };
+    tp.insert_tab(title, Box::new(editor));
+}
+
+fn set_second_panel_active(desktop: &mut TiledWorkspace, split: &super::schema::SplitState) {
+    let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    if sp.child_count() <= 1 {
+        return;
+    }
+    let Some(child) = sp.child_mut(1) else {
+        return;
+    };
+    if let Some(tp) = child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) {
+        if split.active_second < tp.tab_count() {
+            tp.set_active(split.active_second);
         }
     }
-
-    // Set active tab in second subpanel and focused subpanel
-    if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
-        if sp.child_count() > 1 {
-            if let Some(child) = sp.child_mut(1) {
-                if let Some(tp) = child
-                    .as_any_mut()
-                    .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
-                {
-                    if split.active_second < tp.tab_count() {
-                        tp.set_active(split.active_second);
-                    }
-                }
-            }
-            sp.set_focused(split.focused);
-        }
-    }
+    let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    sp.set_focused(split.focused);
 }
 
 fn restore_unfolded_dirs(desktop: &mut TiledWorkspace, state: &SessionState, root_dir: &Path) {

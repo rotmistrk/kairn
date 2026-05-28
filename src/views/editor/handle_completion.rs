@@ -1,6 +1,8 @@
 //! EditorView completion popup helpers.
 
-use crate::lsp::requests::CompletionItem;
+use txv_core::message::Message;
+
+use crate::lsp::requests::{CompletionItem, CompletionKind};
 
 use super::EditorView;
 
@@ -8,30 +10,38 @@ impl EditorView {
     /// Show completion popup with items from LSP response, filtered by typed prefix.
     pub(super) fn show_completion_items(&mut self, items: &[CompletionItem]) {
         let prefix = self.word_prefix();
-        let filtered: Vec<CompletionItem> = if prefix.is_empty() {
-            items.to_vec()
-        } else {
-            let lower_prefix = prefix.to_lowercase();
-            items
-                .iter()
-                .filter(|item| {
-                    let text = item.insert_text.as_deref().unwrap_or(&item.label);
-                    text.to_lowercase().starts_with(&lower_prefix)
-                })
-                .cloned()
-                .collect()
-        };
+        let filtered = self.filter_completion_items(items, &prefix);
         if filtered.is_empty() {
             self.completion_popup.hide();
             self.state.mark_dirty();
             return;
         }
+        let (x, y) = self.completion_popup_position(&prefix);
+        self.completion_popup.show(filtered, x, y);
+        self.state.mark_dirty();
+    }
+
+    fn filter_completion_items(&self, items: &[CompletionItem], prefix: &str) -> Vec<CompletionItem> {
+        if prefix.is_empty() {
+            return items.to_vec();
+        }
+        let lower_prefix = prefix.to_lowercase();
+        items
+            .iter()
+            .filter(|item| {
+                let text = item.insert_text.as_deref().unwrap_or(&item.label);
+                text.to_lowercase().starts_with(&lower_prefix)
+            })
+            .cloned()
+            .collect()
+    }
+
+    fn completion_popup_position(&self, prefix: &str) -> (u16, u16) {
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
         let avail = self.text_avail_width();
         let tab_w = self.editor.options.tab_width;
 
-        // Compute visual row of cursor line relative to viewport top
         let mut vis_row: usize = 0;
         for li in scroll..self.editor.cursor_line {
             vis_row += if self.editor.options.wrap {
@@ -51,8 +61,7 @@ impl EditorView {
         let screen_col = cursor_vcol.saturating_sub(h_off);
         let x = gutter_w + screen_col.saturating_sub(prefix.len()) as u16;
         let y = cursor_vrow as u16;
-        self.completion_popup.show(filtered, x, y);
-        self.state.mark_dirty();
+        (x, y)
     }
 
     /// Show completion popup with labels (legacy path).
@@ -63,7 +72,7 @@ impl EditorView {
                 label: l.clone(),
                 detail: None,
                 insert_text: None,
-                kind: crate::lsp::requests::CompletionKind::Other,
+                kind: CompletionKind::Other,
             })
             .collect();
         self.show_completion_items(&items);
@@ -75,47 +84,46 @@ impl EditorView {
         let text = self.completion_popup.selected_text().map(|s| s.to_string());
         self.completion_popup.hide();
         if let Some(text) = text {
-            let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-            let col = self.editor.cursor_col;
-            let chars: Vec<char> = line.chars().collect();
-
-            // Find word start (scan back from cursor)
-            let prefix_len = chars[..col]
-                .iter()
-                .rev()
-                .take_while(|c| c.is_alphanumeric() || **c == '_')
-                .count();
-            let word_start = col - prefix_len;
-
-            // Find word end (scan forward from cursor)
-            let suffix_len = chars[col..]
-                .iter()
-                .take_while(|c| c.is_alphanumeric() || **c == '_')
-                .count();
-            let word_end = col + suffix_len;
-
-            // Delete the entire word
-            let start_offset = self
-                .editor
-                .buf()
-                .line_col_to_offset(self.editor.cursor_line, word_start)
-                .unwrap_or(0);
-            let end_offset = self
-                .editor
-                .buf()
-                .line_col_to_offset(self.editor.cursor_line, word_end)
-                .unwrap_or(start_offset);
-            if end_offset > start_offset {
-                self.editor.buf().delete(start_offset, end_offset);
-            }
-
-            // Insert completion text
-            self.editor.buf().insert(start_offset, &text);
-            self.editor.cursor_col = word_start + text.len();
-            self.last_edit_tick = self.tick_counter;
+            self.replace_word_with_completion(&text);
         }
         self.clear_diagnostics();
         self.state.mark_dirty();
+    }
+
+    fn replace_word_with_completion(&mut self, text: &str) {
+        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
+        let col = self.editor.cursor_col;
+        let chars: Vec<char> = line.chars().collect();
+
+        let prefix_len = chars[..col]
+            .iter()
+            .rev()
+            .take_while(|c| c.is_alphanumeric() || **c == '_')
+            .count();
+        let word_start = col - prefix_len;
+
+        let suffix_len = chars[col..]
+            .iter()
+            .take_while(|c| c.is_alphanumeric() || **c == '_')
+            .count();
+        let word_end = col + suffix_len;
+
+        let start_offset = self
+            .editor
+            .buf()
+            .line_col_to_offset(self.editor.cursor_line, word_start)
+            .unwrap_or(0);
+        let end_offset = self
+            .editor
+            .buf()
+            .line_col_to_offset(self.editor.cursor_line, word_end)
+            .unwrap_or(start_offset);
+        if end_offset > start_offset {
+            self.editor.buf().delete(start_offset, end_offset);
+        }
+        self.editor.buf().insert(start_offset, text);
+        self.editor.cursor_col = word_start + text.len();
+        self.last_edit_tick = self.tick_counter;
     }
 
     /// Get the word prefix before the cursor as a string.
@@ -177,7 +185,7 @@ impl EditorView {
         };
         self.state.put_command(
             txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(txv_core::message::Message::info("sig", msg))),
+            Some(Box::new(Message::info("sig", msg))),
         );
     }
 }

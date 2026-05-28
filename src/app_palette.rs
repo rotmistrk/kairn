@@ -10,9 +10,9 @@ mod roles2;
 pub use roles::*;
 pub use roles2::*;
 
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
-static APP_PALETTE: OnceLock<std::sync::RwLock<AppPalette>> = OnceLock::new();
+static APP_PALETTE: OnceLock<RwLock<AppPalette>> = OnceLock::new();
 
 /// Get the active app palette.
 pub fn app_palette() -> AppPalette {
@@ -31,7 +31,7 @@ pub fn set_app_palette(p: &AppPalette) {
             }
         }
         None => {
-            let _ = APP_PALETTE.set(std::sync::RwLock::new(p.clone()));
+            let _ = APP_PALETTE.set(RwLock::new(p.clone()));
         }
     }
 }
@@ -39,40 +39,17 @@ pub fn set_app_palette(p: &AppPalette) {
 /// kairn-specific palette extending the framework palette.
 #[derive(Clone, Debug)]
 pub struct AppPalette {
-    git: GitPalette,
-    diff: DiffPalette,
-    editor: EditorPalette,
-    diag: DiagPalette,
-    tree: TreePalette,
-    todo: TodoPalette,
-    msg: MsgPalette,
-    badge: BadgePalette,
+    pub(crate) git: GitPalette,
+    pub(crate) diff: DiffPalette,
+    pub(crate) editor: EditorPalette,
+    pub(crate) diag: DiagPalette,
+    pub(crate) tree: TreePalette,
+    pub(crate) todo: TodoPalette,
+    pub(crate) msg: MsgPalette,
+    pub(crate) badge: BadgePalette,
 }
 
 impl AppPalette {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        git: GitPalette,
-        diff: DiffPalette,
-        editor: EditorPalette,
-        diag: DiagPalette,
-        tree: TreePalette,
-        todo: TodoPalette,
-        msg: MsgPalette,
-        badge: BadgePalette,
-    ) -> Self {
-        Self {
-            git,
-            diff,
-            editor,
-            diag,
-            tree,
-            todo,
-            msg,
-            badge,
-        }
-    }
-
     pub fn git(&self) -> &GitPalette {
         &self.git
     }

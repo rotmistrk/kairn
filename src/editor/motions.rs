@@ -142,29 +142,39 @@ pub fn match_bracket(buf: &PieceTable, line: usize, col: usize) -> Option<(usize
     if offset >= bytes.len() {
         return None;
     }
-    let mut depth = 0i32;
     if forward {
-        for i in offset..bytes.len() {
-            if bytes[i] == open {
-                depth += 1;
-            } else if bytes[i] == close {
-                depth -= 1;
-                if depth == 0 {
-                    let byte_off: usize = bytes[..i].iter().map(|c| c.len_utf8()).sum();
-                    return Some(buf.offset_to_line_col(byte_off));
-                }
+        scan_forward(&bytes, offset, open, close, buf)
+    } else {
+        scan_backward(&bytes, offset, open, close, buf)
+    }
+}
+
+fn scan_forward(bytes: &[char], offset: usize, open: char, close: char, buf: &PieceTable) -> Option<(usize, usize)> {
+    let mut depth = 0i32;
+    for i in offset..bytes.len() {
+        if bytes[i] == open {
+            depth += 1;
+        } else if bytes[i] == close {
+            depth -= 1;
+            if depth == 0 {
+                let byte_off: usize = bytes[..i].iter().map(|c| c.len_utf8()).sum();
+                return Some(buf.offset_to_line_col(byte_off));
             }
         }
-    } else {
-        for i in (0..=offset).rev() {
-            if bytes[i] == close {
-                depth += 1;
-            } else if bytes[i] == open {
-                depth -= 1;
-                if depth == 0 {
-                    let byte_off: usize = bytes[..i].iter().map(|c| c.len_utf8()).sum();
-                    return Some(buf.offset_to_line_col(byte_off));
-                }
+    }
+    None
+}
+
+fn scan_backward(bytes: &[char], offset: usize, open: char, close: char, buf: &PieceTable) -> Option<(usize, usize)> {
+    let mut depth = 0i32;
+    for i in (0..=offset).rev() {
+        if bytes[i] == close {
+            depth += 1;
+        } else if bytes[i] == open {
+            depth -= 1;
+            if depth == 0 {
+                let byte_off: usize = bytes[..i].iter().map(|c| c.len_utf8()).sum();
+                return Some(buf.offset_to_line_col(byte_off));
             }
         }
     }

@@ -1,5 +1,7 @@
 //! Structural operation handlers for StructuredView.
 
+use txv_widgets::inline_edit::InlineEditor;
+
 use crate::structured::NodeKind;
 use crate::views::struct_view::{EditTarget, StructuredView};
 
@@ -227,16 +229,13 @@ pub fn handle_sort_by_path_start(view: &mut StructuredView) {
         }
     };
     view.sort_path_target = Some(target);
-    view.editing = Some(txv_widgets::inline_edit::InlineEditor::new(view.cursor, "."));
+    view.editing = Some(InlineEditor::new(view.cursor, "."));
     view.state.mark_dirty();
 }
 
 pub fn handle_filter_start(view: &mut StructuredView) {
     view.filtering = true;
-    view.editing = Some(txv_widgets::inline_edit::InlineEditor::new(
-        view.cursor,
-        &view.filter_text,
-    ));
+    view.editing = Some(InlineEditor::new(view.cursor, &view.filter_text));
     view.edit_target = EditTarget::Meta; // reuse to distinguish
     view.state.mark_dirty();
 }

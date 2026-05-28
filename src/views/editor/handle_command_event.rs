@@ -1,9 +1,16 @@
 //! Command event dispatch for EditorView.
 
-use crate::commands::CM_CLIPBOARD_PASTE;
+use txv_core::message::Message;
 use txv_core::prelude::*;
 
 use super::EditorView;
+use crate::commands::{
+    DiffSplitRequest, CM_BLAME, CM_CLIPBOARD_PASTE, CM_DIAGNOSTIC, CM_DIFF, CM_DIFF_REVERT, CM_DIFF_SPLIT,
+    CM_GOTO_LINE, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP, CM_MODE_CHANGED, CM_NOBLAME,
+};
+use crate::lsp::diagnostics::Diagnostic;
+use crate::lsp::protocol::path_to_uri;
+use crate::lsp::requests::{CompletionItem, SignatureHelp};
 
 impl EditorView {
     /// Handle Command events dispatched to the editor view.
@@ -12,99 +19,131 @@ impl EditorView {
         id: u16,
         data: &Option<Box<dyn std::any::Any + Send>>,
     ) -> HandleResult {
-        if id == crate::commands::CM_DIFF {
-            let args = data
-                .as_ref()
-                .and_then(|b| b.downcast_ref::<String>())
-                .map(|s| s.as_str())
-                .unwrap_or("");
-            if let Some((base_content, base_ref)) = self.try_diff_side_by_side(args) {
-                let payload = crate::commands::DiffSplitRequest { base_content, base_ref };
-                self.state
-                    .put_command(crate::commands::CM_DIFF_SPLIT, Some(Box::new(payload)));
-                return HandleResult::Consumed;
-            }
-            self.toggle_diff(args);
-            if !self.editor.status.is_empty() {
-                let msg = txv_core::message::Message::info("editor", self.editor.status.clone());
-                self.state
-                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            }
-            let mode = if self.in_diff_mode() {
-                "DIFF"
-            } else {
-                "NOR"
-            };
-            self.state
-                .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
-            return HandleResult::Consumed;
+        if id == CM_DIFF {
+            return self.handle_diff_command(data);
         }
-        if id == crate::commands::CM_BLAME {
+        if id == CM_BLAME {
             self.toggle_blame();
             return HandleResult::Consumed;
         }
-        if id == crate::commands::CM_NOBLAME {
+        if id == CM_NOBLAME {
             self.blame_state = None;
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
-        if id == crate::commands::CM_DIFF_REVERT {
-            let msg = match self.revert_hunk() {
-                Ok(m) => txv_core::message::Message::info("editor", m),
-                Err(e) => txv_core::message::Message::error("editor", e),
-            };
-            self.state
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            return HandleResult::Consumed;
+        if id == CM_DIFF_REVERT {
+            return self.handle_diff_revert_command();
         }
-        if id == crate::commands::CM_GOTO_LINE {
-            if let Some(boxed) = data.as_ref() {
-                if let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() {
-                    self.goto(line, col);
-                    return HandleResult::Consumed;
-                }
-            }
+        if id == CM_GOTO_LINE {
+            return self.handle_goto_line_command(data);
         }
         if id == CM_CLIPBOARD_PASTE {
-            if let Some(boxed) = data.as_ref() {
-                if let Some(text) = boxed.downcast_ref::<String>() {
-                    let offset = self
-                        .editor
-                        .buf()
-                        .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
-                        .unwrap_or(0);
-                    self.editor.buf().insert(offset, text);
-                    self.last_edit_tick = self.tick_counter;
-                    self.clear_diagnostics();
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
+            return self.handle_paste_command(data);
+        }
+        if id == CM_LSP_COMPLETION {
+            return self.handle_lsp_completion_command(data);
+        }
+        if id == CM_LSP_SIGNATURE_HELP {
+            return self.handle_lsp_sig_command(data);
+        }
+        if id == CM_DIAGNOSTIC {
+            return self.handle_diagnostic_command(data);
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_diff_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        let args = data
+            .as_ref()
+            .and_then(|b| b.downcast_ref::<String>())
+            .map(|s| s.as_str())
+            .unwrap_or("");
+        if let Some((base_content, base_ref)) = self.try_diff_side_by_side(args) {
+            let payload = DiffSplitRequest { base_content, base_ref };
+            self.state.put_command(CM_DIFF_SPLIT, Some(Box::new(payload)));
+            return HandleResult::Consumed;
+        }
+        self.toggle_diff(args);
+        if !self.editor.status.is_empty() {
+            let msg = Message::info("editor", self.editor.status.clone());
+            self.state
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+        let mode = if self.in_diff_mode() {
+            "DIFF"
+        } else {
+            "NOR"
+        };
+        self.state
+            .put_command(CM_MODE_CHANGED, Some(Box::new(mode.to_string())));
+        HandleResult::Consumed
+    }
+
+    fn handle_diff_revert_command(&mut self) -> HandleResult {
+        let msg = match self.revert_hunk() {
+            Ok(m) => Message::info("editor", m),
+            Err(e) => Message::error("editor", e),
+        };
+        self.state
+            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        HandleResult::Consumed
+    }
+
+    fn handle_goto_line_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() {
+                self.goto(line, col);
+                return HandleResult::Consumed;
             }
         }
-        if id == crate::commands::CM_LSP_COMPLETION {
-            if let Some(boxed) = data.as_ref() {
-                if let Some(items) = boxed.downcast_ref::<Vec<crate::lsp::requests::CompletionItem>>() {
-                    self.show_completion_items(items);
-                    return HandleResult::Consumed;
-                }
+        HandleResult::Ignored
+    }
+
+    fn handle_paste_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some(text) = boxed.downcast_ref::<String>() {
+                let offset = self
+                    .editor
+                    .buf()
+                    .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                    .unwrap_or(0);
+                self.editor.buf().insert(offset, text);
+                self.last_edit_tick = self.tick_counter;
+                self.clear_diagnostics();
+                self.state.mark_dirty();
+                return HandleResult::Consumed;
             }
         }
-        if id == crate::commands::CM_LSP_SIGNATURE_HELP {
-            if let Some(boxed) = data.as_ref() {
-                if let Some(sig) = boxed.downcast_ref::<crate::lsp::requests::SignatureHelp>() {
-                    self.show_signature_help(sig);
-                    return HandleResult::Consumed;
-                }
+        HandleResult::Ignored
+    }
+
+    fn handle_lsp_completion_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some(items) = boxed.downcast_ref::<Vec<CompletionItem>>() {
+                self.show_completion_items(items);
+                return HandleResult::Consumed;
             }
         }
-        if id == crate::commands::CM_DIAGNOSTIC {
-            if let Some(boxed) = data.as_ref() {
-                if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<crate::lsp::diagnostics::Diagnostic>)>() {
-                    let file_uri = crate::lsp::protocol::path_to_uri(&self.path);
-                    if *uri == file_uri {
-                        self.set_diagnostics(diags.clone());
-                        return HandleResult::Consumed;
-                    }
+        HandleResult::Ignored
+    }
+
+    fn handle_lsp_sig_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some(sig) = boxed.downcast_ref::<SignatureHelp>() {
+                self.show_signature_help(sig);
+                return HandleResult::Consumed;
+            }
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_diagnostic_command(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<Diagnostic>)>() {
+                let file_uri = path_to_uri(&self.path);
+                if *uri == file_uri {
+                    self.set_diagnostics(diags.clone());
+                    return HandleResult::Consumed;
                 }
             }
         }

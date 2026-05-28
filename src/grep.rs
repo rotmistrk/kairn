@@ -35,20 +35,20 @@ fn parse_grep_args(input: &str) -> Result<GrepOpts, String> {
     let mut flags_done = false;
 
     for word in &words {
-        if !flags_done && word.starts_with('-') && word.len() > 1 && !word.starts_with("--") {
-            for ch in word[1..].chars() {
-                match ch {
-                    'i' => case_insensitive = true,
-                    'E' => {} // extended regex is default
-                    'F' => fixed_string = true,
-                    'w' => word_boundary = true,
-                    'n' | 'l' | 'H' => {} // accepted but no-op (always show lines+files)
-                    _ => return Err(format!("Unknown flag: -{ch}")),
-                }
-            }
-        } else {
+        if flags_done || !word.starts_with('-') || word.len() <= 1 || word.starts_with("--") {
             flags_done = true;
             pattern_parts.push(word.clone());
+            continue;
+        }
+        for ch in word[1..].chars() {
+            match ch {
+                'i' => case_insensitive = true,
+                'E' => {} // extended regex is default
+                'F' => fixed_string = true,
+                'w' => word_boundary = true,
+                'n' | 'l' | 'H' => {} // accepted but no-op (always show lines+files)
+                _ => return Err(format!("Unknown flag: -{ch}")),
+            }
         }
     }
 
@@ -95,82 +95,101 @@ pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
     let root = root.to_path_buf();
 
     std::thread::spawn(move || {
-        let opts = match parse_grep_args(&input) {
-            Ok(o) => o,
-            Err(e) => {
-                state_clone.set_error(e);
-                state_clone.mark_done();
-                waker.wake();
-                return;
-            }
-        };
-
-        let re = match build_regex(&opts) {
-            Ok(r) => r,
-            Err(e) => {
-                state_clone.set_error(e);
-                state_clone.mark_done();
-                waker.wake();
-                return;
-            }
-        };
-
-        let walker = WalkBuilder::new(&root)
-            .hidden(true)
-            .git_ignore(true)
-            .git_global(true)
-            .build();
-
-        let mut count = 0;
-        let mut batch = Vec::with_capacity(16);
-
-        for entry in walker.flatten() {
-            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                continue;
-            }
-            let path = entry.path();
-            let file = match File::open(path) {
-                Ok(f) => f,
-                Err(_) => continue,
-            };
-            let reader = BufReader::new(file);
-            let mut file_matches = 0;
-
-            for (line_idx, line) in reader.lines().enumerate() {
-                let Ok(line) = line else {
-                    break;
-                };
-                if re.is_match(&line) {
-                    batch.push(ResultEntry {
-                        path: path.to_path_buf(),
-                        line: line_idx as u32,
-                        col: 0,
-                        text: line.chars().take(200).collect(),
-                    });
-                    count += 1;
-                    file_matches += 1;
-                    if file_matches >= 10 {
-                        break;
-                    }
-                    if batch.len() >= 16 {
-                        state_clone.push_entries(&mut batch);
-                        waker.wake();
-                    }
-                }
-            }
-            if count >= 1000 {
-                break;
-            }
-        }
-
-        if !batch.is_empty() {
-            state_clone.push_entries(&mut batch);
-        }
-        state_clone.mark_done();
-        waker.wake();
+        grep_thread(&input, &root, &state_clone, &waker);
     });
 
     state
+}
+
+fn grep_thread(input: &str, root: &Path, state: &Arc<TaskOutput>, waker: &Waker) {
+    let opts = match parse_grep_args(input) {
+        Ok(o) => o,
+        Err(e) => {
+            state.set_error(e);
+            state.mark_done();
+            waker.wake();
+            return;
+        }
+    };
+
+    let re = match build_regex(&opts) {
+        Ok(r) => r,
+        Err(e) => {
+            state.set_error(e);
+            state.mark_done();
+            waker.wake();
+            return;
+        }
+    };
+
+    search_files(root, &re, state, waker);
+    state.mark_done();
+    waker.wake();
+}
+
+fn search_files(root: &Path, re: &regex::Regex, state: &Arc<TaskOutput>, waker: &Waker) {
+    let walker = WalkBuilder::new(root)
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .build();
+
+    let mut count = 0;
+    let mut batch = Vec::with_capacity(16);
+
+    for entry in walker.flatten() {
+        if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+            continue;
+        }
+        let path = entry.path();
+        let file = match File::open(path) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        count += search_file(path, file, re, &mut batch, state, waker);
+        if count >= 1000 {
+            break;
+        }
+    }
+
+    if !batch.is_empty() {
+        state.push_entries(&mut batch);
+    }
+}
+
+fn search_file(
+    path: &Path,
+    file: File,
+    re: &regex::Regex,
+    batch: &mut Vec<ResultEntry>,
+    state: &Arc<TaskOutput>,
+    waker: &Waker,
+) -> usize {
+    let reader = BufReader::new(file);
+    let mut file_matches = 0;
+
+    for (line_idx, line) in reader.lines().enumerate() {
+        let Ok(line) = line else {
+            break;
+        };
+        if re.is_match(&line) {
+            batch.push(ResultEntry {
+                path: path.to_path_buf(),
+                line: line_idx as u32,
+                col: 0,
+                text: line.chars().take(200).collect(),
+            });
+            file_matches += 1;
+            if file_matches >= 10 {
+                break;
+            }
+            if batch.len() >= 16 {
+                state.push_entries(batch);
+                waker.wake();
+            }
+        }
+    }
+    file_matches
 }
 
 #[cfg(test)]

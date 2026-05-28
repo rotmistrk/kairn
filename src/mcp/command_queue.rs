@@ -1,7 +1,9 @@
 //! Shared command queue + waker for MCP write operations.
 
 use std::collections::VecDeque;
+use std::sync::mpsc::sync_channel;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::Value;
 use txv_core::run::Waker;
@@ -25,14 +27,14 @@ impl McpCommandQueue {
 
     /// Push a request and wake the event loop. Returns the reply receiver.
     pub fn send(&self, action: McpAction) -> Result<Value, String> {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        let (tx, rx) = sync_channel(1);
         let req = McpRequest::new(action, tx);
         {
             let mut q = self.queue.lock().map_err(|_| "MCP queue mutex poisoned")?;
             q.push_back(req);
         }
         self.waker.wake();
-        rx.recv_timeout(std::time::Duration::from_secs(5))
+        rx.recv_timeout(Duration::from_secs(5))
             .map_err(|e| format!("MCP command timeout: {e}"))?
     }
 

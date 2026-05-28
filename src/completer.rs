@@ -93,39 +93,46 @@ fn complete_theme(sub: &str, visitor: &mut CompletionVisitor<'_>) -> Result<(), 
     const GLYPH_OPTS: &[&str] = &["ascii", "nerd", "utf"];
 
     if let Some(partial) = sub.strip_prefix("syntax ") {
-        let themes = crate::highlight::Highlighter::new();
-        let mut names: Vec<&str> = themes.available_themes();
-        names.sort();
-        for t in names.into_iter().filter(|t| t.starts_with(partial)) {
-            let e = Entry {
-                text: format!("theme syntax {t}"),
-                display: t.to_string(),
-                kind: "theme",
-            };
-            if !visitor(&e)? {
-                break;
-            }
-        }
-        return Ok(());
+        return complete_syntax_themes(partial, visitor);
     }
     if let Some(partial) = sub.strip_prefix("glyphs ") {
-        for o in GLYPH_OPTS.iter().filter(|o| o.starts_with(partial)) {
-            let e = Entry {
-                text: format!("theme glyphs {o}"),
-                display: o.to_string(),
-                kind: "option",
-            };
-            if !visitor(&e)? {
-                break;
-            }
-        }
-        return Ok(());
+        return complete_options(GLYPH_OPTS, "theme glyphs", partial, "option", visitor);
     }
-    for s in THEME_SUBS.iter().filter(|s| s.starts_with(sub)) {
+    complete_options(THEME_SUBS, "theme", sub, "command", visitor)
+}
+
+fn complete_syntax_themes(
+    partial: &str,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let themes = crate::highlight::Highlighter::new();
+    let mut names: Vec<&str> = themes.available_themes();
+    names.sort();
+    for t in names.into_iter().filter(|t| t.starts_with(partial)) {
         let e = Entry {
-            text: format!("theme {s}"),
-            display: s.to_string(),
-            kind: "command",
+            text: format!("theme syntax {t}"),
+            display: t.to_string(),
+            kind: "theme",
+        };
+        if !visitor(&e)? {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn complete_options(
+    opts: &[&str],
+    prefix: &str,
+    partial: &str,
+    kind: &'static str,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for o in opts.iter().filter(|o| o.starts_with(partial)) {
+        let e = Entry {
+            text: format!("{prefix} {o}"),
+            display: o.to_string(),
+            kind,
         };
         if !visitor(&e)? {
             break;
@@ -143,17 +150,18 @@ fn complete_lsp(
     const LSP_SUBS: &[&str] = &["args", "restart", "start", "status", "stop", "timeout"];
 
     if let Some((subcmd, partial)) = sub.split_once(' ') {
-        if LSP_SUBS.contains(&subcmd) && subcmd != "status" {
-            let languages = langs.lock().unwrap_or_else(|e| e.into_inner());
-            for l in languages.iter().filter(|l| l.starts_with(partial)) {
-                let e = Entry {
-                    text: format!("lsp {subcmd} {l}"),
-                    display: l.clone(),
-                    kind: "lang",
-                };
-                if !visitor(&e)? {
-                    break;
-                }
+        if !LSP_SUBS.contains(&subcmd) || subcmd == "status" {
+            return Ok(());
+        }
+        let languages = langs.lock().unwrap_or_else(|e| e.into_inner());
+        for l in languages.iter().filter(|l| l.starts_with(partial)) {
+            let e = Entry {
+                text: format!("lsp {subcmd} {l}"),
+                display: l.clone(),
+                kind: "lang",
+            };
+            if !visitor(&e)? {
+                break;
             }
         }
         return Ok(());

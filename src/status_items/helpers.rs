@@ -1,5 +1,6 @@
 //! Shared helpers for context status items.
 
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 /// Create ViewState for a status indicator.
@@ -38,7 +39,7 @@ pub(super) fn sync_bounds(state: &mut ViewState, label: &str) {
 
 /// Draw label into buffer with status bar style.
 pub(super) fn draw_label(state: &mut ViewState, label: &str) {
-    let style = txv_core::palette::palette().style(txv_core::palette::StyleId::StatusBar);
+    let style = palette().style(StyleId::StatusBar);
     state.buffer_mut().fill(' ', style);
     if !label.is_empty() {
         state.buffer_mut().print(1, 0, label, style);

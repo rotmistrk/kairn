@@ -17,47 +17,47 @@ pub fn register(
     let snap = snapshot;
     interp.register_fn("split", move |_interp, args| {
         let sub = super::arg_str(args, 0)?;
-        match sub.as_str() {
-            "vsplit" | "vertical" => {
-                let file = super::arg_opt(args, 1);
-                push(&cmds, ScriptCommand::SplitVertical { file });
-                Ok(TclValue::Str(String::new()))
-            }
-            "hsplit" | "horizontal" => {
-                let file = super::arg_opt(args, 1);
-                push(&cmds, ScriptCommand::SplitHorizontal { file });
-                Ok(TclValue::Str(String::new()))
-            }
-            "close" | "only" => {
-                push(&cmds, ScriptCommand::SplitClose);
-                Ok(TclValue::Str(String::new()))
-            }
-            "focus" => {
-                push(&cmds, ScriptCommand::SplitFocus);
-                Ok(TclValue::Str(String::new()))
-            }
-            "open" => {
-                let path = super::arg_str(args, 1)?;
-                push(&cmds, ScriptCommand::SplitOpen { path });
-                Ok(TclValue::Str(String::new()))
-            }
-            "direction" => {
-                let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
-                Ok(TclValue::Str(s.split_direction.clone()))
-            }
-            "linked" => {
-                if let Some(val) = super::arg_opt(args, 1) {
-                    let on = val == "true" || val == "1";
-                    push(&cmds, ScriptCommand::SplitLinked { on });
-                    Ok(TclValue::Str(String::new()))
-                } else {
-                    let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
-                    Ok(TclValue::Str(s.split_linked.to_string()))
-                }
-            }
-            other => Err(TclError::new(format!("split: unknown subcommand '{other}'"))),
-        }
+        handle_split_cmd(&cmds, &snap, args, &sub)
     });
+}
+
+fn handle_split_cmd(
+    cmds: &Arc<Mutex<Vec<ScriptCommand>>>,
+    snap: &Arc<Mutex<StateSnapshot>>,
+    args: &[TclValue],
+    sub: &str,
+) -> Result<TclValue, TclError> {
+    match sub {
+        "vsplit" | "vertical" => {
+            let file = super::arg_opt(args, 1);
+            push(cmds, ScriptCommand::SplitVertical { file });
+        }
+        "hsplit" | "horizontal" => {
+            let file = super::arg_opt(args, 1);
+            push(cmds, ScriptCommand::SplitHorizontal { file });
+        }
+        "close" | "only" => push(cmds, ScriptCommand::SplitClose),
+        "focus" => push(cmds, ScriptCommand::SplitFocus),
+        "open" => {
+            let path = super::arg_str(args, 1)?;
+            push(cmds, ScriptCommand::SplitOpen { path });
+        }
+        "direction" => {
+            let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
+            return Ok(TclValue::Str(s.split_direction.clone()));
+        }
+        "linked" => {
+            if let Some(val) = super::arg_opt(args, 1) {
+                let on = val == "true" || val == "1";
+                push(cmds, ScriptCommand::SplitLinked { on });
+            } else {
+                let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
+                return Ok(TclValue::Str(s.split_linked.to_string()));
+            }
+        }
+        other => return Err(TclError::new(format!("split: unknown subcommand '{other}'"))),
+    }
+    Ok(TclValue::Str(String::new()))
 }
 
 fn push(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, cmd: ScriptCommand) {

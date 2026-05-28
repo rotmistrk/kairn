@@ -53,11 +53,19 @@ fn run_inner(cmd: &str, root: &PathBuf, state: &Arc<TaskOutput>, waker: &Waker) 
         }
     };
 
-    // Merge stdout and stderr by reading both
+    collect_output(&mut child, root, state, waker);
+
+    let exit_code = child.wait().map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
+    state.set_exit_code(exit_code);
+    state.mark_done();
+    waker.wake();
+}
+
+#[allow(clippy::ptr_arg)]
+fn collect_output(child: &mut std::process::Child, root: &PathBuf, state: &Arc<TaskOutput>, waker: &Waker) {
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
 
-    // Read stderr in a separate thread
     let state2 = state.clone();
     let root2 = root.clone();
     let waker2 = waker.clone();
@@ -67,7 +75,6 @@ fn run_inner(cmd: &str, root: &PathBuf, state: &Arc<TaskOutput>, waker: &Waker) 
         })
     });
 
-    // Read stdout in this thread
     if let Some(so) = stdout {
         read_lines(so, root, state, waker);
     }
@@ -75,11 +82,6 @@ fn run_inner(cmd: &str, root: &PathBuf, state: &Arc<TaskOutput>, waker: &Waker) 
     if let Some(h) = stderr_handle {
         let _ = h.join();
     }
-
-    let exit_code = child.wait().map(|s| s.code().unwrap_or(-1)).unwrap_or(-1);
-    state.set_exit_code(exit_code);
-    state.mark_done();
-    waker.wake();
 }
 
 fn read_lines<R: std::io::Read>(reader: R, root: &Path, state: &TaskOutput, waker: &Waker) {

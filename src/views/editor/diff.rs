@@ -86,7 +86,15 @@ impl EditorView {
             return Err("Cursor not on a change".to_string());
         }
 
-        // Find hunk boundaries (contiguous Added/Deleted lines around cursor)
+        let (start, end) = self.find_hunk_bounds(cursor);
+        let (buf_lines, deleted_text) = self.collect_hunk_data(start, end);
+        self.apply_revert(&buf_lines, &deleted_text, start);
+        self.rebuild_diff_after_revert();
+        Ok("Hunk reverted".to_string())
+    }
+
+    fn find_hunk_bounds(&self, cursor: usize) -> (usize, usize) {
+        let ds = self.diff_state.as_ref().unwrap_or_else(|| unreachable!());
         let mut start = cursor;
         while start > 0 && is_change(&ds.lines[start - 1]) {
             start -= 1;
@@ -95,8 +103,11 @@ impl EditorView {
         while end < ds.lines.len() && is_change(&ds.lines[end]) {
             end += 1;
         }
+        (start, end)
+    }
 
-        // Collect buf_lines to delete (Added) and text to insert (Deleted)
+    fn collect_hunk_data(&self, start: usize, end: usize) -> (Vec<usize>, Vec<String>) {
+        let ds = self.diff_state.as_ref().unwrap_or_else(|| unreachable!());
         let mut buf_lines: Vec<usize> = Vec::new();
         let mut deleted_text: Vec<String> = Vec::new();
         for line in &ds.lines[start..end] {
@@ -106,8 +117,10 @@ impl EditorView {
                 _ => {}
             }
         }
+        (buf_lines, deleted_text)
+    }
 
-        // Apply to buffer: delete Added lines, insert Deleted text
+    fn apply_revert(&mut self, buf_lines: &[usize], deleted_text: &[String], start: usize) {
         let mut buf = self.editor.buf();
         buf.begin_group();
 
@@ -123,33 +136,36 @@ impl EditorView {
             if end_off > start_off {
                 buf.delete(start_off, end_off);
             }
-            // Insert deleted (base) text at the same position
             if !deleted_text.is_empty() {
                 let insert = deleted_text.join("\n") + "\n";
                 let off = buf.line_col_to_offset(first, 0).unwrap_or(buf.content().len());
                 buf.insert(off, &insert);
             }
         } else if !deleted_text.is_empty() {
-            // Pure deletion hunk (only Deleted lines, no Added) — insert base text
-            // Find insertion point from surrounding context
-            let insert_line = if start > 0 {
-                match &ds.lines[start - 1] {
-                    DiffLine::Context { buf_line, .. } => buf_line + 1,
-                    DiffLine::Added { buf_line } => buf_line + 1,
-                    _ => 0,
-                }
-            } else {
-                0
-            };
+            let insert_line = self.revert_insert_line(start);
             let insert = deleted_text.join("\n") + "\n";
             let off = buf.line_col_to_offset(insert_line, 0).unwrap_or(buf.content().len());
             buf.insert(off, &insert);
         }
 
         buf.end_group();
-        drop(buf);
+    }
 
-        // Rebuild diff
+    fn revert_insert_line(&self, start: usize) -> usize {
+        let ds = self.diff_state.as_ref().unwrap_or_else(|| unreachable!());
+        if start > 0 {
+            match &ds.lines[start - 1] {
+                DiffLine::Context { buf_line, .. } => buf_line + 1,
+                DiffLine::Added { buf_line } => buf_line + 1,
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    }
+
+    fn rebuild_diff_after_revert(&mut self) {
+        let ds = self.diff_state.as_ref().unwrap_or_else(|| unreachable!());
         let args = if ds.ignore_ws {
             "-w"
         } else {
@@ -157,7 +173,6 @@ impl EditorView {
         };
         let base_ref = ds.base_ref.clone();
         let context_lines = ds.context_lines;
-        let _ = ds;
         self.diff_state = None;
         let full_args = if args.is_empty() {
             format!("-U{context_lines} {base_ref}")
@@ -165,7 +180,6 @@ impl EditorView {
             format!("-U{context_lines} {args} {base_ref}")
         };
         self.enter_diff(&full_args);
-        Ok("Hunk reverted".to_string())
     }
 
     fn enter_diff(&mut self, args: &str) {

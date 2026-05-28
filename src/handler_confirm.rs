@@ -1,13 +1,19 @@
 //! Confirmation response handler — dispatches CM_CONFIRM_RESPONSE based on context.
 
+use std::fs::read_to_string;
+
+use txv_core::message::Message;
 use txv_core::prelude::CM_QUIT;
 use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
 use crate::commands::*;
 use crate::desktop::SlotId;
+use crate::editor::save::save_file;
 use crate::handler::downcast_desktop;
+use crate::handler_evict::complete_pending_insert;
 use crate::views::editor::EditorView;
+use crate::views::todo_tree::TodoTreeView;
 
 pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(context) = state.confirm_context.take() else {
@@ -35,74 +41,88 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
 
 fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &str, ch: char) {
     match ch {
-        'y' => {
-            // Save and close
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
-                    return;
-                };
-                for i in 0..panel.tab_count() {
-                    if let Some(view) = panel.view_at_mut(i) {
-                        if let Some(any) = view.as_any_mut() {
-                            if let Some(editor) = any.downcast_mut::<EditorView>() {
-                                if editor.path().to_string_lossy() == path {
-                                    let content = editor.editor.buf().content();
-                                    match crate::editor::save::save_file(editor.path(), &content) {
-                                        Ok(()) => {
-                                            editor.editor.buf().mark_saved();
-                                            ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
-                                            if state.pending_tab.is_none() {
-                                                ctx.sink.push_command(CM_TAB_CLOSE, None);
-                                            }
-                                        }
-                                        Err(e) => {
-                                            let msg = txv_core::message::Message::error(
-                                                "editor",
-                                                format!("Save failed: {e}"),
-                                            );
-                                            ctx.sink
-                                                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        'n' => {
-            // Discard and close
-            if let Some(desktop) = downcast_desktop(ctx.desktop) {
-                let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
-                    return;
-                };
-                for i in 0..panel.tab_count() {
-                    if let Some(view) = panel.view_at_mut(i) {
-                        if let Some(any) = view.as_any_mut() {
-                            if let Some(editor) = any.downcast_mut::<EditorView>() {
-                                if editor.path().to_string_lossy() == path {
-                                    editor.editor.buf().mark_saved();
-                                    ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
-                                    if state.pending_tab.is_none() {
-                                        ctx.sink.push_command(CM_TAB_CLOSE, None);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        'y' => save_and_close(ctx, state, path),
+        'n' => discard_and_close(ctx, state, path),
         _ => {} // Cancel — do nothing
     }
-    // Complete pending eviction if applicable
     if ch == 'y' || ch == 'n' {
         if let Some(desktop) = downcast_desktop(ctx.desktop) {
-            crate::handler_evict::complete_pending_insert(desktop, state);
+            complete_pending_insert(desktop, state);
         }
+    }
+}
+
+fn save_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    for i in 0..panel.tab_count() {
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        let Some(any) = view.as_any_mut() else {
+            continue;
+        };
+        let Some(editor) = any.downcast_mut::<EditorView>() else {
+            continue;
+        };
+        if editor.path().to_string_lossy() != path {
+            continue;
+        }
+        let content = editor.editor.buf().content();
+        let result = save_file(editor.path(), &content);
+        if let Ok(()) = result {
+            editor.editor.buf().mark_saved();
+        }
+        emit_save_result(ctx.sink, result, state, path);
+        break;
+    }
+}
+
+fn emit_save_result(sink: &txv_core::prelude::EventSink, result: std::io::Result<()>, state: &AppState, path: &str) {
+    match result {
+        Ok(()) => {
+            sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
+            if state.pending_tab.is_none() {
+                sink.push_command(CM_TAB_CLOSE, None);
+            }
+        }
+        Err(e) => {
+            let msg = Message::error("editor", format!("Save failed: {e}"));
+            sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+    }
+}
+
+fn discard_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    for i in 0..panel.tab_count() {
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        let Some(any) = view.as_any_mut() else {
+            continue;
+        };
+        let Some(editor) = any.downcast_mut::<EditorView>() else {
+            continue;
+        };
+        if editor.path().to_string_lossy() != path {
+            continue;
+        }
+        editor.editor.buf().mark_saved();
+        ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
+        if state.pending_tab.is_none() {
+            ctx.sink.push_command(CM_TAB_CLOSE, None);
+        }
+        break;
     }
 }
 
@@ -129,7 +149,7 @@ fn handle_file_reload(ctx: &mut CommandContext, path: &str, ch: char) {
         if editor.path().to_string_lossy() != path {
             continue;
         }
-        if let Ok(content) = std::fs::read_to_string(editor.path()) {
+        if let Ok(content) = read_to_string(editor.path()) {
             editor.editor.replace_content(&content);
             editor.invalidate_highlight();
         }
@@ -141,17 +161,18 @@ fn handle_todo_delete(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
     if ch != 'y' {
         return;
     }
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
-            return;
-        };
-        if let Some(view) = panel.view_at_mut(2) {
-            if let Some(any) = view.as_any_mut() {
-                if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {
-                    todo.confirm_delete_execute();
-                }
-            }
-        }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+        return;
+    };
+    let todo = panel
+        .view_at_mut(2)
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<TodoTreeView>());
+    if let Some(todo) = todo {
+        todo.confirm_delete_execute();
     }
 }
 
@@ -167,26 +188,23 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
     if ch == '\x1b' || passphrase.is_empty() {
         return; // cancelled
     }
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
-            return;
-        };
-        if let Some(view) = panel.view_at_mut(2) {
-            if let Some(any) = view.as_any_mut() {
-                if let Some(todo) = any.downcast_mut::<crate::views::todo_tree::TodoTreeView>() {
-                    todo.crypto_passphrase_response(&passphrase);
-                }
-            }
-        }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+        return;
+    };
+    let todo = panel
+        .view_at_mut(2)
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<TodoTreeView>());
+    if let Some(todo) = todo {
+        todo.crypto_passphrase_response(&passphrase);
     }
 }
 
 pub fn handle_set_confirm_context(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(context) = ctx
-        .data
-        .as_ref()
-        .and_then(|b| b.downcast_ref::<crate::commands::ConfirmContext>())
-    {
+    if let Some(context) = ctx.data.as_ref().and_then(|b| b.downcast_ref::<ConfirmContext>()) {
         state.confirm_context = Some(context.clone());
     }
 }

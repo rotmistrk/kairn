@@ -159,6 +159,11 @@ impl LspClient {
 
 /// Read one LSP JSON message from a buffered reader (Content-Length framing).
 fn read_message_json(reader: &mut BufReader<std::process::ChildStdout>) -> Option<Value> {
+    let content_length = read_content_length(reader)?;
+    read_json_body(reader, content_length)
+}
+
+fn read_content_length(reader: &mut BufReader<std::process::ChildStdout>) -> Option<usize> {
     let mut content_length: usize = 0;
     loop {
         let mut line = String::new();
@@ -185,21 +190,25 @@ fn read_message_json(reader: &mut BufReader<std::process::ChildStdout>) -> Optio
         }
     }
     if content_length == 0 {
-        return None;
+        None
+    } else {
+        Some(content_length)
     }
+}
+
+fn read_json_body(reader: &mut BufReader<std::process::ChildStdout>, content_length: usize) -> Option<Value> {
     let mut body = vec![0u8; content_length];
     if let Err(e) = std::io::Read::read_exact(reader, &mut body) {
         log::warn!("LSP read body ({content_length} bytes): {e}");
         return None;
     }
-    let json: Value = match serde_json::from_slice(&body) {
-        Ok(v) => v,
+    match serde_json::from_slice(&body) {
+        Ok(v) => Some(v),
         Err(e) => {
             log::warn!("LSP parse JSON: {e}");
-            return None;
+            None
         }
-    };
-    Some(json)
+    }
 }
 
 #[cfg(test)]

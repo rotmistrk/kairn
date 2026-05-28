@@ -1,6 +1,13 @@
 //! EditorView tick handling: autosave, completion trigger, disk change detection.
 
+use std::fs::{metadata, read_dir, read_to_string};
+
 use super::EditorView;
+use crate::commands::{
+    ConfirmContext, ContentChanged, CM_CONFIRM, CM_CONTENT_CHANGED, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP,
+    CM_SET_CONFIRM_CONTEXT,
+};
+use crate::editor::keymap::EditorMode;
 
 impl EditorView {
     /// Handle tick event: autosave + completion trigger + LSP didChange.
@@ -11,15 +18,14 @@ impl EditorView {
         }
         // LSP didChange: 3 ticks after last edit (debounced)
         if self.last_edit_tick > 0 && self.tick_counter - self.last_edit_tick == 3 {
-            let changed = crate::commands::ContentChanged {
+            let changed = ContentChanged {
                 path: self.path.clone(),
                 content: self.editor.buf().content(),
             };
-            self.state
-                .put_command(crate::commands::CM_CONTENT_CHANGED, Some(Box::new(changed)));
+            self.state.put_command(CM_CONTENT_CHANGED, Some(Box::new(changed)));
         }
         // Completion trigger: 5 ticks after last edit in insert mode
-        if self.editor.mode == crate::editor::keymap::EditorMode::Insert
+        if self.editor.mode == EditorMode::Insert
             && self.last_edit_tick > 0
             && self.tick_counter - self.last_edit_tick == 5
         {
@@ -28,11 +34,9 @@ impl EditorView {
                 self.editor.cursor_line as u32,
                 self.editor.cursor_col as u32,
             );
-            self.state
-                .put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos.clone())));
+            self.state.put_command(CM_LSP_COMPLETION, Some(Box::new(pos.clone())));
             if self.is_inside_call() {
-                self.state
-                    .put_command(crate::commands::CM_LSP_SIGNATURE_HELP, Some(Box::new(pos)));
+                self.state.put_command(CM_LSP_SIGNATURE_HELP, Some(Box::new(pos)));
             }
         }
         if self.settings.autosave
@@ -51,7 +55,7 @@ impl EditorView {
         let content = self.editor.buf().content();
         if self.store.save(&content).is_ok() {
             self.editor.buf().mark_saved();
-            self.disk_mtime = std::fs::metadata(&self.path).and_then(|m| m.modified()).ok();
+            self.disk_mtime = metadata(&self.path).and_then(|m| m.modified()).ok();
             true
         } else {
             false
@@ -63,7 +67,7 @@ impl EditorView {
         let Some(known_mtime) = self.disk_mtime else {
             return;
         };
-        let Ok(meta) = std::fs::metadata(&self.path) else {
+        let Ok(meta) = metadata(&self.path) else {
             return;
         };
         let Ok(current_mtime) = meta.modified() else {
@@ -75,13 +79,11 @@ impl EditorView {
         self.disk_mtime = Some(current_mtime);
         if self.editor.buf().is_dirty() {
             let path = self.path.to_string_lossy().to_string();
-            let ctx = crate::commands::ConfirmContext::FileReload(path);
-            self.state
-                .put_command(crate::commands::CM_SET_CONFIRM_CONTEXT, Some(Box::new(ctx)));
+            let ctx = ConfirmContext::FileReload(path);
+            self.state.put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ctx)));
             let prompt = format!("{} changed on disk — reload? [y/n]", self.display_title);
-            self.state
-                .put_command(crate::commands::CM_CONFIRM, Some(Box::new(prompt)));
-        } else if let Ok(content) = std::fs::read_to_string(&self.path) {
+            self.state.put_command(CM_CONFIRM, Some(Box::new(prompt)));
+        } else if let Ok(content) = read_to_string(&self.path) {
             self.editor.replace_content(&content);
             self.hl_cache.borrow_mut().invalidate_all();
             self.state.mark_dirty();
@@ -125,7 +127,7 @@ impl EditorView {
         } else {
             (self.root_dir.clone(), partial.to_string(), String::new())
         };
-        let Ok(entries) = std::fs::read_dir(&search_dir) else {
+        let Ok(entries) = read_dir(&search_dir) else {
             return;
         };
         let mut matches: Vec<String> = Vec::new();

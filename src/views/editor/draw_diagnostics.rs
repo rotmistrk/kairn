@@ -2,14 +2,22 @@
 
 use txv_core::prelude::*;
 
+use crate::app_palette::app_palette;
 use crate::lsp::diagnostics::{Diagnostic, Severity};
 
 use super::EditorView;
 
+struct DiagOverlay {
+    x: u16,
+    y: u16,
+    ch: char,
+    style: Style,
+}
+
 impl EditorView {
     /// Overlay diagnostic underlines on the buffer for visible lines.
     pub(super) fn draw_diagnostics(&mut self) {
-        let diagnostics = match &self.diagnostics {
+        let diagnostics = match self.diagnostics.take() {
             Some(diags) => diags,
             None => return,
         };
@@ -17,57 +25,46 @@ impl EditorView {
         let gutter_w = self.gutter_width();
         let scroll = self.editor.viewport_scroll;
         let visible_lines = self.state.buffer_mut().height() as usize;
+        let h_off = self.editor.h_scroll;
 
-        // Collect overlay operations to avoid borrow issues
-        struct Overlay {
-            x: u16,
-            y: u16,
-            ch: char,
-            style: Style,
-        }
-        let mut overlays = Vec::new();
-
-        for diag in diagnostics {
-            if diag.line < scroll || diag.line >= scroll + visible_lines {
-                continue;
-            }
-            let row = (diag.line - scroll) as u16;
-            let y = row;
-            let text_x = gutter_w;
-            let style = diag_style(diag.severity);
-            let h_off = self.editor.h_scroll;
-
-            let col_s = diag.col_start.saturating_sub(h_off);
-            let col_e = diag.col_end.saturating_sub(h_off);
-            if col_s == col_e || diag.col_end <= h_off {
-                continue;
-            }
-            let start = text_x + col_s as u16;
-            let end = text_x + col_e as u16;
-            let max_x = w;
-
-            for x in start..end.min(max_x) {
-                let cell = self.state.buffer_mut().cell(x, y);
-                let merged = Style {
-                    fg: style.fg,
-                    bg: cell.style.bg,
-                    attrs: Attrs {
-                        underline: true,
-                        ..cell.style.attrs
-                    },
-                };
-                overlays.push(Overlay {
-                    x,
-                    y,
-                    ch: cell.ch,
-                    style: merged,
-                });
-            }
-        }
-
+        let overlays = self.collect_diag_overlays(&diagnostics, w, gutter_w, scroll, visible_lines, h_off);
         for ov in overlays {
             self.state.buffer_mut().put(ov.x, ov.y, ov.ch, ov.style);
         }
+        self.diagnostics = Some(diagnostics);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[rustfmt::skip]
+    fn collect_diag_overlays(
+        &mut self,
+        diagnostics: &[Diagnostic],
+        w: u16,
+        gutter_w: u16,
+        scroll: usize,
+        visible_lines: usize,
+        h_off: usize,
+    ) -> Vec<DiagOverlay> {
+        let mut overlays = Vec::new();
+        for diag in diagnostics {
+            if diag.line < scroll || diag.line >= scroll + visible_lines { continue; }
+            let y = (diag.line - scroll) as u16;
+            let style = diag_style(diag.severity);
+            let col_s = diag.col_start.saturating_sub(h_off);
+            let col_e = diag.col_end.saturating_sub(h_off);
+            if col_s == col_e || diag.col_end <= h_off { continue; }
+            let start = gutter_w + col_s as u16;
+            let end = gutter_w + col_e as u16;
+            for x in start..end.min(w) {
+                let cell = self.state.buffer_mut().cell(x, y);
+                let merged = Style {
+                    fg: style.fg, bg: cell.style.bg,
+                    attrs: Attrs { underline: true, ..cell.style.attrs },
+                };
+                overlays.push(DiagOverlay { x, y, ch: cell.ch, style: merged });
+            }
+        }
+        overlays
     }
 
     /// Get the diagnostic message at the current cursor line (for status bar).
@@ -108,7 +105,7 @@ impl EditorView {
 }
 
 fn diag_style(severity: Severity) -> Style {
-    let app = crate::app_palette::app_palette();
+    let app = app_palette();
     match severity {
         Severity::Error => app.diag().error(),
         Severity::Warning => app.diag().warning(),
@@ -119,7 +116,7 @@ fn diag_style(severity: Severity) -> Style {
 
 /// Style for gutter diagnostic marker (fg only, no bg override).
 pub(super) fn diag_marker_style(severity: Severity) -> Style {
-    let app = crate::app_palette::app_palette();
+    let app = app_palette();
     let ps = match severity {
         Severity::Error => app.diag().error(),
         Severity::Warning => app.diag().warning(),

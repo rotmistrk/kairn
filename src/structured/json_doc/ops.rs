@@ -1,5 +1,7 @@
 //! Structural mutation operations for JsonDoc.
 
+use std::cmp::Ordering;
+
 use crate::structured::{NodeId, NodeKind, ScalarType};
 
 use super::JsonDoc;
@@ -167,45 +169,49 @@ pub(crate) fn sort_children(doc: &mut JsonDoc, id: NodeId, ascending: bool) {
     }
     let mut children: Vec<NodeId> = doc.nodes[id.0].children.clone();
     match kind {
-        NodeKind::Dict => {
-            children.sort_by(|a, b| {
-                let ka = doc.nodes[a.0].key.as_deref().unwrap_or("");
-                let kb = doc.nodes[b.0].key.as_deref().unwrap_or("");
-                if ascending {
-                    ka.cmp(kb)
-                } else {
-                    kb.cmp(ka)
-                }
-            });
-        }
-        NodeKind::Array => {
-            let all_numeric = children.iter().all(|c| doc.nodes[c.0].value.parse::<f64>().is_ok());
-            if all_numeric {
-                children.sort_by(|a, b| {
-                    let va = doc.nodes[a.0].value.parse::<f64>().unwrap_or(0.0);
-                    let vb = doc.nodes[b.0].value.parse::<f64>().unwrap_or(0.0);
-                    let cmp = va.partial_cmp(&vb).unwrap_or(std::cmp::Ordering::Equal);
-                    if ascending {
-                        cmp
-                    } else {
-                        cmp.reverse()
-                    }
-                });
-            } else {
-                children.sort_by(|a, b| {
-                    let va = &doc.nodes[a.0].value;
-                    let vb = &doc.nodes[b.0].value;
-                    if ascending {
-                        va.cmp(vb)
-                    } else {
-                        vb.cmp(va)
-                    }
-                });
-            }
-        }
+        NodeKind::Dict => sort_dict_children(doc, &mut children, ascending),
+        NodeKind::Array => sort_array_children(doc, &mut children, ascending),
         _ => {}
     }
     doc.nodes[id.0].children = children;
+}
+
+fn sort_dict_children(doc: &JsonDoc, children: &mut [NodeId], ascending: bool) {
+    children.sort_by(|a, b| {
+        let ka = doc.nodes[a.0].key.as_deref().unwrap_or("");
+        let kb = doc.nodes[b.0].key.as_deref().unwrap_or("");
+        if ascending {
+            ka.cmp(kb)
+        } else {
+            kb.cmp(ka)
+        }
+    });
+}
+
+fn sort_array_children(doc: &JsonDoc, children: &mut [NodeId], ascending: bool) {
+    let all_numeric = children.iter().all(|c| doc.nodes[c.0].value.parse::<f64>().is_ok());
+    if all_numeric {
+        children.sort_by(|a, b| {
+            let va = doc.nodes[a.0].value.parse::<f64>().unwrap_or(0.0);
+            let vb = doc.nodes[b.0].value.parse::<f64>().unwrap_or(0.0);
+            let cmp = va.partial_cmp(&vb).unwrap_or(Ordering::Equal);
+            if ascending {
+                cmp
+            } else {
+                cmp.reverse()
+            }
+        });
+    } else {
+        children.sort_by(|a, b| {
+            let va = &doc.nodes[a.0].value;
+            let vb = &doc.nodes[b.0].value;
+            if ascending {
+                va.cmp(vb)
+            } else {
+                vb.cmp(va)
+            }
+        });
+    }
 }
 
 pub(crate) fn sort_children_by_path(doc: &mut JsonDoc, id: NodeId, path: &str, ascending: bool) {
@@ -225,7 +231,7 @@ pub(crate) fn sort_children_by_path(doc: &mut JsonDoc, id: NodeId, path: &str, a
             va.as_deref().and_then(|s| s.parse::<f64>().ok()),
             vb.as_deref().and_then(|s| s.parse::<f64>().ok()),
         ) {
-            fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
+            fa.partial_cmp(&fb).unwrap_or(Ordering::Equal)
         } else {
             let sa = va.as_deref().unwrap_or("");
             let sb = vb.as_deref().unwrap_or("");

@@ -5,7 +5,7 @@ use std::path::Path;
 use txv_core::prelude::*;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
-use crate::desktop::SlotId;
+use crate::desktop::{LayoutMode, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::views::editor::EditorView;
 use crate::views::tree::FileTreeView;
@@ -18,9 +18,9 @@ pub(super) fn collect_state(
     kiro_registry: &KiroTabRegistry,
 ) -> SessionState {
     let layout = match desktop.layout_mode() {
-        crate::desktop::LayoutMode::Auto => "auto",
-        crate::desktop::LayoutMode::Wide => "wide",
-        crate::desktop::LayoutMode::Narrow => "tall",
+        LayoutMode::Auto => "auto",
+        LayoutMode::Wide => "wide",
+        LayoutMode::Narrow => "tall",
     };
     let (editor_tabs, split) = collect_editor_tabs_and_split(desktop, root_dir);
     let active_tab = desktop.panel(SlotId::Center as usize).map_or(0, |p| p.active_index());
@@ -46,7 +46,6 @@ fn collect_editor_tabs_and_split(
     desktop: &mut TiledWorkspace,
     root_dir: &Path,
 ) -> (Vec<EditorTabState>, Option<SplitState>) {
-    use txv_widgets::tab_panel::TabPanel;
     use txv_widgets::tiled_workspace::types::SplitDir;
 
     let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
@@ -56,29 +55,20 @@ fn collect_editor_tabs_and_split(
     let focused_sub = sp.focused_index();
 
     let first_tabs = collect_tabs_from_child(sp.child_mut(0), root_dir);
-    let active_first = sp
-        .child_mut(0)
-        .and_then(|c| c.as_any_mut())
-        .and_then(|a| a.downcast_ref::<TabPanel>())
-        .map_or(0, |tp| tp.active_index());
+    let active_first = child_active_index(sp.child_mut(0));
 
     if !is_split {
         return (first_tabs, None);
     }
 
-    let first_count = first_tabs.len();
     let second_tabs = collect_tabs_from_child(sp.child_mut(1), root_dir);
-    let active_second = sp
-        .child_mut(1)
-        .and_then(|c| c.as_any_mut())
-        .and_then(|a| a.downcast_ref::<TabPanel>())
-        .map_or(0, |tp| tp.active_index());
-
+    let active_second = child_active_index(sp.child_mut(1));
     let dir = match sp.direction() {
         SplitDir::Horizontal => "horizontal",
         SplitDir::Vertical => "vertical",
     };
 
+    let first_count = first_tabs.len();
     let second_indices: Vec<usize> = (first_count..first_count + second_tabs.len()).collect();
     let mut all_tabs = first_tabs;
     all_tabs.extend(second_tabs);
@@ -91,6 +81,14 @@ fn collect_editor_tabs_and_split(
         focused: focused_sub,
     };
     (all_tabs, Some(split))
+}
+
+fn child_active_index(child: Option<&mut Box<dyn View>>) -> usize {
+    use txv_widgets::tab_panel::TabPanel;
+    child
+        .and_then(|c| c.as_any_mut())
+        .and_then(|a| a.downcast_ref::<TabPanel>())
+        .map_or(0, |tp| tp.active_index())
 }
 
 fn collect_tabs_from_child(child: Option<&mut Box<dyn View>>, root_dir: &Path) -> Vec<EditorTabState> {

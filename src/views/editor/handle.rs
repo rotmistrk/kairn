@@ -3,9 +3,12 @@
 use txv_core::prelude::*;
 
 use super::EditorView;
+use crate::commands::{CM_CHAR_INSERTED, CM_DIAGNOSTIC, CM_WORD_COMPLETED};
+use crate::editor::command::Command;
+use crate::editor::highlight_state::HighlightState;
+use crate::editor::keymap::EditorMode;
 
-pub(super) fn is_search_navigation(cmd: &crate::editor::command::Command) -> bool {
-    use crate::editor::command::Command;
+pub(super) fn is_search_navigation(cmd: &Command) -> bool {
     matches!(
         cmd,
         Command::SearchNext | Command::SearchPrev | Command::SearchWordForward | Command::SearchWordBackward
@@ -15,10 +18,9 @@ pub(super) fn is_search_navigation(cmd: &crate::editor::command::Command) -> boo
 impl EditorView {
     pub(super) fn handle_command_input(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         use txv_core::event::KeyCode;
-        // Ctrl+C cancels command/search mode; other Ctrl+keys pass through
         if key.modifiers.ctrl {
             if key.code == KeyCode::Char('c') {
-                self.editor.mode = crate::editor::keymap::EditorMode::Normal;
+                self.editor.mode = EditorMode::Normal;
                 self.editor.command_buf.clear();
                 self.editor.highlight = None;
                 self.state.mark_dirty();
@@ -27,53 +29,12 @@ impl EditorView {
             return HandleResult::Ignored;
         }
         match &key.code {
-            KeyCode::Esc => {
-                let is_search = self.editor.mode == crate::editor::keymap::EditorMode::Search;
-                self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                self.editor.command_buf.clear();
-                if is_search {
-                    self.editor.highlight = None;
-                }
-            }
-            KeyCode::Enter => {
-                let buf = self.editor.command_buf.clone();
-                if self.editor.mode == crate::editor::keymap::EditorMode::Search {
-                    if !buf.is_empty() {
-                        self.editor.command_history.push(buf.clone());
-                    }
-                    self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                    let action = self.editor.execute(crate::editor::command::Command::SearchForward(buf));
-                    self.handle_action(action);
-                } else {
-                    if !buf.is_empty() {
-                        self.editor.command_history.push(buf.clone());
-                    }
-                    self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                    let action = self.editor.execute(crate::editor::command::Command::ExCommand(buf));
-                    self.handle_action(action);
-                }
-                self.editor.command_buf.clear();
-                self.editor.history_index = None;
-            }
-            KeyCode::Backspace => {
-                if self.editor.command_buf.is_empty() {
-                    self.editor.mode = crate::editor::keymap::EditorMode::Normal;
-                    self.editor.highlight = None;
-                } else {
-                    self.editor.command_buf.pop();
-                    self.editor.history_index = None;
-                    self.update_incsearch();
-                }
-            }
-            KeyCode::Tab => {
-                self.complete_command_buf();
-            }
-            KeyCode::Up => {
-                self.history_prev();
-            }
-            KeyCode::Down => {
-                self.history_next();
-            }
+            KeyCode::Esc => self.cancel_command_input(),
+            KeyCode::Enter => self.submit_command_input(),
+            KeyCode::Backspace => self.backspace_command_input(),
+            KeyCode::Tab => self.complete_command_buf(),
+            KeyCode::Up => self.history_prev(),
+            KeyCode::Down => self.history_next(),
             KeyCode::Char(c) => {
                 self.editor.command_buf.push(*c);
                 self.editor.history_index = None;
@@ -86,22 +47,58 @@ impl EditorView {
         HandleResult::Consumed
     }
 
-    pub(super) fn emit_status_changes(
-        &self,
-        old_mode: crate::editor::keymap::EditorMode,
-        old_line: usize,
-        old_col: usize,
-    ) {
+    fn cancel_command_input(&mut self) {
+        let is_search = self.editor.mode == EditorMode::Search;
+        self.editor.mode = EditorMode::Normal;
+        self.editor.command_buf.clear();
+        if is_search {
+            self.editor.highlight = None;
+        }
+    }
+
+    fn submit_command_input(&mut self) {
+        let buf = self.editor.command_buf.clone();
+        if self.editor.mode == EditorMode::Search {
+            if !buf.is_empty() {
+                self.editor.command_history.push(buf.clone());
+            }
+            self.editor.mode = EditorMode::Normal;
+            let action = self.editor.execute(Command::SearchForward(buf));
+            self.handle_action(action);
+        } else {
+            if !buf.is_empty() {
+                self.editor.command_history.push(buf.clone());
+            }
+            self.editor.mode = EditorMode::Normal;
+            let action = self.editor.execute(Command::ExCommand(buf));
+            self.handle_action(action);
+        }
+        self.editor.command_buf.clear();
+        self.editor.history_index = None;
+    }
+
+    fn backspace_command_input(&mut self) {
+        if self.editor.command_buf.is_empty() {
+            self.editor.mode = EditorMode::Normal;
+            self.editor.highlight = None;
+        } else {
+            self.editor.command_buf.pop();
+            self.editor.history_index = None;
+            self.update_incsearch();
+        }
+    }
+
+    pub(super) fn emit_status_changes(&self, old_mode: EditorMode, old_line: usize, old_col: usize) {
         use crate::commands::{CM_CURSOR_MOVED, CM_MODE_CHANGED};
         use txv_widgets::CursorPos;
 
         if self.editor.mode != old_mode {
             let name = match self.editor.mode {
-                crate::editor::keymap::EditorMode::Normal => "NOR",
-                crate::editor::keymap::EditorMode::Insert => "INS",
-                crate::editor::keymap::EditorMode::Visual | crate::editor::keymap::EditorMode::VisualLine => "VIS",
-                crate::editor::keymap::EditorMode::Command => "CMD",
-                crate::editor::keymap::EditorMode::Search => "CMD",
+                EditorMode::Normal => "NOR",
+                EditorMode::Insert => "INS",
+                EditorMode::Visual | EditorMode::VisualLine => "VIS",
+                EditorMode::Command => "CMD",
+                EditorMode::Search => "CMD",
             };
             self.state
                 .put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
@@ -116,8 +113,7 @@ impl EditorView {
         // Emit diagnostic message if cursor is on a diagnostic line
         if self.editor.cursor_line != old_line {
             let msg = self.diagnostic_at_cursor().map(|s| s.to_string()).unwrap_or_default();
-            self.state
-                .put_command(crate::commands::CM_DIAGNOSTIC, Some(Box::new(msg)));
+            self.state.put_command(CM_DIAGNOSTIC, Some(Box::new(msg)));
         }
     }
 
@@ -128,17 +124,14 @@ impl EditorView {
     }
 
     /// Emit hook triggers for char-inserted and word-completed events.
-    pub(super) fn emit_hook_triggers(&self, cmd: &crate::editor::command::Command) {
-        use crate::editor::command::Command;
+    pub(super) fn emit_hook_triggers(&self, cmd: &Command) {
         if let Command::InsertChar(ch) = cmd {
-            self.state
-                .put_command(crate::commands::CM_CHAR_INSERTED, Some(Box::new(*ch)));
+            self.state.put_command(CM_CHAR_INSERTED, Some(Box::new(*ch)));
             // Check for word-completed: space/punctuation after a word
             if ch.is_whitespace() || ch.is_ascii_punctuation() {
                 // Look back for the word that just ended
                 if let Some(word) = self.word_before_cursor() {
-                    self.state
-                        .put_command(crate::commands::CM_WORD_COMPLETED, Some(Box::new(word)));
+                    self.state.put_command(CM_WORD_COMPLETED, Some(Box::new(word)));
                 }
             }
         }
@@ -167,7 +160,7 @@ impl EditorView {
 
     /// Update incremental search highlights while typing in search mode.
     fn update_incsearch(&mut self) {
-        if self.editor.mode != crate::editor::keymap::EditorMode::Search {
+        if self.editor.mode != EditorMode::Search {
             return;
         }
         if !self.editor.options.incsearch {
@@ -184,6 +177,6 @@ impl EditorView {
             .buf()
             .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
             .unwrap_or(0);
-        self.editor.highlight = crate::editor::highlight_state::HighlightState::build(pattern, &content, cursor_off);
+        self.editor.highlight = HighlightState::build(pattern, &content, cursor_off);
     }
 }

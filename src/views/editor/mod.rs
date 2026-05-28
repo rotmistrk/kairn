@@ -7,8 +7,10 @@ pub mod diff_model;
 pub mod diff_opts;
 mod draw;
 mod draw_blame;
+mod draw_chars;
 mod draw_diagnostics;
 mod draw_diff;
+mod draw_diff_helpers;
 mod draw_sbs_diff;
 mod draw_style;
 mod draw_viewport;
@@ -24,9 +26,12 @@ pub mod sbs_model;
 
 use std::path::PathBuf;
 
+use txv_core::event::KeyCode;
 use txv_core::prelude::*;
 
-use crate::editor::keymap::Keymap;
+use crate::commands::CM_LSP_COMPLETION;
+use crate::editor::command::Command;
+use crate::editor::keymap::{EditorMode, Keymap};
 use crate::editor::Editor;
 use crate::highlight::Highlighter;
 use crate::lsp::completion::CompletionPopup;
@@ -98,83 +103,23 @@ impl View for EditorView {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        // Tick: autosave check + completion trigger
         if let Event::Tick = event {
             self.handle_tick();
             return HandleResult::Ignored;
         }
 
-        // Clear highlight word on any keypress
         if matches!(event, Event::Key(_)) {
             self.highlight_word = None;
         }
 
         let Event::Key(key) = event else {
-            // Handle paste (bracketed paste from terminal)
-            if let Event::Paste(text) = event {
-                let offset = self
-                    .editor
-                    .buf()
-                    .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
-                    .unwrap_or(0);
-                self.editor.buf().insert(offset, text);
-                self.last_edit_tick = self.tick_counter;
-                self.clear_diagnostics();
-                self.state.mark_dirty();
-                return HandleResult::Consumed;
-            }
-            // Handle command events
-            if let Event::Command { id, data } = event {
-                return self.handle_command_event(*id, data);
-            }
-            return HandleResult::Ignored;
+            return self.handle_non_key_event(event);
         };
 
-        // Completion popup key handling
-        if self.completion_popup.visible {
-            use txv_core::event::KeyCode;
-            match (&key.code, key.modifiers.ctrl) {
-                (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
-                    self.completion_popup.next();
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
-                    self.completion_popup.prev();
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                (KeyCode::Tab, _) => {
-                    self.accept_completion();
-                    return HandleResult::Consumed;
-                }
-                (KeyCode::Enter, _) => {
-                    self.completion_popup.hide();
-                    // fall through to normal insert-mode Enter handling
-                }
-                (KeyCode::Esc, _) => {
-                    self.completion_popup.hide();
-                    self.state.mark_dirty();
-                    return HandleResult::Consumed;
-                }
-                _ => {
-                    self.completion_popup.hide();
-                    // fall through to normal handling
-                }
-            }
-        } else if key.modifiers.ctrl && key.code == txv_core::event::KeyCode::Char('n') {
-            // Ctrl+N triggers completion request when popup not visible
-            let pos = (
-                self.path.clone(),
-                self.editor.cursor_line as u32,
-                self.editor.cursor_col as u32,
-            );
-            self.state
-                .put_command(crate::commands::CM_LSP_COMPLETION, Some(Box::new(pos)));
-            return HandleResult::Consumed;
+        if let Some(result) = self.handle_completion_keys(key) {
+            return result;
         }
 
-        // Diff mode: intercept keys for navigation
         if self.in_diff_mode() {
             return self.handle_diff_key(key);
         }
@@ -182,34 +127,105 @@ impl View for EditorView {
             return self.handle_sbs_key(key);
         }
 
+        self.handle_normal_key(key)
+    }
+
+    fn can_close(&self) -> CloseResult {
+        if !self.editor.buf().is_dirty() {
+            return CloseResult::Ok;
+        }
+        if self.settings.autosave {
+            return CloseResult::Ok; // will be saved on close
+        }
+        CloseResult::Denied("unsaved changes".to_string())
+    }
+}
+
+impl EditorView {
+    fn handle_non_key_event(&mut self, event: &Event) -> HandleResult {
+        if let Event::Paste(text) = event {
+            let offset = self
+                .editor
+                .buf()
+                .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                .unwrap_or(0);
+            self.editor.buf().insert(offset, text);
+            self.last_edit_tick = self.tick_counter;
+            self.clear_diagnostics();
+            self.state.mark_dirty();
+            return HandleResult::Consumed;
+        }
+        if let Event::Command { id, data } = event {
+            return self.handle_command_event(*id, data);
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_completion_keys(&mut self, key: &txv_core::event::KeyEvent) -> Option<HandleResult> {
+        if self.completion_popup.visible {
+            match (&key.code, key.modifiers.ctrl) {
+                (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
+                    self.completion_popup.next();
+                    self.state.mark_dirty();
+                    return Some(HandleResult::Consumed);
+                }
+                (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
+                    self.completion_popup.prev();
+                    self.state.mark_dirty();
+                    return Some(HandleResult::Consumed);
+                }
+                (KeyCode::Tab, _) => {
+                    self.accept_completion();
+                    return Some(HandleResult::Consumed);
+                }
+                (KeyCode::Enter, _) => {
+                    self.completion_popup.hide();
+                }
+                (KeyCode::Esc, _) => {
+                    self.completion_popup.hide();
+                    self.state.mark_dirty();
+                    return Some(HandleResult::Consumed);
+                }
+                _ => {
+                    self.completion_popup.hide();
+                }
+            }
+        } else if key.modifiers.ctrl && key.code == KeyCode::Char('n') {
+            let pos = (
+                self.path.clone(),
+                self.editor.cursor_line as u32,
+                self.editor.cursor_col as u32,
+            );
+            self.state.put_command(CM_LSP_COMPLETION, Some(Box::new(pos)));
+            return Some(HandleResult::Consumed);
+        }
+        None
+    }
+
+    fn handle_normal_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         let old_mode = self.editor.mode;
         let old_line = self.editor.cursor_line;
         let old_col = self.editor.cursor_col;
 
-        if old_mode == crate::editor::keymap::EditorMode::Command
-            || old_mode == crate::editor::keymap::EditorMode::Search
-        {
+        if old_mode == EditorMode::Command || old_mode == EditorMode::Search {
             let result = self.handle_command_input(key);
             self.emit_status_changes(old_mode, old_line, old_col);
             return result;
         }
 
         let cmd = self.editor.keymap.handle_key(key, self.editor.mode);
-        if cmd == crate::editor::command::Command::Noop {
+        if cmd == Command::Noop {
             return HandleResult::Consumed;
         }
 
         let is_search_nav = handle::is_search_navigation(&cmd);
         let action = self.editor.execute(cmd.clone());
-        // Track edits for autosave
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
             self.clear_diagnostics();
             self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line);
-            // Emit hook triggers for char-inserted / word-completed
             self.emit_hook_triggers(&cmd);
         }
-        // Clear highlights on cursor move or content change, except search navigation
         if !is_search_nav
             && matches!(
                 action,
@@ -224,15 +240,5 @@ impl View for EditorView {
         self.emit_status_changes(old_mode, old_line, old_col);
         self.sync_title();
         HandleResult::Consumed
-    }
-
-    fn can_close(&self) -> CloseResult {
-        if !self.editor.buf().is_dirty() {
-            return CloseResult::Ok;
-        }
-        if self.settings.autosave {
-            return CloseResult::Ok; // will be saved on close
-        }
-        CloseResult::Denied("unsaved changes".to_string())
     }
 }

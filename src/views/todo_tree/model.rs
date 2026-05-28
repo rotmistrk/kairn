@@ -5,6 +5,7 @@ use std::fs;
 use std::path::Path;
 
 pub use duir_core::model::{Completion, TodoFile, TodoItem};
+use duir_core::stats::update_completion;
 pub use duir_core::tree_ops::TreePath;
 pub use duir_core::{tree_ops, NodeId};
 
@@ -66,7 +67,7 @@ pub fn demote(file: &mut TodoFile, path: &TreePath) -> Option<TreePath> {
 /// This propagates completion both up and down the tree correctly.
 pub fn propagate_completion(file: &mut TodoFile, _path: &TreePath) {
     for item in &mut file.items {
-        duir_core::stats::update_completion(item);
+        update_completion(item);
     }
 }
 

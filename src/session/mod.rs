@@ -8,6 +8,7 @@ pub mod schema;
 mod session_state_builder;
 mod split_state;
 
+use std::fs;
 use std::path::Path;
 
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -33,7 +34,7 @@ pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry
             return;
         }
     };
-    if let Err(e) = std::fs::write(&path, json) {
+    if let Err(e) = fs::write(&path, json) {
         log::warn!("session: failed to write {}: {e}", path.display());
     }
 }
@@ -41,7 +42,7 @@ pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry
 /// Load session state from `.kairn.state`. Returns None if missing/corrupt.
 pub fn load_session(root_dir: &Path) -> Option<SessionState> {
     let path = root_dir.join(STATE_FILE);
-    let content = std::fs::read_to_string(&path).ok()?;
+    let content = fs::read_to_string(&path).ok()?;
     let state: SessionState = match serde_json::from_str(&content) {
         Ok(s) => s,
         Err(e) => {

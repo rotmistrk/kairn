@@ -40,43 +40,41 @@ pub fn split_for_side_by_side(
     let mut right = Vec::new();
 
     for dl in unified {
-        match dl {
-            DiffLine::Context { buf_line, base_line } => {
-                let lt = base_lines.get(*base_line).unwrap_or(&"").to_string();
-                let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
-                left.push(SbsLine::Content {
-                    line_no: *base_line,
-                    text: lt,
-                    changed: false,
-                });
-                right.push(SbsLine::Content {
-                    line_no: *buf_line,
-                    text: rt,
-                    changed: false,
-                });
-            }
-            DiffLine::Deleted { base_line, text } => {
-                left.push(SbsLine::Content {
-                    line_no: *base_line,
-                    text: text.clone(),
-                    changed: true,
-                });
-                right.push(SbsLine::Gap);
-            }
-            DiffLine::Added { buf_line } => {
-                let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
-                left.push(SbsLine::Gap);
-                right.push(SbsLine::Content {
-                    line_no: *buf_line,
-                    text: rt,
-                    changed: true,
-                });
-            }
-            DiffLine::Folded { count } => {
-                left.push(SbsLine::Folded { count: *count });
-                right.push(SbsLine::Folded { count: *count });
-            }
-        }
+        split_one_diff_line(dl, &base_lines, &current_lines, &mut left, &mut right);
     }
     (left, right)
+}
+
+fn split_one_diff_line(
+    dl: &DiffLine,
+    base_lines: &[&str],
+    current_lines: &[&str],
+    left: &mut Vec<SbsLine>,
+    right: &mut Vec<SbsLine>,
+) {
+    match dl {
+        DiffLine::Context { buf_line, base_line } => {
+            let lt = base_lines.get(*base_line).unwrap_or(&"").to_string();
+            let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
+            left.push(sbs_content(*base_line, lt, false));
+            right.push(sbs_content(*buf_line, rt, false));
+        }
+        DiffLine::Deleted { base_line, text } => {
+            left.push(sbs_content(*base_line, text.clone(), true));
+            right.push(SbsLine::Gap);
+        }
+        DiffLine::Added { buf_line } => {
+            let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
+            left.push(SbsLine::Gap);
+            right.push(sbs_content(*buf_line, rt, true));
+        }
+        DiffLine::Folded { count } => {
+            left.push(SbsLine::Folded { count: *count });
+            right.push(SbsLine::Folded { count: *count });
+        }
+    }
+}
+
+fn sbs_content(line_no: usize, text: String, changed: bool) -> SbsLine {
+    SbsLine::Content { line_no, text, changed }
 }

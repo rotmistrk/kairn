@@ -72,22 +72,21 @@ fn find_git_dir(root: &Path) -> Option<PathBuf> {
         return Some(git_path);
     }
     // Handle git worktrees: .git is a file pointing to the real git dir
-    if git_path.is_file() {
-        if let Ok(content) = std::fs::read_to_string(&git_path) {
-            if let Some(dir) = content.strip_prefix("gitdir: ") {
-                let dir = dir.trim();
-                let p = if Path::new(dir).is_absolute() {
-                    PathBuf::from(dir)
-                } else {
-                    root.join(dir)
-                };
-                if p.is_dir() {
-                    return Some(p);
-                }
-            }
-        }
+    if !git_path.is_file() {
+        return None;
     }
-    None
+    let content = std::fs::read_to_string(&git_path).ok()?;
+    let dir = content.strip_prefix("gitdir: ")?.trim();
+    let p = if Path::new(dir).is_absolute() {
+        PathBuf::from(dir)
+    } else {
+        root.join(dir)
+    };
+    if p.is_dir() {
+        Some(p)
+    } else {
+        None
+    }
 }
 
 /// Filter out irrelevant events (e.g., .git/objects writes during gc).

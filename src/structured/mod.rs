@@ -6,7 +6,7 @@ pub mod jsonl_doc;
 
 /// Unique identifier for a node in the document arena.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NodeId(pub usize);
+pub struct NodeId(pub(crate) usize);
 
 /// The structural kind of a node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

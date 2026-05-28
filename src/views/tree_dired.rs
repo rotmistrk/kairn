@@ -1,12 +1,14 @@
 //! FileTreeView dired (file operations) support.
 
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use txv_core::message::Message;
 use txv_widgets::{TreeData, CM_STATUS_MESSAGE};
 
 use super::FileTreeView;
 use crate::commands::*;
+use crate::handler_dired::copy_dir_recursive;
 
 impl FileTreeView {
     /// Return the path at the current cursor position.
@@ -94,41 +96,50 @@ impl FileTreeView {
             );
             return;
         }
-        let mut ok = 0u16;
-        let mut errs = Vec::new();
-        for src in self.marked.drain() {
-            let name = match src.file_name() {
-                Some(n) => n.to_os_string(),
-                None => continue,
-            };
-            let target = dest_dir.join(&name);
-            let result = if copy {
-                if src.is_dir() {
-                    crate::handler_dired::copy_dir_recursive(&src, &target)
-                } else {
-                    std::fs::copy(&src, &target).map(|_| ())
-                }
-            } else {
-                std::fs::rename(&src, &target)
-            };
-            match result {
-                Ok(()) => ok += 1,
-                Err(e) => errs.push(format!("{}: {e}", src.display())),
-            }
-        }
-        let verb = if copy {
-            "Copied"
-        } else {
-            "Moved"
-        };
-        let msg = if errs.is_empty() {
-            format!("{verb} {ok} item(s) to {}", dest_dir.display())
-        } else {
-            format!("{verb} {ok}, failed {}: {}", errs.len(), errs.join("; "))
-        };
+        let (ok, errs) = execute_bulk(&mut self.marked, &dest_dir, copy);
+        let msg = bulk_message(copy, ok, &errs, &dest_dir);
         self.inner
             .state
             .put_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("file", msg))));
         self.inner.state.put_command(CM_SAVE, None);
+    }
+}
+
+fn execute_bulk(marked: &mut std::collections::HashSet<PathBuf>, dest_dir: &Path, copy: bool) -> (u16, Vec<String>) {
+    let mut ok = 0u16;
+    let mut errs = Vec::new();
+    for src in marked.drain() {
+        let name = match src.file_name() {
+            Some(n) => n.to_os_string(),
+            None => continue,
+        };
+        let target = dest_dir.join(&name);
+        let result = if copy {
+            if src.is_dir() {
+                copy_dir_recursive(&src, &target)
+            } else {
+                fs::copy(&src, &target).map(|_| ())
+            }
+        } else {
+            fs::rename(&src, &target)
+        };
+        match result {
+            Ok(()) => ok += 1,
+            Err(e) => errs.push(format!("{}: {e}", src.display())),
+        }
+    }
+    (ok, errs)
+}
+
+fn bulk_message(copy: bool, ok: u16, errs: &[String], dest_dir: &Path) -> String {
+    let verb = if copy {
+        "Copied"
+    } else {
+        "Moved"
+    };
+    if errs.is_empty() {
+        format!("{verb} {ok} item(s) to {}", dest_dir.display())
+    } else {
+        format!("{verb} {ok}, failed {}: {}", errs.len(), errs.join("; "))
     }
 }

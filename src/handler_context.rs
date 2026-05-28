@@ -1,6 +1,9 @@
 //! Assembles ViewContext from current state and broadcasts CM_CONTEXT_UPDATE.
 
+use std::fs;
+
 use txv_core::program::CommandContext;
+use txv_widgets::tiled_workspace::types::SplitDir;
 
 use crate::app_state::AppState;
 use crate::commands::{ViewContext, CM_CONTEXT_UPDATE};
@@ -23,58 +26,69 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         ..Default::default()
     };
 
-    let mut selection_text = String::new();
-    let mut current_line_text = String::new();
+    let (selection_text, current_line_text) = collect_editor_context(desktop, slot, state, &mut vc);
 
-    if let Some(panel) = desktop.panel_mut(slot as usize) {
-        if let Some(view) = panel.active_view_mut() {
-            if let Some(any) = view.as_any_mut() {
-                if let Some(editor) = any.downcast_ref::<EditorView>() {
-                    fill_from_editor(editor, state, &mut vc);
-                    current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
-                    if let Some((start, end)) = editor.editor.visual_range() {
-                        let content = editor.editor.buf().content();
-                        if end <= content.len() {
-                            selection_text = content[start..end].to_string();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // If no editor, set mode from slot type
     if vc.mode.is_empty() {
         vc.mode = mode_for_slot(slot);
     }
 
-    // Determine split state from TiledWorkspace's panel-level SplitPanel
-    let (split_dir, split_linked) = {
-        let is_split = desktop
-            .split_panel(SlotId::Center as usize)
-            .map(|sp| sp.child_count() > 1)
-            .unwrap_or(false);
-        if is_split {
-            let dir = desktop
-                .split_panel(SlotId::Center as usize)
-                .map(|sp| match sp.direction() {
-                    txv_widgets::tiled_workspace::types::SplitDir::Horizontal => "horizontal",
-                    txv_widgets::tiled_workspace::types::SplitDir::Vertical => "vertical",
-                })
-                .unwrap_or("none");
-            (dir, state.linked_scroll)
-        } else {
-            ("none", false)
-        }
-    };
+    let (split_dir, split_linked) = collect_split_state(desktop, state);
 
-    // Update script engine snapshot
     let root = state.root_dir.to_string_lossy().to_string();
     state
         .script
         .update_snapshot(&vc, &root, &selection_text, &current_line_text, split_dir, split_linked);
 
     ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
+}
+
+fn collect_editor_context(
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    slot: SlotId,
+    state: &AppState,
+    vc: &mut ViewContext,
+) -> (String, String) {
+    let mut selection_text = String::new();
+    let mut current_line_text = String::new();
+    let editor = desktop
+        .panel_mut(slot as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_ref::<EditorView>());
+    let Some(editor) = editor else {
+        return (selection_text, current_line_text);
+    };
+    fill_from_editor(editor, state, vc);
+    current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
+    if let Some((start, end)) = editor.editor.visual_range() {
+        let content = editor.editor.buf().content();
+        if end <= content.len() {
+            selection_text = content[start..end].to_string();
+        }
+    }
+    (selection_text, current_line_text)
+}
+
+fn collect_split_state(
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &AppState,
+) -> (&'static str, bool) {
+    let is_split = desktop
+        .split_panel(SlotId::Center as usize)
+        .map(|sp| sp.child_count() > 1)
+        .unwrap_or(false);
+    if is_split {
+        let dir = desktop
+            .split_panel(SlotId::Center as usize)
+            .map(|sp| match sp.direction() {
+                SplitDir::Horizontal => "horizontal",
+                SplitDir::Vertical => "vertical",
+            })
+            .unwrap_or("none");
+        (dir, state.linked_scroll)
+    } else {
+        ("none", false)
+    }
 }
 
 fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext) {
@@ -117,7 +131,7 @@ fn mode_for_slot(slot: SlotId) -> String {
 }
 
 fn read_branch(root: &std::path::Path) -> String {
-    let Ok(head) = std::fs::read_to_string(root.join(".git/HEAD")) else {
+    let Ok(head) = fs::read_to_string(root.join(".git/HEAD")) else {
         return String::new();
     };
     let head = head.trim();

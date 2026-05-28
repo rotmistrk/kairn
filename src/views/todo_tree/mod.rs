@@ -2,10 +2,13 @@
 
 use std::path::Path;
 
+use duir_core::crypto::{decrypt_item, encrypt_item};
 use txv_core::prelude::*;
 use txv_widgets::inline_edit::{InlineEditResult, InlineEditor};
 use txv_widgets::tree_view::TreeData;
 use txv_widgets::TreeView;
+
+use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_UPDATE};
 
 use self::handle::HandleAction;
 
@@ -61,7 +64,7 @@ impl TodoTreeView {
                 let note = item.note.clone();
                 self.inner
                     .state
-                    .put_command(crate::commands::CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
+                    .put_command(CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
             }
         }
     }
@@ -90,14 +93,14 @@ impl TodoTreeView {
         match pending {
             CryptoPending::Encrypt(path) => {
                 if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
-                    if let Err(e) = duir_core::crypto::encrypt_item(item, passphrase) {
+                    if let Err(e) = encrypt_item(item, passphrase) {
                         log::warn!("encrypt failed: {e}");
                     }
                 }
             }
             CryptoPending::Decrypt(path) => {
                 if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
-                    if let Err(e) = duir_core::crypto::decrypt_item(item, passphrase) {
+                    if let Err(e) = decrypt_item(item, passphrase) {
                         log::warn!("decrypt failed: {e}");
                     }
                 }
@@ -177,37 +180,42 @@ impl View for TodoTreeView {
         let Event::Key(key) = event else {
             return self.inner.handle(event);
         };
-        // Filter editor takes priority
         if self.filter_editor.is_some() {
-            // Special: Esc exits filter
-            if key.code == KeyCode::Esc {
-                self.inner.data.filter_text.clear();
-                self.inner.data.rebuild_flat();
-                self.inner.cursor = 0;
-                self.filter_editor = None;
-                self.inner.mark_dirty();
-                return HandleResult::Consumed;
-            }
-            // Enter commits filter (keeps text, exits editor)
-            if key.code == KeyCode::Enter {
-                self.filter_editor = None;
-                self.inner.mark_dirty();
-                return HandleResult::Consumed;
-            }
-            // Pass to filter editor
-            if let Some(ref mut editor) = self.filter_editor {
-                editor.handle_key(key);
-                self.inner.data.filter_text = editor.buffer.clone();
-                self.inner.data.rebuild_flat();
-                self.inner.cursor = 0;
-                self.inner.mark_dirty();
-            }
-            return HandleResult::Consumed;
+            return self.handle_filter_key(key);
         }
         if self.editing.is_some() {
             return self.handle_editing_key(key);
         }
-        // 'n' works even on empty tree — adds first item
+        self.handle_normal_key(key, event)
+    }
+}
+
+impl TodoTreeView {
+    fn handle_filter_key(&mut self, key: &KeyEvent) -> HandleResult {
+        if key.code == KeyCode::Esc {
+            self.inner.data.filter_text.clear();
+            self.inner.data.rebuild_flat();
+            self.inner.cursor = 0;
+            self.filter_editor = None;
+            self.inner.mark_dirty();
+            return HandleResult::Consumed;
+        }
+        if key.code == KeyCode::Enter {
+            self.filter_editor = None;
+            self.inner.mark_dirty();
+            return HandleResult::Consumed;
+        }
+        if let Some(ref mut editor) = self.filter_editor {
+            editor.handle_key(key);
+            self.inner.data.filter_text = editor.buffer.clone();
+            self.inner.data.rebuild_flat();
+            self.inner.cursor = 0;
+            self.inner.mark_dirty();
+        }
+        HandleResult::Consumed
+    }
+
+    fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
         if key.code == KeyCode::Char('n') && self.inner.data.visible_count() == 0 {
             self.inner.data.add_first_item();
             return HandleResult::Consumed;
@@ -221,14 +229,11 @@ impl View for TodoTreeView {
         if self.inner.data.visible_count() > 0 {
             if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor) {
                 if matches!(action, HandleAction::ConfirmDelete) {
-                    self.inner.state.put_command(
-                        crate::commands::CM_SET_CONFIRM_CONTEXT,
-                        Some(Box::new(crate::commands::ConfirmContext::TodoDelete)),
-                    );
-                    self.inner.state.put_command(
-                        crate::commands::CM_CONFIRM,
-                        Some(Box::new("Delete item? [y]es [Esc]cancel".to_string())),
-                    );
+                    self.inner
+                        .state
+                        .put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::TodoDelete)));
+                    let msg = "Delete item? [y]es [Esc]cancel".to_string();
+                    self.inner.state.put_command(CM_CONFIRM, Some(Box::new(msg)));
                 }
                 self.apply_action(action);
                 self.emit_note_update_if_cursor_changed(prev_cursor);

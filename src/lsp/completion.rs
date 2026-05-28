@@ -1,5 +1,6 @@
 //! Completion popup state and rendering.
 
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 use super::requests::{CompletionItem, CompletionKind};
@@ -90,7 +91,14 @@ impl CompletionPopup {
             return;
         }
         let max_items = 8.min(self.items.len());
-        // Compute width: label + detail (capped)
+        let (_max_label, _has_detail, max_width) = self.compute_dimensions(max_items);
+        let Some((x, y, visible_count, max_width)) = self.compute_position(buf, max_items, max_width) else {
+            return;
+        };
+        self.draw_items(buf, x, y, visible_count, max_width);
+    }
+
+    fn compute_dimensions(&self, max_items: usize) -> (usize, bool, u16) {
         let max_label = self
             .items
             .iter()
@@ -100,81 +108,95 @@ impl CompletionPopup {
             .unwrap_or(10)
             .min(30);
         let has_detail = self.items.iter().take(max_items).any(|i| i.detail.is_some());
-        let detail_col = max_label + 2; // 1 padding + label + 1 space
         let max_width = if has_detail {
             (max_label + 20).min(50) as u16 + 2
         } else {
             max_label as u16 + 2
         };
+        (max_label, has_detail, max_width)
+    }
 
+    fn compute_position(&self, buf: &Buffer, max_items: usize, max_width: u16) -> Option<(u16, u16, usize, u16)> {
         let buf_w = buf.width();
         let buf_h = buf.height();
-
-        // Clamp popup within buffer bounds
         let max_width = max_width.min(buf_w.saturating_sub(1));
         let x = if self.anchor_x + max_width > buf_w {
             buf_w.saturating_sub(max_width)
         } else {
             self.anchor_x
         };
-        // Show above cursor if not enough room below
         let rows_below = buf_h.saturating_sub(self.anchor_y + 1);
         let rows_above = self.anchor_y;
-        let (y, max_items) = if rows_below >= max_items as u16 {
+        let (y, visible) = if rows_below >= max_items as u16 {
             (self.anchor_y + 1, max_items)
         } else if rows_above >= max_items as u16 {
             (self.anchor_y.saturating_sub(max_items as u16), max_items)
+        } else if rows_below >= rows_above {
+            (self.anchor_y + 1, rows_below as usize)
         } else {
-            // Use whichever side has more room
-            if rows_below >= rows_above {
-                (self.anchor_y + 1, rows_below as usize)
-            } else {
-                let n = rows_above as usize;
-                (self.anchor_y.saturating_sub(n as u16), n)
-            }
+            let n = rows_above as usize;
+            (self.anchor_y.saturating_sub(n as u16), n)
         };
-        if max_items == 0 {
-            return;
+        if visible == 0 {
+            None
+        } else {
+            Some((x, y, visible, max_width))
         }
+    }
 
-        let pal = txv_core::palette::palette();
-        let normal = pal.style(txv_core::palette::StyleId::PopupBackground);
-        let selected = pal.style(txv_core::palette::StyleId::PopupSelected);
-        let dim_fg = pal.style(txv_core::palette::StyleId::Dim).fg;
+    fn max_label_width(&self, max_items: usize) -> usize {
+        self.items
+            .iter()
+            .take(max_items)
+            .map(|i| self.display_label(i).len())
+            .max()
+            .unwrap_or(10)
+            .min(30)
+    }
+
+    fn draw_items(&self, buf: &mut Buffer, x: u16, y: u16, max_items: usize, max_width: u16) {
+        let max_label = self.max_label_width(max_items);
+        let has_detail = self.items.iter().take(max_items).any(|i| i.detail.is_some());
+        let pal = palette();
+        let normal = pal.style(StyleId::PopupBackground);
+        let selected = pal.style(StyleId::PopupSelected);
+        let dim_fg = pal.style(StyleId::Dim).fg;
         let detail_style = Style { fg: dim_fg, ..normal };
         let detail_sel_style = Style { fg: dim_fg, ..selected };
+        let detail_col = (max_label + 2) as u16;
 
         for (i, item) in self.items.iter().skip(self.scroll).take(max_items).enumerate() {
             let row = y + i as u16;
-            let abs_idx = self.scroll + i;
-            let style = if abs_idx == self.selected {
+            let is_sel = self.scroll + i == self.selected;
+            let style = if is_sel {
                 selected
             } else {
                 normal
             };
             buf.hline(x, row, max_width, ' ', style);
             let display_label = self.display_label(item);
-            let label = if display_label.len() > max_label {
-                &display_label[..max_label]
-            } else {
-                display_label.as_str()
-            };
-            buf.print(x + 1, row, label, style);
-            // Draw detail (type) in grey
-            if let Some(ref detail) = item.detail {
-                let ds = if abs_idx == self.selected {
+            let label_end = display_label.len().min(max_label);
+            buf.print(x + 1, row, &display_label[..label_end], style);
+            if has_detail {
+                let ds = if is_sel {
                     detail_sel_style
                 } else {
                     detail_style
                 };
-                let avail = max_width.saturating_sub(detail_col as u16 + 1) as usize;
-                let d = if detail.len() > avail {
-                    &detail[..avail]
-                } else {
-                    detail.as_str()
-                };
-                buf.print(x + detail_col as u16, row, d, ds);
+                self.draw_detail(buf, item, x + detail_col, row, max_width - detail_col, ds);
             }
+        }
+    }
+
+    fn draw_detail(&self, buf: &mut Buffer, item: &CompletionItem, x: u16, row: u16, avail: u16, style: Style) {
+        if let Some(ref detail) = item.detail {
+            let max = avail.saturating_sub(1) as usize;
+            let d = if detail.len() > max {
+                &detail[..max]
+            } else {
+                detail.as_str()
+            };
+            buf.print(x, row, d, style);
         }
     }
 

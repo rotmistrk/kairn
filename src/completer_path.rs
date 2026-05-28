@@ -1,6 +1,7 @@
 //! File path completion logic.
 
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
 use txv_core::complete::CompletionVisitor;
 
@@ -10,10 +11,10 @@ fn resolve_path_parts<'a>(partial: &'a str, root: &Path) -> (PathBuf, &'a str, S
     if partial.is_empty() {
         return (root.to_path_buf(), "", String::new());
     }
-    if partial.ends_with('/') || partial.ends_with(std::path::MAIN_SEPARATOR) {
+    if partial.ends_with('/') || partial.ends_with(MAIN_SEPARATOR) {
         return (root.join(partial), "", partial.to_string());
     }
-    if partial.contains('/') || partial.contains(std::path::MAIN_SEPARATOR) {
+    if partial.contains('/') || partial.contains(MAIN_SEPARATOR) {
         let p = Path::new(partial);
         let parent = p.parent().map(|d| d.to_str().unwrap_or(".")).unwrap_or(".");
         let prefix = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -30,10 +31,21 @@ pub fn complete_path(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (search_dir, prefix, dir_prefix) = resolve_path_parts(partial, root);
 
-    let Ok(entries) = std::fs::read_dir(&search_dir) else {
+    let Ok(entries) = fs::read_dir(&search_dir) else {
         return Ok(());
     };
 
+    let mut results = collect_entries(entries, prefix, &dir_prefix);
+    results.sort_by(|a, b| a.display.cmp(&b.display));
+    for e in &results {
+        if !visitor(e)? {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn collect_entries(entries: fs::ReadDir, prefix: &str, dir_prefix: &str) -> Vec<Entry> {
     let mut results: Vec<Entry> = Vec::new();
     for entry in entries.flatten() {
         let name = entry.file_name();
@@ -58,11 +70,5 @@ pub fn complete_path(
             },
         });
     }
-    results.sort_by(|a, b| a.display.cmp(&b.display));
-    for e in &results {
-        if !visitor(e)? {
-            break;
-        }
-    }
-    Ok(())
+    results
 }

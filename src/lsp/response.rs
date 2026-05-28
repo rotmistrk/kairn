@@ -1,10 +1,13 @@
 //! LSP response routing — dispatches parsed responses to the right UI action.
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 
 use crate::commands::*;
+use crate::views::results::ResultEntry;
 
 use super::pending::{JdtRequest, PendingKind};
 use super::requests;
@@ -72,12 +75,12 @@ fn handle_references(result: &serde_json::Value, sink: &EventSink, symbol: &str)
         let req = OpenFileRequest::at(PathBuf::from(&path), loc.line, loc.character);
         sink.push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
     } else if !locs.is_empty() {
-        let entries: Vec<crate::views::results::ResultEntry> = locs
+        let entries: Vec<ResultEntry> = locs
             .iter()
             .map(|l| {
                 let path = PathBuf::from(uri_to_path(&l.uri));
                 let text = read_line_from_file(&path, l.line);
-                crate::views::results::ResultEntry {
+                ResultEntry {
                     path,
                     line: l.line,
                     col: l.character,
@@ -158,11 +161,10 @@ pub(super) fn uri_to_path(uri: &str) -> String {
 
 /// Read a single line from a file (0-indexed). Returns trimmed content or empty string.
 fn read_line_from_file(path: &Path, line: u32) -> String {
-    use std::io::BufRead;
-    let Ok(file) = std::fs::File::open(path) else {
+    let Ok(file) = File::open(path) else {
         return String::new();
     };
-    std::io::BufReader::new(file)
+    BufReader::new(file)
         .lines()
         .nth(line as usize)
         .and_then(|l| l.ok())

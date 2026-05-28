@@ -1,6 +1,7 @@
 //! Drawing logic for CsvView — header, grid, cursor, filters.
 
 use txv_core::cell::Style;
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 use super::CsvView;
@@ -19,41 +20,37 @@ pub fn draw_csv_view(view: &mut CsvView) {
     if w == 0 || h == 0 {
         return;
     }
-    let pal = txv_core::palette::palette();
+    let pal = palette();
     let styles = DrawStyles {
         normal: Style::default(),
-        header: pal.style(txv_core::palette::StyleId::Bright),
+        header: pal.style(StyleId::Bright),
         cursor: if view.state.is_focused() {
-            pal.style(txv_core::palette::StyleId::CursorFocused)
+            pal.style(StyleId::CursorFocused)
         } else {
-            pal.style(txv_core::palette::StyleId::CursorUnfocused)
+            pal.style(StyleId::CursorUnfocused)
         },
-        cursor_row: pal.style(txv_core::palette::StyleId::Dim),
+        cursor_row: pal.style(StyleId::Dim),
     };
 
     let mut y: u16 = 0;
-    let avail_h = h as usize;
-
-    // Header row (frozen)
     if let Some(ref hdrs) = view.headers {
         let hdrs = hdrs.clone();
         draw_row(
             view.state.buffer_mut(),
-            0,
-            y,
-            w,
-            &hdrs,
+            (y, w),
             &view.col_widths,
-            view.scroll_col,
+            &hdrs,
             styles.header,
-            usize::MAX,
+            (view.scroll_col, usize::MAX),
             &styles,
         );
         y += 1;
     }
+    draw_data_rows(view, w, h, y, &styles);
+}
 
-    // Data rows
-    let data_h = avail_h.saturating_sub(if view.headers.is_some() {
+fn draw_data_rows(view: &mut CsvView, w: u16, h: u16, y: u16, styles: &DrawStyles) {
+    let data_h = (h as usize).saturating_sub(if view.headers.is_some() {
         1
     } else {
         0
@@ -80,43 +77,38 @@ pub fn draw_csv_view(view: &mut CsvView) {
         let row_data = view.rows[data_idx].clone();
         draw_row(
             view.state.buffer_mut(),
-            0,
-            screen_y,
-            w,
-            &row_data,
+            (screen_y, w),
             &view.col_widths,
-            view.scroll_col,
+            &row_data,
             base,
-            cursor_col,
-            &styles,
+            (view.scroll_col, cursor_col),
+            styles,
         );
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn draw_row(
     buf: &mut Buffer,
-    x: u16,
-    y: u16,
-    max_w: u16,
-    cells: &[String],
+    pos: (u16, u16),
     col_widths: &[u16],
-    scroll_col: usize,
+    cells: &[String],
     base: Style,
-    cursor_col: usize,
+    cols: (usize, usize),
     styles: &DrawStyles,
 ) {
-    buf.hline(x, y, max_w, ' ', base);
+    let (y, max_w) = pos;
+    let (scroll_col, cursor_col) = cols;
+    buf.hline(0, y, max_w, ' ', base);
     let sep_style = styles.cursor_row;
-    let mut cx = x;
+    let mut cx: u16 = 0;
     for (col_idx, &width) in col_widths.iter().enumerate() {
         if col_idx < scroll_col {
             continue;
         }
-        if cx >= x + max_w {
+        if cx >= max_w {
             break;
         }
-        let remaining = x + max_w - cx - 1;
+        let remaining = max_w - cx - 1;
         let col_w = width.min(remaining) as usize;
         let style = if col_idx == cursor_col {
             styles.cursor
@@ -124,16 +116,16 @@ fn draw_row(
             base
         };
         let cell_text = cells.get(col_idx).map(|s| s.as_str()).unwrap_or("");
-        let formatted = format_cell(cell_text, col_w, col_widths, col_idx);
+        let formatted = format_cell(cell_text, col_w);
         buf.print(cx, y, &formatted, style);
         cx += col_w as u16 + 1;
-        if cx <= x + max_w {
+        if cx <= max_w {
             buf.print(cx - 1, y, "│", sep_style);
         }
     }
 }
 
-fn format_cell(text: &str, width: usize, _col_widths: &[u16], _col_idx: usize) -> String {
+fn format_cell(text: &str, width: usize) -> String {
     let truncated = if text.len() > width {
         &text[..width]
     } else {

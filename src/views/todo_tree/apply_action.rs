@@ -3,6 +3,8 @@
 use txv_widgets::inline_edit::InlineEditor;
 use txv_widgets::tree_view::TreeData;
 
+use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_OPEN};
+
 use super::handle::HandleAction;
 use super::{CryptoPending, TodoTreeView};
 
@@ -23,43 +25,33 @@ impl TodoTreeView {
                 self.inner.cursor = row;
                 self.start_edit_selected();
             }
-            HandleAction::ConfirmDelete => {
-                // Handled below via CM_CONFIRM
-            }
+            HandleAction::ConfirmDelete => {}
             HandleAction::EnterFilter => {
                 self.filter_editor = Some(InlineEditor::new(0, &self.inner.data.filter_text));
             }
-            HandleAction::CryptoEncrypt(path) => {
-                self.crypto_pending = Some(CryptoPending::Encrypt(path));
-                self.inner.state.put_command(
-                    crate::commands::CM_SET_CONFIRM_CONTEXT,
-                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
-                );
-                self.inner
-                    .state
-                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
-            }
-            HandleAction::CryptoDecrypt(path) => {
-                self.crypto_pending = Some(CryptoPending::Decrypt(path));
-                self.inner.state.put_command(
-                    crate::commands::CM_SET_CONFIRM_CONTEXT,
-                    Some(Box::new(crate::commands::ConfirmContext::TodoCrypto)),
-                );
-                self.inner
-                    .state
-                    .put_command(crate::commands::CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
-            }
+            HandleAction::CryptoEncrypt(path) => self.start_crypto(CryptoPending::Encrypt(path)),
+            HandleAction::CryptoDecrypt(path) => self.start_crypto(CryptoPending::Decrypt(path)),
             HandleAction::OpenNote(path, note) => {
                 self.inner
                     .state
-                    .put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note, false))));
+                    .put_command(CM_TODO_NOTE_OPEN, Some(Box::new((path, note, false))));
             }
             HandleAction::OpenNoteFocus(path, note) => {
                 self.inner
                     .state
-                    .put_command(crate::commands::CM_TODO_NOTE_OPEN, Some(Box::new((path, note, true))));
+                    .put_command(CM_TODO_NOTE_OPEN, Some(Box::new((path, note, true))));
             }
         }
         self.inner.mark_dirty();
+    }
+
+    fn start_crypto(&mut self, pending: CryptoPending) {
+        self.crypto_pending = Some(pending);
+        self.inner
+            .state
+            .put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::TodoCrypto)));
+        self.inner
+            .state
+            .put_command(CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
     }
 }

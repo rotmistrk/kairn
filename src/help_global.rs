@@ -1,9 +1,29 @@
 //! Help text: global, tree, terminal, git, todo, commands, and scripting.
 
+use crate::help_global_extra;
+
 /// Generate help text for global keys, panels, commands, and scripting.
 pub fn help_global() -> String {
+    let mut s = String::new();
+    s.push_str(&help_navigation());
+    s.push_str(&help_panels());
+    s.push_str(&help_commands());
+    s.push_str(&help_global_extra::help_scripting());
+    s.push_str(help_global_extra::help_hooks());
+    s.push_str(help_global_extra::help_scope());
+    s
+}
+
+fn help_navigation() -> String {
+    let mut s = String::new();
+    s.push_str(help_focus_tabs());
+    s.push_str(help_resize_splits());
+    s
+}
+
+fn help_focus_tabs() -> &'static str {
     "\
-─── Slot Focus ───────────────────────────────────────
+─── Slot Focus ─────────────────────────────────
   F2              Focus tree (left slot)
   F3              Focus main (center slot)
   F4              Focus terminal (right slot)
@@ -12,7 +32,7 @@ pub fn help_global() -> String {
   Ctrl-Shift-Left   Focus previous panel (ring)
   Ctrl-Shift-Right  Focus next panel (ring)
 
-─── Tabs ─────────────────────────────────────────────
+─── Tabs ───────────────────────────────────
   Ctrl-Shift-Up/Down  Open tab dropdown picker
   Alt-0               Tab dropdown (list all tabs)
   Alt-1..9            Select tab by number
@@ -20,7 +40,12 @@ pub fn help_global() -> String {
   Alt-'               Previous tab
   Alt-w               Close active tab
 
-─── Panel Resize ─────────────────────────────────────
+"
+}
+
+fn help_resize_splits() -> &'static str {
+    "\
+─── Panel Resize ────────────────────────────────
   Alt-Shift-Left    Move border left
   Alt-Shift-Right   Move border right
   Alt-Shift-Up      Move border up
@@ -28,7 +53,7 @@ pub fn help_global() -> String {
   ≠ (Alt+=)         Grow subpanel
   – (Alt+-)         Shrink subpanel
 
-─── Splits & Layout ──────────────────────────────────
+─── Splits & Layout ───────────────────────────────
   Ctrl-W …        Subpanel prefix:
     s               Split horizontal
     v               Split vertical
@@ -44,8 +69,19 @@ pub fn help_global() -> String {
   Alt-.             Toggle tools panel
   Alt-/             Zoom toggle
   Alt-\\             Cycle layout mode
+"
+}
 
-─── Global ───────────────────────────────────────────
+fn help_panels() -> String {
+    let mut s = String::new();
+    s.push_str(help_global_tree_git());
+    s.push_str(help_todo_terminal());
+    s
+}
+
+fn help_global_tree_git() -> &'static str {
+    "\
+─── Global ────────────────────────────────
   F1              Show this help
   Ctrl-Q          Quit
   Ctrl-Z          Suspend to shell
@@ -71,6 +107,11 @@ pub fn help_global() -> String {
   x               Untrack file
   c               Commit (opens message prompt)
 
+"
+}
+
+fn help_todo_terminal() -> &'static str {
+    "\
 ─── Todo Panel (left slot, \"Todo\" tab) ────────────────
   j / Down        Move cursor down
   k / Up          Move cursor up
@@ -87,7 +128,18 @@ pub fn help_global() -> String {
 ─── Terminal (right slot) ────────────────────────────
   PgUp / PgDn    Scroll back / forward
   (all other keys pass through to the shell/kiro)
+"
+}
 
+fn help_commands() -> String {
+    let mut s = String::new();
+    s.push_str(help_commands_core());
+    s.push_str(help_commands_extra());
+    s
+}
+
+fn help_commands_core() -> &'static str {
+    "\
 ─── Command Mode (M-x) ──────────────────────────────
   help            Show help
   quit            Quit
@@ -114,6 +166,12 @@ pub fn help_global() -> String {
   paste           Paste from system clipboard
   messages        Show messages window
   grep <pattern>  Search files for pattern
+
+"
+}
+
+fn help_commands_extra() -> &'static str {
+    "\
   diff            Diff current file
   blame           Show git blame annotations
   noblame         Hide git blame
@@ -140,106 +198,5 @@ pub fn help_global() -> String {
   Tab             Complete command / file path
 
   Anything not recognized is evaluated as Tcl script.
-
-─── Tcl Scripting ────────────────────────────────────
-  Any M-x input that isn't a built-in command is
-  evaluated as Tcl. Available namespaces:
-
-  editor open <path> ?-line N?   Open file
-  editor save / save-all / close / undo / redo
-  editor goto <line> ?<col>?     Jump to position
-  editor insert <text>           Insert at cursor
-  editor search <pattern>        Search in buffer
-  editor clear-highlight         Clear search highlight
-  editor diff-revert             Revert diff hunk under cursor
-  editor current-file / current-line / current-col
-  editor modified? / filetype
-
-  view focus <slot>              left/center/right
-  view message <level> <origin> <text>
-  view status <text>             Flash in status bar
-
-  build run ?<cmd>? / build test ?<cmd>?
-  lsp hover / definition / references
-  lsp rename <name> / lsp format
-  lsp start ?<pattern>?          Start LSP server
-  lsp restart ?<pattern>?        Restart LSP server
-  lsp stop ?<pattern>?           Stop LSP server
-
-  git stage <file> / unstage <file> / commit <msg>
-  git blame / noblame
-  todo add <text> / remove <path> / complete <path>
-
-  split vsplit ?<file>?          Vertical split
-  split hsplit ?<file>?          Horizontal split
-  split close / split only       Close split
-  split focus                    Cycle split focus
-  split open <path>              Open file in other pane
-  split linked ?<bool>?          Toggle linked scroll
-
-  keymap bind <key> <command>    Bind key to command
-  keymap unbind <key>            Remove binding
-
-  hook add <event> <body>        Register hook
-  hook remove <event>            Unregister hooks
-  Events: file-save, file-open, file-close,
-          build-done, tab-switched, startup,
-          char-inserted, char-deleted,
-          word-completed, idle, paste,
-          mode-changed, selection-changed
-
-  system exec <cmd>              Run shell command
-  system env <var>               Get env variable
-  system root-dir / home-dir / platform
-  system clipboard-get / clipboard-set <text>
-
-─── Editor Selection & Line Commands ─────────────────
-  editor get-selection        Return selected text
-  editor replace-selection <text>  Replace selection
-  editor get-line ?<n>?       Get line content (default: cursor)
-  editor delete-line ?<n>?    Delete line (default: cursor)
-  editor replace-word <text>  Replace word under cursor
-
-  These work from Tcl scripts and keybindings:
-    keymap bind ctrl+q {
-      set sel [editor get-selection]
-      editor replace-selection [concat {'} $sel {'}]
-    }
-
-─── Filtered Hooks ───────────────────────────────────
-  hook add <event> ?-filter <pat>? <body>
-
-  Events with filter support:
-    char-inserted   Filter: the character (e.g. open paren)
-    word-completed  Filter: the completed word
-    idle            No filter (fires after idle timeout)
-
-  Examples:
-    hook add char-inserted -filter {(} {
-      editor insert {)}
-    }
-    hook add word-completed -filter {TODO} {
-      view message info hook {TODO detected}
-    }
-    hook add idle { lsp format }
-
-─── Command Scope ────────────────────────────────────
-  Commands can be entered two ways:
-    :command    From editor or structured view (vim-style)
-    M-x command From anywhere (status bar prompt)
-
-  Editor : handles local commands first, then forwards
-  unknown commands to M-x dispatch. Shell/kiro tabs
-  pass all keys to the PTY — use M-x from those.
-
-  Scope table:
-    Editor-only:  :123 (goto line), :s/pat/rep/ (substitute),
-                  :d (delete lines), :y (yank lines),
-                  :set (local option), :! (shell filter)
-    View-local:   save, close, diff, nodiff, struct, text
-    App-global:   shell, kiro, build, test, grep, edit,
-                  lsp-rename, code-action, paste, messages,
-                  grow, shrink, git-*
 "
-    .to_string()
 }

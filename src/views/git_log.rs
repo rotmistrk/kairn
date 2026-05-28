@@ -1,8 +1,12 @@
 //! GitLogView — scrollable commit history in the tool panel.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use txv_core::cell::Style;
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
+use crate::commands::CM_TAB_CLOSE;
 use crate::git_log::{CommitEntry, LogState, SharedLog};
 
 /// Scrollable git commit log view.
@@ -103,13 +107,13 @@ impl View for GitLogView {
         if w == 0 || h == 0 {
             return;
         }
-        let pal = txv_core::palette::palette();
+        let pal = palette();
         let normal = Style::default();
-        let dim = pal.style(txv_core::palette::StyleId::Dim);
+        let dim = pal.style(StyleId::Dim);
         let cursor_style = if self.state.is_focused() {
-            pal.style(txv_core::palette::StyleId::CursorFocused)
+            pal.style(StyleId::CursorFocused)
         } else {
-            pal.style(txv_core::palette::StyleId::CursorUnfocused)
+            pal.style(StyleId::CursorUnfocused)
         };
 
         if !self.done {
@@ -160,7 +164,7 @@ impl View for GitLogView {
                 HandleResult::Consumed
             }
             KeyCode::Char('q') => {
-                self.state.put_command(crate::commands::CM_TAB_CLOSE, None);
+                self.state.put_command(CM_TAB_CLOSE, None);
                 HandleResult::Consumed
             }
             _ => HandleResult::Ignored,
@@ -169,8 +173,8 @@ impl View for GitLogView {
 }
 
 fn format_relative_time(epoch_secs: i64) -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
     let diff = (now - epoch_secs).max(0);

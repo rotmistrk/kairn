@@ -1,6 +1,10 @@
 //! Runtime theme state — holds both palettes and supports hot-swap.
 
-use txv_core::palette::ThemeMode;
+use std::sync::Arc;
+
+use txv_core::palette::dark::DarkPalette;
+use txv_core::palette::light::LightPalette;
+use txv_core::palette::{detect_system_theme, set_palette, Palette, ThemeMode};
 
 use crate::app_palette::{set_app_palette, AppPalette};
 
@@ -15,7 +19,7 @@ pub struct ThemeState {
 impl ThemeState {
     pub fn new(mode: ThemeMode) -> Self {
         let resolved = match mode {
-            ThemeMode::Auto => txv_core::palette::detect_system_theme(),
+            ThemeMode::Auto => detect_system_theme(),
             ref m => *m,
         };
         let dark = AppPalette::dark();
@@ -48,11 +52,11 @@ impl ThemeState {
 
     /// Apply the active palette to the global state.
     pub fn apply(&self) {
-        let framework_pal: std::sync::Arc<dyn txv_core::palette::Palette> = match self.mode {
-            ThemeMode::Light => std::sync::Arc::new(txv_core::palette::light::LightPalette),
-            _ => std::sync::Arc::new(txv_core::palette::dark::DarkPalette),
+        let framework_pal: Arc<dyn Palette> = match self.mode {
+            ThemeMode::Light => Arc::new(LightPalette),
+            _ => Arc::new(DarkPalette),
         };
-        txv_core::palette::set_palette(framework_pal);
+        set_palette(framework_pal);
         set_app_palette(&self.active);
     }
 }

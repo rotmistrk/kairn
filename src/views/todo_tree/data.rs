@@ -1,10 +1,14 @@
 //! TodoTreeData — tree data provider backed by local TodoFile model.
 
+use std::fs;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use txv_core::cell::Style;
 use txv_widgets::tree_view::TreeData;
+
+use crate::app_palette::app_palette;
 
 use super::flat_node::FlatNode;
 use super::model::{self, Completion, TodoFile, TodoItem, TreePath};
@@ -70,7 +74,7 @@ impl TodoTreeData {
     }
 
     fn read_mtime(path: &Path) -> Option<SystemTime> {
-        std::fs::metadata(path).ok().and_then(|m| m.modified().ok())
+        fs::metadata(path).ok().and_then(|m| m.modified().ok())
     }
 
     /// Rebuild the flat node list from the TodoFile tree.
@@ -94,7 +98,7 @@ impl TodoTreeData {
                 expanded,
             });
             if expanded {
-                let p: Vec<usize> = parent_path.iter().copied().chain(std::iter::once(i)).collect();
+                let p: Vec<usize> = parent_path.iter().copied().chain(iter::once(i)).collect();
                 self.flatten_items(&item.items, &p, depth + 1);
             }
         }
@@ -168,7 +172,7 @@ impl TodoTreeData {
 
     /// Add the first item to an empty tree. Creates the file if needed.
     pub fn add_first_item(&mut self) {
-        let item = model::TodoItem::new("<new task>");
+        let item = TodoItem::new("<new task>");
         self.file.items.push(item);
         self.save();
         self.rebuild_flat();
@@ -235,7 +239,7 @@ impl TreeData for TodoTreeData {
         let Some(item) = self.item_at(id) else {
             return Style::default();
         };
-        let app = crate::app_palette::app_palette();
+        let app = app_palette();
         let fg = match (&item.completed, item.important) {
             (Completion::Done, _) => app.todo().done().fg,
             (_, true) => app.todo().important().fg,

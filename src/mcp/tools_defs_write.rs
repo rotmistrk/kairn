@@ -4,6 +4,18 @@ use serde_json::{json, Value};
 
 /// Write/mutation tool definitions for `tools/list`.
 pub fn write_tool_definitions() -> Vec<Value> {
+    let mut tools = file_open_close_definitions();
+    tools.extend(file_save_definitions());
+    tools.extend(edit_buffer_definitions());
+    tools.extend(cursor_and_revert_definitions());
+    tools.extend(diagnostics_definitions());
+    tools.extend(build_search_definitions());
+    tools.extend(split_definition());
+    tools.extend(lsp_control_definition());
+    tools
+}
+
+fn file_open_close_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "open_file",
@@ -39,6 +51,25 @@ pub fn write_tool_definitions() -> Vec<Value> {
                 "required": ["name"]
             }
         }),
+    ]
+}
+
+fn file_save_definitions() -> Vec<Value> {
+    vec![json!({
+        "name": "save_file",
+        "description": "Save an open buffer to disk",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Tab name"}
+            },
+            "required": ["name"]
+        }
+    })]
+}
+
+fn edit_buffer_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "edit_buffer",
             "description": "Replace a line range in an open buffer (0-indexed, end exclusive)",
@@ -67,6 +98,11 @@ pub fn write_tool_definitions() -> Vec<Value> {
                 "required": ["name", "line", "col", "text"]
             }
         }),
+    ]
+}
+
+fn cursor_and_revert_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "set_cursor",
             "description": "Move cursor to line:col in a tab",
@@ -81,8 +117,8 @@ pub fn write_tool_definitions() -> Vec<Value> {
             }
         }),
         json!({
-            "name": "save_file",
-            "description": "Save an open buffer to disk",
+            "name": "diff_revert",
+            "description": "Revert the diff hunk under cursor (requires diff mode active)",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -91,6 +127,11 @@ pub fn write_tool_definitions() -> Vec<Value> {
                 "required": ["name"]
             }
         }),
+    ]
+}
+
+fn diagnostics_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "get_diagnostics",
             "description": "Get LSP diagnostics (errors/warnings) for an open file",
@@ -106,6 +147,11 @@ pub fn write_tool_definitions() -> Vec<Value> {
             "description": "Get parsed errors from the last build/test run",
             "inputSchema": {"type": "object", "properties": {}}
         }),
+    ]
+}
+
+fn build_search_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "search_project",
             "description": "Search project files for a regex pattern (respects .gitignore)",
@@ -127,62 +173,57 @@ pub fn write_tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-        json!({
-            "name": "split",
-            "description": "Manipulate editor split panes: create, close, focus, status, or linked scroll",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["vsplit", "hsplit", "close", "focus", "open", "status", "linked"],
-                        "description": "Split action to perform"
-                    },
-                    "file": {
-                        "type": "string",
-                        "description": "File path (for vsplit/hsplit/open)"
-                    },
-                    "value": {
-                        "type": "boolean",
-                        "description": "Value for linked action (true/false)"
-                    }
-                },
-                "required": ["action"]
-            }
-        }),
-        json!({
-            "name": "diff_revert",
-            "description": "Revert the diff hunk under cursor (requires diff mode active)",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Tab name"}
-                },
-                "required": ["name"]
-            }
-        }),
-        json!({
-            "name": "lsp_control",
-            "description": "Control LSP servers: start, restart, stop, set timeout, configure args",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["start", "restart", "stop", "timeout", "args", "status"],
-                        "description": "Action to perform"
-                    },
-                    "lang": {
-                        "type": "string",
-                        "description": "Language glob pattern (e.g. 'rust', 'type*', '*')"
-                    },
-                    "value": {
-                        "type": "string",
-                        "description": "Value for timeout (seconds) or args (command + args)"
-                    }
-                },
-                "required": ["action"]
-            }
-        }),
     ]
+}
+
+fn split_definition() -> Vec<Value> {
+    vec![json!({
+        "name": "split",
+        "description": "Manipulate editor split panes: create, close, focus, status, or linked scroll",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["vsplit", "hsplit", "close", "focus", "open", "status", "linked"],
+                    "description": "Split action to perform"
+                },
+                "file": {
+                    "type": "string",
+                    "description": "File path (for vsplit/hsplit/open)"
+                },
+                "value": {
+                    "type": "boolean",
+                    "description": "Value for linked action (true/false)"
+                }
+            },
+            "required": ["action"]
+        }
+    })]
+}
+
+fn lsp_control_definition() -> Vec<Value> {
+    vec![json!({
+        "name": "lsp_control",
+        "description": "Control LSP servers: start, restart, stop, set timeout, configure args",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["start", "restart", "stop", "timeout", "args", "status"],
+                    "description": "Action to perform"
+                },
+                "lang": {
+                    "type": "string",
+                    "description": "Language glob pattern (e.g. 'rust', 'type*', '*')"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Value for timeout (seconds) or args (command + args)"
+                }
+            },
+            "required": ["action"]
+        }
+    })]
 }

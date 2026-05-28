@@ -2,6 +2,9 @@
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::thread;
+
+use git2::Repository;
 
 /// A single line's blame annotation.
 #[derive(Debug, Clone)]
@@ -30,7 +33,7 @@ pub fn blame_async(root: &Path, rel_path: &Path) -> SharedBlame {
     let root = root.to_path_buf();
     let rel = rel_path.to_path_buf();
 
-    std::thread::spawn(move || {
+    thread::spawn(move || {
         let result = compute_blame(&root, &rel);
         if let Ok(mut guard) = state_clone.lock() {
             *guard = result;
@@ -41,7 +44,7 @@ pub fn blame_async(root: &Path, rel_path: &Path) -> SharedBlame {
 }
 
 fn compute_blame(root: &Path, rel_path: &Path) -> BlameState {
-    let repo = match git2::Repository::discover(root) {
+    let repo = match Repository::discover(root) {
         Ok(r) => r,
         Err(e) => return BlameState::Error(format!("Not a git repo: {e}")),
     };
@@ -71,10 +74,14 @@ fn compute_blame(root: &Path, rel_path: &Path) -> BlameState {
 }
 
 fn format_epoch(secs: i64) -> String {
-    // Simple date formatting: YYYY-MM-DD
     let days = secs / 86400;
+    let (y, day_of_year) = year_from_days(days);
+    let (m, d) = month_day(y, day_of_year);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+fn year_from_days(mut remaining: i64) -> (i32, i64) {
     let mut y = 1970i32;
-    let mut remaining = days;
     loop {
         let days_in_year = if is_leap(y) {
             366
@@ -87,6 +94,10 @@ fn format_epoch(secs: i64) -> String {
         remaining -= days_in_year;
         y += 1;
     }
+    (y, remaining)
+}
+
+fn month_day(y: i32, mut remaining: i64) -> (u32, i64) {
     let months = [
         31,
         if is_leap(y) {
@@ -113,8 +124,7 @@ fn format_epoch(secs: i64) -> String {
         remaining -= dm;
         m += 1;
     }
-    let d = remaining + 1;
-    format!("{y:04}-{m:02}-{d:02}")
+    (m, remaining + 1)
 }
 
 fn is_leap(y: i32) -> bool {

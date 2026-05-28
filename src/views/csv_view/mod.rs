@@ -3,6 +3,7 @@
 mod draw;
 mod handle;
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
@@ -97,7 +98,7 @@ impl CsvView {
 
     pub(crate) fn save(&self) -> Result<(), String> {
         let text = csv_parse::serialize(self.headers.as_deref(), &self.rows, self.delimiter);
-        std::fs::write(&self.path, text).map_err(|e| e.to_string())
+        fs::write(&self.path, text).map_err(|e| e.to_string())
     }
 }
 

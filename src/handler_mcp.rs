@@ -1,10 +1,21 @@
 //! MCP command drain — dispatches MCP write requests to app state.
 
+use std::path::PathBuf;
+
 use txv_core::program::CommandContext;
 
+use crate::commands::{
+    OpenFileRequest, CM_CODE_ACTION, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE, CM_LSP_FIND_REFS, CM_LSP_GOTO_DEF,
+    CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS, CM_SPLIT_LINKED,
+};
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_lsp_cmd::handle_lsp_command as handle_lsp_cmd;
+use crate::handler_mcp_build::{mcp_get_build_errors, mcp_run_build, mcp_search_project};
+use crate::handler_mcp_edit::{mcp_edit_buffer, mcp_get_diagnostics, mcp_insert_text, mcp_save_file, mcp_set_cursor};
 use crate::handler_mcp_helpers::*;
+use crate::mcp::commands::McpAction;
+use crate::views::todo_tree::TodoTreeView;
 
 /// Drain MCP write commands and execute them on the live app state.
 pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
@@ -22,122 +33,159 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     for req in requests {
-        let result = match &req.action {
-            crate::mcp::commands::McpAction::OpenFile { path } => mcp_open_file(desktop, state, ctx.sink, path),
-            crate::mcp::commands::McpAction::CreateFile { path, content } => {
-                mcp_create_file(desktop, state, ctx.sink, path, content)
-            }
-            crate::mcp::commands::McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
-            crate::mcp::commands::McpAction::EditBuffer {
-                name,
-                start_line,
-                end_line,
-                text,
-            } => crate::handler_mcp_edit::mcp_edit_buffer(desktop, name, *start_line, *end_line, text),
-            crate::mcp::commands::McpAction::InsertText { name, line, col, text } => {
-                crate::handler_mcp_edit::mcp_insert_text(desktop, name, *line, *col, text)
-            }
-            crate::mcp::commands::McpAction::SetCursor { name, line, col } => {
-                crate::handler_mcp_edit::mcp_set_cursor(desktop, name, *line, *col)
-            }
-            crate::mcp::commands::McpAction::SaveFile { name } => crate::handler_mcp_edit::mcp_save_file(desktop, name),
-            crate::mcp::commands::McpAction::GetDiagnostics { name } => {
-                crate::handler_mcp_edit::mcp_get_diagnostics(desktop, name)
-            }
-            crate::mcp::commands::McpAction::GetBuildErrors => crate::handler_mcp_build::mcp_get_build_errors(state),
-            crate::mcp::commands::McpAction::SearchProject { pattern } => {
-                crate::handler_mcp_build::mcp_search_project(state, pattern)
-            }
-            crate::mcp::commands::McpAction::RunBuild { command } => {
-                crate::handler_mcp_build::mcp_run_build(state, ctx.sink, command)
-            }
-            crate::mcp::commands::McpAction::SplitVertical { file } => mcp_split(ctx.sink, true, file.clone()),
-            crate::mcp::commands::McpAction::SplitHorizontal { file } => mcp_split(ctx.sink, false, file.clone()),
-            crate::mcp::commands::McpAction::SplitClose => {
-                ctx.sink.push_command(crate::commands::CM_SPLIT_CLOSE, None);
-                Ok(serde_json::json!({"split": "closed"}))
-            }
-            crate::mcp::commands::McpAction::SplitFocus => {
-                ctx.sink.push_command(crate::commands::CM_SPLIT_FOCUS, None);
-                Ok(serde_json::json!({"split": "focus_switched"}))
-            }
-            crate::mcp::commands::McpAction::SplitOpen { path } => {
-                let req = crate::commands::OpenFileRequest {
-                    path: std::path::PathBuf::from(path),
-                    line: None,
-                    col: None,
-                    diff: false,
-                };
-                ctx.sink
-                    .push_command(crate::commands::CM_OPEN_IN_SPLIT, Some(Box::new(req)));
-                Ok(serde_json::json!({"split": "opened"}))
-            }
-            crate::mcp::commands::McpAction::SplitLinked { on } => {
-                ctx.sink
-                    .push_command(crate::commands::CM_SPLIT_LINKED, Some(Box::new(*on)));
-                Ok(serde_json::json!({"linked_scroll": on}))
-            }
-            crate::mcp::commands::McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
-            crate::mcp::commands::McpAction::LspControl { command } => {
-                let msg = crate::handler_lsp_cmd::handle_lsp_command(command, state);
-                Ok(serde_json::json!({"result": msg}))
-            }
-            crate::mcp::commands::McpAction::SendTerminalInput { name, input } => {
-                mcp_send_terminal_input(desktop, name, input)
-            }
-            crate::mcp::commands::McpAction::GitStage { file } => {
-                ctx.sink
-                    .push_command(crate::commands::CM_GIT_STAGE, Some(Box::new(file.clone())));
-                Ok(serde_json::json!({"staged": file}))
-            }
-            crate::mcp::commands::McpAction::GitUnstage { file } => {
-                ctx.sink
-                    .push_command(crate::commands::CM_GIT_UNSTAGE, Some(Box::new(file.clone())));
-                Ok(serde_json::json!({"unstaged": file}))
-            }
-            crate::mcp::commands::McpAction::GitCommit { message } => {
-                ctx.sink
-                    .push_command(crate::commands::CM_GIT_COMMIT, Some(Box::new(message.clone())));
-                Ok(serde_json::json!({"committed": message}))
-            }
-            crate::mcp::commands::McpAction::LspHover { .. } => {
-                ctx.sink.push_command(crate::commands::CM_LSP_HOVER, None);
-                Ok(serde_json::json!({"triggered": "hover"}))
-            }
-            crate::mcp::commands::McpAction::LspDefinition { .. } => {
-                ctx.sink.push_command(crate::commands::CM_LSP_GOTO_DEF, None);
-                Ok(serde_json::json!({"triggered": "definition"}))
-            }
-            crate::mcp::commands::McpAction::LspReferences { .. } => {
-                ctx.sink.push_command(crate::commands::CM_LSP_FIND_REFS, None);
-                Ok(serde_json::json!({"triggered": "references"}))
-            }
-            crate::mcp::commands::McpAction::LspRename { new_name, .. } => {
-                ctx.sink
-                    .push_command(crate::commands::CM_LSP_RENAME, Some(Box::new(new_name.clone())));
-                Ok(serde_json::json!({"triggered": "rename", "new_name": new_name}))
-            }
-            crate::mcp::commands::McpAction::LspCodeAction { .. } => {
-                ctx.sink.push_command(crate::commands::CM_CODE_ACTION, None);
-                Ok(serde_json::json!({"triggered": "code-action"}))
-            }
-            crate::mcp::commands::McpAction::Undo { name } => mcp_undo_redo(desktop, name, true),
-            crate::mcp::commands::McpAction::Redo { name } => mcp_undo_redo(desktop, name, false),
-            crate::mcp::commands::McpAction::EvalTcl { script } => mcp_eval_tcl(state, script),
-            _ => {
-                let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
-                    return;
-                };
-                let todo_view = panel
-                    .view_at_mut(2)
-                    .and_then(|v| v.as_any_mut())
-                    .and_then(|a| a.downcast_mut::<crate::views::todo_tree::TodoTreeView>());
-                match todo_view {
-                    Some(tv) => tv.mcp_action(&req.action),
-                    None => Err("Todo view not found".to_string()),
-                }
-            }
-        };
+        let result = dispatch_mcp_action(&req.action, desktop, state, ctx.sink);
         let _ = req.reply.send(result);
+    }
+}
+
+fn dispatch_mcp_action(
+    action: &McpAction,
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &mut AppState,
+    sink: &txv_core::prelude::EventSink,
+) -> Result<serde_json::Value, String> {
+    match action {
+        McpAction::OpenFile { path } => mcp_open_file(desktop, state, sink, path),
+        McpAction::CreateFile { path, content } => mcp_create_file(desktop, state, sink, path, content),
+        McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
+        McpAction::EditBuffer {
+            name,
+            start_line,
+            end_line,
+            text,
+        } => mcp_edit_buffer(desktop, name, *start_line, *end_line, text),
+        McpAction::InsertText { name, line, col, text } => mcp_insert_text(desktop, name, *line, *col, text),
+        McpAction::SetCursor { name, line, col } => mcp_set_cursor(desktop, name, *line, *col),
+        McpAction::SaveFile { name } => mcp_save_file(desktop, name),
+        McpAction::GetDiagnostics { name } => mcp_get_diagnostics(desktop, name),
+        McpAction::GetBuildErrors => mcp_get_build_errors(state),
+        McpAction::SearchProject { pattern } => mcp_search_project(state, pattern),
+        McpAction::RunBuild { command } => mcp_run_build(state, sink, command),
+        McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
+        McpAction::SendTerminalInput { name, input } => mcp_send_terminal_input(desktop, name, input),
+        McpAction::Undo { name } => mcp_undo_redo(desktop, name, true),
+        McpAction::Redo { name } => mcp_undo_redo(desktop, name, false),
+        McpAction::EvalTcl { script } => mcp_eval_tcl(state, script),
+        _ => dispatch_mcp_split_git_lsp(action, desktop, state, sink),
+    }
+}
+
+fn dispatch_mcp_split_git_lsp(
+    action: &McpAction,
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &mut AppState,
+    sink: &txv_core::prelude::EventSink,
+) -> Result<serde_json::Value, String> {
+    match action {
+        McpAction::SplitVertical { .. }
+        | McpAction::SplitHorizontal { .. }
+        | McpAction::SplitClose
+        | McpAction::SplitFocus
+        | McpAction::SplitOpen { .. }
+        | McpAction::SplitLinked { .. } => dispatch_mcp_split(action, sink),
+        McpAction::LspControl { command } => {
+            let msg = handle_lsp_cmd(command, state);
+            Ok(serde_json::json!({"result": msg}))
+        }
+        McpAction::GitStage { .. } | McpAction::GitUnstage { .. } | McpAction::GitCommit { .. } => {
+            dispatch_mcp_git(action, sink)
+        }
+        McpAction::LspHover { .. }
+        | McpAction::LspDefinition { .. }
+        | McpAction::LspReferences { .. }
+        | McpAction::LspRename { .. }
+        | McpAction::LspCodeAction { .. } => dispatch_mcp_lsp(action, sink),
+        _ => dispatch_mcp_todo(action, desktop),
+    }
+}
+
+fn dispatch_mcp_split(action: &McpAction, sink: &txv_core::prelude::EventSink) -> Result<serde_json::Value, String> {
+    match action {
+        McpAction::SplitVertical { file } => mcp_split(sink, true, file.clone()),
+        McpAction::SplitHorizontal { file } => mcp_split(sink, false, file.clone()),
+        McpAction::SplitClose => {
+            sink.push_command(CM_SPLIT_CLOSE, None);
+            Ok(serde_json::json!({"split": "closed"}))
+        }
+        McpAction::SplitFocus => {
+            sink.push_command(CM_SPLIT_FOCUS, None);
+            Ok(serde_json::json!({"split": "focus_switched"}))
+        }
+        McpAction::SplitOpen { path } => {
+            let req = OpenFileRequest {
+                path: PathBuf::from(path),
+                line: None,
+                col: None,
+                diff: false,
+            };
+            sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+            Ok(serde_json::json!({"split": "opened"}))
+        }
+        McpAction::SplitLinked { on } => {
+            sink.push_command(CM_SPLIT_LINKED, Some(Box::new(*on)));
+            Ok(serde_json::json!({"linked_scroll": on}))
+        }
+        _ => Err("Not a split action".to_string()),
+    }
+}
+
+fn dispatch_mcp_git(action: &McpAction, sink: &txv_core::prelude::EventSink) -> Result<serde_json::Value, String> {
+    match action {
+        McpAction::GitStage { file } => {
+            sink.push_command(CM_GIT_STAGE, Some(Box::new(file.clone())));
+            Ok(serde_json::json!({"staged": file}))
+        }
+        McpAction::GitUnstage { file } => {
+            sink.push_command(CM_GIT_UNSTAGE, Some(Box::new(file.clone())));
+            Ok(serde_json::json!({"unstaged": file}))
+        }
+        McpAction::GitCommit { message } => {
+            sink.push_command(CM_GIT_COMMIT, Some(Box::new(message.clone())));
+            Ok(serde_json::json!({"committed": message}))
+        }
+        _ => Err("Not a git action".to_string()),
+    }
+}
+
+fn dispatch_mcp_lsp(action: &McpAction, sink: &txv_core::prelude::EventSink) -> Result<serde_json::Value, String> {
+    match action {
+        McpAction::LspHover { .. } => {
+            sink.push_command(CM_LSP_HOVER, None);
+            Ok(serde_json::json!({"triggered": "hover"}))
+        }
+        McpAction::LspDefinition { .. } => {
+            sink.push_command(CM_LSP_GOTO_DEF, None);
+            Ok(serde_json::json!({"triggered": "definition"}))
+        }
+        McpAction::LspReferences { .. } => {
+            sink.push_command(CM_LSP_FIND_REFS, None);
+            Ok(serde_json::json!({"triggered": "references"}))
+        }
+        McpAction::LspRename { new_name, .. } => {
+            sink.push_command(CM_LSP_RENAME, Some(Box::new(new_name.clone())));
+            Ok(serde_json::json!({"triggered": "rename", "new_name": new_name}))
+        }
+        McpAction::LspCodeAction { .. } => {
+            sink.push_command(CM_CODE_ACTION, None);
+            Ok(serde_json::json!({"triggered": "code-action"}))
+        }
+        _ => Err("Not an LSP action".to_string()),
+    }
+}
+
+fn dispatch_mcp_todo(
+    action: &McpAction,
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+) -> Result<serde_json::Value, String> {
+    let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
+        return Err("Left panel unavailable".to_string());
+    };
+    let todo_view = panel
+        .view_at_mut(2)
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<TodoTreeView>());
+    match todo_view {
+        Some(tv) => tv.mcp_action(action),
+        None => Err("Todo view not found".to_string()),
     }
 }

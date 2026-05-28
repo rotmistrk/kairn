@@ -6,18 +6,8 @@ use super::edit_record::EditRecord;
 use super::line_index::LineIndex;
 use super::undo::UndoHistory;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(super) enum Source {
-    Original,
-    Add,
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct Piece {
-    pub(crate) source: Source,
-    pub(crate) start: usize,
-    pub(crate) len: usize,
-}
+mod piece;
+pub(in crate::buffer) use piece::{Piece, Source};
 
 /// Piece table text buffer.
 pub struct PieceTable {

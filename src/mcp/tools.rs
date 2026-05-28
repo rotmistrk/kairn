@@ -4,8 +4,15 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Map, Value};
 
-use super::commands::McpCommandQueue;
+use super::commands::{McpAction, McpCommandQueue};
 use super::snapshot::McpSnapshot;
+use super::tools_extra::{tool_eval_tcl, tool_git_ops, tool_lsp_semantic, tool_send_terminal_input, tool_undo_redo};
+use super::tools_todo::{tool_add_subtree, tool_get_todo_tree, tool_update_todo};
+use super::tools_write::{
+    tool_close_tab, tool_create_file, tool_diff_revert, tool_edit_buffer, tool_get_build_errors, tool_get_diagnostics,
+    tool_insert_text, tool_lsp_control, tool_open_file, tool_run_build, tool_save_file, tool_search_project,
+    tool_set_cursor,
+};
 
 pub use super::tools_defs::tool_definitions;
 
@@ -22,28 +29,28 @@ pub fn handle_tool_call(
         "get_terminal_content" => tool_get_terminal_content(snapshot, args),
         "get_messages" => tool_get_messages(snapshot),
         "get_tab_content" => tool_get_tab_content(snapshot, args),
-        "get_todo_tree" => super::tools_todo::tool_get_todo_tree(),
-        "update_todo" => super::tools_todo::tool_update_todo(cmd_queue, args),
-        "add_subtree" => super::tools_todo::tool_add_subtree(cmd_queue, args),
-        "open_file" => super::tools_write::tool_open_file(cmd_queue, args),
-        "create_file" => super::tools_write::tool_create_file(cmd_queue, args),
-        "close_tab" => super::tools_write::tool_close_tab(cmd_queue, args),
-        "edit_buffer" => super::tools_write::tool_edit_buffer(cmd_queue, args),
-        "insert_text" => super::tools_write::tool_insert_text(cmd_queue, args),
-        "set_cursor" => super::tools_write::tool_set_cursor(cmd_queue, args),
-        "save_file" => super::tools_write::tool_save_file(cmd_queue, args),
-        "get_diagnostics" => super::tools_write::tool_get_diagnostics(cmd_queue, args),
-        "get_build_errors" => super::tools_write::tool_get_build_errors(cmd_queue, args),
-        "search_project" => super::tools_write::tool_search_project(cmd_queue, args),
-        "run_build" => super::tools_write::tool_run_build(cmd_queue, args),
+        "get_todo_tree" => tool_get_todo_tree(),
+        "update_todo" => tool_update_todo(cmd_queue, args),
+        "add_subtree" => tool_add_subtree(cmd_queue, args),
+        "open_file" => tool_open_file(cmd_queue, args),
+        "create_file" => tool_create_file(cmd_queue, args),
+        "close_tab" => tool_close_tab(cmd_queue, args),
+        "edit_buffer" => tool_edit_buffer(cmd_queue, args),
+        "insert_text" => tool_insert_text(cmd_queue, args),
+        "set_cursor" => tool_set_cursor(cmd_queue, args),
+        "save_file" => tool_save_file(cmd_queue, args),
+        "get_diagnostics" => tool_get_diagnostics(cmd_queue, args),
+        "get_build_errors" => tool_get_build_errors(cmd_queue, args),
+        "search_project" => tool_search_project(cmd_queue, args),
+        "run_build" => tool_run_build(cmd_queue, args),
         "split" => tool_split(snapshot, cmd_queue, args),
-        "diff_revert" => super::tools_write::tool_diff_revert(cmd_queue, args),
-        "lsp_control" => super::tools_write::tool_lsp_control(cmd_queue, args),
-        "send_terminal_input" => super::tools_extra::tool_send_terminal_input(cmd_queue, args),
-        "git_ops" => super::tools_extra::tool_git_ops(cmd_queue, args),
-        "lsp_semantic" => super::tools_extra::tool_lsp_semantic(cmd_queue, args),
-        "undo_redo" => super::tools_extra::tool_undo_redo(cmd_queue, args),
-        "eval_tcl" => super::tools_extra::tool_eval_tcl(cmd_queue, args),
+        "diff_revert" => tool_diff_revert(cmd_queue, args),
+        "lsp_control" => tool_lsp_control(cmd_queue, args),
+        "send_terminal_input" => tool_send_terminal_input(cmd_queue, args),
+        "git_ops" => tool_git_ops(cmd_queue, args),
+        "lsp_semantic" => tool_lsp_semantic(cmd_queue, args),
+        "undo_redo" => tool_undo_redo(cmd_queue, args),
+        "eval_tcl" => tool_eval_tcl(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }
@@ -154,17 +161,17 @@ fn tool_split(
 
     let queue = cmd_queue.ok_or("MCP command queue not available")?;
     let mcp_action = match action {
-        "vsplit" => super::commands::McpAction::SplitVertical { file },
-        "hsplit" => super::commands::McpAction::SplitHorizontal { file },
-        "close" => super::commands::McpAction::SplitClose,
-        "focus" => super::commands::McpAction::SplitFocus,
+        "vsplit" => McpAction::SplitVertical { file },
+        "hsplit" => McpAction::SplitHorizontal { file },
+        "close" => McpAction::SplitClose,
+        "focus" => McpAction::SplitFocus,
         "open" => {
             let path = file.ok_or("'file' required for 'open' action")?;
-            super::commands::McpAction::SplitOpen { path }
+            McpAction::SplitOpen { path }
         }
         "linked" => {
             let on = args.get("value").and_then(Value::as_bool).unwrap_or(true);
-            super::commands::McpAction::SplitLinked { on }
+            McpAction::SplitLinked { on }
         }
         other => return Err(format!("Unknown split action: {other}")),
     };

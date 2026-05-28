@@ -1,7 +1,7 @@
 //! Pending LSP request tracking — maps request IDs to expected response types.
 
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use txv_core::prelude::*;
 
@@ -53,7 +53,7 @@ impl PendingRequests {
             .iter()
             .filter(|(_, (_, lang, t))| {
                 let secs = registry.timeout(lang).unwrap_or(global_timeout);
-                t.elapsed() > std::time::Duration::from_secs(secs)
+                t.elapsed() > Duration::from_secs(secs)
             })
             .map(|(&id, _)| id)
             .collect();

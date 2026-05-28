@@ -2,13 +2,48 @@
 
 use super::command::Command;
 use super::keymap::EditorMode;
+use super::motions::first_non_blank;
 use super::{Editor, EditorAction};
 
 impl Editor {
     /// Dispatch editing, visual, search, and mode commands.
     /// Returns None if the command is not handled here.
+    #[rustfmt::skip]
     pub(super) fn dispatch_edit(&mut self, cmd: Command) -> Option<EditorAction> {
         Some(match cmd {
+            Command::EnterInsertMode | Command::EnterInsertAfter
+            | Command::EnterInsertLineEnd | Command::EnterInsertLineStart
+            | Command::EnterInsertBelow | Command::NewlineBelow
+            | Command::EnterInsertAbove | Command::NewlineAbove
+            | Command::ExitInsertMode => self.dispatch_mode_ops(cmd),
+            Command::InsertChar(_) | Command::InsertNewline
+            | Command::DeleteCharForward | Command::DeleteCharBackward
+            | Command::DeleteLine | Command::DeleteWord
+            | Command::DeleteWordBackward | Command::DeleteToEnd
+            | Command::DeleteToStart => self.dispatch_mutate_ops(cmd),
+            Command::ChangeWord | Command::ChangeLine | Command::ChangeToEnd
+            | Command::Substitute | Command::SubstituteLine | Command::JoinLines
+            | Command::ToggleCase | Command::ReplaceChar(_)
+            | Command::Indent | Command::Unindent => self.dispatch_change_ops(cmd),
+            Command::OperatorDelete | Command::OperatorChange => self.dispatch_operator_ops(cmd),
+            Command::Undo | Command::Redo | Command::YankLine | Command::YankWord
+            | Command::YankToEnd | Command::Paste | Command::PasteBefore
+            | Command::OperatorYank => self.dispatch_yank_ops(cmd),
+            Command::EnterVisual | Command::EnterVisualLine | Command::ExitVisual
+            | Command::VisualDelete | Command::VisualYank | Command::VisualChange
+            | Command::VisualIndent | Command::VisualUnindent
+            | Command::VisualExCommand => self.dispatch_visual_ops(cmd),
+            Command::EnterSearchMode | Command::SearchForward(_)
+            | Command::SearchBackward(_) | Command::SearchNext | Command::SearchPrev
+            | Command::SearchWordForward | Command::SearchWordBackward
+            | Command::EnterCommandMode | Command::CompletionNext
+            | Command::CompletionPrev => self.dispatch_search_and_command(cmd),
+            _ => return None,
+        })
+    }
+
+    fn dispatch_mode_ops(&mut self, cmd: Command) -> EditorAction {
+        match cmd {
             Command::EnterInsertMode => {
                 self.buf().begin_group();
                 self.mode = EditorMode::Insert;
@@ -28,7 +63,7 @@ impl Editor {
             Command::EnterInsertLineStart => {
                 self.buf().begin_group();
                 self.mode = EditorMode::Insert;
-                let col = super::motions::first_non_blank(&self.buf(), self.cursor_line);
+                let col = first_non_blank(&self.buf(), self.cursor_line);
                 self.cursor_col = col;
                 EditorAction::ModeChanged
             }
@@ -44,6 +79,12 @@ impl Editor {
                 self.exit_insert();
                 EditorAction::ModeChanged
             }
+            _ => EditorAction::None,
+        }
+    }
+
+    fn dispatch_mutate_ops(&mut self, cmd: Command) -> EditorAction {
+        match cmd {
             Command::InsertChar(ch) => {
                 self.insert_char(ch);
                 EditorAction::ContentChanged
@@ -80,6 +121,12 @@ impl Editor {
                 self.delete_to_start();
                 EditorAction::ContentChanged
             }
+            _ => EditorAction::None,
+        }
+    }
+
+    fn dispatch_change_ops(&mut self, cmd: Command) -> EditorAction {
+        match cmd {
             Command::ChangeWord => {
                 self.buf().begin_group();
                 self.delete_word();
@@ -106,26 +153,24 @@ impl Editor {
                 self.change_line();
                 EditorAction::ContentChanged
             }
-            Command::JoinLines => {
-                self.join_lines();
-                EditorAction::ContentChanged
-            }
-            Command::ToggleCase => {
-                self.toggle_case();
-                EditorAction::ContentChanged
-            }
-            Command::ReplaceChar(ch) => {
-                self.replace_char(ch);
-                EditorAction::ContentChanged
-            }
-            Command::Indent => {
-                self.indent_line();
-                EditorAction::ContentChanged
-            }
-            Command::Unindent => {
-                self.unindent_line();
-                EditorAction::ContentChanged
-            }
+            _ => self.dispatch_misc_edit(cmd),
+        }
+    }
+
+    fn dispatch_misc_edit(&mut self, cmd: Command) -> EditorAction {
+        match cmd {
+            Command::JoinLines => self.join_lines(),
+            Command::ToggleCase => self.toggle_case(),
+            Command::ReplaceChar(ch) => self.replace_char(ch),
+            Command::Indent => self.indent_line(),
+            Command::Unindent => self.unindent_line(),
+            _ => return EditorAction::None,
+        }
+        EditorAction::ContentChanged
+    }
+
+    fn dispatch_operator_ops(&mut self, cmd: Command) -> EditorAction {
+        match cmd {
             Command::OperatorDelete => {
                 self.delete_word();
                 EditorAction::ContentChanged
@@ -136,89 +181,7 @@ impl Editor {
                 self.mode = EditorMode::Insert;
                 EditorAction::ContentChanged
             }
-            Command::OperatorYank => {
-                let line = self.buf().line(self.cursor_line).unwrap_or_default();
-                self.yank(line);
-                EditorAction::None
-            }
-            Command::Undo => {
-                self.buf().undo();
-                self.clamp_cursor();
-                EditorAction::ContentChanged
-            }
-            Command::Redo => {
-                self.buf().redo();
-                self.clamp_cursor();
-                EditorAction::ContentChanged
-            }
-            Command::YankLine => {
-                let line = self.buf().line(self.cursor_line).unwrap_or_default();
-                self.yank(line);
-                EditorAction::None
-            }
-            Command::YankWord => {
-                self.yank_word();
-                EditorAction::None
-            }
-            Command::YankToEnd => {
-                self.yank_to_end();
-                EditorAction::None
-            }
-            Command::Paste => {
-                self.paste_after();
-                EditorAction::ContentChanged
-            }
-            Command::PasteBefore => {
-                self.paste_before();
-                EditorAction::ContentChanged
-            }
-            Command::EnterVisual => {
-                self.enter_visual();
-                EditorAction::ModeChanged
-            }
-            Command::EnterVisualLine => {
-                self.enter_visual_line();
-                EditorAction::ModeChanged
-            }
-            Command::ExitVisual => {
-                self.exit_visual();
-                EditorAction::ModeChanged
-            }
-            Command::VisualDelete => {
-                self.visual_delete();
-                EditorAction::ContentChanged
-            }
-            Command::VisualYank => {
-                self.visual_yank();
-                EditorAction::None
-            }
-            Command::VisualChange => {
-                self.visual_change();
-                EditorAction::ContentChanged
-            }
-            Command::VisualIndent => {
-                self.visual_indent();
-                EditorAction::ContentChanged
-            }
-            Command::VisualUnindent => {
-                self.visual_unindent();
-                EditorAction::ContentChanged
-            }
-            Command::VisualExCommand => {
-                self.visual_ex_command();
-                EditorAction::ModeChanged
-            }
-            Command::EnterSearchMode
-            | Command::SearchForward(_)
-            | Command::SearchBackward(_)
-            | Command::SearchNext
-            | Command::SearchPrev
-            | Command::SearchWordForward
-            | Command::SearchWordBackward
-            | Command::EnterCommandMode
-            | Command::CompletionNext
-            | Command::CompletionPrev => self.dispatch_search_and_command(cmd),
-            _ => return None,
-        })
+            _ => EditorAction::None,
+        }
     }
 }

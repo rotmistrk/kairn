@@ -4,6 +4,12 @@ use serde_json::{json, Value};
 
 /// Additional tool definitions for `tools/list`.
 pub fn extra_tool_definitions() -> Vec<Value> {
+    let mut tools = terminal_and_git_definitions();
+    tools.extend(lsp_and_eval_definitions());
+    tools
+}
+
+fn terminal_and_git_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "send_terminal_input",
@@ -30,19 +36,32 @@ pub fn extra_tool_definitions() -> Vec<Value> {
                 "required": ["action"]
             }
         }),
-        json!({
-            "name": "lsp_semantic",
-            "description": "LSP semantic queries: hover, definition, references, rename, code-action",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "action": {"type": "string", "enum": ["hover", "definition", "references", "rename", "code-action"]},
-                    "name": {"type": "string", "description": "Tab name (default: active editor)"},
-                    "new_name": {"type": "string", "description": "New name (for rename action)"}
+    ]
+}
+
+fn lsp_and_eval_definitions() -> Vec<Value> {
+    let mut tools = vec![json!({
+        "name": "lsp_semantic",
+        "description": "LSP semantic queries: hover, definition, references, rename, code-action",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["hover", "definition", "references", "rename", "code-action"]
                 },
-                "required": ["action"]
-            }
-        }),
+                "name": {"type": "string", "description": "Tab name (default: active editor)"},
+                "new_name": {"type": "string", "description": "New name (for rename action)"}
+            },
+            "required": ["action"]
+        }
+    })];
+    tools.extend(undo_and_eval_definitions());
+    tools
+}
+
+fn undo_and_eval_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "undo_redo",
             "description": "Undo or redo in an editor buffer",

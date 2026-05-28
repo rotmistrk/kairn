@@ -29,37 +29,48 @@ impl VimKeymap {
     }
 
     fn normal_key(&mut self, key: &KeyEvent) -> Command {
-        // Handle pending two-key sequences
         if let Some(prefix) = self.pending.take() {
             return self.two_key(prefix, key);
         }
 
-        // Ctrl combos
         if key.modifiers.ctrl {
-            return match &key.code {
-                KeyCode::Char('d') => Command::HalfPageDown,
-                KeyCode::Char('u') => Command::HalfPageUp,
-                KeyCode::Char('f') => Command::PageDown,
-                KeyCode::Char('b') => Command::PageUp,
-                KeyCode::Char('r') => Command::Redo,
-                _ => Command::Noop,
-            };
+            return self.normal_ctrl(key);
         }
 
-        // Numeric prefix (1-9 starts, 0 extends if already counting)
+        if let Some(cmd) = self.try_numeric_prefix(key) {
+            return cmd;
+        }
+
+        self.normal_main(key)
+    }
+
+    fn normal_ctrl(&self, key: &KeyEvent) -> Command {
+        match &key.code {
+            KeyCode::Char('d') => Command::HalfPageDown,
+            KeyCode::Char('u') => Command::HalfPageUp,
+            KeyCode::Char('f') => Command::PageDown,
+            KeyCode::Char('b') => Command::PageUp,
+            KeyCode::Char('r') => Command::Redo,
+            _ => Command::Noop,
+        }
+    }
+
+    fn try_numeric_prefix(&mut self, key: &KeyEvent) -> Option<Command> {
         if let KeyCode::Char(c @ '1'..='9') = &key.code {
             let digit = (*c as usize) - ('0' as usize);
             self.pending_count = Some(self.pending_count.unwrap_or(0) * 10 + digit);
-            return Command::Noop;
+            return Some(Command::Noop);
         }
         if key.code == KeyCode::Char('0') && self.pending_count.is_some() {
             let val = self.pending_count.unwrap_or(0) * 10;
             self.pending_count = Some(val);
-            return Command::Noop;
+            return Some(Command::Noop);
         }
+        None
+    }
 
+    fn normal_main(&mut self, key: &KeyEvent) -> Command {
         match &key.code {
-            // Motions
             KeyCode::Char('h') | KeyCode::Left => Command::MoveLeft,
             KeyCode::Char('l') | KeyCode::Right => Command::MoveRight,
             KeyCode::Char('j') | KeyCode::Down => Command::MoveDown,
@@ -81,16 +92,18 @@ impl VimKeymap {
             KeyCode::Char('K') => Command::Hover,
             KeyCode::PageUp => Command::PageUp,
             KeyCode::PageDown => Command::PageDown,
+            _ => self.normal_action(key),
+        }
+    }
 
-            // Insert entry
+    fn normal_action(&mut self, key: &KeyEvent) -> Command {
+        match &key.code {
             KeyCode::Char('i') => Command::EnterInsertMode,
             KeyCode::Char('a') => Command::EnterInsertAfter,
             KeyCode::Char('A') => Command::EnterInsertLineEnd,
             KeyCode::Char('I') => Command::EnterInsertLineStart,
             KeyCode::Char('o') => Command::EnterInsertBelow,
             KeyCode::Char('O') => Command::EnterInsertAbove,
-
-            // Editing
             KeyCode::Char('x') => Command::DeleteCharForward,
             KeyCode::Char('X') => Command::DeleteCharBackward,
             KeyCode::Char('s') => Command::Substitute,
@@ -103,62 +116,14 @@ impl VimKeymap {
             KeyCode::Char('p') => Command::Paste,
             KeyCode::Char('P') => Command::PasteBefore,
             KeyCode::Char('.') => Command::DotRepeat,
+            _ => self.normal_mode_or_operator(key),
+        }
+    }
 
-            // Indent (>> / <<)
-            KeyCode::Char('>') => {
-                self.pending = Some('>');
-                Command::Noop
-            }
-            KeyCode::Char('<') => {
-                self.pending = Some('<');
-                Command::Noop
-            }
-
-            // Operators
-            KeyCode::Char('d') => {
-                self.pending = Some('d');
-                Command::Noop
-            }
-            KeyCode::Char('c') => {
-                self.pending = Some('c');
-                Command::Noop
-            }
-            KeyCode::Char('y') => {
-                self.pending = Some('y');
-                Command::Noop
-            }
-
-            // Pending char commands
-            KeyCode::Char('r') => {
-                self.pending = Some('r');
-                Command::Noop
-            }
-            KeyCode::Char('f') => {
-                self.pending = Some('f');
-                Command::Noop
-            }
-            KeyCode::Char('F') => {
-                self.pending = Some('F');
-                Command::Noop
-            }
-            KeyCode::Char('t') => {
-                self.pending = Some('t');
-                Command::Noop
-            }
-            KeyCode::Char('T') => {
-                self.pending = Some('T');
-                Command::Noop
-            }
-            KeyCode::Char('g') => {
-                self.pending = Some('g');
-                Command::Noop
-            }
-
-            // Visual
+    fn normal_mode_or_operator(&mut self, key: &KeyEvent) -> Command {
+        match &key.code {
             KeyCode::Char('v') => Command::EnterVisual,
             KeyCode::Char('V') => Command::EnterVisualLine,
-
-            // Search
             KeyCode::Char('/') => Command::EnterSearchMode,
             KeyCode::Char('n') => Command::SearchNext,
             KeyCode::Char('N') => Command::SearchPrev,
@@ -166,10 +131,23 @@ impl VimKeymap {
             KeyCode::Char('#') => Command::SearchWordBackward,
             KeyCode::Char(';') => Command::RepeatFind,
             KeyCode::Char(',') => Command::RepeatFindReverse,
-
-            // Command mode
             KeyCode::Char(':') => Command::EnterCommandMode,
-
+            KeyCode::Char('>')
+            | KeyCode::Char('<')
+            | KeyCode::Char('d')
+            | KeyCode::Char('c')
+            | KeyCode::Char('y')
+            | KeyCode::Char('r')
+            | KeyCode::Char('f')
+            | KeyCode::Char('F')
+            | KeyCode::Char('t')
+            | KeyCode::Char('T')
+            | KeyCode::Char('g') => {
+                if let KeyCode::Char(ch) = &key.code {
+                    self.pending = Some(*ch);
+                }
+                Command::Noop
+            }
             _ => Command::Noop,
         }
     }
@@ -182,6 +160,10 @@ impl VimKeymap {
                 return Command::Noop;
             }
         };
+        self.two_key_dispatch(prefix, ch)
+    }
+
+    fn two_key_dispatch(&mut self, prefix: char, ch: char) -> Command {
         match (prefix, ch) {
             ('d', 'd') => Command::DeleteLine,
             ('d', 'w') => Command::DeleteWord,
@@ -212,7 +194,6 @@ impl VimKeymap {
             ('F', _) => Command::FindCharBack(ch),
             ('t', _) => Command::TillChar(ch),
             ('T', _) => Command::TillCharBack(ch),
-            // Operator + motion: return the operator, let editor handle motion
             ('d', 'e') | ('d', '^') => Command::OperatorDelete,
             ('c', 'e') | ('c', 'b') | ('c', '0') | ('c', '^') => Command::OperatorChange,
             ('y', 'e') | ('y', 'b') | ('y', '0') | ('y', '^') => Command::OperatorYank,
@@ -232,7 +213,6 @@ impl Keymap for VimKeymap {
             EditorMode::Visual | EditorMode::VisualLine => self.visual_key(key),
             EditorMode::Command | EditorMode::Search => Command::Noop,
         };
-        // Apply pending count to the command
         if cmd != Command::Noop {
             if let Some(n) = self.pending_count.take() {
                 return Command::Repeat(n, Box::new(cmd));

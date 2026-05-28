@@ -90,4 +90,17 @@ if [ -n "$PUB_FIELD_VIOLATIONS" ]; then
     exit 1
 fi
 
+# 7. mcp-lint (coding standards: struct count, method length, nesting, etc.)
+echo "  mcp-lint..."
+if ! command -v mcp-lint-cli >/dev/null 2>&1; then
+    echo "❌ mcp-lint-cli not found. Run: make setup"
+    exit 1
+fi
+LINT_VIOLATIONS=$(find src -name '*.rs' | xargs mcp-lint-cli 2>&1 | grep -v ": OK$" || true)
+if [ -n "$LINT_VIOLATIONS" ]; then
+    echo "$LINT_VIOLATIONS"
+    echo "❌ mcp-lint violations"
+    exit 1
+fi
+
 echo "✅ All checks passed"

@@ -1,6 +1,7 @@
 //! MCP edit operations — buffer edits, cursor, save, diagnostics.
 
 use crate::desktop::SlotId;
+use crate::lsp::diagnostics::Severity;
 use crate::views::editor::EditorView;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
@@ -103,10 +104,10 @@ pub(crate) fn mcp_get_diagnostics(desktop: &mut TiledWorkspace, name: &str) -> R
         if let Some(diags) = &editor.diagnostics {
             for d in diags {
                 let severity = match d.severity {
-                    crate::lsp::diagnostics::Severity::Error => "error",
-                    crate::lsp::diagnostics::Severity::Warning => "warning",
-                    crate::lsp::diagnostics::Severity::Info => "info",
-                    crate::lsp::diagnostics::Severity::Hint => "hint",
+                    Severity::Error => "error",
+                    Severity::Warning => "warning",
+                    Severity::Info => "info",
+                    Severity::Hint => "hint",
                 };
                 all_diags.push(serde_json::json!({
                     "file": title,

@@ -1,46 +1,43 @@
 //! Diff mode key handling — navigation, exit, jump.
 
 use txv_core::event::{KeyCode, KeyEvent};
+use txv_core::message::Message;
 use txv_core::prelude::*;
 
 use super::EditorView;
+use crate::commands::CM_MODE_CHANGED;
+use crate::editor::keymap::EditorMode;
 
 impl EditorView {
     pub(super) fn handle_diff_key(&mut self, key: &KeyEvent) -> HandleResult {
-        // Allow : to enter command mode (for :diff -U3, :nodiff, etc.)
         if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
-            self.editor.mode = crate::editor::keymap::EditorMode::Command;
+            self.editor.mode = EditorMode::Command;
             self.editor.command_buf.clear();
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
-        // If in command/search mode, delegate to normal command input
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
-        {
+        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
             let result = self.handle_command_input(key);
             self.state.mark_dirty();
             return result;
         }
 
+        self.dispatch_diff_key(key);
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
+    fn dispatch_diff_key(&mut self, key: &KeyEvent) {
         match key.code {
-            KeyCode::Esc => {
-                self.exit_diff();
-                self.state
-                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
-                self.state.put_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
-                );
-            }
+            KeyCode::Esc => self.exit_diff_with_message(),
             KeyCode::Enter => {
                 self.exit_diff_at_cursor();
                 self.state
-                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+                    .put_command(CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
                 self.state.put_command(
                     txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(txv_core::message::Message::info("editor", "Exited diff mode"))),
+                    Some(Box::new(Message::info("editor", "Exited diff mode"))),
                 );
             }
             KeyCode::Char('n') => self.diff_next_hunk(),
@@ -59,20 +56,28 @@ impl EditorView {
             }
             KeyCode::Char('R') => {
                 let msg = match self.revert_hunk() {
-                    Ok(m) => txv_core::message::Message::info("editor", m),
-                    Err(e) => txv_core::message::Message::error("editor", e),
+                    Ok(m) => Message::info("editor", m),
+                    Err(e) => Message::error("editor", e),
                 };
                 self.state
                     .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
             KeyCode::Char('/') => {
-                self.editor.mode = crate::editor::keymap::EditorMode::Search;
+                self.editor.mode = EditorMode::Search;
                 self.editor.command_buf.clear();
             }
             _ => {}
         }
-        self.state.mark_dirty();
-        HandleResult::Consumed
+    }
+
+    fn exit_diff_with_message(&mut self) {
+        self.exit_diff();
+        self.state
+            .put_command(CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+        self.state.put_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("editor", "Exited diff mode"))),
+        );
     }
 
     fn diff_next_hunk(&mut self) {
@@ -117,32 +122,34 @@ impl EditorView {
     }
 
     pub(super) fn handle_sbs_key(&mut self, key: &KeyEvent) -> HandleResult {
-        // Allow : to enter command mode
         if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
-            self.editor.mode = crate::editor::keymap::EditorMode::Command;
+            self.editor.mode = EditorMode::Command;
             self.editor.command_buf.clear();
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
-        // If in command/search mode, delegate to normal command input
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
-        {
+        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
             let result = self.handle_command_input(key);
             self.state.mark_dirty();
             return result;
         }
 
+        self.dispatch_sbs_key(key);
+        self.state.mark_dirty();
+        HandleResult::Consumed
+    }
+
+    fn dispatch_sbs_key(&mut self, key: &KeyEvent) {
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.sbs_state = None;
                 self.state.mark_dirty();
                 self.state
-                    .put_command(crate::commands::CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
+                    .put_command(CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
             }
             KeyCode::Char('/') => {
-                self.editor.mode = crate::editor::keymap::EditorMode::Search;
+                self.editor.mode = EditorMode::Search;
                 self.editor.command_buf.clear();
                 self.state.mark_dirty();
             }
@@ -168,8 +175,6 @@ impl EditorView {
             }
             _ => {}
         }
-        self.state.mark_dirty();
-        HandleResult::Consumed
     }
 
     fn sbs_scroll(&mut self, delta: i32) {

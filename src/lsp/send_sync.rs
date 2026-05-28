@@ -1,23 +1,27 @@
 //! LSP document sync senders — didOpen, didChange notifications.
 
+use std::fs;
+
 use txv_core::program::CommandContext;
 
+use crate::commands::{ContentChanged, OpenFileRequest};
 use crate::handler::AppState;
 
 use super::protocol;
+use super::send::start_lsp;
 
 pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(req) = boxed.downcast_ref::<crate::commands::OpenFileRequest>() else {
+    let Some(req) = boxed.downcast_ref::<OpenFileRequest>() else {
         return;
     };
     let path = &req.path;
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    super::send::start_lsp(state, lang, &root);
+    start_lsp(state, lang, &root);
 
     if state.lsp.is_initializing(lang) {
         state.lsp.pending_opens.push((lang.to_string(), path.clone()));
@@ -25,13 +29,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     }
 
     let Some(client) = state.lsp.get_client_mut(lang) else {
-        if let Some(err) = state.lsp.last_error.take() {
-            use txv_core::message::{Message, MsgLevel};
-            ctx.sink.push_command(
-                txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
-            );
-        }
+        report_lsp_error(ctx, state);
         return;
     };
 
@@ -42,7 +40,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     state.lsp_opened_files.insert(key);
 
     let uri = protocol::path_to_uri(path);
-    let text = match std::fs::read_to_string(path) {
+    let text = match fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {
             log::warn!("LSP didOpen: cannot read {}: {e}", path.display());
@@ -52,17 +50,27 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     protocol::did_open(client, &uri, lang, &text);
 }
 
+fn report_lsp_error(ctx: &mut CommandContext, state: &mut AppState) {
+    if let Some(err) = state.lsp.last_error.take() {
+        use txv_core::message::{Message, MsgLevel};
+        ctx.sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
+        );
+    }
+}
+
 pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {
         return;
     };
-    let Some(changed) = boxed.downcast_ref::<crate::commands::ContentChanged>() else {
+    let Some(changed) = boxed.downcast_ref::<ContentChanged>() else {
         return;
     };
 
     let lang = protocol::language_id(&changed.path);
     let root = state.root_dir.clone();
-    super::send::start_lsp(state, lang, &root);
+    start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         return;
     };

@@ -160,8 +160,12 @@ mod tests {
     #[test]
     fn parse_location_array() {
         let result = json!([
-            {"uri": "file:///a.rs", "range": {"start": {"line": 1, "character": 0}, "end": {"line": 1, "character": 5}}},
-            {"uri": "file:///b.rs", "range": {"start": {"line": 2, "character": 3}, "end": {"line": 2, "character": 7}}}
+            {"uri": "file:///a.rs", "range": {
+                "start": {"line": 1, "character": 0}, "end": {"line": 1, "character": 5}
+            }},
+            {"uri": "file:///b.rs", "range": {
+                "start": {"line": 2, "character": 3}, "end": {"line": 2, "character": 7}
+            }}
         ]);
         let locs = parse_locations(&result);
         assert_eq!(locs.len(), 2);

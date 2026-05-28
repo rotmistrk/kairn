@@ -1,11 +1,21 @@
 //! Edit/action handler functions for M-x dispatch.
 
+use txv_core::message::Message;
 use txv_core::program::CommandContext;
+use txv_core::run::Waker;
 
+use crate::clipboard::paste_from_clipboard;
 use crate::commands::*;
 use crate::desktop::{focus_tab_by_title, next_tab_name, SlotId};
+use crate::grep::grep_async;
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_evict::try_insert_tab;
+use crate::handler_log::open_git_log;
+use crate::handler_lsp_cmd::handle_lsp_command as handle_lsp_cmd;
+use crate::handler_open::{handle_edit_file, open_as_csv, toggle_view_mode};
+use crate::lsp::config_commands::format_lsp_status;
 use crate::views::help::HelpView;
+use crate::views::results::ResultsView;
 use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
 use crate::views::welcome::WelcomeView;
 
@@ -30,7 +40,7 @@ pub(crate) fn cmd_diff(ctx: &mut CommandContext, _state: &mut AppState, arg: &st
 }
 
 pub(crate) fn cmd_edit(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    crate::handler_open::handle_edit_file(ctx.desktop, ctx.sink, state, arg);
+    handle_edit_file(ctx.desktop, ctx.sink, state, arg);
 }
 
 pub(crate) fn cmd_git_commit(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
@@ -51,19 +61,19 @@ pub(crate) fn cmd_git_untrack(ctx: &mut CommandContext, _state: &mut AppState, a
 
 pub(crate) fn cmd_grep(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     if arg.is_empty() {
-        let msg = txv_core::message::Message::warn("grep", "Usage: :grep <pattern>");
+        let msg = Message::warn("grep", "Usage: :grep <pattern>");
         ctx.sink
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         return;
     }
     let root = state.root_dir.clone();
-    let waker = state.waker.clone().unwrap_or_else(txv_core::run::Waker::noop);
-    let grep_state = crate::grep::grep_async(arg, &root, waker);
+    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
+    let grep_state = grep_async(arg, &root, waker);
     state.grep_pending = Some((format!("grep:{arg}"), grep_state, root.clone()));
     let title = format!("grep:{arg}");
-    let view = crate::views::results::ResultsView::searching(&title, &root);
+    let view = ResultsView::searching(&title, &root);
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title, Box::new(view));
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title, Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }
@@ -71,7 +81,7 @@ pub(crate) fn cmd_grep(ctx: &mut CommandContext, state: &mut AppState, arg: &str
 pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
-            crate::handler_evict::try_insert_tab(
+            try_insert_tab(
                 desktop,
                 state,
                 ctx.sink,
@@ -94,27 +104,24 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
             Some("kairn")
         };
         let term = new_kiro_terminal(agent_arg, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
         state.kiro_registry.register(&name);
         ctx.sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(txv_core::message::Message::info(
-                "kiro",
-                format!("Started: {name}"),
-            ))),
+            Some(Box::new(Message::info("kiro", format!("Started: {name}")))),
         );
     }
 }
 
 pub(crate) fn cmd_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    crate::handler_log::open_git_log(ctx, state, arg);
+    open_git_log(ctx, state, arg);
 }
 
 pub(crate) fn cmd_lsp(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    let msg = crate::handler_lsp_cmd::handle_lsp_command(arg, state);
+    let msg = handle_lsp_cmd(arg, state);
     ctx.sink.push_command(
         txv_widgets::CM_STATUS_MESSAGE,
-        Some(Box::new(txv_core::message::Message::info("lsp", msg))),
+        Some(Box::new(Message::info("lsp", msg))),
     );
 }
 
@@ -123,7 +130,7 @@ pub(crate) fn cmd_lsp_rename(ctx: &mut CommandContext, _state: &mut AppState, ar
 }
 
 pub(crate) fn cmd_lsp_status(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    let status = crate::lsp::config_commands::format_lsp_status(&state.lsp);
+    let status = format_lsp_status(&state.lsp);
     ctx.sink.push_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
 }
 
@@ -140,10 +147,10 @@ pub(crate) fn cmd_noblame(ctx: &mut CommandContext, _state: &mut AppState, _arg:
 }
 
 pub(crate) fn cmd_paste(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
-    match crate::clipboard::paste_from_clipboard() {
+    match paste_from_clipboard() {
         Ok(text) => ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
         Err(e) => {
-            let msg = txv_core::message::Message::error("clipboard", e);
+            let msg = Message::error("clipboard", e);
             ctx.sink
                 .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
@@ -169,7 +176,7 @@ pub(crate) fn cmd_save(ctx: &mut CommandContext, _state: &mut AppState, _arg: &s
 pub(crate) fn cmd_shell(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let name = next_tab_name(desktop, SlotId::Tools, "Shell");
-        crate::handler_evict::try_insert_tab(
+        try_insert_tab(
             desktop,
             state,
             ctx.sink,
@@ -179,16 +186,13 @@ pub(crate) fn cmd_shell(ctx: &mut CommandContext, state: &mut AppState, _arg: &s
         );
         ctx.sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(txv_core::message::Message::info(
-                "shell",
-                format!("Started: {name}"),
-            ))),
+            Some(Box::new(Message::info("shell", format!("Started: {name}")))),
         );
     }
 }
 
 pub(crate) fn cmd_split(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
-    let req = crate::commands::SplitRequest {
+    let req = SplitRequest {
         vertical: false,
         file: if arg.is_empty() {
             None
@@ -196,15 +200,15 @@ pub(crate) fn cmd_split(ctx: &mut CommandContext, _state: &mut AppState, arg: &s
             Some(arg.to_string())
         },
     };
-    ctx.sink.push_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+    ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
 }
 
 pub(crate) fn cmd_structured(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    crate::handler_open::toggle_view_mode(ctx.desktop, ctx.sink, state, true);
+    toggle_view_mode(ctx.desktop, ctx.sink, state, true);
 }
 
 pub(crate) fn cmd_tab(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    crate::handler_open::open_as_csv(ctx.desktop, ctx.sink, state);
+    open_as_csv(ctx.desktop, ctx.sink, state);
 }
 
 pub(crate) fn cmd_test(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
@@ -220,7 +224,7 @@ pub(crate) fn cmd_test_file(ctx: &mut CommandContext, _state: &mut AppState, _ar
 }
 
 pub(crate) fn cmd_text(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    crate::handler_open::toggle_view_mode(ctx.desktop, ctx.sink, state, false);
+    toggle_view_mode(ctx.desktop, ctx.sink, state, false);
 }
 
 pub(crate) fn cmd_theme(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
@@ -235,7 +239,7 @@ pub(crate) fn cmd_theme(ctx: &mut CommandContext, _state: &mut AppState, arg: &s
 }
 
 pub(crate) fn cmd_vsplit(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
-    let req = crate::commands::SplitRequest {
+    let req = SplitRequest {
         vertical: true,
         file: if arg.is_empty() {
             None
@@ -243,13 +247,13 @@ pub(crate) fn cmd_vsplit(ctx: &mut CommandContext, _state: &mut AppState, arg: &
             Some(arg.to_string())
         },
     };
-    ctx.sink.push_command(crate::commands::CM_SPLIT, Some(Box::new(req)));
+    ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
 }
 
 pub(crate) fn cmd_welcome(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         if !focus_tab_by_title(desktop, SlotId::Center, "Welcome") {
-            crate::handler_evict::try_insert_tab(
+            try_insert_tab(
                 desktop,
                 state,
                 ctx.sink,

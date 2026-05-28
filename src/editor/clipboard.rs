@@ -1,5 +1,6 @@
 //! Clipboard, yank, and multi-line operations.
 
+use crate::clipboard::copy_to_clipboard;
 use crate::settings::CursorStyle;
 
 use super::keymap::EditorMode;
@@ -10,7 +11,7 @@ impl Editor {
     /// Set the yank register and copy to system clipboard via OSC 52.
     pub fn yank(&mut self, text: String) {
         self.register = text.clone();
-        if let Err(e) = crate::clipboard::copy_to_clipboard(&text) {
+        if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
         }
     }

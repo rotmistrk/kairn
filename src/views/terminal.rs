@@ -1,19 +1,28 @@
 //! TerminalView — real PTY terminal backed by txv-widgets::PtyTerminal.
 
+use std::env;
+use std::path::Path;
+
+use txv_core::cell::Style;
+use txv_core::event::Event;
+use txv_core::palette::{palette, StyleId};
+use txv_core::prelude::ViewState;
+use txv_core::view::{HandleResult, View};
+
 pub use txv_widgets::PtyTerminal as TerminalView;
 
 /// Create a shell terminal, falling back to a placeholder on failure.
-pub fn new_shell_terminal() -> Box<dyn txv_core::view::View> {
+pub fn new_shell_terminal() -> Box<dyn View> {
     new_shell_terminal_with_scrollback(2000)
 }
 
 /// Create a shell terminal with custom scrollback, falling back to a placeholder on failure.
-pub fn new_shell_terminal_with_scrollback(scrollback_lines: u16) -> Box<dyn txv_core::view::View> {
+pub fn new_shell_terminal_with_scrollback(scrollback_lines: u16) -> Box<dyn View> {
     // In test environments, don't spawn a real PTY
-    if std::env::var("KAIRN_TEST").is_ok() {
+    if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Shell"));
     }
-    match txv_widgets::PtyTerminal::spawn_shell_with_scrollback(80, 24, scrollback_lines as usize) {
+    match TerminalView::spawn_shell_with_scrollback(80, 24, scrollback_lines as usize) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn shell: {}", e);
@@ -23,11 +32,11 @@ pub fn new_shell_terminal_with_scrollback(scrollback_lines: u16) -> Box<dyn txv_
 }
 
 /// Create a shell terminal that runs a specific command.
-pub fn new_shell_with_command(cmd: &str, cwd: &std::path::Path) -> Box<dyn txv_core::view::View> {
-    if std::env::var("KAIRN_TEST").is_ok() {
+pub fn new_shell_with_command(cmd: &str, cwd: &Path) -> Box<dyn View> {
+    if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Run"));
     }
-    match txv_widgets::PtyTerminal::spawn_command("sh", &["-c", cmd], cwd, 80, 24) {
+    match TerminalView::spawn_command("sh", &["-c", cmd], cwd, 80, 24) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to run command '{}': {}", cmd, e);
@@ -37,17 +46,13 @@ pub fn new_shell_with_command(cmd: &str, cwd: &std::path::Path) -> Box<dyn txv_c
 }
 
 /// Create a kiro-cli chat terminal, optionally with a specific agent.
-pub fn new_kiro_terminal(agent: Option<&str>, cwd: &std::path::Path) -> Box<dyn txv_core::view::View> {
+pub fn new_kiro_terminal(agent: Option<&str>, cwd: &Path) -> Box<dyn View> {
     new_kiro_terminal_with_resume(agent, None, cwd)
 }
 
 /// Create a kiro-cli chat terminal with optional agent and resume-id.
-pub fn new_kiro_terminal_with_resume(
-    agent: Option<&str>,
-    resume_id: Option<&str>,
-    cwd: &std::path::Path,
-) -> Box<dyn txv_core::view::View> {
-    if std::env::var("KAIRN_TEST").is_ok() {
+pub fn new_kiro_terminal_with_resume(agent: Option<&str>, resume_id: Option<&str>, cwd: &Path) -> Box<dyn View> {
+    if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Kiro"));
     }
     let mut args = vec!["chat"];
@@ -61,13 +66,13 @@ pub fn new_kiro_terminal_with_resume(
         resume_flag = format!("--resume-id={id}");
         args.push(&resume_flag);
     }
-    let socket_val = std::env::var("KAIRN_MCP_SOCKET").unwrap_or_default();
+    let socket_val = env::var("KAIRN_MCP_SOCKET").unwrap_or_default();
     let envs: Vec<(&str, &str)> = if socket_val.is_empty() {
         vec![]
     } else {
         vec![("KAIRN_MCP_SOCKET", &socket_val)]
     };
-    match txv_widgets::PtyTerminal::spawn_command_with_env("kiro-cli", &args, cwd, 80, 24, &envs) {
+    match TerminalView::spawn_command_with_env("kiro-cli", &args, cwd, 80, 24, &envs) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);
@@ -78,7 +83,7 @@ pub fn new_kiro_terminal_with_resume(
 
 /// Minimal fallback when PTY spawn fails.
 struct FallbackTerminal {
-    state: txv_core::prelude::ViewState,
+    state: ViewState,
     title: String,
     message: String,
 }
@@ -86,7 +91,7 @@ struct FallbackTerminal {
 impl FallbackTerminal {
     fn new(title: impl Into<String>) -> Self {
         Self {
-            state: txv_core::prelude::ViewState::default(),
+            state: ViewState::default(),
             title: title.into(),
             message: String::new(),
         }
@@ -94,14 +99,14 @@ impl FallbackTerminal {
 
     fn with_error(title: impl Into<String>, error: impl Into<String>) -> Self {
         Self {
-            state: txv_core::prelude::ViewState::default(),
+            state: ViewState::default(),
             title: title.into(),
             message: error.into(),
         }
     }
 }
 
-impl txv_core::view::View for FallbackTerminal {
+impl View for FallbackTerminal {
     txv_core::delegate_view_state!(state, override { title });
 
     fn title(&self) -> &str {
@@ -109,8 +114,8 @@ impl txv_core::view::View for FallbackTerminal {
     }
 
     fn draw(&mut self) {
-        let style = txv_core::cell::Style::default();
-        let err_style = txv_core::palette::palette().style(txv_core::palette::StyleId::StateError);
+        let style = Style::default();
+        let err_style = palette().style(StyleId::StateError);
         self.state.buffer_mut().print(0, 0, &format!("[{}]", self.title), style);
         if !self.message.is_empty() {
             self.state.buffer_mut().print(0, 1, &self.message, err_style);
@@ -120,7 +125,7 @@ impl txv_core::view::View for FallbackTerminal {
         }
     }
 
-    fn handle(&mut self, _event: &txv_core::event::Event) -> txv_core::view::HandleResult {
-        txv_core::view::HandleResult::Ignored
+    fn handle(&mut self, _event: &Event) -> HandleResult {
+        HandleResult::Ignored
     }
 }

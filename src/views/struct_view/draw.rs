@@ -1,5 +1,6 @@
 //! Drawing logic for StructuredView — three-column tree-table.
 
+use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 use crate::structured::NodeKind;
@@ -19,108 +20,103 @@ pub fn draw_struct_view(view: &mut StructuredView) {
     let meta_w = ww.saturating_sub(key_w + val_w + 2);
 
     let normal = Style::default();
-    let pal = txv_core::palette::palette();
+    let pal = palette();
     let focused = view.state.is_focused();
     let cursor_style = if focused {
-        pal.style(txv_core::palette::StyleId::CursorFocused)
+        pal.style(StyleId::CursorFocused)
     } else {
-        pal.style(txv_core::palette::StyleId::CursorUnfocused)
+        pal.style(StyleId::CursorUnfocused)
     };
-    let cursor_row_style = normal;
-    let sep_style = pal.style(txv_core::palette::StyleId::Dim);
-    let edit_style = pal.style(txv_core::palette::StyleId::EditOverlay);
+    let sep_style = pal.style(StyleId::Dim);
+    let edit_style = pal.style(StyleId::EditOverlay);
 
-    // Pre-collect row data to avoid borrow issues
-    struct RowData {
-        node_id: crate::structured::NodeId,
-        is_cursor: bool,
-    }
-    let rows: Vec<RowData> = (0..h as usize)
-        .map(|row| {
-            let idx = view.scroll + row;
-            RowData {
-                node_id: if idx < view.visible_nodes.len() {
-                    view.visible_nodes[idx]
-                } else {
-                    crate::structured::NodeId(0)
-                },
-                is_cursor: idx == view.cursor,
-            }
-        })
-        .collect();
+    let cols = ColLayout { key_w, val_w, meta_w };
 
     #[allow(clippy::needless_range_loop)]
     for row in 0..h as usize {
         let idx = view.scroll + row;
         let y = row as u16;
-
         if idx >= view.visible_nodes.len() {
             view.state.buffer_mut().hline(0, y, w, ' ', normal);
             continue;
         }
+        let node_id = view.visible_nodes[idx];
+        let is_cursor = idx == view.cursor;
+        draw_struct_row(view, y, node_id, is_cursor, (normal, cursor_style, sep_style), &cols);
+    }
+    draw_edit_overlay(view, h, edit_style, &cols);
+}
 
-        let node_id = rows[row].node_id;
-        let is_cursor = rows[row].is_cursor;
-        let base = if is_cursor {
-            cursor_row_style
-        } else {
-            normal
-        };
+struct ColLayout {
+    key_w: usize,
+    val_w: usize,
+    meta_w: usize,
+}
 
-        view.state.buffer_mut().hline(0, y, w, ' ', base);
+fn draw_struct_row(
+    view: &mut StructuredView,
+    y: u16,
+    node_id: crate::structured::NodeId,
+    is_cursor: bool,
+    row_styles: (Style, Style, Style),
+    cols: &ColLayout,
+) {
+    let (normal, cursor_style, sep_style) = row_styles;
+    let w = view.state.buffer_mut().width();
+    view.state.buffer_mut().hline(0, y, w, ' ', normal);
 
-        // Key column
-        let key_text = build_key_text(view, node_id);
-        let col_style = if is_cursor && view.col_focus == ColFocus::Key {
-            cursor_style
-        } else {
-            base
-        };
-        let truncated_key = truncate(&key_text, key_w);
-        view.state.buffer_mut().print(0, y, &truncated_key, col_style);
+    let key_text = build_key_text(view, node_id);
+    let st = pick_col_style(is_cursor, ColFocus::Key, view.col_focus, cursor_style, normal);
+    view.state
+        .buffer_mut()
+        .print(0, y, &truncate(&key_text, cols.key_w), st);
 
-        // Separator 1
-        let sep1_x = key_w as u16;
-        view.state.buffer_mut().print(sep1_x, y, "│", sep_style);
+    let sep1_x = cols.key_w as u16;
+    view.state.buffer_mut().print(sep1_x, y, "│", sep_style);
 
-        // Value column
-        let val_text = view.doc.value_display(node_id).to_owned();
-        let col_style = if is_cursor && view.col_focus == ColFocus::Value {
-            cursor_style
-        } else {
-            base
-        };
-        let val_x = sep1_x + 1;
-        let truncated_val = truncate(&val_text, val_w);
-        view.state.buffer_mut().print(val_x, y, &truncated_val, col_style);
+    let val_text = view.doc.value_display(node_id).to_owned();
+    let st = pick_col_style(is_cursor, ColFocus::Value, view.col_focus, cursor_style, normal);
+    let val_x = sep1_x + 1;
+    view.state
+        .buffer_mut()
+        .print(val_x, y, &truncate(&val_text, cols.val_w), st);
 
-        // Separator 2
-        let sep2_x = val_x + val_w as u16;
-        view.state.buffer_mut().print(sep2_x, y, "│", sep_style);
+    let sep2_x = val_x + cols.val_w as u16;
+    view.state.buffer_mut().print(sep2_x, y, "│", sep_style);
 
-        // Meta column
-        let meta_text = view.doc.meta(node_id).to_owned();
-        let col_style = if is_cursor && view.col_focus == ColFocus::Meta {
-            cursor_style
-        } else {
-            base
-        };
-        let meta_x = sep2_x + 1;
-        if !meta_text.is_empty() && meta_w > 0 {
-            let truncated_meta = truncate(&meta_text, meta_w);
-            view.state.buffer_mut().print(meta_x, y, &truncated_meta, col_style);
-        }
+    let meta_text = view.doc.meta(node_id).to_owned();
+    let st = pick_col_style(is_cursor, ColFocus::Meta, view.col_focus, cursor_style, normal);
+    let meta_x = sep2_x + 1;
+    if !meta_text.is_empty() && cols.meta_w > 0 {
+        view.state
+            .buffer_mut()
+            .print(meta_x, y, &truncate(&meta_text, cols.meta_w), st);
+    }
+}
 
-        // Render InlineEditor overlay if editing this row
-        if let Some(ref editor) = view.editing {
-            if editor.row == idx {
-                let (col_x, col_w) = match view.col_focus {
-                    ColFocus::Key => (0u16, key_w as u16),
-                    ColFocus::Value => (val_x, val_w as u16),
-                    ColFocus::Meta => (meta_x, meta_w as u16),
-                };
-                editor.draw(view.state.buffer_mut(), col_x, y, col_w, edit_style);
-            }
+fn pick_col_style(is_cursor: bool, target: ColFocus, current: ColFocus, cursor: Style, base: Style) -> Style {
+    if is_cursor && current == target {
+        cursor
+    } else {
+        base
+    }
+}
+
+fn draw_edit_overlay(view: &mut StructuredView, h: u16, edit_style: Style, cols: &ColLayout) {
+    if let Some(ref editor) = view.editing {
+        let idx = editor.row;
+        if idx >= view.scroll && idx < view.scroll + h as usize {
+            let y = (idx - view.scroll) as u16;
+            let sep1_x = cols.key_w as u16;
+            let val_x = sep1_x + 1;
+            let sep2_x = val_x + cols.val_w as u16;
+            let meta_x = sep2_x + 1;
+            let (col_x, col_w) = match view.col_focus {
+                ColFocus::Key => (0u16, cols.key_w as u16),
+                ColFocus::Value => (val_x, cols.val_w as u16),
+                ColFocus::Meta => (meta_x, cols.meta_w as u16),
+            };
+            editor.draw(view.state.buffer_mut(), col_x, y, col_w, edit_style);
         }
     }
 }
@@ -128,10 +124,15 @@ pub fn draw_struct_view(view: &mut StructuredView) {
 /// Build the key column text with tree connectors and expand/collapse markers.
 fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> String {
     let depth = view.depth(node_id);
-    let mut text = String::new();
+    let mut text = build_tree_guides(view, node_id, depth);
+    append_expand_marker(view, node_id, &mut text);
+    append_key_label(view, node_id, depth, &mut text);
+    text
+}
 
+fn build_tree_guides(view: &StructuredView, node_id: crate::structured::NodeId, depth: usize) -> String {
+    let mut text = String::new();
     if depth > 0 {
-        // Build ancestor continuation lines: │ for non-last ancestors, space for last
         let mut guides = Vec::with_capacity(depth.saturating_sub(1));
         let mut current = node_id;
         for _ in 0..depth.saturating_sub(1) {
@@ -142,29 +143,34 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
         }
         guides.reverse();
         for has_line in &guides {
-            if *has_line {
-                text.push_str("│ ");
+            text.push_str(if *has_line {
+                "│ "
             } else {
-                text.push_str("  ");
-            }
+                "  "
+            });
         }
-        if view.is_last_child(node_id) {
-            text.push_str("└─");
+        text.push_str(if view.is_last_child(node_id) {
+            "└─"
         } else {
-            text.push_str("├─");
-        }
+            "├─"
+        });
     }
+    text
+}
 
+fn append_expand_marker(view: &StructuredView, node_id: crate::structured::NodeId, text: &mut String) {
     let kind = view.doc.node_kind(node_id);
     if kind != NodeKind::Scalar {
-        if view.doc.is_expanded(node_id) {
-            text.push('▼');
+        text.push(if view.doc.is_expanded(node_id) {
+            '▼'
         } else {
-            text.push('▶');
-        }
+            '▶'
+        });
         text.push(' ');
     }
+}
 
+fn append_key_label(view: &StructuredView, node_id: crate::structured::NodeId, depth: usize, text: &mut String) {
     if let Some(key) = view.doc.key(node_id) {
         text.push_str(key);
     } else if depth > 0 {
@@ -175,8 +181,6 @@ fn build_key_text(view: &StructuredView, node_id: crate::structured::NodeId) -> 
             }
         }
     }
-
-    text
 }
 
 fn truncate(s: &str, max: usize) -> String {

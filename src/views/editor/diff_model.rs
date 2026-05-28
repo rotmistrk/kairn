@@ -134,7 +134,7 @@ impl DiffState {
 
 /// Build virtual diff line list from base and current content.
 pub fn build_diff_lines(base: &str, current: &str, opts: &DiffOpts) -> Vec<DiffLine> {
-    use similar::{ChangeTag, TextDiff};
+    use similar::TextDiff;
 
     let (base_cmp, current_cmp) = if opts.ignore_ws {
         (normalize_ws(base), normalize_ws(current))
@@ -144,7 +144,16 @@ pub fn build_diff_lines(base: &str, current: &str, opts: &DiffOpts) -> Vec<DiffL
 
     let diff = TextDiff::from_lines(&base_cmp, &current_cmp);
     let base_lines: Vec<&str> = base.lines().collect();
+    let full = collect_raw_diff_lines(&diff, &base_lines);
 
+    if opts.context == usize::MAX {
+        return full;
+    }
+    fold_context(&full, opts.context)
+}
+
+fn collect_raw_diff_lines<'a>(diff: &similar::TextDiff<'a, 'a, 'a, str>, base_lines: &[&str]) -> Vec<DiffLine> {
+    use similar::ChangeTag;
     let mut full: Vec<DiffLine> = Vec::new();
     let mut base_idx: usize = 0;
     let mut buf_idx: usize = 0;
@@ -173,11 +182,7 @@ pub fn build_diff_lines(base: &str, current: &str, opts: &DiffOpts) -> Vec<DiffL
             }
         }
     }
-
-    if opts.context == usize::MAX {
-        return full;
-    }
-    fold_context(&full, opts.context)
+    full
 }
 
 fn fold_context(lines: &[DiffLine], ctx: usize) -> Vec<DiffLine> {

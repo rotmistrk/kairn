@@ -66,78 +66,91 @@ impl View for GitChangesView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Tick = event {
-            self.tick_counter = self.tick_counter.wrapping_add(1);
-            // Cooldown after rebuild: repo.statuses() touches the index which
-            // re-triggers the watcher, causing a feedback loop without this guard.
-            if self.cooldown > 0 {
-                self.cooldown -= 1;
-                // Drain any watcher events accumulated during cooldown
-                if self.cooldown == 0 {
-                    if let Some(w) = self.watcher.as_mut() {
-                        w.has_changes();
-                    }
-                }
-                return HandleResult::Ignored;
-            }
-            let poll = self.tick_counter.is_multiple_of(60);
-            let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
-            if changed {
-                self.needs_rebuild = false;
-                self.inner.data.rebuild(&self.root);
-                self.inner.mark_dirty();
-                self.cooldown = 4; // ~200ms at 50ms tick
-            }
-            return HandleResult::Ignored;
+            return self.handle_tick();
         }
-        // Intercept CM_OK from TreeView (re-dispatched after Enter/Right)
         if let Event::Command { id, data } = event {
             if *id == CM_OK {
-                if let Some(boxed) = data.as_ref() {
-                    if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                        if let Some(path) = self.inner.data.file_path(node_id) {
-                            let cmd = if self.last_key_was_right {
-                                CM_OPEN_FILE_FOCUS
-                            } else {
-                                CM_OPEN_FILE
-                            };
-                            let req = if self.inner.data.is_untracked(node_id) {
-                                OpenFileRequest::new(path.to_path_buf())
-                            } else {
-                                OpenFileRequest::with_diff(path.to_path_buf())
-                            };
-                            self.inner.state.put_command(cmd, Some(Box::new(req)));
-                        }
-                        return HandleResult::Consumed;
-                    }
-                }
+                return self.handle_cm_ok(data);
             }
         }
-        // Handle git-specific keys before passing to TreeView
         if let Event::Key(key) = event {
-            if *key == self.keys.stage {
-                if let Some(rel) = self.selected_rel_path() {
-                    self.inner.state.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
-                }
-                return HandleResult::Consumed;
-            }
-            if *key == self.keys.unstage {
-                if let Some(rel) = self.selected_rel_path() {
-                    self.inner.state.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
-                }
-                return HandleResult::Consumed;
-            }
-            if *key == self.keys.untrack {
-                if let Some(rel) = self.selected_rel_path() {
-                    self.inner.state.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
-                }
-                return HandleResult::Consumed;
-            }
-            if *key == self.keys.commit {
-                self.inner.state.put_command(CM_GIT_COMMIT_PROMPT, None);
-                return HandleResult::Consumed;
+            if let Some(result) = self.handle_git_key(key) {
+                return result;
             }
             self.last_key_was_right = key.code == KeyCode::Right;
         }
         self.inner.handle(event)
+    }
+}
+
+impl GitChangesView {
+    fn handle_tick(&mut self) -> HandleResult {
+        self.tick_counter = self.tick_counter.wrapping_add(1);
+        if self.cooldown > 0 {
+            self.cooldown -= 1;
+            if self.cooldown == 0 {
+                if let Some(w) = self.watcher.as_mut() {
+                    w.has_changes();
+                }
+            }
+            return HandleResult::Ignored;
+        }
+        let poll = self.tick_counter.is_multiple_of(60);
+        let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
+        if changed {
+            self.needs_rebuild = false;
+            self.inner.data.rebuild(&self.root);
+            self.inner.mark_dirty();
+            self.cooldown = 4;
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_cm_ok(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if let Some(boxed) = data.as_ref() {
+            if let Some(&node_id) = boxed.downcast_ref::<usize>() {
+                if let Some(path) = self.inner.data.file_path(node_id) {
+                    let cmd = if self.last_key_was_right {
+                        CM_OPEN_FILE_FOCUS
+                    } else {
+                        CM_OPEN_FILE
+                    };
+                    let req = if self.inner.data.is_untracked(node_id) {
+                        OpenFileRequest::new(path.to_path_buf())
+                    } else {
+                        OpenFileRequest::with_diff(path.to_path_buf())
+                    };
+                    self.inner.state.put_command(cmd, Some(Box::new(req)));
+                }
+                return HandleResult::Consumed;
+            }
+        }
+        HandleResult::Ignored
+    }
+
+    fn handle_git_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
+        if *key == self.keys.stage {
+            if let Some(rel) = self.selected_rel_path() {
+                self.inner.state.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
+            }
+            return Some(HandleResult::Consumed);
+        }
+        if *key == self.keys.unstage {
+            if let Some(rel) = self.selected_rel_path() {
+                self.inner.state.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
+            }
+            return Some(HandleResult::Consumed);
+        }
+        if *key == self.keys.untrack {
+            if let Some(rel) = self.selected_rel_path() {
+                self.inner.state.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
+            }
+            return Some(HandleResult::Consumed);
+        }
+        if *key == self.keys.commit {
+            self.inner.state.put_command(CM_GIT_COMMIT_PROMPT, None);
+            return Some(HandleResult::Consumed);
+        }
+        None
     }
 }

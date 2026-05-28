@@ -1,7 +1,12 @@
 //! Badge sync — dirty indicators and PTY activity badges.
 
-use txv_core::program::CommandContext;
+use std::time::{Duration, Instant};
 
+use txv_core::program::CommandContext;
+use txv_widgets::pty_terminal::PtyTerminal;
+use txv_widgets::tab_panel::TabPanel;
+
+use crate::app_palette::app_palette;
 use crate::desktop::{close_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 
@@ -20,10 +25,7 @@ pub fn sync_dirty_badges(ctx: &mut CommandContext) {
         let Some(child) = sp.child_mut(child_idx) else {
             continue;
         };
-        let Some(panel) = child
-            .as_any_mut()
-            .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
-        else {
+        let Some(panel) = child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) else {
             continue;
         };
         for i in 0..panel.tab_count() {
@@ -76,12 +78,8 @@ const SPINNER: &[char] = &['◐', '◑', '◒', '◓'];
 /// Running: animated spinner (green), Idle: ○ (yellow), Exited: ● (red).
 pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_secs = state.settings.terminal_idle_timeout;
-    let now = std::time::Instant::now();
-    let idle_dur = std::time::Duration::from_secs(idle_secs);
-    let palette = &crate::app_palette::app_palette();
-    let busy_style = palette.badge().busy();
-    let idle_style = palette.badge().idle();
-    let exited_style = palette.badge().exited();
+    let now = Instant::now();
+    let idle_dur = Duration::from_secs(idle_secs);
     let frame = (state.mcp_tick / 16) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
@@ -91,38 +89,59 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     for i in 0..panel.tab_count() {
-        let title = panel.tab_title(i).unwrap_or_default().to_string();
-        let has_output = panel
-            .view_at_mut(i)
-            .and_then(|v| v.as_any_mut())
-            .and_then(|a| a.downcast_mut::<txv_widgets::pty_terminal::PtyTerminal>())
-            .is_some_and(|pty| {
-                let fresh = pty.has_fresh_output();
-                pty.clear_output_flag();
-                fresh
-            });
-        if has_output {
-            state.pty_last_output.insert(i, now);
-        }
-        if title.contains("[exited]") {
+        update_pty_output_timestamp(panel, state, i, now);
+        apply_pty_badge(panel, state, i, now, idle_dur, frame);
+    }
+}
+
+fn update_pty_output_timestamp(
+    panel: &mut txv_widgets::tab_panel::TabPanel,
+    state: &mut AppState,
+    i: usize,
+    now: Instant,
+) {
+    let has_output = panel
+        .view_at_mut(i)
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<PtyTerminal>())
+        .is_some_and(|pty| {
+            let fresh = pty.has_fresh_output();
+            pty.clear_output_flag();
+            fresh
+        });
+    if has_output {
+        state.pty_last_output.insert(i, now);
+    }
+}
+
+fn apply_pty_badge(
+    panel: &mut txv_widgets::tab_panel::TabPanel,
+    state: &AppState,
+    i: usize,
+    now: Instant,
+    idle_dur: Duration,
+    frame: usize,
+) {
+    let palette = &app_palette();
+    let title = panel.tab_title(i).unwrap_or_default().to_string();
+    if title.contains("[exited]") {
+        panel
+            .bar_mut()
+            .set_badge_styled(i, Some(" ●".to_string()), Some(palette.badge().exited()));
+    } else {
+        let is_busy = state
+            .pty_last_output
+            .get(&i)
+            .is_some_and(|&last| now.duration_since(last) <= idle_dur);
+        if is_busy {
+            let ch = SPINNER[frame];
             panel
                 .bar_mut()
-                .set_badge_styled(i, Some(" ●".to_string()), Some(exited_style));
-        } else {
-            let is_busy = state
-                .pty_last_output
-                .get(&i)
-                .is_some_and(|&last| now.duration_since(last) <= idle_dur);
-            if is_busy {
-                let ch = SPINNER[frame];
-                panel
-                    .bar_mut()
-                    .set_badge_styled(i, Some(format!(" {ch}")), Some(busy_style));
-            } else if state.pty_last_output.contains_key(&i) {
-                panel
-                    .bar_mut()
-                    .set_badge_styled(i, Some(" ○".to_string()), Some(idle_style));
-            }
+                .set_badge_styled(i, Some(format!(" {ch}")), Some(palette.badge().busy()));
+        } else if state.pty_last_output.contains_key(&i) {
+            panel
+                .bar_mut()
+                .set_badge_styled(i, Some(" ○".to_string()), Some(palette.badge().idle()));
         }
     }
 }

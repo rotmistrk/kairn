@@ -1,7 +1,9 @@
 //! Blame gutter rendering for EditorView.
 
 use super::EditorView;
+use crate::app_palette::app_palette;
 use crate::blame::BlameState;
+use crate::editor::keymap::EditorMode;
 
 impl EditorView {
     /// Draw blame annotations in the gutter area (left of line numbers).
@@ -12,35 +14,37 @@ impl EditorView {
         let Ok(guard) = shared.lock() else {
             return;
         };
-        let app = crate::app_palette::app_palette();
-        let style = app.editor().gutter();
+        let style = app_palette().editor().gutter();
         let h = self.state.buffer_mut().height();
         let scroll = self.editor.viewport_scroll;
+        let max_row = self.blame_max_row(h);
 
-        // Reserve last row if command/search prompt is active
-        let prompt_active = self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search;
-        let max_row = if prompt_active {
+        let lines_to_draw = Self::collect_blame_lines(&guard, scroll, max_row);
+        drop(guard);
+
+        for (y, text) in &lines_to_draw {
+            self.state.buffer_mut().print(0, *y, text, style);
+        }
+    }
+
+    fn blame_max_row(&self, h: u16) -> u16 {
+        let prompt_active = self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search;
+        if prompt_active {
             h.saturating_sub(1)
         } else {
             h
-        };
+        }
+    }
 
-        // Collect lines to draw to avoid holding the lock while writing to buf
-        let lines_to_draw: Vec<(u16, String)> = match &*guard {
-            BlameState::Loading => {
-                vec![(0, "loading blame...".to_string())]
-            }
-            BlameState::Error(_) => {
-                drop(guard);
-                return;
-            }
+    fn collect_blame_lines(guard: &BlameState, scroll: usize, max_row: u16) -> Vec<(u16, String)> {
+        match guard {
+            BlameState::Loading => vec![(0, "loading blame...".to_string())],
+            BlameState::Error(_) => Vec::new(),
             BlameState::Ready(lines) => {
                 let mut result = Vec::new();
                 let mut prev_hash = String::new();
                 for row in 0..max_row as usize {
                     let line_idx = scroll + row;
-                    let y = row as u16;
                     let blame = lines.iter().find(|bl| bl.line == line_idx);
                     let text = match blame {
                         Some(bl) => {
@@ -57,16 +61,11 @@ impl EditorView {
                         }
                     };
                     if !text.is_empty() {
-                        result.push((y, text));
+                        result.push((row as u16, text));
                     }
                 }
                 result
             }
-        };
-        drop(guard);
-
-        for (y, text) in &lines_to_draw {
-            self.state.buffer_mut().print(0, *y, text, style);
         }
     }
 }

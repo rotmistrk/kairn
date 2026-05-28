@@ -1,6 +1,7 @@
 //! EditorView utility methods (save, settings, navigation, undo/redo).
 
 use super::EditorView;
+use crate::blame::blame_async;
 
 impl EditorView {
     /// Save the buffer to disk immediately. Returns true on success.
@@ -105,7 +106,7 @@ impl EditorView {
                 .strip_prefix(&self.root_dir)
                 .unwrap_or(&self.path)
                 .to_path_buf();
-            self.blame_state = Some(crate::blame::blame_async(&self.root_dir, &rel));
+            self.blame_state = Some(blame_async(&self.root_dir, &rel));
         }
         self.state.mark_dirty();
     }

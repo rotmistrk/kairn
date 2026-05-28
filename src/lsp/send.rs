@@ -1,10 +1,14 @@
 //! LSP request senders — dispatch commands to language servers.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use txv_core::program::CommandContext;
 
+use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_GOTO_DEF};
+use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::handler::AppState;
+use crate::handler_script_util::fire_lsp_start_hook;
 
 use super::pending::{JdtRequest, PendingKind};
 use super::{protocol, requests};
@@ -24,13 +28,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     start_lsp(state, lang, &root);
 
     if state.lsp.is_initializing(lang) {
-        defer(
-            ctx,
-            state,
-            crate::commands::CM_LSP_GOTO_DEF,
-            lang,
-            Box::new((path.clone(), *line, *col)),
-        );
+        defer(ctx, state, CM_LSP_GOTO_DEF, lang, Box::new((path.clone(), *line, *col)));
         return;
     }
 
@@ -79,7 +77,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
         defer(
             ctx,
             state,
-            crate::commands::CM_LSP_FIND_REFS,
+            CM_LSP_FIND_REFS,
             lang,
             Box::new((path.clone(), *line, *col, symbol.clone())),
         );
@@ -222,14 +220,12 @@ fn defer(
             format!("Waiting for LSP ({lang})..."),
         ))),
     );
-    state
-        .deferred_lsp
-        .push(crate::deferred_lsp_request::DeferredLspRequest {
-            command,
-            data,
-            language: lang.to_string(),
-            created: std::time::Instant::now(),
-        });
+    state.deferred_lsp.push(DeferredLspRequest {
+        command,
+        data,
+        language: lang.to_string(),
+        created: Instant::now(),
+    });
 }
 
 fn emit_last_error(ctx: &mut CommandContext, state: &mut AppState) {
@@ -244,7 +240,7 @@ fn emit_last_error(ctx: &mut CommandContext, state: &mut AppState) {
 
 fn current_file_info(state: &AppState) -> (String, String) {
     if let Some(path) = state.broker.last_opened() {
-        let p = std::path::Path::new(path);
+        let p = Path::new(path);
         let uri = protocol::path_to_uri(p);
         let lang = protocol::language_id(p).to_string();
         (uri, lang)
@@ -254,9 +250,9 @@ fn current_file_info(state: &AppState) -> (String, String) {
 }
 
 /// Fire lsp-start hook (once per language) then call ensure_started.
-pub(super) fn start_lsp(state: &mut AppState, lang: &str, root: &std::path::Path) {
+pub(super) fn start_lsp(state: &mut AppState, lang: &str, root: &Path) {
     if state.lsp.take_start_hook(lang) {
-        crate::handler_script_util::fire_lsp_start_hook(state, lang);
+        fire_lsp_start_hook(state, lang);
     }
     state.lsp.ensure_started(lang, root);
 }

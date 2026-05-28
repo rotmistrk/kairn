@@ -1,9 +1,11 @@
 //! MessagesView — displays application message log from shared ring buffer.
 
+use std::mem;
 use std::sync::{Arc, Mutex};
 
 use txv_core::prelude::*;
 
+use crate::app_palette::app_palette;
 use crate::message_ring::MessageRing;
 
 pub struct MessagesView {
@@ -22,6 +24,49 @@ impl MessagesView {
             last_gen: 0,
         }
     }
+
+    fn collect_visible_lines(&self, rows: usize) -> Vec<(String, Style)> {
+        let ring = match self.ring.lock() {
+            Ok(r) => r,
+            Err(_) => return Vec::new(),
+        };
+        let entries = ring.entries();
+        let total = entries.len();
+        let start = total.saturating_sub(rows + self.scroll);
+        (0..rows)
+            .map(|row| {
+                entries
+                    .get(start + row)
+                    .map(format_msg_line)
+                    .unwrap_or_else(|| (String::new(), Style::default()))
+            })
+            .collect()
+    }
+}
+
+fn format_msg_line(msg: &txv_core::message::Message) -> (String, Style) {
+    let t = msg.timestamp as i64;
+    let (hrs, mins, secs) = epoch_to_local_hms(t);
+    let suffix = if msg.count > 1 {
+        format!(" (×{})", msg.count)
+    } else {
+        String::new()
+    };
+    let line = format!(
+        "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
+        msg.level.label(),
+        msg.origin,
+        msg.text,
+        suffix,
+    );
+    let app = app_palette();
+    let style = match msg.level {
+        MsgLevel::Error => app.msg().error(),
+        MsgLevel::Warn => app.msg().warning(),
+        MsgLevel::Debug => app.msg().debug(),
+        MsgLevel::Info => app.msg().info(),
+    };
+    (line, style)
 }
 
 impl View for MessagesView {
@@ -37,49 +82,7 @@ impl View for MessagesView {
         if w == 0 || h == 0 {
             return;
         }
-        let ring = match self.ring.lock() {
-            Ok(r) => r,
-            Err(_) => return,
-        };
-        let entries = ring.entries();
-        let rows = h as usize;
-        let total = entries.len();
-        let start = if total > rows + self.scroll {
-            total - rows - self.scroll
-        } else {
-            0
-        };
-        let lines: Vec<(String, Style)> = (0..rows)
-            .map(|row| {
-                if let Some(msg) = entries.get(start + row) {
-                    let t = msg.timestamp as i64;
-                    let (hrs, mins, secs) = epoch_to_local_hms(t);
-                    let suffix = if msg.count > 1 {
-                        format!(" (×{})", msg.count)
-                    } else {
-                        String::new()
-                    };
-                    let line = format!(
-                        "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
-                        msg.level.label(),
-                        msg.origin,
-                        msg.text,
-                        suffix,
-                    );
-                    let app = crate::app_palette::app_palette();
-                    let style = match msg.level {
-                        MsgLevel::Error => app.msg().error(),
-                        MsgLevel::Warn => app.msg().warning(),
-                        MsgLevel::Debug => app.msg().debug(),
-                        MsgLevel::Info => app.msg().info(),
-                    };
-                    (line, style)
-                } else {
-                    (String::new(), Style::default())
-                }
-            })
-            .collect();
-        drop(ring);
+        let lines = self.collect_visible_lines(h as usize);
         for (row, (line, style)) in lines.iter().enumerate() {
             self.state.buffer_mut().print_line(0, row as u16, line, w, *style);
         }
@@ -132,7 +135,7 @@ impl View for MessagesView {
 fn epoch_to_local_hms(epoch: i64) -> (u64, u64, u64) {
     #[cfg(unix)]
     {
-        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        let mut tm: libc::tm = unsafe { mem::zeroed() };
         unsafe { libc::localtime_r(&epoch, &mut tm) };
         (tm.tm_hour as u64, tm.tm_min as u64, tm.tm_sec as u64)
     }

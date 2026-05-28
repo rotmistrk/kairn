@@ -5,6 +5,9 @@ mod node_lines;
 mod ops;
 mod serialize;
 
+use jsonc_parse::CommentKind;
+use serde_json::Value;
+
 use crate::structured::jsonc_parse;
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
@@ -37,8 +40,8 @@ impl JsonDoc {
         let node_lines = node_lines::compute_node_lines(&stripped, &doc);
         for comment in &comments {
             let prefix = match comment.kind {
-                jsonc_parse::CommentKind::Line => "//",
-                jsonc_parse::CommentKind::Block => "/*",
+                CommentKind::Line => "//",
+                CommentKind::Block => "/*",
             };
             let text = format!("{prefix} {}", comment.text);
             // Find first node at or after this comment's line
@@ -59,9 +62,9 @@ impl JsonDoc {
         Ok(doc)
     }
 
-    fn build_node(&mut self, val: &serde_json::Value, key: Option<String>) -> NodeId {
+    fn build_node(&mut self, val: &Value, key: Option<String>) -> NodeId {
         match val {
-            serde_json::Value::Object(map) => {
+            Value::Object(map) => {
                 let id = self.alloc(NodeKind::Dict, key, format!("{{{}}}", map.len()));
                 for (k, v) in map {
                     let child = self.build_node(v, Some(k.clone()));
@@ -70,7 +73,7 @@ impl JsonDoc {
                 }
                 id
             }
-            serde_json::Value::Array(arr) => {
+            Value::Array(arr) => {
                 let id = self.alloc(NodeKind::Array, key, format!("[{}]", arr.len()));
                 for item in arr {
                     let child = self.build_node(item, None);
@@ -86,12 +89,12 @@ impl JsonDoc {
         }
     }
 
-    fn scalar_info(val: &serde_json::Value) -> (String, ScalarType) {
+    fn scalar_info(val: &Value) -> (String, ScalarType) {
         match val {
-            serde_json::Value::Null => ("null".into(), ScalarType::Null),
-            serde_json::Value::Bool(b) => (b.to_string(), ScalarType::Bool),
-            serde_json::Value::Number(n) => (n.to_string(), ScalarType::Number),
-            serde_json::Value::String(s) => (s.clone(), ScalarType::String),
+            Value::Null => ("null".into(), ScalarType::Null),
+            Value::Bool(b) => (b.to_string(), ScalarType::Bool),
+            Value::Number(n) => (n.to_string(), ScalarType::Number),
+            Value::String(s) => (s.clone(), ScalarType::String),
             _ => ("null".into(), ScalarType::Null),
         }
     }

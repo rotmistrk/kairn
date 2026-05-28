@@ -1,9 +1,10 @@
 //! Draw logic for TodoTreeView.
 
 use txv_core::cell::Style;
+use txv_core::palette::{palette, StyleId};
 use txv_widgets::tree_view::TreeData;
 
-use super::model;
+use super::model::Completion;
 use super::TodoTreeView;
 
 impl TodoTreeView {
@@ -14,102 +15,117 @@ impl TodoTreeView {
             return;
         }
         if self.inner.data.visible_count() == 0 {
-            let dim = txv_core::palette::palette().style(txv_core::palette::StyleId::Dim);
+            let dim = palette().style(StyleId::Dim);
             self.inner.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
-        let pal = txv_core::palette::palette();
-        let filter_offset: u16 = if self.filter_editor.is_some() || !self.inner.data.filter_text.is_empty() {
+        let has_filter = self.filter_editor.is_some() || !self.inner.data.filter_text.is_empty();
+        let filter_offset: u16 = if has_filter {
             1
         } else {
             0
         };
         let draw_h = h.saturating_sub(filter_offset) as usize;
+        self.draw_tree_rows(w, draw_h, filter_offset);
+        self.draw_edit_overlay(w, draw_h, filter_offset);
+        self.draw_filter_bar(w, filter_offset);
+    }
+
+    fn draw_tree_rows(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
         for row in 0..draw_h {
             let idx = self.inner.scroll.offset + row;
             if idx >= self.inner.data.visible_count() {
                 break;
             }
-            let id = self.inner.data.visible_id(idx);
-            let depth = self.inner.data.depth(id);
-            let indent = (depth * 2) as u16;
-            let marker = if self.inner.data.is_expandable(id) {
-                if self.inner.data.is_expanded(id) {
-                    "▼ "
-                } else {
-                    "▶ "
-                }
-            } else {
-                "  "
-            };
-            let mut node_style = self.inner.data.style(id);
-            if self.inner.data.is_in_important_subtree(id) {
-                node_style.attrs.bold = true;
-            }
-            let style = if idx == self.inner.cursor {
-                if self.inner.is_focused() {
-                    let cs = pal.style(txv_core::palette::StyleId::CursorFocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: cs.attrs,
-                    }
-                } else {
-                    let cs = pal.style(txv_core::palette::StyleId::CursorUnfocused);
-                    Style {
-                        fg: node_style.fg,
-                        bg: cs.bg,
-                        attrs: node_style.attrs,
-                    }
-                }
-            } else {
-                node_style
-            };
-            let y = filter_offset + row as u16;
-            self.inner.buffer_mut().hline(0, y, w, ' ', style);
-            let x = indent;
-            self.inner.buffer_mut().print(x, y, marker, style);
-            let checkbox = if let Some(item) = self.inner.data.item_at(id) {
-                match item.completed {
-                    model::Completion::Done => "[x] ",
-                    _ => "[ ] ",
-                }
-            } else {
-                "[ ] "
-            };
-            self.inner.buffer_mut().print(x + 2, y, checkbox, style);
-            let label = self.inner.data.label(id).to_string();
-            self.inner.buffer_mut().print(x + 6, y, &label, style);
+            self.draw_single_row(w, row, idx, filter_offset);
         }
-        // Inline editor overlay
-        if let Some(ref editor) = self.editing {
-            let scroll_offset = self.inner.scroll.offset;
-            if editor.row >= scroll_offset {
-                let screen_row = (editor.row - scroll_offset) as u16;
-                if screen_row < draw_h as u16 {
-                    let y = filter_offset + screen_row;
-                    let id = self.inner.data.visible_id(editor.row);
-                    let depth = self.inner.data.depth(id);
-                    let indent = (depth * 2 + 6) as u16;
-                    let ex = indent;
-                    let ew = w.saturating_sub(indent);
-                    let style = pal.style(txv_core::palette::StyleId::EditOverlay);
-                    editor.draw(self.inner.buffer_mut(), ex, y, ew, style);
-                }
-            }
-        }
-        // Filter bar at top
-        if filter_offset > 0 {
-            let y = 0;
-            let style = pal.style(txv_core::palette::StyleId::EditOverlay);
-            self.inner.buffer_mut().hline(0, y, w, ' ', style);
-            self.inner.buffer_mut().print(0, y, "/", style);
-            if let Some(ref editor) = self.filter_editor {
-                editor.draw(self.inner.buffer_mut(), 1, y, w.saturating_sub(1), style);
+    }
+
+    fn draw_single_row(&mut self, w: u16, row: usize, idx: usize, filter_offset: u16) {
+        let id = self.inner.data.visible_id(idx);
+        let depth = self.inner.data.depth(id);
+        let indent = (depth * 2) as u16;
+        let marker = if self.inner.data.is_expandable(id) {
+            if self.inner.data.is_expanded(id) {
+                "▼ "
             } else {
-                let ft = self.inner.data.filter_text.clone();
-                self.inner.buffer_mut().print(1, y, &ft, style);
+                "▶ "
             }
+        } else {
+            "  "
+        };
+        let style = self.row_style(idx, id);
+        let y = filter_offset + row as u16;
+        self.inner.buffer_mut().hline(0, y, w, ' ', style);
+        self.inner.buffer_mut().print(indent, y, marker, style);
+        let checkbox = if let Some(item) = self.inner.data.item_at(id) {
+            match item.completed {
+                Completion::Done => "[x] ",
+                _ => "[ ] ",
+            }
+        } else {
+            "[ ] "
+        };
+        self.inner.buffer_mut().print(indent + 2, y, checkbox, style);
+        let label = self.inner.data.label(id).to_string();
+        self.inner.buffer_mut().print(indent + 6, y, &label, style);
+    }
+
+    fn row_style(&self, idx: usize, id: usize) -> Style {
+        let pal = palette();
+        let mut node_style = self.inner.data.style(id);
+        if self.inner.data.is_in_important_subtree(id) {
+            node_style.attrs.bold = true;
+        }
+        if idx == self.inner.cursor {
+            let cs = if self.inner.is_focused() {
+                pal.style(StyleId::CursorFocused)
+            } else {
+                pal.style(StyleId::CursorUnfocused)
+            };
+            Style {
+                fg: node_style.fg,
+                bg: cs.bg,
+                attrs: cs.attrs,
+            }
+        } else {
+            node_style
+        }
+    }
+
+    fn draw_edit_overlay(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
+        let Some(ref editor) = self.editing else {
+            return;
+        };
+        let scroll_offset = self.inner.scroll.offset;
+        if editor.row < scroll_offset {
+            return;
+        }
+        let screen_row = (editor.row - scroll_offset) as u16;
+        if screen_row >= draw_h as u16 {
+            return;
+        }
+        let y = filter_offset + screen_row;
+        let id = self.inner.data.visible_id(editor.row);
+        let depth = self.inner.data.depth(id);
+        let indent = (depth * 2 + 6) as u16;
+        let ew = w.saturating_sub(indent);
+        let style = palette().style(StyleId::EditOverlay);
+        editor.draw(self.inner.buffer_mut(), indent, y, ew, style);
+    }
+
+    fn draw_filter_bar(&mut self, w: u16, filter_offset: u16) {
+        if filter_offset == 0 {
+            return;
+        }
+        let style = palette().style(StyleId::EditOverlay);
+        self.inner.buffer_mut().hline(0, 0, w, ' ', style);
+        self.inner.buffer_mut().print(0, 0, "/", style);
+        if let Some(ref editor) = self.filter_editor {
+            editor.draw(self.inner.buffer_mut(), 1, 0, w.saturating_sub(1), style);
+        } else {
+            let ft = self.inner.data.filter_text.clone();
+            self.inner.buffer_mut().print(1, 0, &ft, style);
         }
     }
 }

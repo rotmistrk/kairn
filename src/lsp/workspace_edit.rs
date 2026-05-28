@@ -14,25 +14,26 @@ pub fn apply_workspace_edit(result: &Value) -> usize {
         }
     } else if let Some(arr) = result.get("documentChanges").and_then(|v| v.as_array()) {
         for doc_change in arr {
-            if let Some(kind) = doc_change.get("kind").and_then(|k| k.as_str()) {
-                if super::resource_ops::apply_resource_op(kind, doc_change) {
-                    files_changed += 1;
-                }
-            } else {
-                let uri = doc_change
-                    .get("textDocument")
-                    .and_then(|td| td.get("uri"))
-                    .and_then(|u| u.as_str())
-                    .unwrap_or("");
-                let path = uri_to_path(uri);
-                let edits = doc_change.get("edits").unwrap_or(&Value::Null);
-                if apply_text_edits(&path, edits) {
-                    files_changed += 1;
-                }
+            if apply_doc_change(doc_change) {
+                files_changed += 1;
             }
         }
     }
     files_changed
+}
+
+fn apply_doc_change(doc_change: &Value) -> bool {
+    if let Some(kind) = doc_change.get("kind").and_then(|k| k.as_str()) {
+        return super::resource_ops::apply_resource_op(kind, doc_change);
+    }
+    let uri = doc_change
+        .get("textDocument")
+        .and_then(|td| td.get("uri"))
+        .and_then(|u| u.as_str())
+        .unwrap_or("");
+    let path = uri_to_path(uri);
+    let edits = doc_change.get("edits").unwrap_or(&Value::Null);
+    apply_text_edits(&path, edits)
 }
 
 fn uri_to_path(uri: &str) -> String {
@@ -114,8 +115,10 @@ mod tests {
         let edit = json!({
             "changes": {
                 uri: [
-                    {"range": {"start": {"line": 0, "character": 3}, "end": {"line": 0, "character": 6}}, "newText": "bar"},
-                    {"range": {"start": {"line": 1, "character": 12}, "end": {"line": 1, "character": 15}}, "newText": "bar"}
+                    {"range": {"start": {"line": 0, "character": 3},
+                        "end": {"line": 0, "character": 6}}, "newText": "bar"},
+                    {"range": {"start": {"line": 1, "character": 12},
+                        "end": {"line": 1, "character": 15}}, "newText": "bar"}
                 ]
             }
         });
@@ -136,7 +139,8 @@ mod tests {
             "documentChanges": [{
                 "textDocument": {"uri": uri, "version": 1},
                 "edits": [
-                    {"range": {"start": {"line": 0, "character": 4}, "end": {"line": 0, "character": 5}}, "newText": "y"}
+                    {"range": {"start": {"line": 0, "character": 4},
+                        "end": {"line": 0, "character": 5}}, "newText": "y"}
                 ]
             }]
         });
@@ -217,7 +221,8 @@ mod tests {
                 {
                     "textDocument": {"uri": uri, "version": 1},
                     "edits": [
-                        {"range": {"start": {"line": 0, "character": 6}, "end": {"line": 0, "character": 9}}, "newText": "Bar"}
+                        {"range": {"start": {"line": 0, "character": 6},
+                            "end": {"line": 0, "character": 9}}, "newText": "Bar"}
                     ]
                 },
                 {"kind": "rename", "oldUri": uri, "newUri": new_uri}

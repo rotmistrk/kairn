@@ -1,8 +1,10 @@
 //! Color configuration loading from Tcl variables.
 
+use std::sync::Arc;
+
 use rusticle::interpreter::Interpreter;
 use txv_core::cell::{Attrs, Color, Style};
-use txv_core::palette::StyleId;
+use txv_core::palette::{Palette, StyleId};
 
 use crate::app_palette::AppPalette;
 use crate::custom_palette::CustomPalette;
@@ -41,10 +43,7 @@ pub fn apply_color_config(interp: &Interpreter, palette: &mut AppPalette) {
 }
 
 /// Apply chrome/framework color overrides. Returns a CustomPalette if any overrides set.
-pub fn apply_chrome_config(
-    interp: &Interpreter,
-    base: std::sync::Arc<dyn txv_core::palette::Palette>,
-) -> std::sync::Arc<dyn txv_core::palette::Palette> {
+pub fn apply_chrome_config(interp: &Interpreter, base: Arc<dyn Palette>) -> Arc<dyn Palette> {
     let mut custom = CustomPalette::new(base.clone());
     let mut has_overrides = false;
 
@@ -72,7 +71,7 @@ pub fn apply_chrome_config(
     }
 
     if has_overrides {
-        std::sync::Arc::new(custom)
+        Arc::new(custom)
     } else {
         base
     }

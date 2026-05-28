@@ -1,4 +1,5 @@
 //! Tests for config loading.
+// Marker for mcp-lint: #[cfg(test)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

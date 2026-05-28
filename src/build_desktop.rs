@@ -44,7 +44,17 @@ pub fn create_workspace_shell() -> TiledWorkspace {
     ws.set_handle_keys(false);
     ws.set_v_divider_gaps(false);
 
-    // Customize keymap: Ctrl+Shift+Up/Down for dropdown navigation
+    configure_keymap(&mut ws);
+    for i in 0..PANEL_COUNT {
+        if let Some(panel) = ws.panel_mut(i) {
+            panel.bar_mut().set_handle_keys(false);
+        }
+    }
+    ws.focus_panel(0);
+    ws
+}
+
+fn configure_keymap(ws: &mut TiledWorkspace) {
     use txv_core::event::{KeyCode, KeyEvent, KeyMod};
     let ctrl_shift = |code| KeyEvent {
         code,
@@ -57,7 +67,6 @@ pub fn create_workspace_shell() -> TiledWorkspace {
     let mut km = ws.keymap().clone();
     km.tab_dropdown_up = ctrl_shift(KeyCode::Up);
     km.tab_dropdown_down = ctrl_shift(KeyCode::Down);
-    // Remove focus_up/down (kairn uses F-keys for panel focus)
     km.focus_up = KeyEvent {
         code: KeyCode::F(127),
         modifiers: KeyMod::default(),
@@ -67,13 +76,6 @@ pub fn create_workspace_shell() -> TiledWorkspace {
         modifiers: KeyMod::default(),
     };
     ws.set_keymap(km);
-    for i in 0..PANEL_COUNT {
-        if let Some(panel) = ws.panel_mut(i) {
-            panel.bar_mut().set_handle_keys(false);
-        }
-    }
-    ws.focus_panel(0);
-    ws
 }
 
 /// Build the standard kairn workspace with tree, welcome, and terminal.

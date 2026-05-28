@@ -3,8 +3,13 @@
 use txv_core::program::CommandContext;
 
 use crate::build;
+use crate::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
 use crate::desktop::{close_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_evict::try_insert_tab;
+use crate::views::editor::EditorView;
+use crate::views::results::ResultsView;
+use crate::views::terminal::new_shell_with_command;
 
 /// Handle :build — spawn async build, show results in right panel.
 pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
@@ -32,8 +37,8 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         close_tab_by_title(desktop, SlotId::Tools, "Run");
-        let term = crate::views::terminal::new_shell_with_command(&cmd, &state.root_dir);
-        crate::handler_evict::try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, "Run".into(), term);
+        let term = new_shell_with_command(&cmd, &state.root_dir);
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, "Run".into(), term);
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }
@@ -81,8 +86,8 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
 
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         close_tab_by_title(desktop, SlotId::Tools, title);
-        let view = crate::views::results::ResultsView::searching(title, &state.root_dir);
-        crate::handler_evict::try_insert_tab(
+        let view = ResultsView::searching(title, &state.root_dir);
+        try_insert_tab(
             desktop,
             state,
             ctx.sink,
@@ -113,21 +118,22 @@ fn detect_run_command(root: &std::path::Path) -> String {
 
 /// Try to detect the test function name at the cursor position.
 fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        if let Some(panel) = desktop.panel_mut(SlotId::Center as usize) {
-            if let Some(view) = panel.active_view_mut() {
-                if let Some(any) = view.as_any_mut() {
-                    if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
-                        let line = editor.editor.cursor_line;
-                        for i in (0..=line).rev() {
-                            let text = editor.editor.buf().line(i).unwrap_or_default();
-                            if let Some(name) = extract_test_fn_name(&text) {
-                                return name;
-                            }
-                        }
-                    }
-                }
-            }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return String::new();
+    };
+    let editor = desktop
+        .panel_mut(SlotId::Center as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<EditorView>());
+    let Some(editor) = editor else {
+        return String::new();
+    };
+    let line = editor.editor.cursor_line;
+    for i in (0..=line).rev() {
+        let text = editor.editor.buf().line(i).unwrap_or_default();
+        if let Some(name) = extract_test_fn_name(&text) {
+            return name;
         }
     }
     String::new()
@@ -172,9 +178,8 @@ pub fn handle_prev_error(ctx: &mut CommandContext, state: &mut AppState) {
 fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
     let err = &state.build_errors[state.build_error_idx];
     let path = state.root_dir.join(&err.file);
-    let req = crate::commands::OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
-    ctx.sink
-        .push_command(crate::commands::CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+    let req = OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
+    ctx.sink.push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }
 
 /// Try a Tcl proc override. Returns Some(cmd) if proc exists and returns non-empty.

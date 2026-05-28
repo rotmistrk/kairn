@@ -18,6 +18,9 @@ pub mod plugins;
 
 pub use self::commands::{ScriptCommand, StateSnapshot};
 
+use std::env;
+use std::fs;
+use std::mem;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -110,7 +113,7 @@ impl ScriptEngine {
 
     /// Load and evaluate a Tcl file.
     pub fn load_file(&mut self, path: &Path) -> Result<(), String> {
-        let content = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let content = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         self.eval(&content)?;
         Ok(())
     }
@@ -123,7 +126,7 @@ impl ScriptEngine {
     /// Drain pending commands produced by scripts.
     pub fn drain_commands(&self) -> Vec<ScriptCommand> {
         if let Ok(mut cmds) = self.commands.lock() {
-            std::mem::take(&mut *cmds)
+            mem::take(&mut *cmds)
         } else {
             Vec::new()
         }
@@ -162,7 +165,7 @@ impl ScriptEngine {
     /// Load config files in standard order. Errors are logged, never fatal.
     /// Plugins are handled separately by PluginManager.
     pub fn load_config(&mut self, root_dir: &Path) {
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = env::var("HOME").unwrap_or_default();
         if !home.is_empty() {
             let config = Path::new(&home).join(".kairn/config.tcl");
             if config.exists() {

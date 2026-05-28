@@ -1,5 +1,6 @@
 //! Dired command handlers — file/directory create, delete, rename, copy.
 
+use std::fs;
 use std::path::Path;
 
 use txv_core::message::Message;
@@ -35,13 +36,13 @@ pub(crate) fn cmd_new_file(ctx: &mut CommandContext, _state: &mut AppState, arg:
     }
     if let Some(parent) = path.parent() {
         if !parent.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
+            if let Err(e) = fs::create_dir_all(parent) {
                 err(ctx, format!("Cannot create dirs: {e}"));
                 return;
             }
         }
     }
-    if let Err(e) = std::fs::write(path, "") {
+    if let Err(e) = fs::write(path, "") {
         err(ctx, format!("Cannot create file: {e}"));
         return;
     }
@@ -59,7 +60,7 @@ pub(crate) fn cmd_new_dir(ctx: &mut CommandContext, _state: &mut AppState, arg: 
         err(ctx, format!("Already exists: {}", path.display()));
         return;
     }
-    if let Err(e) = std::fs::create_dir_all(path) {
+    if let Err(e) = fs::create_dir_all(path) {
         err(ctx, format!("Cannot create directory: {e}"));
         return;
     }
@@ -78,9 +79,9 @@ pub(crate) fn cmd_delete_file(ctx: &mut CommandContext, _state: &mut AppState, a
         return;
     }
     let result = if path.is_dir() {
-        std::fs::remove_dir_all(path)
+        fs::remove_dir_all(path)
     } else {
-        std::fs::remove_file(path)
+        fs::remove_file(path)
     };
     if let Err(e) = result {
         err(ctx, format!("Cannot delete: {e}"));
@@ -110,13 +111,13 @@ pub(crate) fn cmd_rename_file(ctx: &mut CommandContext, _state: &mut AppState, a
     }
     if let Some(parent) = new.parent() {
         if !parent.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
+            if let Err(e) = fs::create_dir_all(parent) {
                 err(ctx, format!("Cannot create dirs: {e}"));
                 return;
             }
         }
     }
-    if let Err(e) = std::fs::rename(old, new) {
+    if let Err(e) = fs::rename(old, new) {
         err(ctx, format!("Cannot rename: {e}"));
         return;
     }
@@ -142,7 +143,7 @@ pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg
     }
     if let Some(parent) = dest.parent() {
         if !parent.exists() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
+            if let Err(e) = fs::create_dir_all(parent) {
                 err(ctx, format!("Cannot create dirs: {e}"));
                 return;
             }
@@ -151,7 +152,7 @@ pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg
     let result = if src.is_dir() {
         copy_dir_recursive(src, dest)
     } else {
-        std::fs::copy(src, dest).map(|_| ())
+        fs::copy(src, dest).map(|_| ())
     };
     if let Err(e) = result {
         err(ctx, format!("Cannot copy: {e}"));
@@ -162,14 +163,14 @@ pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg
 }
 
 pub(crate) fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dest)?;
-    for entry in std::fs::read_dir(src)? {
+    fs::create_dir_all(dest)?;
+    for entry in fs::read_dir(src)? {
         let entry = entry?;
         let target = dest.join(entry.file_name());
         if entry.file_type()?.is_dir() {
             copy_dir_recursive(&entry.path(), &target)?;
         } else {
-            std::fs::copy(entry.path(), target)?;
+            fs::copy(entry.path(), target)?;
         }
     }
     Ok(())

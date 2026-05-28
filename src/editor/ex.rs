@@ -43,19 +43,17 @@ pub enum ExCommand {
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
 pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option<ExCommand> {
-    use super::ex_commands::{lookup_command, split_cmd_word, ExCmdId};
+    use super::ex_commands::{lookup_command, split_cmd_word};
 
     let cmd = cmd.trim();
     if cmd.is_empty() {
         return None;
     }
 
-    // Goto line number (pure digits)
     if let Ok(n) = cmd.parse::<usize>() {
         return Some(ExCommand::GotoLine(n));
     }
 
-    // Find where the command letter starts (skip range prefix)
     let cmd_start = cmd
         .find(|c: char| c.is_ascii_alphabetic() || c == '!' || c == 's')
         .unwrap_or(cmd.len());
@@ -63,7 +61,6 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
     let range_str = cmd[..cmd_start].trim();
     let cmd_part = &cmd[cmd_start..];
 
-    // Shell filter: range!command
     if let Some(rest) = cmd_part.strip_prefix('!') {
         let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
         return Some(ExCommand::Shell {
@@ -73,16 +70,25 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
         });
     }
 
-    // Extract command word and look it up
     let (cmd_word, rest) = split_cmd_word(cmd_part);
 
-    // Handle q! as a special case (! modifies the command)
     let (cmd_id, rest) = if cmd_word == "q" && rest.starts_with('!') {
         (lookup_command("q!")?, &rest[1..])
     } else {
         (lookup_command(cmd_word)?, rest)
     };
 
+    dispatch_ex_cmd_id(cmd_id, rest, range_str, cursor_row, total_lines)
+}
+
+fn dispatch_ex_cmd_id(
+    cmd_id: super::ex_commands::ExCmdId,
+    rest: &str,
+    range_str: &str,
+    cursor_row: usize,
+    total_lines: usize,
+) -> Option<ExCommand> {
+    use super::ex_commands::ExCmdId;
     match cmd_id {
         ExCmdId::Write => Some(ExCommand::Save),
         ExCmdId::Quit => Some(ExCommand::Quit),
@@ -99,16 +105,25 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
         ExCmdId::Vsplit => Some(ExCommand::Vsplit(rest.trim().to_string())),
         ExCmdId::Only => Some(ExCommand::Only),
         ExCmdId::Revert => Some(ExCommand::Revert),
-        ExCmdId::Delete => {
-            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
-            Some(ExCommand::Delete { start, end })
+        ExCmdId::Delete | ExCmdId::Yank | ExCmdId::Substitute => {
+            dispatch_ex_range_cmd(cmd_id, rest, range_str, cursor_row, total_lines)
         }
-        ExCmdId::Yank => {
-            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
-            Some(ExCommand::Yank { start, end })
-        }
+    }
+}
+
+fn dispatch_ex_range_cmd(
+    cmd_id: super::ex_commands::ExCmdId,
+    rest: &str,
+    range_str: &str,
+    cursor_row: usize,
+    total_lines: usize,
+) -> Option<ExCommand> {
+    use super::ex_commands::ExCmdId;
+    let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+    match cmd_id {
+        ExCmdId::Delete => Some(ExCommand::Delete { start, end }),
+        ExCmdId::Yank => Some(ExCommand::Yank { start, end }),
         ExCmdId::Substitute => {
-            let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
             let (pattern, replacement, flags) = parse_substitute(rest)?;
             Some(ExCommand::Substitute {
                 start,
@@ -118,6 +133,7 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
                 global: flags.contains('g'),
             })
         }
+        _ => None,
     }
 }
 

@@ -87,44 +87,49 @@ impl LspStatusTracker {
             return false;
         };
         let kind = value.get("kind").and_then(|k| k.as_str()).unwrap_or("");
-
         match kind {
-            "begin" => {
-                let msg = value.get("message").and_then(|m| m.as_str()).map(|s| s.to_string());
-                let pct = value.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u8);
-                self.servers.insert(
-                    lang.to_string(),
-                    LspServerState::Indexing {
-                        percent: pct,
-                        message: msg,
-                    },
-                );
-                true
-            }
-            "report" => {
-                let pct = value.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u8);
-                let msg = value.get("message").and_then(|m| m.as_str()).map(|s| s.to_string());
-                if let Some(LspServerState::Indexing { percent, message }) = self.servers.get_mut(lang) {
-                    if pct.is_some() {
-                        *percent = pct;
-                    }
-                    if msg.is_some() {
-                        *message = msg;
-                    }
-                    true
-                } else {
-                    false
-                }
-            }
-            "end" => {
-                if self.servers.get(lang) == Some(&LspServerState::Error) {
-                    return false;
-                }
-                self.servers.insert(lang.to_string(), LspServerState::Ready);
-                true
-            }
+            "begin" => self.handle_progress_begin(lang, value),
+            "report" => self.handle_progress_report(lang, value),
+            "end" => self.handle_progress_end(lang),
             _ => false,
         }
+    }
+
+    fn handle_progress_begin(&mut self, lang: &str, value: &Value) -> bool {
+        let msg = value.get("message").and_then(|m| m.as_str()).map(|s| s.to_string());
+        let pct = value.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u8);
+        self.servers.insert(
+            lang.to_string(),
+            LspServerState::Indexing {
+                percent: pct,
+                message: msg,
+            },
+        );
+        true
+    }
+
+    fn handle_progress_report(&mut self, lang: &str, value: &Value) -> bool {
+        let pct = value.get("percentage").and_then(|p| p.as_u64()).map(|p| p as u8);
+        let msg = value.get("message").and_then(|m| m.as_str()).map(|s| s.to_string());
+        if let Some(LspServerState::Indexing { percent, message }) = self.servers.get_mut(lang) {
+            if pct.is_some() {
+                *percent = pct;
+            }
+            if msg.is_some() {
+                *message = msg;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fn handle_progress_end(&mut self, lang: &str) -> bool {
+        if self.servers.get(lang) == Some(&LspServerState::Error) {
+            return false;
+        }
+        self.servers.insert(lang.to_string(), LspServerState::Ready);
+        true
     }
 }
 
@@ -187,7 +192,10 @@ mod tests {
         let mut tracker = LspStatusTracker::new();
         tracker.set_state("rust", LspServerState::Ready);
 
-        let begin = serde_json::json!({"token": "rustAnalyzer/Indexing", "value": {"kind": "begin", "title": "Indexing", "percentage": 0}});
+        let begin = serde_json::json!({
+            "token": "rustAnalyzer/Indexing",
+            "value": {"kind": "begin", "title": "Indexing", "percentage": 0}
+        });
         assert!(tracker.handle_progress("rust", &begin));
         assert!(matches!(
             tracker.servers.get("rust"),

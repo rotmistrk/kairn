@@ -1,7 +1,14 @@
 //! MCP build/search handlers — Tier 5 operations.
 
-use txv_core::prelude::*;
+use std::fs::read_to_string;
 
+use ignore::WalkBuilder;
+use regex::RegexBuilder;
+use txv_core::prelude::*;
+use txv_core::run::Waker;
+
+use crate::build::run_async;
+use crate::build_detect::detect;
 use crate::handler::AppState;
 
 pub fn mcp_get_build_errors(state: &AppState) -> Result<serde_json::Value, String> {
@@ -21,57 +28,65 @@ pub fn mcp_get_build_errors(state: &AppState) -> Result<serde_json::Value, Strin
 }
 
 pub fn mcp_search_project(state: &AppState, pattern: &str) -> Result<serde_json::Value, String> {
-    let re = regex::RegexBuilder::new(pattern)
+    let re = RegexBuilder::new(pattern)
         .case_insensitive(false)
         .build()
         .map_err(|e| format!("Invalid regex: {e}"))?;
     let mut results = Vec::new();
-    let walker = ignore::WalkBuilder::new(&state.root_dir)
-        .hidden(true)
-        .git_ignore(true)
-        .build();
+    let walker = WalkBuilder::new(&state.root_dir).hidden(true).git_ignore(true).build();
     for entry in walker.flatten() {
         if !entry.file_type().is_some_and(|ft| ft.is_file()) {
             continue;
         }
         let path = entry.path();
-        let Ok(content) = std::fs::read_to_string(path) else {
+        let Ok(content) = read_to_string(path) else {
             continue;
         };
-        for (i, line) in content.lines().enumerate() {
-            if re.is_match(line) {
-                let rel = path.strip_prefix(&state.root_dir).unwrap_or(path);
-                results.push(serde_json::json!({
-                    "file": rel.to_string_lossy(),
-                    "line": i + 1,
-                    "text": line,
-                }));
-                if results.len() >= 200 {
-                    return Ok(serde_json::json!({"matches": results, "truncated": true}));
-                }
-            }
+        if let Some(val) = search_file_lines(&re, path, &content, &state.root_dir, &mut results) {
+            return Ok(val);
         }
     }
     Ok(serde_json::json!({"matches": results, "truncated": false}))
 }
 
+fn search_file_lines(
+    re: &regex::Regex,
+    path: &std::path::Path,
+    content: &str,
+    root: &std::path::Path,
+    results: &mut Vec<serde_json::Value>,
+) -> Option<serde_json::Value> {
+    for (i, line) in content.lines().enumerate() {
+        if !re.is_match(line) {
+            continue;
+        }
+        let rel = path.strip_prefix(root).unwrap_or(path);
+        results.push(serde_json::json!({
+            "file": rel.to_string_lossy(),
+            "line": i + 1,
+            "text": line,
+        }));
+        if results.len() >= 200 {
+            return Some(serde_json::json!({"matches": results, "truncated": true}));
+        }
+    }
+    None
+}
+
 pub fn mcp_run_build(state: &mut AppState, sink: &EventSink, command: &str) -> Result<serde_json::Value, String> {
     let cmd = if command.is_empty() {
-        crate::build_detect::detect(&state.root_dir)
+        detect(&state.root_dir)
             .map(|bs| bs.build.to_string())
             .unwrap_or_else(|| "make".to_string())
     } else {
         command.to_string()
     };
-    let waker = state.waker.clone().unwrap_or_else(txv_core::run::Waker::noop);
-    let task = crate::build::run_async(&cmd, &state.root_dir, waker);
+    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
+    let task = run_async(&cmd, &state.root_dir, waker);
     state.build_pending = Some((cmd.clone(), task, state.root_dir.clone()));
     sink.push_command(
         txv_widgets::CM_STATUS_MESSAGE,
-        Some(Box::new(txv_core::message::Message::info(
-            "build",
-            format!("Running: {cmd}"),
-        ))),
+        Some(Box::new(Message::info("build", format!("Running: {cmd}")))),
     );
     Ok(serde_json::json!({"started": cmd}))
 }

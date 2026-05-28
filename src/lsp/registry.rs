@@ -3,12 +3,17 @@
 //! States: Starting → WarmingUp → Ready → Disabled
 //! No out-of-order messages possible: requests only sent in Ready state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::env;
 use std::path::{Path, PathBuf};
+
+use txv_core::run::Waker;
 
 use super::client::LspClient;
 use super::protocol;
 use super::server_config::ServerConfig;
+
+use crate::tool_check::install_hint;
 
 /// Lifecycle state of a single LSP server.
 pub(super) enum ServerState {
@@ -31,8 +36,8 @@ pub struct LspRegistry {
     /// Files to send didOpen for after initialization completes.
     pub(super) pending_opens: Vec<(String, PathBuf)>,
     /// Languages that have had their lsp-start hook fired.
-    hook_fired: std::collections::HashSet<String>,
-    waker: txv_core::run::Waker,
+    hook_fired: HashSet<String>,
+    waker: Waker,
 }
 
 impl LspRegistry {
@@ -54,13 +59,13 @@ impl LspRegistry {
             timeouts: HashMap::new(),
             last_error: None,
             pending_opens: Vec::new(),
-            hook_fired: std::collections::HashSet::new(),
-            waker: txv_core::run::Waker::noop(),
+            hook_fired: HashSet::new(),
+            waker: Waker::noop(),
         }
     }
 
     /// Set the waker so LSP reader threads can wake the event loop.
-    pub fn set_waker(&mut self, waker: txv_core::run::Waker) {
+    pub fn set_waker(&mut self, waker: Waker) {
         self.waker = waker;
     }
 
@@ -96,7 +101,7 @@ impl LspRegistry {
         let mut client = match LspClient::spawn(&resolved_cmd, &args, &config.env, self.waker.clone()) {
             Some(c) => c,
             None => {
-                let hint = crate::tool_check::install_hint(&config.command);
+                let hint = install_hint(&config.command);
                 let err = format!("LSP: {} not found. Install: {}", config.command, hint);
                 log::error!("{err}");
                 self.last_error = Some(err);
@@ -238,10 +243,10 @@ impl Default for LspRegistry {
 
 /// Resolve a command: if not an absolute path, check next to the current executable first.
 fn resolve_command(cmd: &str) -> String {
-    if std::path::Path::new(cmd).is_absolute() {
+    if Path::new(cmd).is_absolute() {
         return cmd.to_string();
     }
-    if let Ok(exe) = std::env::current_exe() {
+    if let Ok(exe) = env::current_exe() {
         if let Some(dir) = exe.parent() {
             let candidate = dir.join(cmd);
             if candidate.exists() {

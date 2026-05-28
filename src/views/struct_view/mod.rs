@@ -5,11 +5,13 @@ mod filter;
 mod handle;
 pub(crate) mod undo;
 
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 use txv_widgets::inline_edit::InlineEditor;
 
+use crate::commands::CM_SAVE;
 use crate::structured::{NodeId, NodeKind, StructuredDoc};
 
 use undo::UndoStack;
@@ -104,7 +106,7 @@ impl StructuredView {
     /// Save the document to disk.
     pub fn save(&mut self) -> Result<(), String> {
         let content = self.doc.serialize();
-        std::fs::write(&self.path, &content).map_err(|e| e.to_string())?;
+        fs::write(&self.path, &content).map_err(|e| e.to_string())?;
         self.dirty = false;
         self.sync_title();
         Ok(())
@@ -255,7 +257,7 @@ impl View for StructuredView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if let Event::Command { id, .. } = event {
-            if *id == crate::commands::CM_SAVE {
+            if *id == CM_SAVE {
                 return handle::handle_save_command(self);
             }
             return HandleResult::Ignored;

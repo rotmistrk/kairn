@@ -12,106 +12,7 @@ pub struct BuildSystem {
 /// Detect build system by scanning workspace root for marker files.
 /// Returns the first match in priority order.
 pub fn detect(root: &Path) -> Option<BuildSystem> {
-    let markers: &[(&[&str], BuildSystem)] = &[
-        (
-            &["Makefile", "GNUmakefile"],
-            BuildSystem {
-                build: "make",
-                test: "make test",
-                test_file: None,
-            },
-        ),
-        (
-            &["Cargo.toml"],
-            BuildSystem {
-                build: "cargo build",
-                test: "cargo test --workspace",
-                test_file: Some("cargo test --lib {file}"),
-            },
-        ),
-        (
-            &["go.mod"],
-            BuildSystem {
-                build: "go build ./...",
-                test: "go test ./...",
-                test_file: Some("go test ./{dir}"),
-            },
-        ),
-        (
-            &["gradlew"],
-            BuildSystem {
-                build: "./gradlew build",
-                test: "./gradlew test",
-                test_file: None,
-            },
-        ),
-        (
-            &["build.gradle", "build.gradle.kts"],
-            BuildSystem {
-                build: "gradle build",
-                test: "gradle test",
-                test_file: None,
-            },
-        ),
-        (
-            &["pom.xml"],
-            BuildSystem {
-                build: "mvn compile",
-                test: "mvn test",
-                test_file: None,
-            },
-        ),
-        (
-            &["CMakeLists.txt"],
-            BuildSystem {
-                build: "cmake --build build",
-                test: "ctest --test-dir build",
-                test_file: None,
-            },
-        ),
-        (
-            &["package.json"],
-            BuildSystem {
-                build: "npm run build",
-                test: "npm test",
-                test_file: None,
-            },
-        ),
-        (
-            &["build.xml"],
-            BuildSystem {
-                build: "ant",
-                test: "ant test",
-                test_file: None,
-            },
-        ),
-        (
-            &["configure.ac", "Makefile.am"],
-            BuildSystem {
-                build: "make",
-                test: "make check",
-                test_file: None,
-            },
-        ),
-        (
-            &["meson.build"],
-            BuildSystem {
-                build: "meson compile -C build",
-                test: "meson test -C build",
-                test_file: None,
-            },
-        ),
-        (
-            &["BUILD", "WORKSPACE"],
-            BuildSystem {
-                build: "bazel build //...",
-                test: "bazel test //...",
-                test_file: None,
-            },
-        ),
-    ];
-
-    for (files, system) in markers {
+    for (files, system) in PRIMARY_MARKERS.iter().chain(SECONDARY_MARKERS.iter()) {
         for file in *files {
             if root.join(file).exists() {
                 return Some(BuildSystem {
@@ -124,6 +25,108 @@ pub fn detect(root: &Path) -> Option<BuildSystem> {
     }
     None
 }
+
+const PRIMARY_MARKERS: &[(&[&str], BuildSystem)] = &[
+    (
+        &["Makefile", "GNUmakefile"],
+        BuildSystem {
+            build: "make",
+            test: "make test",
+            test_file: None,
+        },
+    ),
+    (
+        &["Cargo.toml"],
+        BuildSystem {
+            build: "cargo build",
+            test: "cargo test --workspace",
+            test_file: Some("cargo test --lib {file}"),
+        },
+    ),
+    (
+        &["go.mod"],
+        BuildSystem {
+            build: "go build ./...",
+            test: "go test ./...",
+            test_file: Some("go test ./{dir}"),
+        },
+    ),
+    (
+        &["gradlew"],
+        BuildSystem {
+            build: "./gradlew build",
+            test: "./gradlew test",
+            test_file: None,
+        },
+    ),
+    (
+        &["build.gradle", "build.gradle.kts"],
+        BuildSystem {
+            build: "gradle build",
+            test: "gradle test",
+            test_file: None,
+        },
+    ),
+    (
+        &["pom.xml"],
+        BuildSystem {
+            build: "mvn compile",
+            test: "mvn test",
+            test_file: None,
+        },
+    ),
+];
+
+const SECONDARY_MARKERS: &[(&[&str], BuildSystem)] = &[
+    (
+        &["CMakeLists.txt"],
+        BuildSystem {
+            build: "cmake --build build",
+            test: "ctest --test-dir build",
+            test_file: None,
+        },
+    ),
+    (
+        &["package.json"],
+        BuildSystem {
+            build: "npm run build",
+            test: "npm test",
+            test_file: None,
+        },
+    ),
+    (
+        &["build.xml"],
+        BuildSystem {
+            build: "ant",
+            test: "ant test",
+            test_file: None,
+        },
+    ),
+    (
+        &["configure.ac", "Makefile.am"],
+        BuildSystem {
+            build: "make",
+            test: "make check",
+            test_file: None,
+        },
+    ),
+    (
+        &["meson.build"],
+        BuildSystem {
+            build: "meson compile -C build",
+            test: "meson test -C build",
+            test_file: None,
+        },
+    ),
+    (
+        &["BUILD", "WORKSPACE"],
+        BuildSystem {
+            build: "bazel build //...",
+            test: "bazel test //...",
+            test_file: None,
+        },
+    ),
+];
 
 #[cfg(test)]
 mod tests {

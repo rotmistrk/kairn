@@ -1,5 +1,7 @@
 //! Viewport scrolling (wrap-aware) and command history navigation.
 
+use txv_core::text::display_char_width;
+
 use super::EditorView;
 
 impl EditorView {
@@ -15,23 +17,28 @@ impl EditorView {
         }
 
         if !self.editor.options.wrap {
-            if self.editor.cursor_line >= self.editor.viewport_scroll + h {
-                self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
-            }
-            // Horizontal scroll: keep cursor within visible columns
-            let avail = self.text_avail_width();
-            if avail > 0 {
-                let col = self.cursor_visual_col();
-                if col < self.editor.h_scroll {
-                    self.editor.h_scroll = col;
-                } else if col >= self.editor.h_scroll + avail {
-                    self.editor.h_scroll = col - avail + 1;
-                }
-            }
+            self.ensure_cursor_visible_nowrap(h);
             return;
         }
+        self.ensure_cursor_visible_wrap(h);
+    }
 
-        // With wrap: count visual rows from viewport_scroll to cursor_line (inclusive)
+    fn ensure_cursor_visible_nowrap(&mut self, h: usize) {
+        if self.editor.cursor_line >= self.editor.viewport_scroll + h {
+            self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
+        }
+        let avail = self.text_avail_width();
+        if avail > 0 {
+            let col = self.cursor_visual_col();
+            if col < self.editor.h_scroll {
+                self.editor.h_scroll = col;
+            } else if col >= self.editor.h_scroll + avail {
+                self.editor.h_scroll = col - avail + 1;
+            }
+        }
+    }
+
+    fn ensure_cursor_visible_wrap(&mut self, h: usize) {
         let avail = self.text_avail_width();
         if avail == 0 {
             return;
@@ -94,7 +101,7 @@ impl EditorView {
             col += if ch == '\t' {
                 tab_w
             } else {
-                txv_core::text::display_char_width(ch) as usize
+                display_char_width(ch) as usize
             };
         }
         col

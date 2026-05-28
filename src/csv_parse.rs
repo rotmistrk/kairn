@@ -169,33 +169,38 @@ fn parse_row(chars: &mut std::iter::Peekable<std::str::Chars>, delimiter: char) 
 fn parse_field(chars: &mut std::iter::Peekable<std::str::Chars>, delimiter: char) -> String {
     if chars.peek() == Some(&'"') {
         chars.next(); // consume opening quote
-        let mut field = String::new();
-        loop {
-            match chars.next() {
-                Some('"') => {
-                    if chars.peek() == Some(&'"') {
-                        chars.next();
-                        field.push('"');
-                    } else {
-                        break;
-                    }
-                }
-                Some(c) => field.push(c),
-                None => break,
-            }
-        }
-        field
+        parse_quoted_field(chars)
     } else {
-        let mut field = String::new();
-        loop {
-            match chars.peek() {
-                Some(&c) if c == delimiter || c == '\n' || c == '\r' => break,
-                Some(_) => field.push(chars.next().unwrap_or(' ')),
-                None => break,
-            }
-        }
-        field
+        parse_unquoted_field(chars, delimiter)
     }
+}
+
+fn parse_quoted_field(chars: &mut std::iter::Peekable<std::str::Chars>) -> String {
+    let mut field = String::new();
+    loop {
+        match chars.next() {
+            Some('"') if chars.peek() == Some(&'"') => {
+                chars.next();
+                field.push('"');
+            }
+            Some('"') => break,
+            Some(c) => field.push(c),
+            None => break,
+        }
+    }
+    field
+}
+
+fn parse_unquoted_field(chars: &mut std::iter::Peekable<std::str::Chars>, delimiter: char) -> String {
+    let mut field = String::new();
+    loop {
+        match chars.peek() {
+            Some(&c) if c == delimiter || c == '\n' || c == '\r' => break,
+            Some(_) => field.push(chars.next().unwrap_or(' ')),
+            None => break,
+        }
+    }
+    field
 }
 
 fn is_special_value(s: &str) -> bool {

@@ -3,7 +3,11 @@
 use txv_core::program::CommandContext;
 
 use crate::desktop::{close_tab_by_title, SlotId};
+use crate::git_log::log_async;
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_evict::try_insert_tab;
+use crate::views::editor::EditorView;
+use crate::views::git_log::GitLogView;
 
 /// Open the git log viewer as a singleton tab in the right panel.
 pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
@@ -17,7 +21,7 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
             .panel_mut(SlotId::Center as usize)
             .and_then(|p| p.active_view_mut())
             .and_then(|v| v.as_any_mut())
-            .and_then(|a| a.downcast_ref::<crate::views::editor::EditorView>())
+            .and_then(|a| a.downcast_ref::<EditorView>())
             .map(|e| e.path().strip_prefix(&state.root_dir).unwrap_or(e.path()).to_path_buf())
     } else {
         None
@@ -28,9 +32,9 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
         Some(arg)
     };
 
-    let shared = crate::git_log::log_async(&state.root_dir, branch, filter_path.as_deref());
-    let view = crate::views::git_log::GitLogView::new(shared);
-    crate::handler_evict::try_insert_tab(
+    let shared = log_async(&state.root_dir, branch, filter_path.as_deref());
+    let view = GitLogView::new(shared);
+    try_insert_tab(
         desktop,
         state,
         ctx.sink,

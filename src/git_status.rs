@@ -36,32 +36,36 @@ pub fn collect_git_status(root: &Path) -> HashMap<String, FileStatus> {
         let Some(path) = entry.path() else {
             continue;
         };
-        let s = entry.status();
-        let status = if s.contains(git2::Status::CONFLICTED) {
-            FileStatus::Conflict
-        } else if s.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
-            if s.contains(git2::Status::INDEX_NEW) {
-                FileStatus::Added
-            } else {
-                FileStatus::Untracked
-            }
-        } else if s.intersects(
-            git2::Status::WT_MODIFIED
-                | git2::Status::INDEX_MODIFIED
-                | git2::Status::WT_RENAMED
-                | git2::Status::INDEX_RENAMED
-                | git2::Status::WT_DELETED
-                | git2::Status::INDEX_DELETED,
-        ) {
-            FileStatus::Modified
-        } else if s.contains(git2::Status::IGNORED) {
-            FileStatus::Ignored
-        } else {
-            continue;
-        };
-        map.insert(path.to_string(), status);
+        if let Some(status) = classify_status(entry.status()) {
+            map.insert(path.to_string(), status);
+        }
     }
     map
+}
+
+fn classify_status(s: git2::Status) -> Option<FileStatus> {
+    if s.contains(git2::Status::CONFLICTED) {
+        Some(FileStatus::Conflict)
+    } else if s.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) {
+        if s.contains(git2::Status::INDEX_NEW) {
+            Some(FileStatus::Added)
+        } else {
+            Some(FileStatus::Untracked)
+        }
+    } else if s.intersects(
+        git2::Status::WT_MODIFIED
+            | git2::Status::INDEX_MODIFIED
+            | git2::Status::WT_RENAMED
+            | git2::Status::INDEX_RENAMED
+            | git2::Status::WT_DELETED
+            | git2::Status::INDEX_DELETED,
+    ) {
+        Some(FileStatus::Modified)
+    } else if s.contains(git2::Status::IGNORED) {
+        Some(FileStatus::Ignored)
+    } else {
+        None
+    }
 }
 
 /// Determine the aggregate status for a directory from its children.

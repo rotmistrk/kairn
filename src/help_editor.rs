@@ -2,6 +2,14 @@
 
 /// Generate help text for editor modes.
 pub fn help_editor() -> String {
+    let mut s = String::new();
+    s.push_str(help_normal_mode());
+    s.push_str(&help_visual_search_ex());
+    s.push_str(help_diff_insert());
+    s
+}
+
+fn help_normal_mode() -> &'static str {
     "\
 ─── Editor — Normal Mode ─────────────────────────────
   h/j/k/l         Move left/down/up/right
@@ -40,7 +48,12 @@ pub fn help_editor() -> String {
   gr              Find references
   gR              Rename symbol (prompts for name)
   K               Hover info
+"
+}
 
+fn help_visual_search_ex() -> String {
+    let mut s = String::from(
+        "\
 ─── Editor — Visual Mode ─────────────────────────────
   h/j/k/l/w/b/e  Extend selection
   0 / $ / ^      Start / end / first non-blank
@@ -52,11 +65,19 @@ pub fn help_editor() -> String {
   :               Ex command on selection
   Esc             Exit visual mode
 
-─── Editor — Search ──────────────────────────────────
+─── Editor — Search ──────────────────────────────
   /pattern        Search forward
   n / N           Next / previous match
   * / #           Search word under cursor fwd / back
 
+",
+    );
+    s.push_str(help_ex_commands());
+    s
+}
+
+fn help_ex_commands() -> &'static str {
+    "\
 ─── Editor — Ex Commands (:) ─────────────────────────
   :w              Save
   :q              Close (prompts if unsaved)
@@ -80,8 +101,12 @@ pub fn help_editor() -> String {
   :vsplit <file>   Vertical split
   :only            Close split
   :revert          Revert hunk under cursor (in diff mode)
+"
+}
 
-─── Editor — Diff Mode ───────────────────────────────
+fn help_diff_insert() -> &'static str {
+    "\
+─── Editor — Diff Mode ─────────────────────────────
   j / k           Move down / up
   n / N           Next / previous hunk
   g / G           Jump to start / end
@@ -113,5 +138,4 @@ pub fn help_editor() -> String {
   Enter / Tab     Accept completion
   Esc             Dismiss popup
 "
-    .to_string()
 }

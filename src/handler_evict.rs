@@ -31,48 +31,67 @@ pub fn try_insert_tab(
         desktop.insert_tab(slot as usize, &title, view);
         return true;
     }
-    let Some(panel) = desktop.panel(slot as usize) else {
-        return false;
-    };
-    let lru_idx = match panel.lru_index() {
+
+    let lru_idx = match desktop.panel(slot as usize).and_then(|p| p.lru_index()) {
         Some(i) => i,
         None => {
             desktop.insert_tab(slot as usize, &title, view);
             return true;
         }
     };
-    let Some(panel) = desktop.panel(slot as usize) else {
-        return false;
-    };
-    if panel.can_close_tab(lru_idx) == CloseResult::Ok {
-        if state.settings.editor_defaults.autosave {
-            if let Some(panel) = desktop.panel_mut(slot as usize) {
-                if let Some(view) = panel.view_at_mut(lru_idx) {
-                    if let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
-                        if editor.editor.buf().is_dirty() {
-                            let _ = editor.save();
-                        }
-                    }
-                }
-            }
-        }
-        if let Some(panel) = desktop.panel(slot as usize) {
-            if let Some(tab_title) = panel.tab_title(lru_idx).map(String::from) {
-                state.broker.close(&tab_title);
-            }
-        }
-        if let Some(panel) = desktop.panel_mut(slot as usize) {
-            panel.remove_tab(lru_idx);
-        }
-        desktop.insert_tab(slot as usize, &title, view);
+
+    if can_evict_lru(desktop, state, slot, lru_idx) {
+        evict_and_insert(desktop, state, slot, lru_idx, title, view);
         return true;
     }
+
     if let Some(panel) = desktop.panel_mut(slot as usize) {
         panel.set_active(lru_idx);
     }
     trigger_close_prompt(desktop, sink, slot, lru_idx);
     state.pending_tab = Some(PendingTab { slot, title, view });
     false
+}
+
+fn can_evict_lru(desktop: &mut TiledWorkspace, _state: &AppState, slot: SlotId, lru_idx: usize) -> bool {
+    desktop
+        .panel(slot as usize)
+        .is_some_and(|p| p.can_close_tab(lru_idx) == CloseResult::Ok)
+}
+
+fn evict_and_insert(
+    desktop: &mut TiledWorkspace,
+    state: &mut AppState,
+    slot: SlotId,
+    lru_idx: usize,
+    title: String,
+    view: Box<dyn View>,
+) {
+    if state.settings.editor_defaults.autosave {
+        autosave_tab(desktop, slot, lru_idx);
+    }
+    if let Some(panel) = desktop.panel(slot as usize) {
+        if let Some(tab_title) = panel.tab_title(lru_idx).map(String::from) {
+            state.broker.close(&tab_title);
+        }
+    }
+    if let Some(panel) = desktop.panel_mut(slot as usize) {
+        panel.remove_tab(lru_idx);
+    }
+    desktop.insert_tab(slot as usize, &title, view);
+}
+
+fn autosave_tab(desktop: &mut TiledWorkspace, slot: SlotId, idx: usize) {
+    let editor = desktop
+        .panel_mut(slot as usize)
+        .and_then(|p| p.view_at_mut(idx))
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<EditorView>());
+    if let Some(editor) = editor {
+        if editor.editor.buf().is_dirty() {
+            let _ = editor.save();
+        }
+    }
 }
 
 fn trigger_close_prompt(desktop: &mut TiledWorkspace, sink: &EventSink, slot: SlotId, idx: usize) {

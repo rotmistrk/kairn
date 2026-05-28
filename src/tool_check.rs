@@ -107,17 +107,7 @@ fn relevant_tools(root_dir: &Path) -> Vec<(&'static str, &'static str)> {
     let dirs_to_scan: Vec<std::path::PathBuf> = vec![root_dir.to_path_buf(), root_dir.join("src")];
 
     for dir in dirs_to_scan {
-        if let Ok(entries) = std::fs::read_dir(&dir) {
-            for entry in entries.flatten() {
-                if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
-                    for &(e, tool) in EXT_TO_TOOL {
-                        if ext == e && !needed.contains(&tool) {
-                            needed.push(tool);
-                        }
-                    }
-                }
-            }
-        }
+        scan_dir_for_tools(&dir, &mut needed);
     }
 
     TOOLS
@@ -125,6 +115,23 @@ fn relevant_tools(root_dir: &Path) -> Vec<(&'static str, &'static str)> {
         .filter(|(name, _)| needed.contains(name))
         .copied()
         .collect()
+}
+
+fn scan_dir_for_tools(dir: &Path, needed: &mut Vec<&'static str>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        for &(e, tool) in EXT_TO_TOOL {
+            if ext == e && !needed.contains(&tool) {
+                needed.push(tool);
+            }
+        }
+    }
 }
 
 /// Check if a tool exists and get its version.
@@ -139,9 +146,11 @@ fn probe(name: &str) -> (bool, Option<String>) {
         return (false, None);
     }
 
-    // Some tools (e.g. jdtls) don't support --version and start a long-running
-    // server instead. Use a timeout to avoid hanging.
-    let version = Command::new(name)
+    (true, probe_version(name))
+}
+
+fn probe_version(name: &str) -> Option<String> {
+    Command::new(name)
         .arg("--version")
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
@@ -171,9 +180,7 @@ fn probe(name: &str) -> (bool, Option<String>) {
                     Err(_) => return None,
                 }
             }
-        });
-
-    (true, version)
+        })
 }
 
 #[cfg(test)]

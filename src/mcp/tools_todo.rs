@@ -1,17 +1,20 @@
 //! MCP todo tool handlers.
 
+use std::env;
+use std::fs;
+
 use serde_json::{json, Map, Value};
 
 use super::commands::{McpAction, McpCommandQueue};
 
 pub fn tool_get_todo_tree() -> Result<Value, String> {
-    let path = std::env::current_dir()
+    let path = env::current_dir()
         .map(|d| d.join(".kairn.todo"))
         .map_err(|e| e.to_string())?;
     if !path.exists() {
         return Ok(json!({"items": []}));
     }
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     let file: duir_core::TodoFile = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     let items = serialize_todo_items(&file.items);
     Ok(json!({"title": file.title, "items": items}))
@@ -80,13 +83,13 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
 }
 
 fn tool_get_note(path: &[usize]) -> Result<Value, String> {
-    let file_path = std::env::current_dir()
+    let file_path = env::current_dir()
         .map(|d| d.join(".kairn.todo"))
         .map_err(|e| e.to_string())?;
     if !file_path.exists() {
         return Err("No todo file".to_string());
     }
-    let content = std::fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
+    let content = fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
     let file: duir_core::TodoFile = serde_json::from_str(&content).map_err(|e| e.to_string())?;
     let mut items = &file.items[..];
     let mut item = None;

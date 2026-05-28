@@ -1,5 +1,7 @@
 //! Close and quit handlers — checks unsaved buffers before closing/quitting.
 
+use std::any::Any;
+
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -8,6 +10,7 @@ use crate::app_state::AppState;
 use crate::commands::*;
 use crate::handler::downcast_desktop;
 use crate::slots::SlotId;
+use crate::views::editor::EditorView;
 
 /// Handle CM_APP_QUIT: check for unsaved buffers, prompt or quit.
 pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {
@@ -59,7 +62,7 @@ fn active_editor_path(ctx: &mut CommandContext, panel_id: usize) -> Option<Strin
     let panel = desktop.panel_mut(panel_id)?;
     let view = panel.active_view_mut()?;
     let any = view.as_any_mut()?;
-    let editor = any.downcast_ref::<crate::views::editor::EditorView>()?;
+    let editor = any.downcast_ref::<EditorView>()?;
     Some(editor.path().to_string_lossy().to_string())
 }
 
@@ -76,7 +79,7 @@ fn save_active_if_dirty(ctx: &mut CommandContext, panel_id: usize) {
     let Some(any) = view.as_any_mut() else {
         return;
     };
-    if let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() {
+    if let Some(editor) = any.downcast_mut::<EditorView>() {
         if editor.editor.buf().is_dirty() {
             editor.save_now();
         }
@@ -91,10 +94,8 @@ fn close_active_tab(ctx: &mut CommandContext, panel_id: usize) {
     if let Some(panel) = desktop.panel_mut(panel_id) {
         panel.close_active();
     }
-    ctx.sink.push_command(
-        CM_FILE_CLOSED,
-        title.map(|t| Box::new(t) as Box<dyn std::any::Any + Send>),
-    );
+    ctx.sink
+        .push_command(CM_FILE_CLOSED, title.map(|t| Box::new(t) as Box<dyn Any + Send>));
 }
 
 /// Check if any editor tab in the center panel has unsaved changes.
@@ -130,7 +131,7 @@ fn save_all_dirty(desktop: &mut TiledWorkspace) {
         let Some(any) = view.as_any_mut() else {
             continue;
         };
-        let Some(editor) = any.downcast_mut::<crate::views::editor::EditorView>() else {
+        let Some(editor) = any.downcast_mut::<EditorView>() else {
             continue;
         };
         if editor.editor.buf().is_dirty() {

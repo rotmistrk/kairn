@@ -36,18 +36,20 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
     let cmd = parts.first().copied().unwrap_or("");
     let arg = parts.get(1).copied().unwrap_or("");
 
-    // Look up in dispatch table
     for entry in dispatch_table() {
         if entry.names.contains(&cmd) {
             if entry.requires_arg && arg.is_empty() {
-                return; // silently ignore (matches old behavior)
+                return;
             }
             (entry.handler)(ctx, state, arg);
             return;
         }
     }
 
-    // Fallback: try as Tcl script
+    execute_as_tcl(ctx, state, text);
+}
+
+fn execute_as_tcl(ctx: &mut CommandContext, state: &mut AppState, text: &str) {
     if is_bare_word(text) && !state.script.has_command(text) {
         let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
         ctx.sink
@@ -91,57 +93,75 @@ mod tests {
         use txv_core::program::Program;
 
         let dir = std::env::temp_dir();
-        let desktop = crate::build_desktop::build_workspace(&dir, crate::settings::GitKeys::default());
-        let mut state = crate::handler::AppState::new(dir.clone());
-        let status = crate::status::build_status_bar(
-            &desktop,
-            Box::new(crate::completer::AppCompleter::new(
-                dir.clone(),
-                crate::completer::new_command_list(),
-            )),
-            0,
-            dir.clone(),
-            &crate::settings::StatusKeys::default(),
-        );
-        let mut program = Program::new(Box::new(status), Box::new(desktop));
-        let sink = program.sink().clone();
+        let (mut program, sink, mut state) = setup_test_program(&dir);
 
         for entry in dispatch_table() {
             for &name in entry.names {
-                // For requires_arg entries, provide a dummy arg
-                let text = if entry.requires_arg {
-                    format!("{name} test_arg")
-                } else {
-                    name.to_string()
-                };
-                let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(text));
-                let mut ctx = txv_core::program::CommandContext {
-                    command: CM_EXECUTE_COMMAND,
-                    data: &data,
-                    sink: &sink,
-                    desktop: program.desktop_mut(),
-                };
-                handle_execute_command(&mut ctx, &mut state);
-
-                let events = sink.drain();
-                let produced_unknown = events.iter().any(|ev| {
-                    if let Event::Command { id, data } = ev {
-                        if *id == txv_widgets::CM_STATUS_MESSAGE {
-                            if let Some(msg) = data
-                                .as_ref()
-                                .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
-                            {
-                                return msg.text.contains("Unknown command");
-                            }
-                        }
-                    }
-                    false
-                });
-                assert!(
-                    !produced_unknown,
-                    "Dispatch table entry '{name}' produced 'Unknown command'. Bug in lookup logic."
-                );
+                verify_entry_recognized(name, entry, &mut program, &sink, &mut state);
             }
         }
+    }
+
+    fn setup_test_program(
+        dir: &std::path::Path,
+    ) -> (txv_core::program::Program, txv_core::prelude::EventSink, AppState) {
+        let desktop = crate::build_desktop::build_workspace(dir, crate::settings::GitKeys::default());
+        let state = crate::handler::AppState::new(dir.to_path_buf());
+        let status = crate::status::build_status_bar(
+            &desktop,
+            Box::new(crate::completer::AppCompleter::new(
+                dir.to_path_buf(),
+                crate::completer::new_command_list(),
+            )),
+            0,
+            dir.to_path_buf(),
+            &crate::settings::StatusKeys::default(),
+        );
+        let mut program = txv_core::program::Program::new(Box::new(status), Box::new(desktop));
+        let sink = program.sink().clone();
+        (program, sink, state)
+    }
+
+    fn verify_entry_recognized(
+        name: &str,
+        entry: &ExecEntry,
+        program: &mut txv_core::program::Program,
+        sink: &txv_core::prelude::EventSink,
+        state: &mut AppState,
+    ) {
+        use txv_core::event::Event;
+
+        let text = if entry.requires_arg {
+            format!("{name} test_arg")
+        } else {
+            name.to_string()
+        };
+        let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(text));
+        let mut ctx = txv_core::program::CommandContext {
+            command: CM_EXECUTE_COMMAND,
+            data: &data,
+            sink,
+            desktop: program.desktop_mut(),
+        };
+        handle_execute_command(&mut ctx, state);
+
+        let events = sink.drain();
+        let produced_unknown = events.iter().any(|ev| {
+            if let Event::Command { id, data } = ev {
+                if *id == txv_widgets::CM_STATUS_MESSAGE {
+                    if let Some(msg) = data
+                        .as_ref()
+                        .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
+                    {
+                        return msg.text.contains("Unknown command");
+                    }
+                }
+            }
+            false
+        });
+        assert!(
+            !produced_unknown,
+            "Dispatch table entry '{name}' produced 'Unknown command'. Bug in lookup logic."
+        );
     }
 }

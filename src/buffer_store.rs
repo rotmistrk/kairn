@@ -1,5 +1,6 @@
 //! BufferStore trait — abstracts how editor content is persisted.
 
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -35,7 +36,7 @@ impl BufferStore for FileStore {
 /// Write content to a file atomically (write to temp, then rename).
 fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent)?;
     }
-    std::fs::write(path, content)
+    fs::write(path, content)
 }

@@ -33,8 +33,18 @@ pub fn parse_signature_help(result: &Value) -> Option<SignatureHelp> {
         .and_then(|v| v.as_u64())
         .or_else(|| sig.get("activeParameter").and_then(|v| v.as_u64()))
         .map(|v| v as usize);
-    let params = sig
-        .get("parameters")
+    let params = parse_param_ranges(sig, &label);
+    let documentation = parse_documentation(sig);
+    Some(SignatureHelp {
+        label,
+        active_param,
+        params,
+        documentation,
+    })
+}
+
+fn parse_param_ranges(sig: &Value, label: &str) -> Vec<(usize, usize)> {
+    sig.get("parameters")
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
@@ -53,17 +63,14 @@ pub fn parse_signature_help(result: &Value) -> Option<SignatureHelp> {
                 })
                 .collect()
         })
-        .unwrap_or_default();
-    let documentation = sig.get("documentation").and_then(|d| {
+        .unwrap_or_default()
+}
+
+fn parse_documentation(sig: &Value) -> Option<String> {
+    sig.get("documentation").and_then(|d| {
         d.as_str()
             .map(|s| s.to_string())
             .or_else(|| d.get("value").and_then(|v| v.as_str()).map(|s| s.to_string()))
-    });
-    Some(SignatureHelp {
-        label,
-        active_param,
-        params,
-        documentation,
     })
 }
 

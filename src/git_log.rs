@@ -1,7 +1,11 @@
 //! Git log — async commit history loading via git2 Revwalk.
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::thread;
+
+use git2::{Oid, Repository, Sort};
 
 /// A single commit entry for display.
 #[derive(Debug, Clone)]
@@ -34,7 +38,7 @@ pub fn log_async(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) 
     let branch = branch.map(String::from);
     let filter = filter_path.map(|p| p.to_path_buf());
 
-    std::thread::spawn(move || {
+    thread::spawn(move || {
         let result = compute_log(&root, branch.as_deref(), filter.as_deref());
         if let Ok(mut guard) = state_clone.lock() {
             *guard = result;
@@ -45,7 +49,7 @@ pub fn log_async(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) 
 }
 
 fn compute_log(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) -> LogState {
-    let repo = match git2::Repository::discover(root) {
+    let repo = match Repository::discover(root) {
         Ok(r) => r,
         Err(e) => return LogState::Error(format!("Not a git repo: {e}")),
     };
@@ -53,13 +57,23 @@ fn compute_log(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) ->
         Ok(r) => r,
         Err(e) => return LogState::Error(format!("Revwalk failed: {e}")),
     };
-    revwalk.set_sorting(git2::Sort::TIME).ok();
+    revwalk.set_sorting(Sort::TIME).ok();
 
     if let Err(e) = push_start(&repo, &mut revwalk, branch) {
         return LogState::Error(e);
     }
 
     let decorations = build_decoration_map(&repo);
+    let entries = collect_entries(&repo, revwalk, &decorations, filter_path);
+    LogState::Ready(entries)
+}
+
+fn collect_entries(
+    repo: &Repository,
+    revwalk: git2::Revwalk,
+    decorations: &HashMap<Oid, Vec<String>>,
+    filter_path: Option<&Path>,
+) -> Vec<CommitEntry> {
     let mut entries = Vec::new();
     let limit = 200;
 
@@ -72,7 +86,7 @@ fn compute_log(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) ->
         };
 
         if let Some(fp) = filter_path {
-            if !commit_touches_path(&repo, &commit, fp) {
+            if !commit_touches_path(repo, &commit, fp) {
                 continue;
             }
         }
@@ -94,7 +108,7 @@ fn compute_log(root: &Path, branch: Option<&str>, filter_path: Option<&Path>) ->
             break;
         }
     }
-    LogState::Ready(entries)
+    entries
 }
 
 fn push_start(repo: &git2::Repository, revwalk: &mut git2::Revwalk, branch: Option<&str>) -> Result<(), String> {
@@ -115,8 +129,8 @@ fn push_start(repo: &git2::Repository, revwalk: &mut git2::Revwalk, branch: Opti
     Ok(())
 }
 
-fn build_decoration_map(repo: &git2::Repository) -> std::collections::HashMap<git2::Oid, Vec<String>> {
-    let mut map: std::collections::HashMap<git2::Oid, Vec<String>> = std::collections::HashMap::new();
+fn build_decoration_map(repo: &git2::Repository) -> HashMap<Oid, Vec<String>> {
+    let mut map: HashMap<Oid, Vec<String>> = HashMap::new();
     if let Ok(refs) = repo.references() {
         for r in refs.flatten() {
             if let Some(target) = r.target() {
@@ -152,13 +166,13 @@ fn commit_touches_path(repo: &git2::Repository, commit: &git2::Commit, path: &Pa
         let Ok(diff) = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None) else {
             continue;
         };
-        for delta in diff.deltas() {
-            if let Some(p) = delta.new_file().path() {
-                if p == path {
-                    return true;
-                }
-            }
+        if diff_contains_path(&diff, path) {
+            return true;
         }
     }
     false
+}
+
+fn diff_contains_path(diff: &git2::Diff, path: &Path) -> bool {
+    diff.deltas().any(|delta| delta.new_file().path() == Some(path))
 }

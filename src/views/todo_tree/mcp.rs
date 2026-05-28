@@ -2,13 +2,21 @@
 
 use serde_json::json;
 
-use super::model::{self, Completion};
+use super::model::{self, Completion, TodoItem};
 use super::TodoTreeView;
 use crate::mcp::commands::McpAction;
 
 impl TodoTreeView {
     /// Execute an MCP action on the todo tree. Returns JSON result.
     pub fn mcp_action(&mut self, action: &McpAction) -> Result<serde_json::Value, String> {
+        self.dispatch_mcp_action(action)?;
+        self.inner.data.save();
+        self.inner.data.rebuild_flat();
+        self.inner.mark_dirty();
+        Ok(json!({"ok": true}))
+    }
+
+    fn dispatch_mcp_action(&mut self, action: &McpAction) -> Result<(), String> {
         match action {
             McpAction::TodoToggle { path } => {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
@@ -18,7 +26,7 @@ impl TodoTreeView {
                 };
             }
             McpAction::TodoAdd { path, title } => {
-                let item = model::TodoItem::new(title);
+                let item = TodoItem::new(title);
                 if !model::add_sibling(&mut self.inner.data.file, path, item) {
                     return Err("Failed to add item".to_string());
                 }
@@ -38,6 +46,13 @@ impl TodoTreeView {
             McpAction::TodoDemote { path } => {
                 model::demote(&mut self.inner.data.file, path).ok_or("Cannot demote")?;
             }
+            _ => self.dispatch_mcp_edit_action(action)?,
+        }
+        Ok(())
+    }
+
+    fn dispatch_mcp_edit_action(&mut self, action: &McpAction) -> Result<(), String> {
+        match action {
             McpAction::TodoSetNote { path, note } => {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
                 item.note.clone_from(note);
@@ -51,33 +66,35 @@ impl TodoTreeView {
                 item.title.clone_from(title);
             }
             McpAction::TodoAddSubtree { path, items } => {
-                fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
-                    let title = val.get("title")?.as_str()?;
-                    let mut item = model::TodoItem::new(title);
-                    if let Some(children) = val.get("items").and_then(|v| v.as_array()) {
-                        for child_val in children {
-                            if let Some(child) = build_item(child_val) {
-                                item.items.push(child);
-                            }
-                        }
-                    }
-                    Some(item)
-                }
-                for item_val in items {
-                    let item = build_item(item_val).ok_or("Invalid item in subtree")?;
-                    if path.is_empty() {
-                        // Empty path: add as top-level item
-                        self.inner.data.file.items.push(item);
-                    } else if !model::add_child(&mut self.inner.data.file, path, item) {
-                        return Err("Failed to add subtree item".to_string());
-                    }
-                }
+                self.mcp_add_subtree(path, items)?;
             }
             _ => return Err("Not a todo action".to_string()),
         }
-        self.inner.data.save();
-        self.inner.data.rebuild_flat();
-        self.inner.mark_dirty();
-        Ok(json!({"ok": true}))
+        Ok(())
+    }
+
+    fn mcp_add_subtree(&mut self, path: &[usize], items: &[serde_json::Value]) -> Result<(), String> {
+        fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
+            let title = val.get("title")?.as_str()?;
+            let mut item = TodoItem::new(title);
+            if let Some(children) = val.get("items").and_then(|v| v.as_array()) {
+                for child_val in children {
+                    if let Some(child) = build_item(child_val) {
+                        item.items.push(child);
+                    }
+                }
+            }
+            Some(item)
+        }
+        let path_vec: Vec<usize> = path.to_vec();
+        for item_val in items {
+            let item = build_item(item_val).ok_or("Invalid item in subtree")?;
+            if path_vec.is_empty() {
+                self.inner.data.file.items.push(item);
+            } else if !model::add_child(&mut self.inner.data.file, &path_vec, item) {
+                return Err("Failed to add subtree item".to_string());
+            }
+        }
+        Ok(())
     }
 }

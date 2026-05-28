@@ -13,11 +13,25 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
         install-rusticle-tk install-kairn \
         install-demos verify setup check-hooks
 
+MCP_LINT_DIR ?= $(HOME)/Workplace/mcp-lint
+
 # ── Setup (run once per clone) ──────────────────────────
 
 setup:
 	@git config core.hooksPath hooks
 	@echo "✅ Pre-commit hook enabled (hooks/pre-commit)"
+	@if ! command -v mcp-lint-cli >/dev/null 2>&1; then \
+		if [ -d "$(MCP_LINT_DIR)" ]; then \
+			echo "  Installing mcp-lint-cli..."; \
+			$(MAKE) -C $(MCP_LINT_DIR) install; \
+		else \
+			echo "  ⚠ mcp-lint-cli not found and $(MCP_LINT_DIR) missing"; \
+			echo "    Clone: git clone git@github.com:rotmistrk/mcp-lint.git $(MCP_LINT_DIR)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "  ✓ mcp-lint-cli already installed"; \
+	fi
 
 check-hooks:
 	@if [ "$$(git config core.hooksPath)" != "hooks" ]; then \

@@ -1,6 +1,8 @@
 //! M-x `lsp` subcommand dispatch: start, restart, stop, timeout, args.
 
 use crate::handler::AppState;
+use crate::handler_script_util::fire_lsp_start_hook;
+use crate::lsp::config_commands::format_lsp_status;
 
 /// Parse and execute `lsp <subcommand> <glob> [value]`. Returns status message.
 pub fn handle_lsp_command(arg: &str, state: &mut AppState) -> String {
@@ -15,7 +17,7 @@ pub fn handle_lsp_command(arg: &str, state: &mut AppState) -> String {
         "stop" => lsp_stop(pattern, state),
         "timeout" => lsp_timeout(pattern, value, state),
         "args" => lsp_args(pattern, value, state),
-        "status" => crate::lsp::config_commands::format_lsp_status(&state.lsp),
+        "status" => format_lsp_status(&state.lsp),
         _ => format!("lsp: unknown subcommand '{sub}' (start|restart|stop|timeout|args|status)"),
     };
     refresh_lsp_languages(state);
@@ -39,7 +41,7 @@ fn lsp_start(pattern: &str, state: &mut AppState) -> String {
     let mut started = Vec::new();
     for lang in &langs {
         if state.lsp.take_start_hook(lang) {
-            crate::handler_script_util::fire_lsp_start_hook(state, lang);
+            fire_lsp_start_hook(state, lang);
         }
         state.lsp.ensure_started(lang, &root);
         if !state.lsp.is_initializing(lang) {
@@ -66,7 +68,7 @@ fn lsp_restart(pattern: &str, state: &mut AppState) -> String {
     let mut restarted = Vec::new();
     for lang in &langs {
         if state.lsp.take_start_hook(lang) {
-            crate::handler_script_util::fire_lsp_start_hook(state, lang);
+            fire_lsp_start_hook(state, lang);
         }
         state.lsp.ensure_started(lang, &root);
         restarted.push(lang.as_str());

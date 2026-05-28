@@ -1,6 +1,8 @@
 //! JSONL (one JSON value per line) implementation of StructuredDoc.
 //! Wraps JsonDoc — presents lines as a synthetic root array.
 
+use serde_json::Value;
+
 use crate::structured::json_doc::JsonDoc;
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
@@ -22,7 +24,7 @@ impl JsonlDoc {
             let val: serde_json::Value = serde_json::from_str(trimmed).map_err(|e| format!("line {}: {e}", i + 1))?;
             elements.push(val);
         }
-        let array = serde_json::Value::Array(elements);
+        let array = Value::Array(elements);
         let json_str = serde_json::to_string(&array).map_err(|e| e.to_string())?;
         let inner = JsonDoc::parse(&json_str)?;
         Ok(Self { inner })

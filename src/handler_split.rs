@@ -3,13 +3,17 @@
 //! Uses TiledWorkspace's native subpanel mechanism: the center panel's
 //! SplitPanel gets a second TabPanel child when split.
 
+use std::any::Any;
+
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
+use txv_widgets::tab_panel::TabPanel;
 use txv_widgets::tiled_workspace::types::SplitDir;
 
-use crate::commands::SplitRequest;
+use crate::commands::{SplitRequest, CM_SPLIT};
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
+use crate::handler_split_nav::open_into_editor;
 use crate::views::editor::EditorView;
 
 pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
@@ -30,33 +34,45 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
 
-    // If focused panel is not Center, split via move-tab-to-subpanel
     let focused = desktop.focused_panel();
     if focused != SlotId::Center as usize {
         desktop.move_tab_to_subpanel();
         return;
     }
 
-    // Check if already split (SplitPanel has >1 child)
     let is_split = desktop
         .split_panel(SlotId::Center as usize)
         .map(|sp| sp.child_count() > 1)
         .unwrap_or(false);
 
     if is_split {
-        // Already split — open file in other pane or toggle direction
-        if let Some(ref filename) = file {
-            open_in_other_subpanel(desktop, state, filename);
-        } else {
-            // Toggle orientation
-            if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
-                sp.set_direction(direction);
-            }
-        }
-        return;
+        handle_split_existing(desktop, state, file, direction);
+    } else {
+        handle_split_new(desktop, state, file, direction);
     }
+}
 
-    // Not split yet — create the second pane
+fn handle_split_existing(
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &mut AppState,
+    file: Option<String>,
+    direction: SplitDir,
+) {
+    if let Some(ref filename) = file {
+        open_in_other_subpanel(desktop, state, filename);
+    } else {
+        if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
+            sp.set_direction(direction);
+        }
+    }
+}
+
+fn handle_split_new(
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &mut AppState,
+    file: Option<String>,
+    direction: SplitDir,
+) {
     let title = desktop
         .panel(SlotId::Center as usize)
         .and_then(|p| p.active_title().map(String::from))
@@ -65,7 +81,6 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
     let new_pane: Box<dyn View> = if let Some(ref filename) = file {
         open_second_file(state, filename)
     } else {
-        // Clone current file into new pane (shared buffer)
         let pane = match desktop.panel_mut(SlotId::Center as usize) {
             Some(p) => create_shared_pane(p, state),
             None => return,
@@ -73,7 +88,6 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
         pane
     };
 
-    // Set direction before splitting
     if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
         sp.set_direction(direction);
     }
@@ -116,10 +130,7 @@ fn open_in_other_subpanel(
     let Some(other_child) = sp.child_mut(other_idx) else {
         return;
     };
-    let Some(other_tp) = other_child
-        .as_any_mut()
-        .and_then(|a| a.downcast_mut::<txv_widgets::tab_panel::TabPanel>())
-    else {
+    let Some(other_tp) = other_child.as_any_mut().and_then(|a| a.downcast_mut::<TabPanel>()) else {
         return;
     };
     let Some(view) = other_tp.active_view_mut() else {
@@ -128,10 +139,10 @@ fn open_in_other_subpanel(
     let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    crate::handler_split_nav::open_into_editor(ev, &state.root_dir.join(filename), 0, 0, state);
+    open_into_editor(ev, &state.root_dir.join(filename), 0, 0, state);
 }
 
-fn create_shared_pane(panel: &mut txv_widgets::tab_panel::TabPanel, state: &mut AppState) -> Box<dyn View> {
+fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn View> {
     let Some(view) = panel.active_view_mut() else {
         return Box::new(EditorView::from_text(""));
     };
@@ -168,13 +179,13 @@ fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
 }
 
 pub(crate) fn handle_split_h(ctx: &mut CommandContext, state: &mut AppState) {
-    let req = crate::commands::SplitRequest {
+    let req = SplitRequest {
         vertical: false,
         file: None,
     };
-    let data = Some(Box::new(req) as Box<dyn std::any::Any + Send>);
+    let data = Some(Box::new(req) as Box<dyn Any + Send>);
     let mut sub = CommandContext {
-        command: crate::commands::CM_SPLIT,
+        command: CM_SPLIT,
         data: &data,
         sink: ctx.sink,
         desktop: ctx.desktop,
@@ -183,13 +194,13 @@ pub(crate) fn handle_split_h(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(crate) fn handle_split_v(ctx: &mut CommandContext, state: &mut AppState) {
-    let req = crate::commands::SplitRequest {
+    let req = SplitRequest {
         vertical: true,
         file: None,
     };
-    let data = Some(Box::new(req) as Box<dyn std::any::Any + Send>);
+    let data = Some(Box::new(req) as Box<dyn Any + Send>);
     let mut sub = CommandContext {
-        command: crate::commands::CM_SPLIT,
+        command: CM_SPLIT,
         data: &data,
         sink: ctx.sink,
         desktop: ctx.desktop,

@@ -10,9 +10,9 @@ use super::JsonDoc;
 pub(crate) fn compute_node_lines(stripped: &str, doc: &JsonDoc) -> Vec<(NodeId, usize)> {
     let mut result = Vec::new();
     let mut node_idx = 0;
-    let mut line = 0usize;
     let chars: Vec<char> = stripped.chars().collect();
     let mut i = 0;
+    let mut line = 0usize;
 
     while i < chars.len() && node_idx < doc.nodes.len() {
         let ch = chars[i];
@@ -25,64 +25,89 @@ pub(crate) fn compute_node_lines(stripped: &str, doc: &JsonDoc) -> Vec<(NodeId, 
             i += 1;
             continue;
         }
-        match ch {
-            '{' | '[' => {
-                result.push((NodeId(node_idx), line));
-                node_idx += 1;
-                i += 1;
-            }
-            '"' => {
-                i += 1;
-                // Read to end of string
-                while i < chars.len() {
-                    if chars[i] == '\\' {
-                        i += 2;
-                        continue;
-                    }
-                    if chars[i] == '"' {
-                        i += 1;
-                        break;
-                    }
-                    i += 1;
-                }
-                // Check if this was a key (followed by ':') or a value
-                let after = skip_ws(&chars, i);
-                if after < chars.len() && chars[after] == ':' {
-                    // Key — don't count as a node, advance past ':'
-                    i = after + 1;
-                } else {
-                    // String value
-                    result.push((NodeId(node_idx), line));
-                    node_idx += 1;
-                }
-            }
-            't' | 'f' | 'n' => {
-                result.push((NodeId(node_idx), line));
-                node_idx += 1;
-                while i < chars.len() && chars[i].is_alphabetic() {
-                    i += 1;
-                }
-            }
-            '-' | '0'..='9' => {
-                result.push((NodeId(node_idx), line));
-                node_idx += 1;
-                while i < chars.len()
-                    && (chars[i].is_ascii_digit()
-                        || chars[i] == '.'
-                        || chars[i] == 'e'
-                        || chars[i] == 'E'
-                        || chars[i] == '+'
-                        || chars[i] == '-')
-                {
-                    i += 1;
-                }
-            }
-            _ => {
-                i += 1;
-            }
-        }
+        i = consume_token(&chars, i, ch, &mut result, &mut node_idx, line);
     }
     result
+}
+
+fn consume_token(
+    chars: &[char],
+    i: usize,
+    ch: char,
+    result: &mut Vec<(NodeId, usize)>,
+    node_idx: &mut usize,
+    line: usize,
+) -> usize {
+    match ch {
+        '{' | '[' => {
+            result.push((NodeId(*node_idx), line));
+            *node_idx += 1;
+            i + 1
+        }
+        '"' => scan_string_token(chars, i, result, node_idx, line),
+        't' | 'f' | 'n' => {
+            result.push((NodeId(*node_idx), line));
+            *node_idx += 1;
+            skip_alpha(chars, i)
+        }
+        '-' | '0'..='9' => {
+            result.push((NodeId(*node_idx), line));
+            *node_idx += 1;
+            skip_number(chars, i)
+        }
+        _ => i + 1,
+    }
+}
+
+fn scan_string_token(
+    chars: &[char],
+    start: usize,
+    result: &mut Vec<(NodeId, usize)>,
+    node_idx: &mut usize,
+    line: usize,
+) -> usize {
+    let mut i = start + 1;
+    while i < chars.len() {
+        if chars[i] == '\\' {
+            i += 2;
+            continue;
+        }
+        if chars[i] == '"' {
+            i += 1;
+            break;
+        }
+        i += 1;
+    }
+    let after = skip_ws(chars, i);
+    if after < chars.len() && chars[after] == ':' {
+        // Key — don't count as a node
+        after + 1
+    } else {
+        result.push((NodeId(*node_idx), line));
+        *node_idx += 1;
+        i
+    }
+}
+
+fn skip_alpha(chars: &[char], mut i: usize) -> usize {
+    while i < chars.len() && chars[i].is_alphabetic() {
+        i += 1;
+    }
+    i
+}
+
+fn skip_number(chars: &[char], mut i: usize) -> usize {
+    while i < chars.len()
+        && (chars[i].is_ascii_digit()
+            || chars[i] == '.'
+            || chars[i] == 'e'
+            || chars[i] == 'E'
+            || chars[i] == '+'
+            || chars[i] == '-')
+    {
+        i += 1;
+    }
+    i
 }
 
 fn skip_ws(chars: &[char], mut i: usize) -> usize {

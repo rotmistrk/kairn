@@ -125,7 +125,6 @@ fn parse_line_styled(
     syntax_set: &SyntaxSet,
     highlighter: &SyntectHighlighter,
 ) -> Vec<HlSpan> {
-    // syntect newlines mode requires \n to close line-scoped patterns (e.g. // comments).
     let line_nl = format!("{line}\n");
     let ops = match parse.parse_line(&line_nl, syntax_set) {
         Ok(ops) => ops,
@@ -137,8 +136,24 @@ fn parse_line_styled(
         }
     };
 
+    let spans = highlight_ops(&ops, &line_nl, scope, highlighter);
+
+    // Apply ops to scope stack for next line.
+    for (_idx, op) in &ops {
+        scope.apply(op).ok();
+    }
+
+    spans
+}
+
+fn highlight_ops(
+    ops: &[(usize, syntect::parsing::ScopeStackOp)],
+    line_nl: &str,
+    scope: &ScopeStack,
+    highlighter: &SyntectHighlighter,
+) -> Vec<HlSpan> {
     let mut hl_state = HighlightState::new(highlighter, scope.clone());
-    let iter = syntect::highlighting::HighlightIterator::new(&mut hl_state, &ops, &line_nl, highlighter);
+    let iter = syntect::highlighting::HighlightIterator::new(&mut hl_state, ops, line_nl, highlighter);
     let mut spans: Vec<HlSpan> = iter
         .map(|(style, text)| {
             let (r, g, b) = ensure_readable(style.foreground.r, style.foreground.g, style.foreground.b);
@@ -152,7 +167,7 @@ fn parse_line_styled(
         })
         .collect();
 
-    // Strip the trailing \n we added — it shouldn't appear in rendered output.
+    // Strip the trailing \n we added.
     if let Some(last) = spans.last_mut() {
         if last.text.ends_with('\n') {
             last.text.pop();
@@ -160,11 +175,6 @@ fn parse_line_styled(
                 spans.pop();
             }
         }
-    }
-
-    // Apply ops to scope stack for next line.
-    for (_idx, op) in &ops {
-        scope.apply(op).ok();
     }
 
     spans

@@ -1,24 +1,30 @@
 //! kairn — TUI IDE entry point.
 
+use std::env;
+use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::process;
+use std::sync::Arc;
 
 use clap::Parser;
 use txv_core::program::Program;
 use txv_core::run::Backend;
 use txv_render::backend::CrosstermBackend;
-use txv_render::color::{detect_color_mode, ColorMode};
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use kairn::build_desktop::build_workspace;
+use kairn::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
 use kairn::handler::{handle_command, AppState};
-use kairn::message_ring::MessageRing;
+use kairn::init;
+use kairn::mcp::bridge::run_mcp_bridge;
+use kairn::mcp::commands::McpCommandQueue;
+use kairn::mcp::listener::SharedCommandQueue;
+use kairn::mcp::socket_path::socket_path;
 use kairn::session;
+use kairn::startup;
 use kairn::status::build_status_bar;
-
-/// Global message ring — allows panic hook to report to the user.
-static PANIC_MESSAGES: OnceLock<Arc<Mutex<MessageRing>>> = OnceLock::new();
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
@@ -49,255 +55,142 @@ struct Cli {
 }
 
 fn main() -> anyhow::Result<()> {
-    // Layer 3: Global panic handler — restore terminal before crashing
-    std::panic::set_hook(Box::new(|info| {
-        let is_main = std::thread::current().name() == Some("main");
-        if is_main {
-            // Restore terminal state only on main thread
-            let _ = crossterm::terminal::disable_raw_mode();
-            let _ = crossterm::execute!(
-                std::io::stderr(),
-                crossterm::terminal::LeaveAlternateScreen,
-                crossterm::cursor::Show
-            );
-            eprintln!("\n\x1b[1;31mkairn panicked!\x1b[0m");
-            eprintln!("{info}");
-            if let Some(loc) = info.location() {
-                eprintln!("  at {}:{}:{}", loc.file(), loc.line(), loc.column());
-            }
-            eprintln!("\nPlease report this bug.");
-        } else {
-            // Background thread panic — report to user via Messages panel
-            log::error!("panic on thread {:?}: {info}", std::thread::current().name());
-            if let Some(ring) = PANIC_MESSAGES.get() {
-                if let Ok(mut r) = ring.lock() {
-                    use txv_core::message::Message;
-                    let msg = format!(
-                        "Background thread crashed: {:?}. File watching may be degraded.",
-                        std::thread::current().name()
-                    );
-                    r.push(Message::error("panic", msg));
-                }
-            }
-        }
-    }));
-
+    startup::install_panic_hook();
     let cli = Cli::parse();
 
-    // MCP bridge mode: proxy stdin↔socket and exit
-    if cli.mcp_connect {
-        return kairn::mcp::bridge::run_mcp_bridge().map_err(|e| anyhow::anyhow!("MCP bridge failed: {e}"));
+    if let Some(result) = handle_early_exit(&cli) {
+        return result;
     }
 
-    // Init modes: write default configs and exit
-    if cli.init_home {
-        return kairn::init::init_home_config();
-    }
-    if cli.init_wp {
-        return kairn::init::init_wp_config(&cli.path);
-    }
+    let root_dir = fs::canonicalize(&cli.path)?;
+    let (root_dir, open_file) = startup::resolve_root_and_file(root_dir);
+    let sock_path = socket_path(&root_dir);
+    startup::check_already_running(&sock_path);
 
-    // Nesting guard: prevent running inside a suspended kairn session
-    if std::env::var("KAIRN_SUSPENDED").is_ok() {
-        eprintln!("kairn is already running (suspended). Use 'exit' to return.");
-        std::process::exit(1);
-    }
+    let (mcp_snapshot, mcp_cmd_queue, mcp_socket) = startup::start_mcp(&root_dir, &sock_path);
+    startup::init_logging(&cli.log_file, &cli.log_level)?;
 
-    let root_dir = std::fs::canonicalize(&cli.path)?;
-
-    // If path is a file, detect project root and open the file
-    let (root_dir, open_file) = if root_dir.is_file() {
-        let home = std::env::var("HOME")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|_| root_dir.parent().unwrap_or(&root_dir).to_path_buf());
-        let project = kairn::project_root::detect_project_root(&root_dir, &home);
-        (project, Some(root_dir))
-    } else {
-        (root_dir, None)
-    };
-
-    // Compute socket path and check instance lock
-    let socket_path = kairn::mcp::socket_path::socket_path(&root_dir);
-    if std::os::unix::net::UnixStream::connect(&socket_path).is_ok() {
-        eprintln!("kairn is already running for this project.");
-        std::process::exit(1);
-    }
-
-    // Start MCP listener
-    let mcp_snapshot = std::sync::Arc::new(std::sync::Mutex::new(kairn::mcp::snapshot::McpSnapshot::default()));
-    let mcp_cmd_queue: kairn::mcp::listener::SharedCommandQueue = std::sync::Arc::new(std::sync::Mutex::new(None));
-    let mcp_socket = kairn::mcp::listener::start_mcp_listener(
-        std::sync::Arc::clone(&mcp_snapshot),
-        std::sync::Arc::clone(&mcp_cmd_queue),
-        &socket_path,
-    );
-    if let Ok(ref sock) = mcp_socket {
-        kairn::mcp::agent_file::write_agent_file(&root_dir);
-        std::env::set_var("KAIRN_MCP_SOCKET", sock.to_string_lossy().as_ref());
-    }
-
-    // Init logging to file
-    let log_file = std::fs::File::create(&cli.log_file)?;
-    env_logger::Builder::new()
-        .filter_level(cli.log_level.parse().unwrap_or(log::LevelFilter::Info))
-        .target(env_logger::Target::Pipe(Box::new(log_file)))
-        .init();
-
-    // Load config
     let settings = load_config(&root_dir);
-
-    // Load saved session (if any)
     let saved_session = session::load_session(&root_dir);
-
-    // Build desktop
     let git_keys = settings.git_keys().clone();
-    let mut app_state = AppState::with_settings(root_dir.clone(), settings);
-    app_state.set_mcp_snapshot(std::sync::Arc::clone(&mcp_snapshot));
-    let _ = PANIC_MESSAGES.set(app_state.messages().clone());
-    // Load Tcl config files (plugins may define new commands)
-    app_state.script_mut().load_config(&root_dir);
-    app_state.add_plugin_dir(root_dir.join(".kairn/plugins"));
-    let plugin_warnings = app_state.refresh_plugins();
-    for w in &plugin_warnings {
-        log::warn!("plugin: {w}");
-    }
-    kairn::completer::refresh_commands(app_state.command_list(), app_state.script());
-    kairn::handler_lsp_cmd::refresh_lsp_languages(&app_state);
-    // Initialize theme
-    let theme_mode = match app_state.settings().theme_mode() {
-        "dark" => txv_core::palette::ThemeMode::Dark,
-        "light" => txv_core::palette::ThemeMode::Light,
-        _ => txv_core::palette::ThemeMode::Auto,
-    };
-    let theme = kairn::theme_state::ThemeState::new(theme_mode);
-    theme.apply();
-    // Apply chrome color overrides from Tcl config
-    let framework_pal = txv_core::palette::palette();
-    let custom_pal = kairn::config_colors::apply_chrome_config(app_state.script().interpreter(), framework_pal);
-    txv_core::palette::set_palette(custom_pal);
-    app_state.set_theme_state(theme);
+    let mut app_state = AppState::with_settings(root_dir.to_path_buf(), settings);
+    app_state.set_mcp_snapshot(Arc::clone(&mcp_snapshot));
+    let _ = startup::PANIC_MESSAGES.set(app_state.messages().clone());
+    startup::configure_app_state(&mut app_state, &root_dir);
 
-    // Initialize glyphs
-    let glyph_tier = match app_state.settings().theme_glyphs() {
-        "ascii" => txv_core::glyphs::GlyphTier::Ascii,
-        "utf" => txv_core::glyphs::GlyphTier::Unicode,
-        "nerd" => txv_core::glyphs::GlyphTier::Nerd,
-        _ => txv_core::glyphs::detect_glyph_tier(),
-    };
-    txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::from_tier(glyph_tier));
     let mut desktop = build_workspace(&root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
-
-    // Restore session state (layout, editor tabs, unfolded dirs, kiro tabs)
     if let Some(ref sess) = saved_session {
-        session::restore_session(&mut desktop, sess);
-        session::restore_tabs(
-            &mut desktop,
-            sess,
-            &root_dir,
-            app_state.settings().editor_defaults(),
-            app_state.current_syntax_theme(),
-        );
-        // Register restored tabs with broker
-        for tab in sess.editor_tabs() {
-            app_state.broker_open(tab.path(), kairn::desktop::SlotId::Center, 0);
-        }
-        session::restore_kiro_tabs(
-            &mut desktop,
-            sess.kiro_sessions(),
-            &root_dir,
-            app_state.kiro_registry_mut(),
-        );
+        startup::restore_saved_session(&mut desktop, sess, &root_dir, &mut app_state);
     }
 
-    // Build status bar
-    let mut completer = AppCompleter::new(root_dir.clone(), app_state.command_list().clone());
+    run_app(
+        &root_dir,
+        &mut app_state,
+        desktop,
+        &open_file,
+        &saved_session,
+        mcp_cmd_queue,
+    )?;
+    shutdown(&mut app_state, &root_dir, &sock_path, &mcp_socket);
+    Ok(())
+}
+
+fn handle_early_exit(cli: &Cli) -> Option<anyhow::Result<()>> {
+    if cli.mcp_connect {
+        return Some(run_mcp_bridge().map_err(|e| anyhow::anyhow!("MCP bridge failed: {e}")));
+    }
+    if cli.init_home {
+        return Some(init::init_home_config());
+    }
+    if cli.init_wp {
+        return Some(init::init_wp_config(&cli.path));
+    }
+    if env::var("KAIRN_SUSPENDED").is_ok() {
+        eprintln!("kairn is already running (suspended). Use 'exit' to return.");
+        process::exit(1);
+    }
+    None
+}
+
+fn run_app(
+    root_dir: &std::path::Path,
+    app_state: &mut AppState,
+    desktop: TiledWorkspace,
+    open_file: &Option<PathBuf>,
+    saved_session: &Option<session::schema::SessionState>,
+    mcp_cmd_queue: SharedCommandQueue,
+) -> anyhow::Result<()> {
+    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
     completer.set_lsp_languages(app_state.lsp_languages().clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),
         app_state.settings().clock_interval(),
-        root_dir.clone(),
+        root_dir.to_path_buf(),
         app_state.settings().status_keys(),
     );
-
-    // Build program
     let mut program = Program::new(Box::new(status), Box::new(desktop));
+    let mut backend = init_backend(app_state, &mcp_cmd_queue);
 
-    // Run
-    let color_mode = detect_truecolor_mode();
-    let mut backend = CrosstermBackend::new(color_mode);
+    push_initial_open(&program, open_file, saved_session, root_dir);
+    program.run(&mut backend, |ctx| {
+        handle_command(ctx, app_state);
+    });
+
+    app_state.lsp_shutdown_all();
+    if let Some(desktop) = program
+        .desktop_mut()
+        .as_any_mut()
+        .and_then(|a| a.downcast_mut::<TiledWorkspace>())
+    {
+        session::save_session(desktop, root_dir, app_state.kiro_registry());
+    }
+    Ok(())
+}
+
+fn init_backend(app_state: &mut AppState, mcp_cmd_queue: &SharedCommandQueue) -> CrosstermBackend {
+    let color_mode = startup::detect_truecolor_mode();
+    let backend = CrosstermBackend::new(color_mode);
     app_state.set_waker(backend.waker());
     app_state.lsp_set_waker(backend.waker());
 
-    // Now that waker is available, set up MCP command queue for write operations
-    let cmd_queue = kairn::mcp::commands::McpCommandQueue::new(backend.waker());
+    let cmd_queue = McpCommandQueue::new(backend.waker());
     app_state.set_mcp_commands(cmd_queue.clone());
     if let Ok(mut guard) = mcp_cmd_queue.lock() {
         *guard = Some(cmd_queue);
     }
-
-    // Open file from CLI argument (if path was a file)
-    if let Some(ref file_path) = open_file {
-        program.sink().push_command(
-            kairn::commands::CM_OPEN_FILE_FOCUS,
-            Some(Box::new(kairn::commands::OpenFileRequest::new(file_path.clone()))),
-        );
-    } else if let Some(ref sess) = saved_session {
-        // Trigger LSP didOpen for session-restored files
-        for tab in sess.editor_tabs() {
-            let path = root_dir.join(tab.path());
-            program.sink().push_command(
-                kairn::commands::CM_OPEN_FILE,
-                Some(Box::new(kairn::commands::OpenFileRequest::new(path))),
-            );
-        }
-    }
-
-    program.run(&mut backend, |ctx| {
-        handle_command(ctx, &mut app_state);
-    });
-
-    // Shutdown all LSP servers gracefully
-    app_state.lsp_shutdown_all();
-
-    // Save session on quit
-    if let Some(desktop) = program
-        .desktop_mut()
-        .as_any_mut()
-        .and_then(|a| a.downcast_mut::<txv_widgets::tiled_workspace::TiledWorkspace>())
-    {
-        session::save_session(desktop, &root_dir, app_state.kiro_registry());
-    }
-
-    // Clean up MCP socket
-    if mcp_socket.is_ok() {
-        let _ = std::fs::remove_file(&socket_path);
-    }
-
-    Ok(())
+    backend
 }
 
-/// Enhanced color mode detection — handles tmux truecolor support.
-/// tmux doesn't propagate COLORTERM but does advertise RGB in termfeatures.
-fn detect_truecolor_mode() -> ColorMode {
-    let base = detect_color_mode();
-    if base == ColorMode::TrueColor {
-        return base;
+fn shutdown(
+    _app_state: &mut AppState,
+    _root_dir: &std::path::Path,
+    sock_path: &std::path::Path,
+    mcp_socket: &Result<PathBuf, String>,
+) {
+    if mcp_socket.is_ok() {
+        let _ = fs::remove_file(sock_path);
     }
-    // tmux with RGB support
-    if let Ok(term) = std::env::var("TERM") {
-        if term.starts_with("tmux") || term.starts_with("screen") {
-            if let Ok(out) = std::process::Command::new("tmux")
-                .args(["display", "-p", "#{client_termfeatures}"])
-                .output()
-            {
-                let features = String::from_utf8_lossy(&out.stdout);
-                if features.contains("RGB") {
-                    return ColorMode::TrueColor;
-                }
-            }
+}
+
+fn push_initial_open(
+    program: &Program,
+    open_file: &Option<PathBuf>,
+    saved_session: &Option<session::schema::SessionState>,
+    root_dir: &std::path::Path,
+) {
+    if let Some(ref file_path) = open_file {
+        program.sink().push_command(
+            CM_OPEN_FILE_FOCUS,
+            Some(Box::new(OpenFileRequest::new(file_path.clone()))),
+        );
+    } else if let Some(ref sess) = saved_session {
+        for tab in sess.editor_tabs() {
+            let path = root_dir.join(tab.path());
+            program
+                .sink()
+                .push_command(CM_OPEN_FILE, Some(Box::new(OpenFileRequest::new(path))));
         }
     }
-    base
 }

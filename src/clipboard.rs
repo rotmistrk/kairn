@@ -2,7 +2,13 @@
 
 #[cfg(not(target_os = "macos"))]
 use base64::Engine;
-use std::io::Write;
+use std::io::{self, Write};
+use std::process::Command;
+#[cfg(target_os = "macos")]
+use std::process::Stdio;
+
+#[cfg(not(target_os = "macos"))]
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 /// Copy text to system clipboard.
 /// On macOS, uses pbcopy for reliable single-copy behavior.
@@ -21,8 +27,8 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
 fn copy_raw(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        let mut child = std::process::Command::new("pbcopy")
-            .stdin(std::process::Stdio::piped())
+        let mut child = Command::new("pbcopy")
+            .stdin(Stdio::piped())
             .spawn()
             .map_err(|e| format!("pbcopy: {e}"))?;
         if let Some(stdin) = child.stdin.as_mut() {
@@ -36,12 +42,12 @@ fn copy_raw(text: &str) -> Result<(), String> {
     // Fallback: OSC 52
     #[cfg(not(target_os = "macos"))]
     {
-        let encoded = base64::engine::general_purpose::STANDARD.encode(text);
+        let encoded = BASE64_STANDARD.encode(text);
         let seq = format!("\x1b]52;c;{encoded}\x07");
-        std::io::stdout()
+        io::stdout()
             .write_all(seq.as_bytes())
             .map_err(|e| format!("clipboard: {e}"))?;
-        std::io::stdout().flush().map_err(|e| format!("clipboard: {e}"))?;
+        io::stdout().flush().map_err(|e| format!("clipboard: {e}"))?;
         Ok(())
     }
 }
@@ -50,12 +56,10 @@ fn copy_raw(text: &str) -> Result<(), String> {
 /// Returns Err with reason on failure.
 pub fn paste_from_clipboard() -> Result<String, String> {
     #[cfg(target_os = "macos")]
-    let result = std::process::Command::new("pbpaste").output();
+    let result = Command::new("pbpaste").output();
 
     #[cfg(not(target_os = "macos"))]
-    let result = std::process::Command::new("xclip")
-        .args(["-selection", "clipboard", "-o"])
-        .output();
+    let result = Command::new("xclip").args(["-selection", "clipboard", "-o"]).output();
 
     match result {
         Ok(output) if output.status.success() => Ok(String::from_utf8_lossy(&output.stdout).to_string()),

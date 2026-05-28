@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{json, Map, Value};
 
 use super::commands::McpCommandQueue;
+use super::log::log as mcp_log;
 use super::snapshot::McpSnapshot;
 use super::tools;
 
@@ -53,7 +54,7 @@ impl McpServer {
                 continue;
             };
             let method = request.get("method").and_then(Value::as_str).unwrap_or("?");
-            super::log::log("mcp", &format!("← {method}"));
+            mcp_log("mcp", &format!("← {method}"));
             if let Some(response) = self.handle_request(&request) {
                 writeln!(writer, "{response}")?;
                 writer.flush()?;

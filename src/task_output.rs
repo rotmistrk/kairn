@@ -1,5 +1,6 @@
 //! TaskOutput — shared async output state for background tasks (grep, build).
 
+use std::mem;
 use std::sync::{Arc, Mutex};
 
 use crate::views::results::ResultEntry;
@@ -29,10 +30,7 @@ impl TaskOutput {
     }
 
     pub fn take_entries(&self) -> Vec<ResultEntry> {
-        self.entries
-            .lock()
-            .map(|mut v| std::mem::take(&mut *v))
-            .unwrap_or_default()
+        self.entries.lock().map(|mut v| mem::take(&mut *v)).unwrap_or_default()
     }
 
     pub fn mark_done(&self) {

@@ -45,70 +45,53 @@ impl AppPalette {
 
 impl Default for AppPalette {
     fn default() -> Self {
-        Self::new(
-            GitPalette::new(fg(2), fg(12), fg(1), fg(8), fg(5)),
-            DiffPalette::new(fg(2), fg(1), fg(8)),
-            EditorPalette::new(
-                fg(8),
-                fg(8),
-                fgbg(0, 7),
-                Style {
-                    fg: Color::Reset,
-                    bg: Color::Rgb(0x44, 0x44, 0x00),
-                    attrs: Attrs::default(),
-                },
-                Style {
-                    fg: Color::Reset,
-                    bg: Color::Rgb(0x00, 0x44, 0x00),
-                    attrs: Attrs::default(),
-                },
-                Style {
-                    fg: Color::Reset,
-                    bg: Color::Ansi(8),
-                    attrs: Attrs {
-                        bold: true,
-                        ..Attrs::default()
-                    },
-                },
-            ),
-            DiagPalette::new(
-                Style {
-                    fg: Color::Ansi(1),
-                    bg: Color::Reset,
-                    attrs: Attrs {
-                        underline: true,
-                        ..Attrs::default()
-                    },
-                },
-                Style {
-                    fg: Color::Ansi(3),
-                    bg: Color::Reset,
-                    attrs: Attrs {
-                        underline: true,
-                        ..Attrs::default()
-                    },
-                },
-                Style {
-                    fg: Color::Ansi(6),
-                    bg: Color::Reset,
-                    attrs: Attrs {
-                        underline: true,
-                        ..Attrs::default()
-                    },
-                },
-                Style {
-                    fg: Color::Ansi(8),
-                    bg: Color::Reset,
-                    attrs: Attrs {
-                        underline: true,
-                        ..Attrs::default()
-                    },
-                },
-            ),
-            TreePalette::new(fg(14)),
-            TodoPalette::new(fg(7), fg(8), fg(1)),
-            MsgPalette::new(fg(9), fg(11), fg(7), fg(8)),
-            BadgePalette::new(fg(2), fg(3), fg(1)),
-        )
+        Self {
+            git: GitPalette::new(fg(2), fg(12), fg(1), fg(8), fg(5)),
+            diff: DiffPalette::new(fg(2), fg(1), fg(8)),
+            editor: default_editor_palette(),
+            diag: default_diag_palette(),
+            tree: TreePalette::new(fg(14)),
+            todo: TodoPalette::new(fg(7), fg(8), fg(1)),
+            msg: MsgPalette::new(fg(9), fg(11), fg(7), fg(8)),
+            badge: BadgePalette::new(fg(2), fg(3), fg(1)),
+        }
     }
+}
+
+fn default_editor_palette() -> EditorPalette {
+    EditorPalette::new(
+        fg(8),
+        fg(8),
+        fgbg(0, 7),
+        Style {
+            fg: Color::Reset,
+            bg: Color::Rgb(0x44, 0x44, 0x00),
+            attrs: Attrs::default(),
+        },
+        Style {
+            fg: Color::Reset,
+            bg: Color::Rgb(0x00, 0x44, 0x00),
+            attrs: Attrs::default(),
+        },
+        Style {
+            fg: Color::Reset,
+            bg: Color::Ansi(8),
+            attrs: Attrs {
+                bold: true,
+                ..Attrs::default()
+            },
+        },
+    )
+}
+
+fn default_diag_palette() -> DiagPalette {
+    let underline = |color: u8| Style {
+        fg: Color::Ansi(color),
+        bg: Color::Reset,
+        attrs: Attrs {
+            underline: true,
+            ..Attrs::default()
+        },
+    };
+    DiagPalette::new(underline(1), underline(3), underline(6), underline(8))
 }
