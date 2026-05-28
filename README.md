@@ -102,6 +102,20 @@ Side-by-side diff (`:diff -y`): left=base, right=current, aligned with gaps. Sam
 
 `j/k` navigate, `Enter/→` open/expand, `h/←` collapse, `Ctrl-.` toggle hidden, `/` filter (fuzzy match)
 
+File operations via `Alt-f` (ƒ on macOS) prefix:
+
+| Key | Action |
+|-----|--------|
+| `n` | New file (in cursor directory) |
+| `N` | New directory |
+| `d` | Delete file/directory |
+| `r` | Rename/move |
+| `c` | Copy |
+| `m` | Mark/unmark toggle |
+| `u` | Unmark all |
+| `M` | Move marked to cursor directory |
+| `C` | Copy marked to cursor directory |
+
 ### Git Panel
 
 `s` stage, `u` unstage, `x` untrack, `c` commit
@@ -143,6 +157,11 @@ Side-by-side diff (`:diff -y`): left=base, right=current, aligned with gaps. Sam
 | `theme dark/light/toggle` | Switch theme |
 | `git-stage/unstage/untrack <f>` | Git operations |
 | `git-commit <msg>` | Commit |
+| `new-file <path>` | Create file (and parent dirs) |
+| `new-dir <path>` | Create directory |
+| `delete-file <path>` | Delete file or directory |
+| `rename-file <old> <new>` | Rename/move file |
+| `copy-file <src> <dest>` | Copy file or directory |
 | `tab-rename <name>` | Rename tab |
 | `split [<file>]` / `vsplit [<file>]` | Split editor |
 | `struct` / `text` | Switch view mode |

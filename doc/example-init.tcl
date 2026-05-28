@@ -141,6 +141,16 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #     if {$target ne ""} { lsp env rust CARGO_TARGET_DIR $target }
 # }
 
+# ─── File Operations (Alt-f / ƒ prefix in tree) ──────────────────────────────
+# Alt-f (ƒ on macOS) opens file ops prefix in tree panel:
+#   n:new  N:dir  d:del  r:rename  c:copy  m:mark  u:unmark  M:Move  C:Copy
+# These commands also work from M-x:
+#   new-file <path>         ;# create file (and parent dirs)
+#   new-dir <path>          ;# create directory
+#   delete-file <path>      ;# delete file or directory
+#   rename-file <old> <new> ;# rename/move
+#   copy-file <src> <dest>  ;# copy file or directory
+
 # ─── Hooks & Selection Scripting ─────────────────────────────────────────────
 
 # ─── View Commands ───────────────────────────────────────────────────────────
