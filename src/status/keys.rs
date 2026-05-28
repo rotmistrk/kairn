@@ -23,6 +23,7 @@ pub fn add_dired_prefix(bar: &mut StatusBar) {
     let b = |ch: char, cmd, label| -> Box<dyn View> { Box::new(KeyLabelView::new(key(KeyCode::Char(ch)), cmd, label)) };
     let prefix = ModalKey::new("M-f", "File: ")
         .trigger_key(alt('f'))
+        .trigger_key(key(KeyCode::Char('ƒ')))
         .cancel_on_miss()
         .add_child(b('n', CM_TREE_NEW_FILE, "new"))
         .add_child(b('N', CM_TREE_NEW_DIR, "dir"))
