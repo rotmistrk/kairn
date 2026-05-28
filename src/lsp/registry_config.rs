@@ -25,6 +25,7 @@ impl LspRegistry {
             ServerConfig {
                 command: command.to_string(),
                 args: args.to_vec(),
+                env: std::collections::HashMap::new(),
             },
         );
     }

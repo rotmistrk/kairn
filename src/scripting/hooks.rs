@@ -18,6 +18,7 @@ pub enum HookEvent {
     Paste,
     ModeChanged,
     SelectionChanged,
+    LspStart,
 }
 
 impl HookEvent {
@@ -36,6 +37,7 @@ impl HookEvent {
             "paste" => Some(Self::Paste),
             "mode-changed" => Some(Self::ModeChanged),
             "selection-changed" => Some(Self::SelectionChanged),
+            "lsp-start" => Some(Self::LspStart),
             _ => None,
         }
     }
@@ -55,6 +57,7 @@ impl HookEvent {
             Self::Paste => "paste",
             Self::ModeChanged => "mode-changed",
             Self::SelectionChanged => "selection-changed",
+            Self::LspStart => "lsp-start",
         }
     }
 }

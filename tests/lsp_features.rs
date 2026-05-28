@@ -14,7 +14,13 @@ fn spawn_lsp() -> LspClient {
         .to_string_lossy()
         .to_string();
     let args = ["--prelude", &prelude];
-    LspClient::spawn(path.to_str().unwrap(), &args, txv_core::run::Waker::noop()).expect("Failed to spawn rusticle-lsp")
+    LspClient::spawn(
+        path.to_str().unwrap(),
+        &args,
+        &std::collections::HashMap::new(),
+        txv_core::run::Waker::noop(),
+    )
+    .expect("Failed to spawn rusticle-lsp")
 }
 
 fn poll_response(client: &mut LspClient, timeout_ms: u64) -> Option<LspMessage> {
@@ -192,8 +198,13 @@ fn e2e_lsp_find_references() {
 fn e2e_lsp_shebang_preamble_suppresses_unknown_command() {
     // Spawn LSP WITHOUT --prelude to test shebang-based discovery
     let path = PathBuf::from(env!("CARGO_BIN_EXE_rusticle-lsp"));
-    let mut client = LspClient::spawn(path.to_str().unwrap(), &[], txv_core::run::Waker::noop())
-        .expect("Failed to spawn rusticle-lsp");
+    let mut client = LspClient::spawn(
+        path.to_str().unwrap(),
+        &[],
+        &std::collections::HashMap::new(),
+        txv_core::run::Waker::noop(),
+    )
+    .expect("Failed to spawn rusticle-lsp");
     init(&mut client);
 
     // File with rusticle-tk shebang — "app" should be recognized via --lsp-preamble

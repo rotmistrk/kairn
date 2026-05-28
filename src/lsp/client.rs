@@ -1,5 +1,6 @@
 //! LspClient — spawns an LSP server process, sends requests, polls responses.
 
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -24,14 +25,17 @@ pub struct LspClient {
 
 impl LspClient {
     /// Spawn an LSP server process. Returns None if spawn fails.
-    pub fn spawn(cmd: &str, args: &[&str], waker: Waker) -> Option<Self> {
-        let mut child = Command::new(cmd)
+    pub fn spawn(cmd: &str, args: &[&str], env: &HashMap<String, String>, waker: Waker) -> Option<Self> {
+        let mut command = Command::new(cmd);
+        command
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .ok()?;
+            .stderr(Stdio::piped());
+        if !env.is_empty() {
+            command.envs(env);
+        }
+        let mut child = command.spawn().ok()?;
 
         let stdin = child.stdin.take()?;
         let stdout = child.stdout.take()?;
@@ -204,14 +208,14 @@ mod tests {
 
     #[test]
     fn spawn_nonexistent_returns_none() {
-        let client = LspClient::spawn("__nonexistent_lsp_server_xyz__", &[], Waker::noop());
+        let client = LspClient::spawn("__nonexistent_lsp_server_xyz__", &[], &HashMap::new(), Waker::noop());
         assert!(client.is_none());
     }
 
     #[test]
     fn send_request_increments_id() {
         // Use `cat` as a dummy process (won't respond but won't crash)
-        let client = LspClient::spawn("cat", &[], Waker::noop());
+        let client = LspClient::spawn("cat", &[], &HashMap::new(), Waker::noop());
         if let Some(mut c) = client {
             let id1 = c.send_request("test", serde_json::json!({}));
             let id2 = c.send_request("test", serde_json::json!({}));
@@ -222,7 +226,7 @@ mod tests {
 
     #[test]
     fn poll_empty_when_no_response() {
-        let client = LspClient::spawn("cat", &[], Waker::noop());
+        let client = LspClient::spawn("cat", &[], &HashMap::new(), Waker::noop());
         if let Some(mut c) = client {
             let msgs = c.poll();
             assert!(msgs.is_empty());

@@ -21,7 +21,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
 
     if state.lsp.is_initializing(lang) {
         defer(
@@ -54,7 +54,7 @@ pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
     };
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         return;
     };
@@ -73,7 +73,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
 
     if state.lsp.is_initializing(lang) {
         defer(
@@ -107,7 +107,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
@@ -127,7 +127,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
@@ -146,7 +146,7 @@ pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState
     };
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         return;
     };
@@ -165,7 +165,7 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
 
     let (uri, lang) = current_file_info(state);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(&lang, &root);
+    start_lsp(state, &lang, &root);
     let Some(client) = state.lsp.get_client_mut(&lang) else {
         emit_last_error(ctx, state);
         return;
@@ -178,7 +178,7 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
 pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
     let (uri, lang) = current_file_info(state);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(&lang, &root);
+    start_lsp(state, &lang, &root);
     let Some(client) = state.lsp.get_client_mut(&lang) else {
         emit_last_error(ctx, state);
         return;
@@ -190,7 +190,7 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
 
 pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {
     let root = state.root_dir.clone();
-    state.lsp.ensure_started("java", &root);
+    start_lsp(state, "java", &root);
     let Some(client) = state.lsp.get_client_mut("java") else {
         return;
     };
@@ -249,4 +249,12 @@ fn current_file_info(state: &AppState) -> (String, String) {
     } else {
         (String::new(), String::new())
     }
+}
+
+/// Fire lsp-start hook (once per language) then call ensure_started.
+pub(super) fn start_lsp(state: &mut AppState, lang: &str, root: &std::path::Path) {
+    if state.lsp.take_start_hook(lang) {
+        crate::handler_script_util::fire_lsp_start_hook(state, lang);
+    }
+    state.lsp.ensure_started(lang, root);
 }

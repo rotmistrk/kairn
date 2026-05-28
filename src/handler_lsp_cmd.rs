@@ -38,6 +38,9 @@ fn lsp_start(pattern: &str, state: &mut AppState) -> String {
     let root = state.root_dir.clone();
     let mut started = Vec::new();
     for lang in &langs {
+        if state.lsp.take_start_hook(lang) {
+            crate::handler_script_util::fire_lsp_start_hook(state, lang);
+        }
         state.lsp.ensure_started(lang, &root);
         if !state.lsp.is_initializing(lang) {
             started.push(lang.as_str());
@@ -62,6 +65,9 @@ fn lsp_restart(pattern: &str, state: &mut AppState) -> String {
     let root = state.root_dir.clone();
     let mut restarted = Vec::new();
     for lang in &langs {
+        if state.lsp.take_start_hook(lang) {
+            crate::handler_script_util::fire_lsp_start_hook(state, lang);
+        }
         state.lsp.ensure_started(lang, &root);
         restarted.push(lang.as_str());
     }

@@ -135,6 +135,11 @@ pub(crate) fn dispatch_extended(cmd: ScriptCommand, ctx: &mut CommandContext, st
         ScriptCommand::LspArgs { pattern, command } => {
             lsp_cmd(ctx, state, &format!("args {pattern} {command}"));
         }
+        ScriptCommand::LspEnv { pattern, key, value } => {
+            for lang in state.lsp.matching_languages(&pattern) {
+                state.lsp.set_env(&lang, key.clone(), value.clone());
+            }
+        }
         _ => return false,
     }
     true

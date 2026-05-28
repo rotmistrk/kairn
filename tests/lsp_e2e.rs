@@ -13,7 +13,13 @@ fn spawn_lsp() -> LspClient {
         .to_string_lossy()
         .to_string();
     let args = ["--prelude", &prelude];
-    LspClient::spawn(path.to_str().unwrap(), &args, txv_core::run::Waker::noop()).expect("Failed to spawn rusticle-lsp")
+    LspClient::spawn(
+        path.to_str().unwrap(),
+        &args,
+        &std::collections::HashMap::new(),
+        txv_core::run::Waker::noop(),
+    )
+    .expect("Failed to spawn rusticle-lsp")
 }
 
 fn poll_response(client: &mut LspClient, timeout_ms: u64) -> Option<LspMessage> {

@@ -45,3 +45,27 @@ pub fn lsp_cmd(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
         Some(Box::new(txv_core::message::Message::info("lsp", msg))),
     );
 }
+
+/// Fire lsp-start hook for a language. Runs synchronously (no CommandContext needed).
+pub fn fire_lsp_start_hook(state: &mut AppState, language_id: &str) {
+    let scripts = if let Ok(reg) = state.script.hook_registry.lock() {
+        reg.fire(&crate::scripting::hooks::HookEvent::LspStart, language_id)
+    } else {
+        return;
+    };
+    for script in scripts {
+        let _ = state.script.eval(&script);
+        let cmds = state.script.drain_commands();
+        for cmd in cmds {
+            if let crate::scripting::ScriptCommand::LspEnv { pattern, key, value } = cmd {
+                if glob_match(&pattern, language_id) {
+                    state.lsp.set_env(language_id, key, value);
+                }
+            }
+        }
+    }
+}
+
+fn glob_match(pattern: &str, text: &str) -> bool {
+    pattern == "*" || pattern == text
+}

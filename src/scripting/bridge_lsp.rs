@@ -61,6 +61,13 @@ pub fn register(interp: &mut Interpreter, commands: Arc<Mutex<Vec<ScriptCommand>
                 push(&cmds, ScriptCommand::LspArgs { pattern, command });
                 Ok(TclValue::Str(String::new()))
             }
+            "env" => {
+                let pattern = super::arg_str(args, 1)?;
+                let key = super::arg_str(args, 2)?;
+                let value = super::arg_str(args, 3)?;
+                push(&cmds, ScriptCommand::LspEnv { pattern, key, value });
+                Ok(TclValue::Str(String::new()))
+            }
             other => Err(TclError::new(format!("lsp: unknown subcommand '{other}'"))),
         }
     });

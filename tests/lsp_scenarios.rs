@@ -13,7 +13,12 @@ use kairn::lsp::requests;
 #[test]
 fn lsp_server_spawn_nonexistent_returns_none() {
     use kairn::lsp::client::LspClient;
-    let result = LspClient::spawn("__no_such_lsp_binary__", &[], txv_core::run::Waker::noop());
+    let result = LspClient::spawn(
+        "__no_such_lsp_binary__",
+        &[],
+        &std::collections::HashMap::new(),
+        txv_core::run::Waker::noop(),
+    );
     assert!(result.is_none());
 }
 
@@ -216,7 +221,12 @@ fn lsp_diagnostics_notification_parsed() {
 fn lsp_client_poll_empty_after_process_exit() {
     use kairn::lsp::client::LspClient;
     // Spawn `true` which exits immediately
-    let client = LspClient::spawn("true", &[], txv_core::run::Waker::noop());
+    let client = LspClient::spawn(
+        "true",
+        &[],
+        &std::collections::HashMap::new(),
+        txv_core::run::Waker::noop(),
+    );
     if let Some(mut c) = client {
         // Give it a moment to exit
         std::thread::sleep(std::time::Duration::from_millis(50));

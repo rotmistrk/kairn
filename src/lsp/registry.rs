@@ -14,6 +14,7 @@ use super::protocol;
 pub struct ServerConfig {
     pub command: String,
     pub args: Vec<String>,
+    pub env: HashMap<String, String>,
 }
 
 /// Lifecycle state of a single LSP server.
@@ -36,6 +37,8 @@ pub struct LspRegistry {
     pub last_error: Option<String>,
     /// Files to send didOpen for after initialization completes.
     pub(super) pending_opens: Vec<(String, PathBuf)>,
+    /// Languages that have had their lsp-start hook fired.
+    hook_fired: std::collections::HashSet<String>,
     waker: txv_core::run::Waker,
 }
 
@@ -48,6 +51,7 @@ impl LspRegistry {
                 ServerConfig {
                     command: cmd.to_string(),
                     args: args.iter().map(|s| s.to_string()).collect(),
+                    env: HashMap::new(),
                 },
             );
         }
@@ -57,6 +61,7 @@ impl LspRegistry {
             timeouts: HashMap::new(),
             last_error: None,
             pending_opens: Vec::new(),
+            hook_fired: std::collections::HashSet::new(),
             waker: txv_core::run::Waker::noop(),
         }
     }
@@ -64,6 +69,24 @@ impl LspRegistry {
     /// Set the waker so LSP reader threads can wake the event loop.
     pub fn set_waker(&mut self, waker: txv_core::run::Waker) {
         self.waker = waker;
+    }
+
+    /// Returns true (and marks fired) if the lsp-start hook should fire for this language.
+    pub fn take_start_hook(&mut self, language_id: &str) -> bool {
+        if self.servers.contains_key(language_id) {
+            return false;
+        }
+        if !self.configs.contains_key(language_id) {
+            return false;
+        }
+        self.hook_fired.insert(language_id.to_string())
+    }
+
+    /// Set an environment variable for a language server config.
+    pub fn set_env(&mut self, language_id: &str, key: String, value: String) {
+        if let Some(config) = self.configs.get_mut(language_id) {
+            config.env.insert(key, value);
+        }
     }
 
     /// Ensure a server is started for a language. Returns true if ready for requests.
@@ -77,7 +100,7 @@ impl LspRegistry {
         };
         let args: Vec<&str> = config.args.iter().map(|s| s.as_str()).collect();
         let resolved_cmd = resolve_command(&config.command);
-        let mut client = match LspClient::spawn(&resolved_cmd, &args, self.waker.clone()) {
+        let mut client = match LspClient::spawn(&resolved_cmd, &args, &config.env, self.waker.clone()) {
             Some(c) => c,
             None => {
                 let hint = crate::tool_check::install_hint(&config.command);

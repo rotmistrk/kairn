@@ -17,7 +17,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    super::send::start_lsp(state, lang, &root);
 
     if state.lsp.is_initializing(lang) {
         state.lsp.pending_opens.push((lang.to_string(), path.clone()));
@@ -62,7 +62,7 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
 
     let lang = protocol::language_id(&changed.path);
     let root = state.root_dir.clone();
-    state.lsp.ensure_started(lang, &root);
+    super::send::start_lsp(state, lang, &root);
     let Some(client) = state.lsp.get_client_mut(lang) else {
         return;
     };

@@ -171,4 +171,9 @@ pub enum ScriptCommand {
         pattern: String,
         command: String,
     },
+    LspEnv {
+        pattern: String,
+        key: String,
+        value: String,
+    },
 }
