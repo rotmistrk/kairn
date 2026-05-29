@@ -13,10 +13,10 @@ use crate::handler_build::{
     handle_build, handle_next_error, handle_prev_error, handle_run, handle_test, handle_test_at_cursor,
     handle_test_file,
 };
-use crate::handler_clipboard::handle_clipboard_commands;
+use crate::handler_clipboard::{handle_clipboard_commands, update_problems_view};
 use crate::handler_close::{handle_app_quit, handle_save_all, handle_tab_close};
 use crate::handler_confirm::{handle_confirm_response, handle_set_confirm_context};
-use crate::handler_context::broadcast_context;
+use crate::handler_context::{broadcast_context, handle_cursor_moved};
 use crate::handler_drain::{
     drain_build, drain_grep, handle_todo_action, open_todo_note, refresh_plugins, save_todo_note, update_todo_note,
 };
@@ -172,6 +172,7 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TODO_NOTE_OPEN => open_todo_note(ctx, state),
         CM_TODO_NOTE_UPDATE => update_todo_note(ctx, state),
         CM_TODO_ACTION => handle_todo_action(ctx, state),
+        CM_DIAGNOSTIC => update_problems_view(ctx),
         _ => handle_clipboard_commands(ctx),
     }
 }
@@ -239,14 +240,6 @@ fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState) {
                 "Welcome",
                 Box::new(WelcomeView::new(state.root_dir.clone())),
             );
-        }
-    }
-}
-
-fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(boxed) = ctx.data.as_ref() {
-        if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
-            state.cursor_pos = (pos.line().saturating_sub(1), pos.col().saturating_sub(1));
         }
     }
 }

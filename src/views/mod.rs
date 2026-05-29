@@ -7,6 +7,7 @@ pub mod git_log;
 pub mod help;
 pub mod messages;
 pub mod notes;
+pub mod problems;
 pub mod result_entry;
 pub mod results;
 pub mod scroll_map;

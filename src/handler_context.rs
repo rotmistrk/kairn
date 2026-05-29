@@ -143,3 +143,11 @@ fn read_branch(root: &std::path::Path) -> String {
         String::new()
     }
 }
+
+pub(crate) fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState) {
+    if let Some(boxed) = ctx.data.as_ref() {
+        if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
+            state.cursor_pos = (pos.line().saturating_sub(1), pos.col().saturating_sub(1));
+        }
+    }
+}

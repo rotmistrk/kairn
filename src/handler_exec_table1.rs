@@ -148,4 +148,9 @@ pub static TABLE_PART1: &[ExecEntry] = &[
         requires_arg: false,
         handler: crate::handler_exec_edit::cmd_messages,
     },
+    ExecEntry {
+        names: &["problems"],
+        requires_arg: false,
+        handler: crate::handler_exec_edit::cmd_problems,
+    },
 ];

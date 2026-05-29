@@ -138,6 +138,13 @@ pub(crate) fn cmd_messages(ctx: &mut CommandContext, _state: &mut AppState, _arg
     ctx.sink.push_command(CM_SHOW_MESSAGES, None);
 }
 
+pub(crate) fn cmd_problems(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        focus_tab_by_title(desktop, SlotId::Tools, "Problems");
+        desktop.focus_panel(SlotId::Tools as usize);
+    }
+}
+
 pub(crate) fn cmd_next_error(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     ctx.sink.push_command(CM_NEXT_ERROR, None);
 }

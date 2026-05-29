@@ -10,6 +10,7 @@ use crate::git_watcher::{GitWatcher, WatchHandle};
 use crate::settings::GitKeys;
 use crate::slots::{insert_tab, SlotId, PANEL_COUNT};
 use crate::views::git_changes::GitChangesView;
+use crate::views::problems::ProblemsView;
 use crate::views::terminal::new_shell_terminal;
 use crate::views::todo_tree::TodoTreeView;
 use crate::views::tree::FileTreeView;
@@ -104,6 +105,13 @@ pub fn build_workspace(root_dir: &Path, git_keys: GitKeys) -> TiledWorkspace {
 
     let term = new_shell_terminal();
     insert_tab(&mut ws, SlotId::Tools, "Shell:0", term);
+
+    let problems = ProblemsView::new(root_dir);
+    insert_tab(&mut ws, SlotId::Tools, "Problems", Box::new(problems));
+
+    if let Some(panel) = ws.panel_mut(SlotId::Tools as usize) {
+        panel.set_active(0);
+    }
 
     ws
 }
