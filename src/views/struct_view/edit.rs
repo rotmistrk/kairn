@@ -21,6 +21,7 @@ impl StructuredView {
         self.edit_target = target;
         let mut input = InputLine::new().with_command(CM_OK);
         input.set_text(&text);
+        input.select_all();
         let pal = self.edit_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
