@@ -226,3 +226,23 @@ fn view_select_triggers_select_all() {
         );
     }
 }
+
+#[test]
+fn paste_multiline_takes_first_line_only() {
+    use txv_core::event::Event;
+    use txv_widgets::input_line::CM_CLIPBOARD_PASTE;
+
+    let mut input = InputLine::new();
+    input.set_text("");
+    input.set_bounds(Rect::new(0, 0, 40, 1));
+    input.select();
+    let paste = Event::Command {
+        id: CM_CLIPBOARD_PASTE,
+        data: Some(Box::new("first\nsecond\nthird".to_string())),
+    };
+    input.handle(&paste);
+    let cells = draw_cells(&mut input, 40);
+    let text: String = cells.iter().map(|(ch, _)| ch).collect();
+    let text = text.trim_end();
+    assert_eq!(text, "first", "should only contain first line, got: '{text}'");
+}
