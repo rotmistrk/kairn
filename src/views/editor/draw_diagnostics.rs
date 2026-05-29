@@ -7,7 +7,7 @@ use crate::lsp::diagnostics::{Diagnostic, Severity};
 
 use super::EditorView;
 
-struct DiagOverlay {
+struct DiagMark {
     x: u16,
     y: u16,
     ch: char,
@@ -15,7 +15,7 @@ struct DiagOverlay {
 }
 
 impl EditorView {
-    /// Overlay diagnostic underlines on the buffer for visible lines.
+    /// Apply diagnostic underlines on the buffer for visible lines.
     pub(super) fn draw_diagnostics(&mut self) {
         let diagnostics = match self.diagnostics.take() {
             Some(diags) => diags,
@@ -27,8 +27,8 @@ impl EditorView {
         let visible_lines = self.state.buffer_mut().height() as usize;
         let h_off = self.editor.h_scroll;
 
-        let overlays = self.collect_diag_overlays(&diagnostics, w, gutter_w, scroll, visible_lines, h_off);
-        for ov in overlays {
+        let marks = self.collect_diag_marks(&diagnostics, w, gutter_w, scroll, visible_lines, h_off);
+        for ov in marks {
             self.state.buffer_mut().put(ov.x, ov.y, ov.ch, ov.style);
         }
         self.diagnostics = Some(diagnostics);
@@ -36,7 +36,7 @@ impl EditorView {
 
     #[allow(clippy::too_many_arguments)]
     #[rustfmt::skip]
-    fn collect_diag_overlays(
+    fn collect_diag_marks(
         &mut self,
         diagnostics: &[Diagnostic],
         w: u16,
@@ -44,8 +44,8 @@ impl EditorView {
         scroll: usize,
         visible_lines: usize,
         h_off: usize,
-    ) -> Vec<DiagOverlay> {
-        let mut overlays = Vec::new();
+    ) -> Vec<DiagMark> {
+        let mut marks = Vec::new();
         for diag in diagnostics {
             if diag.line < scroll || diag.line >= scroll + visible_lines { continue; }
             let y = (diag.line - scroll) as u16;
@@ -61,10 +61,10 @@ impl EditorView {
                     fg: style.fg, bg: cell.style.bg,
                     attrs: Attrs { underline: true, ..cell.style.attrs },
                 };
-                overlays.push(DiagOverlay { x, y, ch: cell.ch, style: merged });
+                marks.push(DiagMark { x, y, ch: cell.ch, style: merged });
             }
         }
-        overlays
+        marks
     }
 
     /// Get the diagnostic message at the current cursor line (for status bar).

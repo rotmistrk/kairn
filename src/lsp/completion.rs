@@ -85,7 +85,7 @@ impl CompletionPopup {
         Some(item.insert_text.as_deref().unwrap_or(&item.label))
     }
 
-    /// Draw the popup as an overlay on the buffer.
+    /// Draw the popup on the buffer.
     pub fn draw(&self, buf: &mut Buffer) {
         if !self.visible || self.items.is_empty() {
             return;

@@ -57,7 +57,7 @@ pub struct EditorView {
     /// Diff mode state. None = normal mode.
     pub(super) diff_state: Option<diff_model::DiffState>,
     pub(super) sbs_state: Option<sbs_model::SbsDiffState>,
-    /// Completion popup overlay.
+    /// Completion popup.
     pub(super) completion_popup: CompletionPopup,
     /// Buffer identity in the shared registry (assigned on open).
     pub(crate) buffer_id: Option<crate::buffer_registry::BufferId>,

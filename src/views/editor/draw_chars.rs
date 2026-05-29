@@ -3,7 +3,7 @@
 use txv_core::prelude::*;
 
 use super::draw::DrawParams;
-use super::draw_style::{bracket_overlay, char_style};
+use super::draw_style::{bracket_highlight, char_style};
 use super::EditorView;
 use crate::app_palette::{app_palette, AppPalette};
 use crate::editor::highlight_state::HighlightState;
@@ -202,7 +202,7 @@ impl EditorView {
         let app = app_palette();
         let (display_ch, display_style) = self.resolve_display_char(ch, style, &app);
         let vy = st.visual_row as u16;
-        let display_style = bracket_overlay(
+        let display_style = bracket_highlight(
             display_style,
             line_idx,
             st.char_idx,

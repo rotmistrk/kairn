@@ -72,7 +72,7 @@ fn chrome_shows_active_tab_with_count() {
 }
 
 #[test]
-fn ctrl_shift_down_shows_dropdown_overlay() {
+fn ctrl_shift_down_shows_dropdown() {
     let dir = temp_project(&[("a.rs", "aaa"), ("b.rs", "bbb")]);
     let mut h = TestHarness::new(dir.path());
     h.inject_key(KeyCode::Right, KeyMod::default());
@@ -158,7 +158,7 @@ fn dropdown_esc_cancels() {
     h.run_cycles(1);
     // b.rs should still be active, no dropdown visible
     assert!(h.contains("bbb"), "Esc should cancel dropdown, keep b.rs active");
-    // NOTE: dropdown overlay clear is a known rendering issue — the overlay
+    // NOTE: dropdown clear is a known rendering issue — the dropdown
     // cells persist until next full redraw. Skipping the "0:" check for now.
     // let screen = h.screen_text();
     // assert!(!screen.contains("0:"), "dropdown should be closed after Esc");

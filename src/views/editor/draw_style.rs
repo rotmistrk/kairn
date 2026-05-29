@@ -1,9 +1,9 @@
-//! Style helpers for editor draw — computes per-character style overlays.
+//! Style helpers for editor draw — computes per-character styles.
 
 use txv_core::prelude::{Color, Style};
 
 /// Compute the effective style for a character at `byte_pos`, applying
-/// visual selection and search highlight overlays.
+/// visual selection and search highlights.
 pub(super) fn char_style(
     base: Style,
     byte_pos: usize,
@@ -29,8 +29,8 @@ pub(super) fn char_style(
     base
 }
 
-/// Apply matchparen and rainbow bracket overlays to a character style.
-pub(super) fn bracket_overlay(
+/// Apply matchparen and rainbow bracket highlights to a character style.
+pub(super) fn bracket_highlight(
     base: Style,
     line_idx: usize,
     char_idx: usize,
