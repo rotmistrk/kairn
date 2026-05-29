@@ -103,10 +103,17 @@ impl CsvView {
 }
 
 impl View for CsvView {
-    delegate_view_state!(state, override { title, needs_redraw, draw });
+    delegate_view_state!(state, override { title, needs_redraw, draw, set_bounds });
 
     fn title(&self) -> &str {
         &self.display_title
+    }
+
+    fn set_bounds(&mut self, r: txv_core::geometry::Rect) {
+        if self.state.bounds() != r {
+            self.editing = None;
+        }
+        self.state.set_bounds(r);
     }
 
     fn needs_redraw(&self) -> bool {

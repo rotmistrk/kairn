@@ -245,10 +245,17 @@ impl StructuredView {
 }
 
 impl View for StructuredView {
-    delegate_view_state!(state, override { title, draw, handle });
+    delegate_view_state!(state, override { title, draw, handle, set_bounds });
 
     fn title(&self) -> &str {
         &self.display_title
+    }
+
+    fn set_bounds(&mut self, r: txv_core::geometry::Rect) {
+        if self.state.bounds() != r {
+            self.editing = None;
+        }
+        self.state.set_bounds(r);
     }
 
     fn draw(&mut self) {

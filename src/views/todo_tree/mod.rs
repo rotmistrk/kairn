@@ -152,10 +152,17 @@ impl TodoTreeView {
 }
 
 impl View for TodoTreeView {
-    delegate_view!(inner, override { title, handle, draw, can_close });
+    delegate_view!(inner, override { title, handle, draw, can_close, set_bounds });
 
     fn title(&self) -> &str {
         "Todo"
+    }
+
+    fn set_bounds(&mut self, r: txv_core::geometry::Rect) {
+        if self.inner.bounds() != r {
+            self.commit_edit_on_resize();
+        }
+        self.inner.set_bounds(r);
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -191,6 +198,16 @@ impl View for TodoTreeView {
 }
 
 impl TodoTreeView {
+    /// Commit any active inline edit when the view is resized.
+    fn commit_edit_on_resize(&mut self) {
+        if let Some(editor) = self.editing.take() {
+            self.inner.data.update_title(editor.row, editor.buffer);
+        }
+        if self.filter_editor.is_some() {
+            self.filter_editor = None;
+        }
+    }
+
     fn handle_filter_key(&mut self, key: &KeyEvent) -> HandleResult {
         if key.code == KeyCode::Esc {
             self.inner.data.filter_text.clear();
