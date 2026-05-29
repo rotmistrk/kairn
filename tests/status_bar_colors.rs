@@ -21,8 +21,8 @@ fn modal_bg() -> Color {
 
 /// Status bar row is the last row.
 fn status_row(h: &TestHarness) -> u16 {
-    let surface = h.backend.surface().expect("no surface");
-    surface.height() - 1
+    let buf = h.backend.buffer().expect("no buffer");
+    buf.height() - 1
 }
 
 /// Every cell on the status bar row must have a non-black background when dormant.
@@ -33,13 +33,13 @@ fn status_bar_dormant_no_black_bg() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(2);
 
-    let surface = h.backend.surface().expect("no surface");
-    let w = surface.width();
-    let y = surface.height() - 1;
+    let buf = h.backend.buffer().expect("no buffer");
+    let w = buf.width();
+    let y = buf.height() - 1;
     let expected_bg = bar_bg();
 
     for x in 0..w {
-        let cell = surface.cell(x, y);
+        let cell = buf.cell(x, y);
         assert!(
             cell.style.bg != Color::Reset && cell.style.bg != Color::Ansi(0),
             "cell at x={x} has black bg ({:?}), expected bar bg ({expected_bg:?}). char={:?}",
@@ -68,16 +68,16 @@ fn status_bar_active_modal_right_cap_colors() {
     );
     h.run_cycles(2);
 
-    let surface = h.backend.surface().expect("no surface");
-    let w = surface.width();
-    let y = surface.height() - 1;
+    let buf = h.backend.buffer().expect("no buffer");
+    let w = buf.width();
+    let y = buf.height() - 1;
     let expected_bar_bg = bar_bg();
     let expected_modal_bg = modal_bg();
 
     // Find the right power cap (U+E0B4) on status bar row
     let mut found_cap = false;
     for x in 0..w {
-        let cell = surface.cell(x, y);
+        let cell = buf.cell(x, y);
         if cell.ch == '\u{e0b4}' {
             found_cap = true;
             assert_eq!(
@@ -115,15 +115,15 @@ fn status_bar_active_modal_no_black_after_cap() {
     );
     h.run_cycles(2);
 
-    let surface = h.backend.surface().expect("no surface");
-    let w = surface.width();
-    let y = surface.height() - 1;
+    let buf = h.backend.buffer().expect("no buffer");
+    let w = buf.width();
+    let y = buf.height() - 1;
     let expected_bar_bg = bar_bg();
 
     // Find the right power cap, then check all cells after it
     let mut cap_x = None;
     for x in 0..w {
-        let cell = surface.cell(x, y);
+        let cell = buf.cell(x, y);
         if cell.ch == '\u{e0b4}' {
             cap_x = Some(x);
             break;
@@ -132,7 +132,7 @@ fn status_bar_active_modal_no_black_after_cap() {
     let cap_x = cap_x.expect("right power cap not found");
 
     for x in (cap_x + 1)..w {
-        let cell = surface.cell(x, y);
+        let cell = buf.cell(x, y);
         assert!(
             cell.style.bg != Color::Reset && cell.style.bg != Color::Ansi(0),
             "cell at x={x} (after right cap at {cap_x}) has black bg ({:?}), expected bar bg ({expected_bar_bg:?}). char={:?}",

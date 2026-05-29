@@ -22,26 +22,26 @@ fn open_and_focus(h: &mut TestHarness, dir: &std::path::Path, file: &str) {
 /// Check if there's a reverse-style cell in the editor content area (line 1 of file).
 /// This indicates the software cursor is being drawn.
 fn has_software_cursor(h: &TestHarness) -> bool {
-    let surface = h.backend.surface().expect("no surface");
-    let w = surface.width();
-    let height = surface.height();
+    let buf = h.backend.buffer().expect("no buffer");
+    let w = buf.width();
+    let height = buf.height();
     // Find the row with line number "1" — that's where the cursor should be
     for y in 1..height.saturating_sub(1) {
         // Look for the '│' divider followed by line number
         for x in 0..w.saturating_sub(3) {
-            let c = surface.cell(x, y);
+            let c = buf.cell(x, y);
             if c.ch == '│' {
                 // Check if next non-space char is '1'
                 let mut nx = x + 1;
-                while nx < w && surface.cell(nx, y).ch == ' ' {
+                while nx < w && buf.cell(nx, y).ch == ' ' {
                     nx += 1;
                 }
-                if nx < w && surface.cell(nx, y).ch == '1' {
+                if nx < w && buf.cell(nx, y).ch == '1' {
                     // Found line 1 row. Now check for reverse cells after the gutter
                     let content_start = nx + 2; // past "1 "
                     for cx in content_start..w {
-                        if surface.cell(cx, y).style.bg == txv_core::cell::Color::Ansi(7)
-                            && surface.cell(cx, y).style.fg == txv_core::cell::Color::Ansi(0)
+                        if buf.cell(cx, y).style.bg == txv_core::cell::Color::Ansi(7)
+                            && buf.cell(cx, y).style.fg == txv_core::cell::Color::Ansi(0)
                         {
                             return true;
                         }

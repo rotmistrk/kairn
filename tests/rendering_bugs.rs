@@ -111,12 +111,12 @@ fn cursor_visible_on_tab_in_nolist_mode() {
 
     // Find cursor (reverse attribute) in the editor area.
     // It must be at the FIRST column of text (right after gutter), not displaced.
-    let surface = h.backend.surface().expect("surface should exist");
+    let buf = h.backend.buffer().expect("buffer should exist");
     let mut cursor_x: Option<u16> = None;
     let mut cursor_y: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            let cell = surface.cell(x, y);
+            let cell = buf.cell(x, y);
             if cell.style.bg == txv_core::cell::Color::Ansi(7) && cell.style.fg == txv_core::cell::Color::Ansi(0) {
                 cursor_x = Some(x);
                 cursor_y = Some(y);
@@ -157,11 +157,11 @@ fn tab_expands_to_spaces_in_nolist_mode() {
     );
 
     // The tab should NOT appear as a visible character
-    let surface = h.backend.surface().expect("surface");
+    let buf = h.backend.buffer().expect("buffer");
     let mut tab_char_found = false;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            if surface.cell(x, y).ch == '\t' {
+            if buf.cell(x, y).ch == '\t' {
                 tab_char_found = true;
             }
         }
@@ -173,8 +173,8 @@ fn tab_expands_to_spaces_in_nolist_mode() {
     let mut hello_x: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            if surface.cell(x, y).ch == 'h' {
-                let next = surface.cell(x + 1, y).ch;
+            if buf.cell(x, y).ch == 'h' {
+                let next = buf.cell(x + 1, y).ch;
                 if next == 'e' {
                     hello_x = Some(x);
                     break;

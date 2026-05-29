@@ -130,13 +130,13 @@ fn count_badge_is_visible_not_black_on_black() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
     // Find ▾ in row 0
-    let badge_pos = (0..w).find(|&x| surface.cell(x, 0).ch == '▾');
+    let badge_pos = (0..w).find(|&x| buf.cell(x, 0).ch == '▾');
     assert!(badge_pos.is_some(), "should have ▾ badge");
 
-    let cell = surface.cell(badge_pos.unwrap(), 0);
+    let cell = buf.cell(badge_pos.unwrap(), 0);
     // Must be visible: fg != bg, fg not black
     assert_ne!(
         cell.style.fg, cell.style.bg,

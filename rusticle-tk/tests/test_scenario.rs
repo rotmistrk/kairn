@@ -129,5 +129,5 @@ fn program_quit_via_command() {
     program.run_cycles(&mut backend, &mut |_| {}, 5);
 
     // If we reach here, quit worked. Verify something rendered.
-    assert!(backend.surface().is_some());
+    assert!(backend.buffer().is_some());
 }

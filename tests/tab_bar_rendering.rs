@@ -36,10 +36,10 @@ fn inactive_tab_fg_is_white() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
     // Find an inactive tab character (subscript ₁ or ₂ marks inactive tabs)
-    let row0: Vec<_> = (0..w).map(|x| surface.cell(x, 0).clone()).collect();
+    let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
     let sub_pos = row0.iter().position(|c| c.ch == '₁' || c.ch == '₂');
     assert!(sub_pos.is_some(), "should have numbered inactive tabs");
     // The character AFTER the subscript is the tab name — check its fg
@@ -76,9 +76,9 @@ fn inactive_tabs_have_gradient_bg() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let row0: Vec<_> = (0..w).map(|x| surface.cell(x, 0).clone()).collect();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
 
     // Find subscript positions in the CENTER panel (after the ┬ divider)
     let divider_pos = row0.iter().position(|c| c.ch == '┬').unwrap_or(0);
@@ -128,9 +128,9 @@ fn last_tab_right_powercap_fg_equals_tab_bg() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let row0: Vec<_> = (0..w).map(|x| surface.cell(x, 0).clone()).collect();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
 
     // Find the trailing E0B4 (right half-circle) after the last tab
     // It should have fg = last_tab_bg, bg = fill_bg
@@ -172,9 +172,9 @@ fn between_tabs_powercap_has_correct_colors() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let row0: Vec<_> = (0..w).map(|x| surface.cell(x, 0).clone()).collect();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
 
     // Find E0B4 caps between tabs (not the first or last)
     let caps: Vec<usize> = row0

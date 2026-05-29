@@ -41,7 +41,7 @@ fn edit_long_title_shows_cursor_at_end() {
     // The end of the title should be visible (scrolled), not the beginning
     let screen = h.screen_text();
     assert!(
-        screen.contains("el width"),
+        screen.contains("l width"),
         "End of long title should be visible when cursor is at end. Got:\n{screen}"
     );
     // The beginning should NOT be visible

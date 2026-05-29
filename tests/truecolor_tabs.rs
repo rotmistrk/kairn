@@ -21,9 +21,9 @@ fn inactive_tabs_use_thin_separators() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let row0: Vec<_> = (0..w).map(|x| surface.cell(x, 0).clone()).collect();
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
 
     // Find thin separators (E0B1 or E0B3) in center panel area
     let divider = row0.iter().position(|c| c.ch == '┬').unwrap_or(0);
@@ -55,18 +55,18 @@ fn thin_separator_uses_dim_fg() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let divider = (0..w).find(|&x| surface.cell(x, 0).ch == '┬').unwrap_or(0);
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
 
     // Find first thin separator after divider
     let sep_pos = (divider..w).find(|&x| {
-        let ch = surface.cell(x, 0).ch;
+        let ch = buf.cell(x, 0).ch;
         ch == '\u{E0B1}' || ch == '\u{E0B3}'
     });
 
     if let Some(pos) = sep_pos {
-        let cell = surface.cell(pos, 0);
+        let cell = buf.cell(pos, 0);
         // fg should NOT be the same as bg (must be visible)
         assert_ne!(
             cell.style.fg, cell.style.bg,
@@ -90,13 +90,13 @@ fn active_tab_keeps_half_circle_caps_with_thin_seps() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let divider = (0..w).find(|&x| surface.cell(x, 0).ch == '┬').unwrap_or(0);
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
 
     // Active tab should still have E0B6 (left) and E0B4 (right)
-    let has_left_cap = (divider..w).any(|x| surface.cell(x, 0).ch == '\u{E0B6}');
-    let has_right_cap = (divider..w).any(|x| surface.cell(x, 0).ch == '\u{E0B4}');
+    let has_left_cap = (divider..w).any(|x| buf.cell(x, 0).ch == '\u{E0B6}');
+    let has_right_cap = (divider..w).any(|x| buf.cell(x, 0).ch == '\u{E0B4}');
 
     assert!(has_left_cap, "active tab should have E0B6 left cap");
     assert!(has_right_cap, "active tab should have E0B4 right cap");
@@ -116,14 +116,14 @@ fn gradient_bg_uses_distinct_rgb_values() {
     h.inject_key(KeyCode::F(3), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().unwrap();
-    let w = surface.width();
-    let divider = (0..w).find(|&x| surface.cell(x, 0).ch == '┬').unwrap_or(0);
+    let buf = h.backend.buffer().unwrap();
+    let w = buf.width();
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
 
     // Collect unique RGB bg values from inactive tab area (after divider, skip active)
     let mut grays: Vec<u8> = Vec::new();
     for x in divider..w {
-        let cell = surface.cell(x, 0);
+        let cell = buf.cell(x, 0);
         if let Color::Rgb(r, g, b) = cell.style.bg {
             if r == g && g == b && r > 0x10 && r < 0x80 {
                 if !grays.contains(&r) {

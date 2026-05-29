@@ -19,7 +19,7 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
     h.inject_key(KeyCode::Char('j'), KeyMod::default());
     h.run_cycles(1);
 
-    let surface = h.backend.surface().expect("surface should exist");
+    let buf = h.backend.buffer().expect("buffer should exist");
     let pal = txv_core::palette::palette();
     let dim_style = pal.style(txv_core::palette::StyleId::Dim);
     let cursor_style = pal.style(txv_core::palette::StyleId::CursorFocused);
@@ -28,7 +28,7 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
     let mut cursor_y: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            let cell = surface.cell(x, y);
+            let cell = buf.cell(x, y);
             if cell.style == cursor_style && cell.ch != ' ' {
                 cursor_y = Some(y);
                 break;
@@ -44,7 +44,7 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
     // Separators (│) intentionally use dim style; we only check data cells.
     let mut found_non_cursor_text = false;
     for x in 0..80u16 {
-        let cell = surface.cell(x, y);
+        let cell = buf.cell(x, y);
         if cell.ch != ' ' && cell.ch != '│' && cell.style != cursor_style {
             found_non_cursor_text = true;
             assert_ne!(
