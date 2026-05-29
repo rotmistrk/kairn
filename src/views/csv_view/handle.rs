@@ -3,7 +3,6 @@
 use std::cmp::Ordering;
 
 use txv_core::prelude::*;
-use txv_widgets::inline_edit::{InlineEditResult, InlineEditor};
 
 use super::CsvView;
 use crate::commands::CM_COMMAND_MODE;
@@ -13,11 +12,9 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
         return HandleResult::Ignored;
     };
-
-    if let Some(result) = handle_inline_editor(view, key) {
-        return result;
+    if view.is_editing() {
+        return handle_editing(view, key);
     }
-
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => handle_nav_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_nav_up(view),
@@ -27,15 +24,90 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
         KeyCode::Char('G') => handle_jump_bottom(view),
         KeyCode::Char('0') => view.cursor_col = 0,
         KeyCode::Char('$') => view.cursor_col = view.ncols().saturating_sub(1),
-        KeyCode::Enter => start_edit(view),
+        KeyCode::Enter => view.start_edit(),
         KeyCode::Char('s') => handle_sort(view),
         KeyCode::Char('f') if key.modifiers.ctrl => handle_clear_all_filters(view),
-        KeyCode::Char('f') => handle_filter_start(view),
+        KeyCode::Char('f') => view.start_filter_edit(),
         KeyCode::Char('F') => handle_clear_col_filter(view),
-        KeyCode::Char(':') => view.state.put_command(CM_COMMAND_MODE, None),
+        KeyCode::Char(':') => view.group.put_command(CM_COMMAND_MODE, None),
         _ => return HandleResult::Ignored,
     }
     HandleResult::Consumed
+}
+
+fn handle_editing(view: &mut CsvView, key: &KeyEvent) -> HandleResult {
+    view.group.dispatch(&Event::Key(*key));
+    if let Some(result) = drain_child_commands(view) {
+        return result;
+    }
+    view.group.mark_dirty();
+    HandleResult::Consumed
+}
+
+fn drain_child_commands(view: &mut CsvView) -> Option<HandleResult> {
+    for ev in view.child_sink.drain() {
+        let Event::Command { id, data, .. } = ev else {
+            continue;
+        };
+        match id {
+            CM_OK => {
+                let text = data
+                    .and_then(|d| d.downcast::<String>().ok())
+                    .map(|s| *s)
+                    .unwrap_or_default();
+                if view.editing_filter {
+                    commit_filter(view, &text);
+                } else {
+                    commit_cell(view, &text);
+                }
+                return Some(HandleResult::Consumed);
+            }
+            CM_CANCEL => {
+                view.cancel_edit();
+                return Some(HandleResult::Consumed);
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn commit_cell(view: &mut CsvView, text: &str) {
+    if view.group.child_count() > 0 {
+        view.group.remove(0);
+    }
+    let row = view.editing_row.take().unwrap_or(0);
+    view.editing_filter = false;
+    let Some(&data_idx) = view.visible_rows.get(row) else {
+        return;
+    };
+    if data_idx >= view.rows.len() {
+        return;
+    }
+    while view.rows[data_idx].len() <= view.cursor_col {
+        view.rows[data_idx].push(String::new());
+    }
+    view.rows[data_idx][view.cursor_col] = text.to_string();
+    view.dirty = true;
+    if view.cursor_row + 1 < view.visible_rows.len() {
+        view.cursor_row += 1;
+        ensure_visible(view);
+    }
+    view.group.mark_dirty();
+}
+
+fn commit_filter(view: &mut CsvView, text: &str) {
+    if view.group.child_count() > 0 {
+        view.group.remove(0);
+    }
+    view.editing_row = None;
+    view.editing_filter = false;
+    if view.cursor_col < view.filters.len() {
+        view.filters[view.cursor_col] = text.to_string();
+    }
+    view.refilter();
+    view.cursor_row = 0;
+    view.group.mark_dirty();
 }
 
 fn handle_jump_top(view: &mut CsvView) {
@@ -62,22 +134,6 @@ fn handle_clear_col_filter(view: &mut CsvView) {
     }
 }
 
-fn handle_inline_editor(view: &mut CsvView, key: &KeyEvent) -> Option<HandleResult> {
-    let editor = view.editing.as_mut()?;
-    match editor.handle_key(key) {
-        InlineEditResult::Continue => Some(HandleResult::Consumed),
-        InlineEditResult::Commit(_) => {
-            let text = view.editing.take().map(|e| e.buffer).unwrap_or_default();
-            commit_edit(view, &text);
-            Some(HandleResult::Consumed)
-        }
-        InlineEditResult::Cancel => {
-            view.editing = None;
-            Some(HandleResult::Consumed)
-        }
-    }
-}
-
 fn handle_nav_down(view: &mut CsvView) {
     if view.cursor_row + 1 < view.visible_rows.len() {
         view.cursor_row += 1;
@@ -100,45 +156,6 @@ fn handle_nav_left(view: &mut CsvView) {
     view.cursor_col = view.cursor_col.saturating_sub(1);
 }
 
-fn start_edit(view: &mut CsvView) {
-    if view.visible_rows.is_empty() {
-        return;
-    }
-    view.cursor_row = view.cursor_row.min(view.visible_rows.len() - 1);
-    let Some(&data_idx) = view.visible_rows.get(view.cursor_row) else {
-        return;
-    };
-    if data_idx >= view.rows.len() {
-        return;
-    }
-    let current = view.rows[data_idx].get(view.cursor_col).cloned().unwrap_or_default();
-    view.editing = Some(InlineEditor::new(view.cursor_row, &current));
-}
-
-fn commit_edit(view: &mut CsvView, text: &str) {
-    if view.visible_rows.is_empty() {
-        return;
-    }
-    view.cursor_row = view.cursor_row.min(view.visible_rows.len() - 1);
-    let Some(&data_idx) = view.visible_rows.get(view.cursor_row) else {
-        return;
-    };
-    if data_idx >= view.rows.len() {
-        return;
-    }
-    // Ensure row has enough columns
-    while view.rows[data_idx].len() <= view.cursor_col {
-        view.rows[data_idx].push(String::new());
-    }
-    view.rows[data_idx][view.cursor_col] = text.to_string();
-    view.dirty = true;
-    // Advance cursor down
-    if view.cursor_row + 1 < view.visible_rows.len() {
-        view.cursor_row += 1;
-        ensure_visible(view);
-    }
-}
-
 fn handle_sort(view: &mut CsvView) {
     let col = view.cursor_col;
     if view.sort_col == Some(col) {
@@ -149,7 +166,6 @@ fn handle_sort(view: &mut CsvView) {
     }
     let asc = view.sort_asc;
     let is_numeric = matches!(view.col_types.get(col), Some(ColType::Numeric { .. }));
-
     view.visible_rows.sort_by(|&a, &b| {
         let va = view.rows[a].get(col).map(|s| s.as_str()).unwrap_or("");
         let vb = view.rows[b].get(col).map(|s| s.as_str()).unwrap_or("");
@@ -174,12 +190,8 @@ fn handle_sort(view: &mut CsvView) {
     view.cursor_row = 0;
 }
 
-fn handle_filter_start(view: &mut CsvView) {
-    view.editing = Some(InlineEditor::new(view.cursor_row, &view.filters[view.cursor_col]));
-}
-
 fn ensure_visible(view: &mut CsvView) {
-    let h = view.state.bounds().h as usize;
+    let h = view.group.bounds().h as usize;
     let data_h = h.saturating_sub(if view.headers.is_some() {
         1
     } else {

@@ -1,7 +1,5 @@
 //! Structural operation handlers for StructuredView.
 
-use txv_widgets::inline_edit::InlineEditor;
-
 use crate::structured::NodeKind;
 use crate::views::struct_view::{EditTarget, StructuredView};
 
@@ -19,7 +17,7 @@ pub fn handle_new_sibling(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
         if parent_kind == Some(NodeKind::Dict) {
             view.start_edit(EditTarget::Key);
         }
@@ -45,7 +43,7 @@ pub fn handle_new_child(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -60,7 +58,7 @@ pub fn handle_delete(view: &mut StructuredView) {
         view.rebuild_visible();
         view.clamp_cursor();
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -78,7 +76,7 @@ pub fn handle_clone(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
         if parent_kind == Some(NodeKind::Dict) {
             view.start_edit(EditTarget::Key);
         }
@@ -93,7 +91,7 @@ pub fn handle_cycle_type(view: &mut StructuredView) {
     view.doc.cycle_type(node_id);
     view.dirty = true;
     view.sync_title();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
 }
 
 pub fn handle_convert_container(view: &mut StructuredView) {
@@ -105,7 +103,7 @@ pub fn handle_convert_container(view: &mut StructuredView) {
     view.dirty = true;
     view.sync_title();
     view.rebuild_visible();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
 }
 
 pub fn handle_swap_down(view: &mut StructuredView) {
@@ -121,7 +119,7 @@ pub fn handle_swap_down(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -138,7 +136,7 @@ pub fn handle_swap_up(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -155,7 +153,7 @@ pub fn handle_promote(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -172,7 +170,7 @@ pub fn handle_demote(view: &mut StructuredView) {
             view.cursor = pos;
         }
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
 }
 
@@ -184,14 +182,13 @@ pub fn handle_toggle_inline(view: &mut StructuredView) {
     view.doc.toggle_inline(node_id);
     view.dirty = true;
     view.sync_title();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
 }
 
 pub fn handle_sort(view: &mut StructuredView) {
     let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
         return;
     };
-    // Sort the current node if container, otherwise sort parent
     let target = if view.doc.node_kind(node_id) != NodeKind::Scalar {
         node_id
     } else {
@@ -200,7 +197,6 @@ pub fn handle_sort(view: &mut StructuredView) {
             None => return,
         }
     };
-    // Toggle ascending/descending on repeated press on same node
     let ascending = if view.last_sort_node == Some(target) {
         !view.last_sort_asc
     } else {
@@ -213,7 +209,7 @@ pub fn handle_sort(view: &mut StructuredView) {
     view.dirty = true;
     view.sync_title();
     view.rebuild_visible();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
 }
 
 pub fn handle_sort_by_path_start(view: &mut StructuredView) {
@@ -229,15 +225,13 @@ pub fn handle_sort_by_path_start(view: &mut StructuredView) {
         }
     };
     view.sort_path_target = Some(target);
-    view.editing = Some(InlineEditor::new(view.cursor, "."));
-    view.state.mark_dirty();
+    view.start_input_line(".");
 }
 
 pub fn handle_filter_start(view: &mut StructuredView) {
     view.filtering = true;
-    view.editing = Some(InlineEditor::new(view.cursor, &view.filter_text));
-    view.edit_target = EditTarget::Meta; // reuse to distinguish
-    view.state.mark_dirty();
+    let ft = view.filter_text.clone();
+    view.start_input_line(&ft);
 }
 
 pub fn handle_filter_clear(view: &mut StructuredView) {
@@ -247,5 +241,5 @@ pub fn handle_filter_clear(view: &mut StructuredView) {
     view.clamp_cursor();
     view.sync_scroll();
     view.sync_title();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
 }

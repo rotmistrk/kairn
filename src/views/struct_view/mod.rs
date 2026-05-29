@@ -1,6 +1,7 @@
 //! StructuredView — tree-table view for structured data (JSON, YAML, etc.).
 
 mod draw;
+mod edit;
 mod filter;
 mod handle;
 pub(crate) mod undo;
@@ -9,7 +10,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
-use txv_widgets::inline_edit::InlineEditor;
 
 use crate::commands::CM_SAVE;
 use crate::structured::{NodeId, NodeKind, StructuredDoc};
@@ -34,7 +34,7 @@ pub enum EditTarget {
 
 /// Tree-table view for structured documents.
 pub struct StructuredView {
-    pub(crate) state: ViewState,
+    pub(crate) group: GroupState,
     pub(crate) doc: Box<dyn StructuredDoc>,
     pub(crate) path: PathBuf,
     pub(crate) cursor: usize,
@@ -42,8 +42,8 @@ pub struct StructuredView {
     pub(crate) col_focus: ColFocus,
     pub(crate) visible_nodes: Vec<NodeId>,
     pub(crate) display_title: String,
-    pub(crate) editing: Option<InlineEditor>,
     pub(crate) edit_target: EditTarget,
+    pub(crate) editing_row: Option<usize>,
     pub(crate) dirty: bool,
     pub(crate) undo_stack: UndoStack,
     pub(crate) filter_text: String,
@@ -51,6 +51,8 @@ pub struct StructuredView {
     pub(crate) last_sort_node: Option<NodeId>,
     pub(crate) last_sort_asc: bool,
     pub(crate) sort_path_target: Option<NodeId>,
+    /// Sink for capturing InputLine commands.
+    pub(crate) child_sink: EventSink,
 }
 
 impl StructuredView {
@@ -60,7 +62,7 @@ impl StructuredView {
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "structured".to_string());
         let mut view = Self {
-            state: ViewState::default(),
+            group: GroupState::default(),
             doc,
             path: path.to_path_buf(),
             cursor: 0,
@@ -68,8 +70,8 @@ impl StructuredView {
             col_focus: ColFocus::Key,
             visible_nodes: Vec::new(),
             display_title,
-            editing: None,
             edit_target: EditTarget::Value,
+            editing_row: None,
             dirty: false,
             undo_stack: UndoStack::new(),
             filter_text: String::new(),
@@ -77,12 +79,12 @@ impl StructuredView {
             last_sort_node: None,
             last_sort_asc: true,
             sort_path_target: None,
+            child_sink: EventSink::new(),
         };
         view.rebuild_visible();
         view
     }
 
-    /// Rebuild the flattened visible node list via DFS, only including expanded nodes.
     pub(crate) fn rebuild_visible(&mut self) {
         self.visible_nodes.clear();
         let root = self.doc.root();
@@ -103,7 +105,6 @@ impl StructuredView {
         }
     }
 
-    /// Save the document to disk.
     pub fn save(&mut self) -> Result<(), String> {
         let content = self.doc.serialize();
         fs::write(&self.path, &content).map_err(|e| e.to_string())?;
@@ -112,7 +113,6 @@ impl StructuredView {
         Ok(())
     }
 
-    /// Depth of a node (number of ancestors).
     pub(crate) fn depth(&self, id: NodeId) -> usize {
         let mut d = 0;
         let mut current = id;
@@ -123,7 +123,6 @@ impl StructuredView {
         d
     }
 
-    /// Whether a node is the last child of its parent.
     pub(crate) fn is_last_child(&self, id: NodeId) -> bool {
         if let Some(parent) = self.doc.parent(id) {
             let siblings = self.doc.children(parent);
@@ -133,9 +132,8 @@ impl StructuredView {
         }
     }
 
-    /// Ensure cursor stays within visible range after scroll.
     pub(crate) fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.group.bounds().h as usize;
         if h == 0 {
             return;
         }
@@ -146,54 +144,12 @@ impl StructuredView {
         }
     }
 
-    /// Start inline editing for the current cursor position and column focus.
-    pub(crate) fn start_edit(&mut self, target: EditTarget) {
-        let Some(&node_id) = self.visible_nodes.get(self.cursor) else {
-            return;
-        };
-        let text = match target {
-            EditTarget::Value => self.doc.value_display(node_id).to_owned(),
-            EditTarget::Key => self.doc.key(node_id).unwrap_or("").to_owned(),
-            EditTarget::Meta => self.doc.meta(node_id).to_owned(),
-        };
-        self.edit_target = target;
-        self.editing = Some(InlineEditor::new(self.cursor, &text));
-        self.state.mark_dirty();
-    }
-
-    /// Commit the current inline edit.
-    pub(crate) fn commit_edit(&mut self) -> Option<String> {
-        let editor = self.editing.take()?;
-        let &node_id = self.visible_nodes.get(editor.row)?;
-        let text = editor.buffer;
-        let result = match self.edit_target {
-            EditTarget::Value => self.doc.set_value(node_id, &text),
-            EditTarget::Key => self.doc.set_key(node_id, &text),
-            EditTarget::Meta => {
-                self.doc.set_meta(node_id, &text);
-                Ok(())
-            }
-        };
-        self.dirty = true;
-        self.sync_title();
-        self.state.mark_dirty();
-        result.err()
-    }
-
-    /// Cancel the current inline edit.
-    pub(crate) fn cancel_edit(&mut self) {
-        self.editing = None;
-        self.state.mark_dirty();
-    }
-
-    /// Clamp cursor to valid range after structural changes.
     pub(crate) fn clamp_cursor(&mut self) {
         if self.cursor >= self.visible_nodes.len() {
             self.cursor = self.visible_nodes.len().saturating_sub(1);
         }
     }
 
-    /// Update display_title based on dirty state and filter.
     pub(crate) fn sync_title(&mut self) {
         let name = self
             .path
@@ -208,15 +164,12 @@ impl StructuredView {
         self.display_title = format!("{name}{filter_mark}");
     }
 
-    /// Save current document state as an undo point.
     pub(crate) fn save_undo_point(&mut self) {
         let snapshot = self.doc.snapshot();
         self.undo_stack.save_state(&snapshot);
     }
 
-    /// Undo: restore previous document state.
     pub(crate) fn apply_undo(&mut self) {
-        // Bookmark current state so redo can get back to it
         let current = self.doc.snapshot();
         self.undo_stack.bookmark_current(&current);
         let Some(snapshot) = self.undo_stack.undo().map(|s| s.to_string()) else {
@@ -226,11 +179,10 @@ impl StructuredView {
             self.rebuild_visible();
             self.clamp_cursor();
             self.sync_scroll();
-            self.state.mark_dirty();
+            self.group.mark_dirty();
         }
     }
 
-    /// Redo: restore next document state.
     pub(crate) fn apply_redo(&mut self) {
         let Some(snapshot) = self.undo_stack.redo().map(|s| s.to_string()) else {
             return;
@@ -239,23 +191,46 @@ impl StructuredView {
             self.rebuild_visible();
             self.clamp_cursor();
             self.sync_scroll();
-            self.state.mark_dirty();
+            self.group.mark_dirty();
         }
     }
 }
 
 impl View for StructuredView {
-    delegate_view_state!(state, override { title, draw, handle, set_bounds });
+    delegate_group_state!(group, override { title, draw, handle, set_bounds, cursor, select, unselect });
 
     fn title(&self) -> &str {
         &self.display_title
     }
 
-    fn set_bounds(&mut self, r: txv_core::geometry::Rect) {
-        if self.state.bounds() != r {
-            self.editing = None;
+    fn set_bounds(&mut self, r: Rect) {
+        if self.group.bounds() != r {
+            self.cancel_edit();
+            self.filtering = false;
+            self.sort_path_target = None;
         }
-        self.state.set_bounds(r);
+        self.group.set_bounds(r);
+    }
+
+    fn select(&mut self) {
+        self.group.set_focused(true);
+        self.group.mark_dirty();
+    }
+
+    fn unselect(&mut self) {
+        self.group.set_focused(false);
+        self.group.mark_dirty();
+    }
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        if self.is_editing() {
+            return self.group.cursor();
+        }
+        None
+    }
+
+    fn can_close(&self) -> CloseResult {
+        CloseResult::Ok
     }
 
     fn draw(&mut self) {
@@ -273,9 +248,5 @@ impl View for StructuredView {
             return HandleResult::Ignored;
         };
         handle::handle_struct_key(self, key)
-    }
-
-    fn can_close(&self) -> CloseResult {
-        CloseResult::Ok
     }
 }

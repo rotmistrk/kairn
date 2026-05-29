@@ -1,14 +1,12 @@
 //! TodoTreeView — non-closeable tab showing hierarchical tasks from .kairn.todo.
 
 use std::path::Path;
+use std::sync::Arc;
 
-use duir_core::crypto::{decrypt_item, encrypt_item};
 use txv_core::prelude::*;
 use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
 use txv_widgets::TreeView;
-
-use crate::commands::CM_TODO_NOTE_UPDATE;
 
 mod apply_action;
 pub mod data;
@@ -18,6 +16,7 @@ mod flat_node;
 mod handle;
 mod mcp;
 pub mod model;
+mod ops;
 
 pub use self::data::TodoTreeData;
 
@@ -65,10 +64,12 @@ impl TodoTreeView {
         let mut input = InputLine::new().with_command(CM_OK);
         input.set_text(&label);
         input.select_all();
+        let pal = self.edit_palette();
+        let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
-        // Set child_sink AFTER insert (insert propagates group sink, we override)
         if let Some(child) = self.group.child_mut(0) {
-            child.set_sink(self.child_sink.clone());
+            child.set_sink(sink);
+            child.set_palette(pal);
         }
         self.editing_row = Some(row);
         self.group.mark_dirty();
@@ -82,12 +83,31 @@ impl TodoTreeView {
     fn start_filter(&mut self) {
         let mut input = InputLine::new().with_command(CM_OK);
         input.set_text(&self.inner.data.filter_text.clone());
+        let pal = self.filter_palette();
+        let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
         if let Some(child) = self.group.child_mut(0) {
-            child.set_sink(self.child_sink.clone());
+            child.set_sink(sink);
+            child.set_palette(pal);
         }
         self.filter_active = true;
         self.group.mark_dirty();
+    }
+
+    /// Palette for item editing: Text = cursor row style (focused).
+    fn edit_palette(&self) -> Arc<dyn Palette> {
+        use txv_core::palette::{palette, DerivedPalette, StyleId};
+        let base = palette();
+        let cursor_style = base.style(StyleId::CursorFocused);
+        Arc::new(DerivedPalette::new(base).with_override(StyleId::Text, cursor_style))
+    }
+
+    /// Palette for filter bar: Text = StatusBar style.
+    fn filter_palette(&self) -> Arc<dyn Palette> {
+        use txv_core::palette::{palette, DerivedPalette, StyleId};
+        let base = palette();
+        let sb_style = base.style(StyleId::StatusBar);
+        Arc::new(DerivedPalette::new(base).with_override(StyleId::Text, sb_style))
     }
 
     /// Get the InputLine child mutably.
@@ -148,67 +168,6 @@ impl TodoTreeView {
     }
 
     /// Emit CM_TODO_NOTE_UPDATE if cursor moved to a different item.
-    fn emit_note_update_if_cursor_changed(&mut self, prev_cursor: usize) {
-        if self.inner.cursor == prev_cursor {
-            return;
-        }
-        let cursor = self.inner.cursor;
-        if cursor >= self.inner.data.visible_count() {
-            return;
-        }
-        let id = self.inner.data.visible_id(cursor);
-        if let Some(path) = self.inner.data.path_at(id) {
-            let path = path.clone();
-            if let Some(item) = model::get_item(&self.inner.data.file, &path) {
-                let note = item.note.clone();
-                self.group
-                    .put_command(CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
-            }
-        }
-    }
-
-    /// Execute the pending delete.
-    pub fn confirm_delete_execute(&mut self) {
-        let cursor = self.inner.cursor;
-        if cursor < self.inner.data.visible_count() {
-            let id = self.inner.data.visible_id(cursor);
-            if let Some(path) = self.inner.data.path_at(id) {
-                let path = path.clone();
-                model::remove_item(&mut self.inner.data.file, &path);
-                model::propagate_completion(&mut self.inner.data.file, &path);
-                self.inner.data.save();
-                self.inner.data.rebuild_flat();
-                self.group.mark_dirty();
-            }
-        }
-    }
-
-    /// Execute crypto passphrase response.
-    pub fn crypto_passphrase_response(&mut self, passphrase: &str) {
-        let Some(pending) = self.crypto_pending.take() else {
-            return;
-        };
-        match pending {
-            CryptoPending::Encrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
-                    if let Err(e) = encrypt_item(item, passphrase) {
-                        log::warn!("encrypt failed: {e}");
-                    }
-                }
-            }
-            CryptoPending::Decrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
-                    if let Err(e) = decrypt_item(item, passphrase) {
-                        log::warn!("decrypt failed: {e}");
-                    }
-                }
-            }
-        }
-        self.inner.data.save();
-        self.inner.data.rebuild_flat();
-        self.group.mark_dirty();
-    }
-
     /// Commit any active edit on resize.
     fn commit_edit_on_resize(&mut self) {
         if self.editing_row.is_some() {

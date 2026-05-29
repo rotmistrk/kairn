@@ -4,7 +4,6 @@ mod ops;
 
 use txv_core::message::Message;
 use txv_core::prelude::*;
-use txv_widgets::inline_edit::InlineEditResult;
 
 use crate::commands::CM_COMMAND_PREFILL;
 use crate::structured::NodeKind;
@@ -21,12 +20,12 @@ pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
                 .map(|f| f.to_string_lossy().to_string())
                 .unwrap_or_default();
             let msg = Message::info("struct", format!("Saved: {name}"));
-            view.state
+            view.group
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
             let msg = Message::error("struct", format!("Save failed: {e}"));
-            view.state
+            view.group
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
@@ -35,8 +34,7 @@ pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
 
 /// Handle a key event for the structured view.
 pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    // Route to inline editor first when active
-    if view.editing.is_some() {
+    if view.is_editing() {
         return handle_editing_mode(view, key);
     }
     match key.code {
@@ -56,7 +54,7 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleRes
             HandleResult::Consumed
         }
         KeyCode::Char(':') => {
-            view.state
+            view.group
                 .put_command(CM_COMMAND_PREFILL, Some(Box::new(String::new())));
             HandleResult::Consumed
         }
@@ -87,58 +85,75 @@ fn handle_struct_ops(view: &mut StructuredView, key: &KeyEvent) -> HandleResult 
     HandleResult::Consumed
 }
 
+fn handle_editing_mode(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
+    // Route key to InputLine child
+    view.group.dispatch(&Event::Key(*key));
+    // Drain child_sink for commands
+    for ev in view.child_sink.drain() {
+        if let Event::Command { id, data, .. } = ev {
+            match id {
+                CM_OK => {
+                    let text = data
+                        .and_then(|d| d.downcast::<String>().ok())
+                        .map(|s| *s)
+                        .unwrap_or_default();
+                    handle_commit(view, text);
+                    return HandleResult::Consumed;
+                }
+                CM_CANCEL => {
+                    view.filtering = false;
+                    view.sort_path_target = None;
+                    view.cancel_edit();
+                    return HandleResult::Consumed;
+                }
+                _ => {}
+            }
+        }
+    }
+    view.group.mark_dirty();
+    HandleResult::Consumed
+}
+
+fn handle_commit(view: &mut StructuredView, text: String) {
+    if view.filtering {
+        view.remove_input_line();
+        view.editing_row = None;
+        view.filter_text = text;
+        view.filtering = false;
+        view.rebuild_visible();
+        view.clamp_cursor();
+        view.sync_scroll();
+        view.sync_title();
+    } else if let Some(sort_target) = view.sort_path_target.take() {
+        view.remove_input_line();
+        view.editing_row = None;
+        view.save_undo_point();
+        view.doc.sort_children_by_path(sort_target, &text, true);
+        view.dirty = true;
+        view.sync_title();
+        view.rebuild_visible();
+    } else {
+        view.save_undo_point();
+        if let Some(err) = view.commit_edit() {
+            let msg = Message::error("struct", err);
+            view.group
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+    }
+    view.group.mark_dirty();
+}
+
 fn handle_jump_top(view: &mut StructuredView) -> HandleResult {
     view.cursor = 0;
     view.sync_scroll();
-    view.state.mark_dirty();
+    view.group.mark_dirty();
     HandleResult::Consumed
 }
 
 fn handle_jump_bottom(view: &mut StructuredView) -> HandleResult {
     view.cursor = view.visible_nodes.len().saturating_sub(1);
     view.sync_scroll();
-    view.state.mark_dirty();
-    HandleResult::Consumed
-}
-
-fn handle_editing_mode(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    let Some(editor) = view.editing.as_mut() else {
-        return HandleResult::Ignored;
-    };
-    match editor.handle_key(key) {
-        InlineEditResult::Continue => {}
-        InlineEditResult::Commit(_) => {
-            if view.filtering {
-                let text = view.editing.take().map(|e| e.buffer).unwrap_or_default();
-                view.filter_text = text;
-                view.filtering = false;
-                view.rebuild_visible();
-                view.clamp_cursor();
-                view.sync_scroll();
-                view.sync_title();
-            } else if let Some(sort_target) = view.sort_path_target.take() {
-                let text = view.editing.take().map(|e| e.buffer).unwrap_or_default();
-                view.save_undo_point();
-                view.doc.sort_children_by_path(sort_target, &text, true);
-                view.dirty = true;
-                view.sync_title();
-                view.rebuild_visible();
-            } else {
-                view.save_undo_point();
-                if let Some(err) = view.commit_edit() {
-                    let msg = Message::error("struct", err);
-                    view.state
-                        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                }
-            }
-        }
-        InlineEditResult::Cancel => {
-            view.filtering = false;
-            view.sort_path_target = None;
-            view.cancel_edit();
-        }
-    }
-    view.state.mark_dirty();
+    view.group.mark_dirty();
     HandleResult::Consumed
 }
 
@@ -147,7 +162,7 @@ fn handle_move_down(view: &mut StructuredView) -> HandleResult {
     if view.cursor < max {
         view.cursor += 1;
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
     HandleResult::Consumed
 }
@@ -156,7 +171,7 @@ fn handle_move_up(view: &mut StructuredView) -> HandleResult {
     if view.cursor > 0 {
         view.cursor -= 1;
         view.sync_scroll();
-        view.state.mark_dirty();
+        view.group.mark_dirty();
     }
     HandleResult::Consumed
 }
@@ -168,7 +183,7 @@ fn handle_expand(view: &mut StructuredView) -> HandleResult {
             view.rebuild_visible();
             view.clamp_cursor();
             view.sync_scroll();
-            view.state.mark_dirty();
+            view.group.mark_dirty();
         }
     }
     HandleResult::Consumed
@@ -181,12 +196,12 @@ fn handle_collapse_or_parent(view: &mut StructuredView) -> HandleResult {
             view.doc.toggle_expand(node_id);
             view.rebuild_visible();
             view.sync_scroll();
-            view.state.mark_dirty();
+            view.group.mark_dirty();
         } else if let Some(parent) = view.doc.parent(node_id) {
             if let Some(pos) = view.visible_nodes.iter().position(|&n| n == parent) {
                 view.cursor = pos;
                 view.sync_scroll();
-                view.state.mark_dirty();
+                view.group.mark_dirty();
             }
         }
     }
@@ -199,7 +214,7 @@ fn handle_tab_focus(view: &mut StructuredView) -> HandleResult {
         ColFocus::Value => ColFocus::Meta,
         ColFocus::Meta => ColFocus::Key,
     };
-    view.state.mark_dirty();
+    view.group.mark_dirty();
     HandleResult::Consumed
 }
 
