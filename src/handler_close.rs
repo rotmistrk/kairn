@@ -16,9 +16,9 @@ use crate::views::editor::EditorView;
 pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         let msg = if has_unsaved_buffers(desktop) {
-            "Unsaved changes — quit? [y]es [n]o"
+            "Unsaved changes — quit?"
         } else {
-            "Quit? [y]es [n]o"
+            "Quit?"
         };
         state.confirm_context = Some(ConfirmContext::Quit);
         ctx.sink.push_command(CM_CONFIRM, Some(Box::new(msg.to_string())));
