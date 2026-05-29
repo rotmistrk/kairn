@@ -41,6 +41,7 @@ pub mod grep;
 pub mod handler;
 pub mod handler_badges;
 pub mod handler_build;
+pub mod handler_clipboard;
 pub mod handler_close;
 pub mod handler_confirm;
 pub mod handler_context;

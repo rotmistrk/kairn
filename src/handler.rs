@@ -13,6 +13,7 @@ use crate::handler_build::{
     handle_build, handle_next_error, handle_prev_error, handle_run, handle_test, handle_test_at_cursor,
     handle_test_file,
 };
+use crate::handler_clipboard::handle_clipboard_commands;
 use crate::handler_close::{handle_app_quit, handle_save_all, handle_tab_close};
 use crate::handler_confirm::{handle_confirm_response, handle_set_confirm_context};
 use crate::handler_context::broadcast_context;
@@ -171,7 +172,7 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TODO_NOTE_OPEN => open_todo_note(ctx, state),
         CM_TODO_NOTE_UPDATE => update_todo_note(ctx, state),
         CM_TODO_ACTION => handle_todo_action(ctx, state),
-        _ => {}
+        _ => handle_clipboard_commands(ctx),
     }
 }
 
