@@ -1,9 +1,9 @@
 //! Draw logic for TodoTreeView.
 
+use txv_core::buffer::Buffer;
 use txv_core::cell::Style;
 use txv_core::geometry::Rect;
 use txv_core::palette::{palette, StyleId};
-use txv_core::prelude::View;
 use txv_widgets::tree_view::TreeData;
 
 use super::model::Completion;
@@ -11,26 +11,27 @@ use super::TodoTreeView;
 
 impl TodoTreeView {
     pub(super) fn draw_tree(&mut self) {
-        let w = self.inner.buffer_mut().width();
-        let h = self.inner.buffer_mut().height();
+        let b = self.group.bounds();
+        let w = b.w;
+        let h = b.h;
         if w == 0 || h == 0 {
             return;
         }
+        self.group.buffer_mut().fill(' ', Style::default());
         if self.inner.data.visible_count() == 0 {
             let dim = palette().style(StyleId::Dim);
-            self.inner.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
+            self.group.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
-        let has_filter = self.filter_editor.is_some() || !self.inner.data.filter_text.is_empty();
-        let filter_offset: u16 = if has_filter {
-            1
-        } else {
-            0
-        };
+        let has_filter = self.filter_active || !self.inner.data.filter_text.is_empty();
+        let filter_offset: u16 = u16::from(has_filter);
         let draw_h = h.saturating_sub(filter_offset) as usize;
+        self.inner.scroll.set_viewport(draw_h);
+        self.inner.scroll.set_total(self.inner.data.visible_count());
+        self.inner.scroll.ensure_visible(self.inner.cursor);
         self.draw_tree_rows(w, draw_h, filter_offset);
-        self.draw_edit_overlay(w, draw_h, filter_offset);
-        self.draw_filter_bar(w, filter_offset);
+        self.draw_filter_status(w, filter_offset);
+        self.position_and_blit_child(w, draw_h, filter_offset);
     }
 
     fn draw_tree_rows(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
@@ -58,8 +59,8 @@ impl TodoTreeView {
         };
         let style = self.row_style(idx, id);
         let y = filter_offset + row as u16;
-        self.inner.buffer_mut().hline(0, y, w, ' ', style);
-        self.inner.buffer_mut().print(indent, y, marker, style);
+        self.group.buffer_mut().hline(0, y, w, ' ', style);
+        self.group.buffer_mut().print(indent, y, marker, style);
         let checkbox = if let Some(item) = self.inner.data.item_at(id) {
             match item.completed {
                 Completion::Done => "[x] ",
@@ -68,9 +69,9 @@ impl TodoTreeView {
         } else {
             "[ ] "
         };
-        self.inner.buffer_mut().print(indent + 2, y, checkbox, style);
+        self.group.buffer_mut().print(indent + 2, y, checkbox, style);
         let label = self.inner.data.label(id).to_string();
-        self.inner.buffer_mut().print(indent + 6, y, &label, style);
+        self.group.buffer_mut().print(indent + 6, y, &label, style);
     }
 
     fn row_style(&self, idx: usize, id: usize) -> Style {
@@ -80,7 +81,7 @@ impl TodoTreeView {
             node_style.attrs.bold = true;
         }
         if idx == self.inner.cursor {
-            let cs = if self.inner.is_focused() {
+            let cs = if self.group.is_focused() {
                 pal.style(StyleId::CursorFocused)
             } else {
                 pal.style(StyleId::CursorUnfocused)
@@ -95,40 +96,48 @@ impl TodoTreeView {
         }
     }
 
-    fn draw_edit_overlay(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
-        let Some((row, ref mut input)) = self.editing else {
-            return;
-        };
-        let scroll_offset = self.inner.scroll.offset;
-        if row < scroll_offset || (row - scroll_offset) as u16 >= draw_h as u16 {
-            return;
-        }
-        let screen_row = (row - scroll_offset) as u16;
-        let y = filter_offset + screen_row;
-        let id = self.inner.data.visible_id(row);
-        let depth = self.inner.data.depth(id);
-        let indent = (depth * 2 + 6) as u16;
-        let ew = w.saturating_sub(indent);
-        input.set_bounds(Rect::new(0, 0, ew, 1));
-        input.draw();
-        self.inner.buffer_mut().blit(input.buffer(), indent, y);
-    }
-
-    fn draw_filter_bar(&mut self, w: u16, filter_offset: u16) {
+    fn draw_filter_status(&mut self, w: u16, filter_offset: u16) {
         if filter_offset == 0 {
             return;
         }
-        let style = palette().style(StyleId::EditOverlay);
-        self.inner.buffer_mut().hline(0, 0, w, ' ', style);
-        self.inner.buffer_mut().print(0, 0, "/", style);
-        if let Some(ref mut input) = self.filter_editor {
-            let fw = w.saturating_sub(1);
-            input.set_bounds(Rect::new(0, 0, fw, 1));
-            input.draw();
-            self.inner.buffer_mut().blit(input.buffer(), 1, 0);
-        } else {
+        let style = palette().style(StyleId::StatusBar);
+        self.group.buffer_mut().hline(0, 0, w, ' ', style);
+        self.group.buffer_mut().print(0, 0, "/", style);
+        if !self.filter_active {
             let ft = self.inner.data.filter_text.clone();
-            self.inner.buffer_mut().print(1, 0, &ft, style);
+            self.group.buffer_mut().print(1, 0, &ft, style);
+        }
+    }
+
+    /// Position the InputLine child and blit it onto the group buffer.
+    fn position_and_blit_child(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
+        if self.group.child_count() == 0 {
+            return;
+        }
+        let (x, y, cw) = if self.filter_active {
+            (1u16, 0u16, w.saturating_sub(1))
+        } else if let Some(row) = self.editing_row {
+            let scroll_offset = self.inner.scroll.offset;
+            if row < scroll_offset || (row - scroll_offset) >= draw_h {
+                return;
+            }
+            let screen_y = filter_offset + (row - scroll_offset) as u16;
+            let id = self.inner.data.visible_id(row);
+            let depth = self.inner.data.depth(id);
+            let indent = (depth * 2 + 6) as u16;
+            (indent, screen_y, w.saturating_sub(indent))
+        } else {
+            return;
+        };
+        self.group.set_child_bounds(0, Rect::new(x, y, cw, 1));
+        if let Some(child) = self.group.child_mut(0) {
+            child.draw();
+        }
+        // Safety: child (immutable borrow) and buffer (mutable) are disjoint.
+        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
+        if let Some(child) = self.group.child(0) {
+            let cb = child.bounds();
+            unsafe { (*buf_ptr).blit(child.buffer(), cb.x, cb.y) };
         }
     }
 }

@@ -1,7 +1,5 @@
 //! TodoTreeView action dispatch.
 
-use txv_core::prelude::*;
-use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
 
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_OPEN};
@@ -28,34 +26,27 @@ impl TodoTreeView {
             }
             HandleAction::ConfirmDelete => {}
             HandleAction::EnterFilter => {
-                let mut input = InputLine::new().with_command(CM_OK).with_inherit_bg();
-                input.set_sink(self.edit_sink.clone());
-                input.set_text(&self.inner.data.filter_text.clone());
-                self.filter_editor = Some(input);
+                self.start_filter();
             }
             HandleAction::CryptoEncrypt(path) => self.start_crypto(CryptoPending::Encrypt(path)),
             HandleAction::CryptoDecrypt(path) => self.start_crypto(CryptoPending::Decrypt(path)),
             HandleAction::OpenNote(path, note) => {
-                self.inner
-                    .state
+                self.group
                     .put_command(CM_TODO_NOTE_OPEN, Some(Box::new((path, note, false))));
             }
             HandleAction::OpenNoteFocus(path, note) => {
-                self.inner
-                    .state
+                self.group
                     .put_command(CM_TODO_NOTE_OPEN, Some(Box::new((path, note, true))));
             }
         }
-        self.inner.mark_dirty();
+        self.group.mark_dirty();
     }
 
     fn start_crypto(&mut self, pending: CryptoPending) {
         self.crypto_pending = Some(pending);
-        self.inner
-            .state
+        self.group
             .put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::TodoCrypto)));
-        self.inner
-            .state
+        self.group
             .put_command(CM_CONFIRM, Some(Box::new("Passphrase: ".to_string())));
     }
 }

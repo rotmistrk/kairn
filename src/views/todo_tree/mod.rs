@@ -21,15 +21,16 @@ pub mod model;
 
 pub use self::data::TodoTreeData;
 
-/// The todo tree view — wraps TreeView<TodoTreeData>.
+/// The todo tree view — a Group that hosts an InputLine child when editing.
 pub struct TodoTreeView {
+    group: GroupState,
     inner: TreeView<TodoTreeData>,
-    /// Active item editor (row being edited stored separately).
-    editing: Option<(usize, InputLine)>,
-    /// Active filter editor.
-    filter_editor: Option<InputLine>,
-    /// Sink to capture InputLine commands.
-    edit_sink: EventSink,
+    /// Sink for capturing InputLine commands (separate from group sink).
+    child_sink: EventSink,
+    /// Editing state: which visible row is being edited.
+    editing_row: Option<usize>,
+    /// Filter mode active (InputLine child is the filter).
+    filter_active: bool,
     /// Pending crypto path for passphrase prompt.
     crypto_pending: Option<CryptoPending>,
 }
@@ -44,12 +45,106 @@ impl TodoTreeView {
         let todo_path = root.join(".kairn.todo");
         let data = TodoTreeData::new(&todo_path);
         Self {
+            group: GroupState::default(),
             inner: TreeView::new(data),
-            editing: None,
-            filter_editor: None,
-            edit_sink: EventSink::new(),
+            child_sink: EventSink::new(),
+            editing_row: None,
+            filter_active: false,
             crypto_pending: None,
         }
+    }
+
+    /// Start editing the current item title.
+    fn start_edit(&mut self) {
+        let row = self.inner.cursor;
+        if row >= self.inner.data.visible_count() {
+            return;
+        }
+        let id = self.inner.data.visible_id(row);
+        let label = self.inner.data.label(id).to_owned();
+        let mut input = InputLine::new().with_command(CM_OK);
+        input.set_text(&label);
+        input.select_all();
+        self.group.insert(Box::new(input));
+        // Set child_sink AFTER insert (insert propagates group sink, we override)
+        if let Some(child) = self.group.child_mut(0) {
+            child.set_sink(self.child_sink.clone());
+        }
+        self.editing_row = Some(row);
+        self.group.mark_dirty();
+    }
+
+    fn start_edit_selected(&mut self) {
+        self.start_edit();
+    }
+
+    /// Start filter mode.
+    fn start_filter(&mut self) {
+        let mut input = InputLine::new().with_command(CM_OK);
+        input.set_text(&self.inner.data.filter_text.clone());
+        self.group.insert(Box::new(input));
+        if let Some(child) = self.group.child_mut(0) {
+            child.set_sink(self.child_sink.clone());
+        }
+        self.filter_active = true;
+        self.group.mark_dirty();
+    }
+
+    /// Get the InputLine child mutably.
+    fn input_line_mut(&mut self) -> Option<&mut InputLine> {
+        if self.group.child_count() > 0 {
+            self.group
+                .child_mut(0)
+                .and_then(|c| c.as_any_mut()?.downcast_mut::<InputLine>())
+        } else {
+            None
+        }
+    }
+
+    /// Remove the InputLine child.
+    fn remove_input_line(&mut self) {
+        if self.group.child_count() > 0 {
+            self.group.remove(0);
+        }
+    }
+
+    /// Commit the active edit.
+    fn commit_edit(&mut self) {
+        let text = self.input_line_mut().map(|i| i.text().to_string()).unwrap_or_default();
+        self.remove_input_line();
+        if let Some(row) = self.editing_row.take() {
+            self.inner.data.update_title(row, text);
+        }
+        self.group.mark_dirty();
+    }
+
+    /// Cancel the active edit.
+    fn cancel_edit(&mut self) {
+        self.remove_input_line();
+        self.editing_row = None;
+        self.group.mark_dirty();
+    }
+
+    /// Commit filter (keep filter text, remove InputLine).
+    fn commit_filter(&mut self) {
+        self.remove_input_line();
+        self.filter_active = false;
+        self.group.mark_dirty();
+    }
+
+    /// Cancel filter (clear filter text, remove InputLine).
+    fn cancel_filter(&mut self) {
+        self.remove_input_line();
+        self.filter_active = false;
+        self.inner.data.filter_text.clear();
+        self.inner.data.rebuild_flat();
+        self.inner.cursor = 0;
+        self.group.mark_dirty();
+    }
+
+    /// Whether we're in any editing mode.
+    fn is_editing(&self) -> bool {
+        self.editing_row.is_some() || self.filter_active
     }
 
     /// Emit CM_TODO_NOTE_UPDATE if cursor moved to a different item.
@@ -66,14 +161,13 @@ impl TodoTreeView {
             let path = path.clone();
             if let Some(item) = model::get_item(&self.inner.data.file, &path) {
                 let note = item.note.clone();
-                self.inner
-                    .state
+                self.group
                     .put_command(CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
             }
         }
     }
 
-    /// Execute the pending delete (called from handler_confirm on 'y' response).
+    /// Execute the pending delete.
     pub fn confirm_delete_execute(&mut self) {
         let cursor = self.inner.cursor;
         if cursor < self.inner.data.visible_count() {
@@ -84,12 +178,12 @@ impl TodoTreeView {
                 model::propagate_completion(&mut self.inner.data.file, &path);
                 self.inner.data.save();
                 self.inner.data.rebuild_flat();
-                self.inner.mark_dirty();
+                self.group.mark_dirty();
             }
         }
     }
 
-    /// Execute crypto passphrase response (called from handler_confirm on 'y'/commit).
+    /// Execute crypto passphrase response.
     pub fn crypto_passphrase_response(&mut self, passphrase: &str) {
         let Some(pending) = self.crypto_pending.take() else {
             return;
@@ -112,73 +206,49 @@ impl TodoTreeView {
         }
         self.inner.data.save();
         self.inner.data.rebuild_flat();
-        self.inner.mark_dirty();
+        self.group.mark_dirty();
     }
 
-    fn start_edit(&mut self) {
-        let row = self.inner.cursor;
-        if row < self.inner.data.visible_count() {
-            let id = self.inner.data.visible_id(row);
-            let label = self.inner.data.label(id).to_owned();
-            let mut input = InputLine::new().with_command(CM_OK).with_inherit_bg();
-            input.set_sink(self.edit_sink.clone());
-            input.set_text(&label);
-            input.select_all();
-            self.editing = Some((row, input));
-            self.inner.mark_dirty();
+    /// Commit any active edit on resize.
+    fn commit_edit_on_resize(&mut self) {
+        if self.editing_row.is_some() {
+            self.commit_edit();
+        } else if self.filter_active {
+            self.commit_filter();
         }
-    }
-
-    fn start_edit_selected(&mut self) {
-        self.start_edit();
-    }
-
-    fn handle_editing_key(&mut self, key: &KeyEvent) -> HandleResult {
-        let Some((_, ref mut input)) = self.editing else {
-            return HandleResult::Ignored;
-        };
-        input.handle(&Event::Key(*key));
-        // Check for commands from InputLine
-        for ev in self.edit_sink.drain() {
-            if let Event::Command { id, data, .. } = ev {
-                match id {
-                    CM_OK => {
-                        let text = data
-                            .and_then(|d| d.downcast::<String>().ok())
-                            .map(|s| *s)
-                            .unwrap_or_default();
-                        let row = self.editing.as_ref().map(|(r, _)| *r).unwrap_or(0);
-                        self.editing = None;
-                        self.inner.data.update_title(row, text);
-                        self.inner.mark_dirty();
-                        return HandleResult::Consumed;
-                    }
-                    CM_CANCEL => {
-                        self.editing = None;
-                        self.inner.mark_dirty();
-                        return HandleResult::Consumed;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        self.inner.mark_dirty();
-        HandleResult::Consumed
     }
 }
 
 impl View for TodoTreeView {
-    delegate_view!(inner, override { title, handle, draw, can_close, set_bounds });
+    delegate_group_state!(group, override { title, handle, draw, cursor, select, unselect, set_bounds });
 
     fn title(&self) -> &str {
         "Todo"
     }
 
-    fn set_bounds(&mut self, r: txv_core::geometry::Rect) {
-        if self.inner.bounds() != r {
+    fn set_bounds(&mut self, r: Rect) {
+        if self.group.bounds() != r {
             self.commit_edit_on_resize();
         }
-        self.inner.set_bounds(r);
+        self.group.set_bounds(r);
+    }
+
+    fn select(&mut self) {
+        self.group.set_focused(true);
+        self.group.mark_dirty();
+    }
+
+    fn unselect(&mut self) {
+        self.group.set_focused(false);
+        self.group.mark_dirty();
+    }
+
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        // When editing, cursor comes from the InputLine child
+        if self.is_editing() {
+            return self.group.cursor();
+        }
+        None
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -196,31 +266,19 @@ impl View for TodoTreeView {
     fn handle(&mut self, event: &Event) -> HandleResult {
         if matches!(event, Event::Tick) {
             if self.inner.data.reload_if_changed() {
-                self.inner.mark_dirty();
+                self.group.mark_dirty();
             }
-            return self.inner.handle(event);
+            return HandleResult::Ignored;
         }
         let Event::Key(key) = event else {
-            return self.inner.handle(event);
+            return HandleResult::Ignored;
         };
-        if self.filter_editor.is_some() {
+        if self.filter_active {
             return self.handle_filter_key(key);
         }
-        if self.editing.is_some() {
+        if self.editing_row.is_some() {
             return self.handle_editing_key(key);
         }
         self.handle_normal_key(key, event)
-    }
-}
-
-impl TodoTreeView {
-    /// Commit any active inline edit when the view is resized.
-    fn commit_edit_on_resize(&mut self) {
-        if let Some((row, ref input)) = self.editing.take() {
-            self.inner.data.update_title(row, input.text().to_string());
-        }
-        if self.filter_editor.is_some() {
-            self.filter_editor = None;
-        }
     }
 }
