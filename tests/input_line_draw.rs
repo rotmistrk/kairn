@@ -74,14 +74,22 @@ fn background_fills_entire_width() {
 
 #[test]
 fn cursor_at_end_of_text() {
+    use txv_core::cursor::{CursorRequest, CursorShape};
+    use txv_core::geometry::Rect;
     let mut input = InputLine::new();
     input.set_text("abc");
-    // cursor_pos() should be 3 (end)
     assert_eq!(input.cursor_pos(), 3);
-    let cells = draw_cells(&mut input, 10);
-    let cursor_style = palette().style(StyleId::InputCursor);
-    assert_eq!(cells[3].1, cursor_style, "cell 3 should have InputCursor style");
-    assert_eq!(cells[3].0, ' ', "cursor on empty cell should show space");
+    input.set_bounds(Rect::new(0, 0, 10, 1));
+    input.select(); // sets focused + select_all
+                    // Deselect text but keep focused — press End to clear selection
+    input.handle(&Event::Key(KeyEvent {
+        code: KeyCode::End,
+        modifiers: KeyMod::default(),
+    }));
+    // Hardware cursor should be at x=3 with Bar shape
+    let cr = input.cursor().expect("should return CursorRequest");
+    assert_eq!(cr.x, 3, "hardware cursor x should be at end of text");
+    assert_eq!(cr.shape, CursorShape::Bar, "should use Bar shape");
 }
 
 #[test]
@@ -199,6 +207,37 @@ fn typing_replaces_selection_no_extra_chars() {
     for i in 2..10 {
         assert_eq!(cells[i].0, ' ', "cell {i} should be space after replace");
     }
+}
+
+#[test]
+fn cursor_not_on_right_overflow_position() {
+    // When cursor is mid-text and there's text to the right,
+    // cursor should NOT land on the last cell (where '…' goes).
+    let mut input = InputLine::new();
+    input.set_text("abcdefghij"); // 10 chars
+    input.set_bounds(Rect::new(0, 0, 5, 1));
+    // Move cursor to position 4 (on 'e') — with width 5, this is the last cell
+    // There's text to the right, so '…' would go at position 4.
+    // visible_start should scroll to avoid cursor on overflow position.
+    input.select();
+    // Navigate cursor to char index 4
+    input.handle(&Event::Key(KeyEvent {
+        code: KeyCode::Home,
+        modifiers: KeyMod::default(),
+    }));
+    for _ in 0..4 {
+        input.handle(&Event::Key(KeyEvent {
+            code: KeyCode::Right,
+            modifiers: KeyMod::default(),
+        }));
+    }
+    let cr = input.cursor().expect("cursor request");
+    // Cursor should NOT be at position 4 (width-1) since there's right overflow
+    assert!(
+        cr.x < 4,
+        "cursor should not be on the right-overflow position, got x={}",
+        cr.x
+    );
 }
 
 #[test]
