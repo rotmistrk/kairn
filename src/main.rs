@@ -25,6 +25,7 @@ use kairn::mcp::socket_path::socket_path;
 use kairn::session;
 use kairn::startup;
 use kairn::status::build_status_bar;
+use txv_widgets::sidekick_manager::SidekickManager;
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
@@ -131,6 +132,7 @@ fn run_app(
         app_state.settings().status_keys(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
+    program.insert_named("sidekick", Box::new(SidekickManager::new()));
     let mut backend = init_backend(app_state, &mcp_cmd_queue);
 
     push_initial_open(&program, open_file, saved_session, root_dir);
