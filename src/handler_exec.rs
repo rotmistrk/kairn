@@ -134,13 +134,11 @@ mod tests {
             name.to_string()
         };
         let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(text));
-        let mut overlay: Option<Box<dyn txv_core::prelude::View>> = None;
         let mut ctx = txv_core::program::CommandContext {
             command: CM_EXECUTE_COMMAND,
             data: &data,
             sink,
             desktop: program.desktop_mut(),
-            overlay: &mut overlay,
         };
         handle_execute_command(&mut ctx, state);
 

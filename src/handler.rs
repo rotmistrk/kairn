@@ -30,7 +30,6 @@ use crate::handler_mcp::drain_mcp;
 use crate::handler_open::{handle_open_file, handle_shell_output, handle_show_results};
 use crate::handler_script::handle_script_command;
 use crate::handler_set::handle_set_global;
-use crate::handler_sidekick::intercept_sidekick;
 use crate::handler_split::{
     handle_split, handle_split_close, handle_split_focus, handle_split_h, handle_split_linked, handle_split_v,
 };
@@ -48,9 +47,6 @@ use crate::views::welcome::WelcomeView;
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
 pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
-    if intercept_sidekick(ctx) {
-        return;
-    }
     if intercept_status_message(ctx, state) {
         return;
     }
