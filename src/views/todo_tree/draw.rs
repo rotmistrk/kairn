@@ -94,15 +94,18 @@ impl TodoTreeView {
     }
 
     fn draw_edit_overlay(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
-        let Some(ref editor) = self.editing else {
-            return;
+        let mut editor = match self.editing.take() {
+            Some(e) => e,
+            None => return,
         };
         let scroll_offset = self.inner.scroll.offset;
         if editor.row < scroll_offset {
+            self.editing = Some(editor);
             return;
         }
         let screen_row = (editor.row - scroll_offset) as u16;
         if screen_row >= draw_h as u16 {
+            self.editing = Some(editor);
             return;
         }
         let y = filter_offset + screen_row;
@@ -112,6 +115,7 @@ impl TodoTreeView {
         let ew = w.saturating_sub(indent);
         let style = palette().style(StyleId::EditOverlay);
         editor.draw(self.inner.buffer_mut(), indent, y, ew, style);
+        self.editing = Some(editor);
     }
 
     fn draw_filter_bar(&mut self, w: u16, filter_offset: u16) {
@@ -121,8 +125,9 @@ impl TodoTreeView {
         let style = palette().style(StyleId::EditOverlay);
         self.inner.buffer_mut().hline(0, 0, w, ' ', style);
         self.inner.buffer_mut().print(0, 0, "/", style);
-        if let Some(ref editor) = self.filter_editor {
+        if let Some(mut editor) = self.filter_editor.take() {
             editor.draw(self.inner.buffer_mut(), 1, 0, w.saturating_sub(1), style);
+            self.filter_editor = Some(editor);
         } else {
             let ft = self.inner.data.filter_text.clone();
             self.inner.buffer_mut().print(1, 0, &ft, style);

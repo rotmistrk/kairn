@@ -103,22 +103,25 @@ fn pick_col_style(is_cursor: bool, target: ColFocus, current: ColFocus, cursor: 
 }
 
 fn draw_edit_overlay(view: &mut StructuredView, h: u16, edit_style: Style, cols: &ColLayout) {
-    if let Some(ref editor) = view.editing {
-        let idx = editor.row;
-        if idx >= view.scroll && idx < view.scroll + h as usize {
-            let y = (idx - view.scroll) as u16;
-            let sep1_x = cols.key_w as u16;
-            let val_x = sep1_x + 1;
-            let sep2_x = val_x + cols.val_w as u16;
-            let meta_x = sep2_x + 1;
-            let (col_x, col_w) = match view.col_focus {
-                ColFocus::Key => (0u16, cols.key_w as u16),
-                ColFocus::Value => (val_x, cols.val_w as u16),
-                ColFocus::Meta => (meta_x, cols.meta_w as u16),
-            };
-            editor.draw(view.state.buffer_mut(), col_x, y, col_w, edit_style);
-        }
+    let mut editor = match view.editing.take() {
+        Some(e) => e,
+        None => return,
+    };
+    let idx = editor.row;
+    if idx >= view.scroll && idx < view.scroll + h as usize {
+        let y = (idx - view.scroll) as u16;
+        let sep1_x = cols.key_w as u16;
+        let val_x = sep1_x + 1;
+        let sep2_x = val_x + cols.val_w as u16;
+        let meta_x = sep2_x + 1;
+        let (col_x, col_w) = match view.col_focus {
+            ColFocus::Key => (0u16, cols.key_w as u16),
+            ColFocus::Value => (val_x, cols.val_w as u16),
+            ColFocus::Meta => (meta_x, cols.meta_w as u16),
+        };
+        editor.draw(view.state.buffer_mut(), col_x, y, col_w, edit_style);
     }
+    view.editing = Some(editor);
 }
 
 /// Build the key column text with tree connectors and expand/collapse markers.
