@@ -4,16 +4,15 @@ use std::path::Path;
 
 use duir_core::crypto::{decrypt_item, encrypt_item};
 use txv_core::prelude::*;
-use txv_widgets::inline_edit::{InlineEditResult, InlineEditor};
+use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
 use txv_widgets::TreeView;
 
-use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_UPDATE};
-
-use self::handle::HandleAction;
+use crate::commands::CM_TODO_NOTE_UPDATE;
 
 mod apply_action;
 pub mod data;
+mod dispatch;
 mod draw;
 mod flat_node;
 mod handle;
@@ -25,8 +24,12 @@ pub use self::data::TodoTreeData;
 /// The todo tree view — wraps TreeView<TodoTreeData>.
 pub struct TodoTreeView {
     inner: TreeView<TodoTreeData>,
-    editing: Option<InlineEditor>,
-    filter_editor: Option<InlineEditor>,
+    /// Active item editor (row being edited stored separately).
+    editing: Option<(usize, InputLine)>,
+    /// Active filter editor.
+    filter_editor: Option<InputLine>,
+    /// Sink to capture InputLine commands.
+    edit_sink: EventSink,
     /// Pending crypto path for passphrase prompt.
     crypto_pending: Option<CryptoPending>,
 }
@@ -44,6 +47,7 @@ impl TodoTreeView {
             inner: TreeView::new(data),
             editing: None,
             filter_editor: None,
+            edit_sink: EventSink::new(),
             crypto_pending: None,
         }
     }
@@ -116,34 +120,46 @@ impl TodoTreeView {
         if row < self.inner.data.visible_count() {
             let id = self.inner.data.visible_id(row);
             let label = self.inner.data.label(id).to_owned();
-            self.editing = Some(InlineEditor::new_selected(row, &label));
+            let mut input = InputLine::new().with_command(CM_OK).with_inherit_bg();
+            input.set_sink(self.edit_sink.clone());
+            input.set_text(&label);
+            input.select_all();
+            self.editing = Some((row, input));
             self.inner.mark_dirty();
         }
     }
 
     fn start_edit_selected(&mut self) {
-        let row = self.inner.cursor;
-        if row < self.inner.data.visible_count() {
-            let id = self.inner.data.visible_id(row);
-            let label = self.inner.data.label(id).to_owned();
-            self.editing = Some(InlineEditor::new_selected(row, &label));
-            self.inner.mark_dirty();
-        }
+        self.start_edit();
     }
 
     fn handle_editing_key(&mut self, key: &KeyEvent) -> HandleResult {
-        let Some(ref mut editor) = self.editing else {
+        let Some((_, ref mut input)) = self.editing else {
             return HandleResult::Ignored;
         };
-        match editor.handle_key(key) {
-            InlineEditResult::Continue => {}
-            InlineEditResult::Commit(text) => {
-                let row = editor.row;
-                self.editing = None;
-                self.inner.data.update_title(row, text);
-            }
-            InlineEditResult::Cancel => {
-                self.editing = None;
+        input.handle(&Event::Key(*key));
+        // Check for commands from InputLine
+        for ev in self.edit_sink.drain() {
+            if let Event::Command { id, data, .. } = ev {
+                match id {
+                    CM_OK => {
+                        let text = data
+                            .and_then(|d| d.downcast::<String>().ok())
+                            .map(|s| *s)
+                            .unwrap_or_default();
+                        let row = self.editing.as_ref().map(|(r, _)| *r).unwrap_or(0);
+                        self.editing = None;
+                        self.inner.data.update_title(row, text);
+                        self.inner.mark_dirty();
+                        return HandleResult::Consumed;
+                    }
+                    CM_CANCEL => {
+                        self.editing = None;
+                        self.inner.mark_dirty();
+                        return HandleResult::Consumed;
+                    }
+                    _ => {}
+                }
             }
         }
         self.inner.mark_dirty();
@@ -200,65 +216,11 @@ impl View for TodoTreeView {
 impl TodoTreeView {
     /// Commit any active inline edit when the view is resized.
     fn commit_edit_on_resize(&mut self) {
-        if let Some(editor) = self.editing.take() {
-            self.inner.data.update_title(editor.row, editor.buffer);
+        if let Some((row, ref input)) = self.editing.take() {
+            self.inner.data.update_title(row, input.text().to_string());
         }
         if self.filter_editor.is_some() {
             self.filter_editor = None;
         }
-    }
-
-    fn handle_filter_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if key.code == KeyCode::Esc {
-            self.inner.data.filter_text.clear();
-            self.inner.data.rebuild_flat();
-            self.inner.cursor = 0;
-            self.filter_editor = None;
-            self.inner.mark_dirty();
-            return HandleResult::Consumed;
-        }
-        if key.code == KeyCode::Enter {
-            self.filter_editor = None;
-            self.inner.mark_dirty();
-            return HandleResult::Consumed;
-        }
-        if let Some(ref mut editor) = self.filter_editor {
-            editor.handle_key(key);
-            self.inner.data.filter_text = editor.buffer.clone();
-            self.inner.data.rebuild_flat();
-            self.inner.cursor = 0;
-            self.inner.mark_dirty();
-        }
-        HandleResult::Consumed
-    }
-
-    fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
-        if key.code == KeyCode::Char('n') && self.inner.data.visible_count() == 0 {
-            self.inner.data.add_first_item();
-            return HandleResult::Consumed;
-        }
-        if key.code == KeyCode::Char('e') && self.inner.data.visible_count() > 0 {
-            self.start_edit();
-            return HandleResult::Consumed;
-        }
-        let prev_cursor = self.inner.cursor;
-        let cursor = self.inner.cursor;
-        if self.inner.data.visible_count() > 0 {
-            if let Some(action) = handle::handle_todo_key(key, &mut self.inner.data, cursor) {
-                if matches!(action, HandleAction::ConfirmDelete) {
-                    self.inner
-                        .state
-                        .put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::TodoDelete)));
-                    let msg = "Delete item? [y]es [Esc]cancel".to_string();
-                    self.inner.state.put_command(CM_CONFIRM, Some(Box::new(msg)));
-                }
-                self.apply_action(action);
-                self.emit_note_update_if_cursor_changed(prev_cursor);
-                return HandleResult::Consumed;
-            }
-        }
-        let result = self.inner.handle(event);
-        self.emit_note_update_if_cursor_changed(prev_cursor);
-        result
     }
 }

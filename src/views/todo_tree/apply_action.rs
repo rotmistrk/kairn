@@ -1,6 +1,7 @@
 //! TodoTreeView action dispatch.
 
-use txv_widgets::inline_edit::InlineEditor;
+use txv_core::prelude::*;
+use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
 
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_OPEN};
@@ -27,7 +28,10 @@ impl TodoTreeView {
             }
             HandleAction::ConfirmDelete => {}
             HandleAction::EnterFilter => {
-                self.filter_editor = Some(InlineEditor::new(0, &self.inner.data.filter_text));
+                let mut input = InputLine::new().with_command(CM_OK).with_inherit_bg();
+                input.set_sink(self.edit_sink.clone());
+                input.set_text(&self.inner.data.filter_text.clone());
+                self.filter_editor = Some(input);
             }
             HandleAction::CryptoEncrypt(path) => self.start_crypto(CryptoPending::Encrypt(path)),
             HandleAction::CryptoDecrypt(path) => self.start_crypto(CryptoPending::Decrypt(path)),
