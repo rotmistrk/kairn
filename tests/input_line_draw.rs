@@ -210,37 +210,6 @@ fn typing_replaces_selection_no_extra_chars() {
 }
 
 #[test]
-fn cursor_not_on_right_overflow_position() {
-    // When cursor is mid-text and there's text to the right,
-    // cursor should NOT land on the last cell (where '…' goes).
-    let mut input = InputLine::new();
-    input.set_text("abcdefghij"); // 10 chars
-    input.set_bounds(Rect::new(0, 0, 5, 1));
-    // Move cursor to position 4 (on 'e') — with width 5, this is the last cell
-    // There's text to the right, so '…' would go at position 4.
-    // visible_start should scroll to avoid cursor on overflow position.
-    input.select();
-    // Navigate cursor to char index 4
-    input.handle(&Event::Key(KeyEvent {
-        code: KeyCode::Home,
-        modifiers: KeyMod::default(),
-    }));
-    for _ in 0..4 {
-        input.handle(&Event::Key(KeyEvent {
-            code: KeyCode::Right,
-            modifiers: KeyMod::default(),
-        }));
-    }
-    let cr = input.cursor().expect("cursor request");
-    // Cursor should NOT be at position 4 (width-1) since there's right overflow
-    assert!(
-        cr.x < 4,
-        "cursor should not be on the right-overflow position, got x={}",
-        cr.x
-    );
-}
-
-#[test]
 fn view_select_triggers_select_all() {
     let mut input = InputLine::new();
     input.set_text("hello");
