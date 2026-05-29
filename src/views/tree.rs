@@ -96,6 +96,17 @@ impl View for FileTreeView {
         "Files"
     }
 
+    fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
+        if !self.filter_active {
+            return None;
+        }
+        Some(txv_core::cursor::CursorRequest {
+            x: 1 + self.inner.data.filter().len() as u16,
+            y: self.inner.bounds().h.saturating_sub(1),
+            shape: txv_core::cursor::CursorShape::Bar,
+        })
+    }
+
     fn unselect(&mut self) {
         self.clear_filter();
         self.inner.unselect();

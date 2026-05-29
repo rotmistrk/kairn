@@ -101,11 +101,13 @@ impl TestHarness {
         use txv_core::program::CommandContext;
         let sink = self.program.sink().clone();
         let desktop = self.program.desktop_mut();
+        let mut overlay: Option<Box<dyn txv_core::prelude::View>> = None;
         let mut ctx = CommandContext {
             command: id,
             data: &data,
             sink: &sink,
             desktop,
+            overlay: &mut overlay,
         };
         handle_command(&mut ctx, &mut self.state);
     }

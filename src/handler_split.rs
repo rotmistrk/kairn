@@ -189,6 +189,7 @@ pub(crate) fn handle_split_h(ctx: &mut CommandContext, state: &mut AppState) {
         data: &data,
         sink: ctx.sink,
         desktop: ctx.desktop,
+        overlay: ctx.overlay,
     };
     handle_split(&mut sub, state);
 }
@@ -204,6 +205,7 @@ pub(crate) fn handle_split_v(ctx: &mut CommandContext, state: &mut AppState) {
         data: &data,
         sink: ctx.sink,
         desktop: ctx.desktop,
+        overlay: ctx.overlay,
     };
     handle_split(&mut sub, state);
 }

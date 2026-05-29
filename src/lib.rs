@@ -66,6 +66,7 @@ pub mod handler_script_dispatch;
 pub mod handler_script_edit;
 pub mod handler_script_util;
 pub mod handler_set;
+pub mod handler_sidekick;
 pub mod handler_split;
 pub mod handler_split_nav;
 pub mod handler_theme;
