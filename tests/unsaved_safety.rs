@@ -153,7 +153,7 @@ fn ctrl_q_quits_when_all_clean() {
     open_file(&mut h, "a.rs");
     h.run_cycles(2);
 
-    // Ctrl-Q should quit (no dirty buffers)
+    // Ctrl-Q shows confirmation prompt
     let ctrl = KeyMod {
         ctrl: true,
         alt: false,
@@ -162,7 +162,11 @@ fn ctrl_q_quits_when_all_clean() {
     h.inject_key(KeyCode::Char('q'), ctrl);
     h.run_cycles(2);
 
-    assert!(h.program.should_quit(), "should quit when all buffers are clean");
+    // Answer 'y' to quit
+    h.inject_key(KeyCode::Char('y'), KeyMod::default());
+    h.run_cycles(2);
+
+    assert!(h.program.should_quit(), "should quit after confirming");
 }
 
 // --- Task 3: save-all must save all dirty editor tabs ---
@@ -277,7 +281,7 @@ fn ctrl_q_saves_autosave_pending_buffers() {
     h.inject_key(KeyCode::Esc, KeyMod::default());
     h.run_cycles(2);
 
-    // Ctrl-Q immediately (don't wait for autosave tick)
+    // Ctrl-Q shows confirmation
     let ctrl = KeyMod {
         ctrl: true,
         alt: false,
@@ -286,8 +290,12 @@ fn ctrl_q_saves_autosave_pending_buffers() {
     h.inject_key(KeyCode::Char('q'), ctrl);
     h.run_cycles(2);
 
-    // Program should quit (autosave means no prompt)
-    assert!(h.program.should_quit(), "should quit with autosave enabled");
+    // Answer 'y' to quit (saves autosave-pending buffers)
+    h.inject_key(KeyCode::Char('y'), KeyMod::default());
+    h.run_cycles(2);
+
+    // Program should quit
+    assert!(h.program.should_quit(), "should quit after confirming");
 
     // File should be saved (the race fix: save before quit)
     let content = std::fs::read_to_string(dir.path().join("a.rs")).unwrap();

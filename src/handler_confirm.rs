@@ -11,6 +11,7 @@ use crate::commands::*;
 use crate::desktop::SlotId;
 use crate::editor::save::save_file;
 use crate::handler::downcast_desktop;
+use crate::handler_close::save_all_dirty;
 use crate::handler_evict::complete_pending_insert;
 use crate::views::editor::EditorView;
 use crate::views::todo_tree::TodoTreeView;
@@ -31,6 +32,9 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
         ConfirmContext::FileReload(path) => handle_file_reload(ctx, &path, ch),
         ConfirmContext::Quit => {
             if ch == 'y' {
+                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                    save_all_dirty(desktop);
+                }
                 ctx.sink.push_command(CM_QUIT, None);
             }
         }

@@ -12,21 +12,17 @@ use crate::handler::downcast_desktop;
 use crate::slots::SlotId;
 use crate::views::editor::EditorView;
 
-/// Handle CM_APP_QUIT: check for unsaved buffers, prompt or quit.
+/// Handle CM_APP_QUIT: always confirm before quitting.
 pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        if has_unsaved_buffers(desktop) {
-            state.confirm_context = Some(ConfirmContext::Quit);
-            ctx.sink.push_command(
-                CM_CONFIRM,
-                Some(Box::new("Unsaved changes — quit? [y]es [n]o".to_string())),
-            );
-            return;
-        }
-        // Save any autosave-pending buffers before exit (race: tick may not fire)
-        save_all_dirty(desktop);
+        let msg = if has_unsaved_buffers(desktop) {
+            "Unsaved changes — quit? [y]es [n]o"
+        } else {
+            "Quit? [y]es [n]o"
+        };
+        state.confirm_context = Some(ConfirmContext::Quit);
+        ctx.sink.push_command(CM_CONFIRM, Some(Box::new(msg.to_string())));
     }
-    ctx.sink.push_command(CM_QUIT, None);
 }
 
 /// Handle CM_TW_TAB_CLOSE / CM_TAB_CLOSE: check can_close, prompt if dirty.
@@ -120,7 +116,7 @@ pub(crate) fn handle_save_all(ctx: &mut CommandContext) {
 }
 
 /// Save all dirty editor buffers in the center panel.
-fn save_all_dirty(desktop: &mut TiledWorkspace) {
+pub(crate) fn save_all_dirty(desktop: &mut TiledWorkspace) {
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
         return;
     };
