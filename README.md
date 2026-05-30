@@ -202,6 +202,7 @@ set editor.number true
 set editor.tabstop 4
 set terminal.scrollback 5000
 set theme.mode "dark"
+set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd 20][system busy]}
 ```
 
 See `doc/example-init.tcl` for all settings including colors and LSP config.
@@ -222,7 +223,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 | `split` | vsplit, hsplit, close, focus, open, direction, linked |
 | `keymap` | bind, unbind |
 | `hook` | add, remove, list |
-| `system` | exec, env, set-env, root-dir, home-dir, platform, clipboard-get, clipboard-set |
+| `system` | exec, env, set-env, root-dir, home-dir, platform, user, hostname, short-pwd, busy, clipboard-get, clipboard-set |
 
 Example:
 ```tcl

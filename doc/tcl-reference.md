@@ -173,6 +173,10 @@ Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `s
 | `system platform` | Returns OS name |
 | `system clipboard-get` | Read system clipboard |
 | `system clipboard-set <text>` | Write to system clipboard |
+| `system user` | Returns current username |
+| `system hostname [n]` | Returns hostname; n=1 for first component only |
+| `system short-pwd [max]` | Project root with ~ substitution, smart-truncated to max chars |
+| `system busy` | Returns `*` if kiro sessions active, empty otherwise |
 
 ## Build/Test/Run Overrides
 
