@@ -109,3 +109,37 @@ pub fn save_todo_file(path: &Path, file: &TodoFile) -> bool {
     }
     true
 }
+
+// --- Effective value computation ---
+
+/// Effective priority: max of own priority and all descendants.
+pub fn effective_priority(item: &TodoItem) -> u8 {
+    let own = item.priority.unwrap_or(0);
+    item.items
+        .iter()
+        .fold(own, |acc, child| acc.max(effective_priority(child)))
+}
+
+/// Effective effort: own effort + sum of all descendants' effective effort.
+pub fn effective_effort(item: &TodoItem) -> u16 {
+    let own = u16::from(item.effort.unwrap_or(0));
+    item.items.iter().fold(own, |acc, child| acc + effective_effort(child))
+}
+
+/// Effective in-progress: true if self or any descendant is InProgress.
+pub fn effective_in_progress(item: &TodoItem) -> bool {
+    item.work_status == WorkStatus::InProgress || item.items.iter().any(effective_in_progress)
+}
+
+/// Effective paused: true if self or any descendant is Paused (and none InProgress).
+pub fn effective_paused(item: &TodoItem) -> bool {
+    if effective_in_progress(item) {
+        return false;
+    }
+    item.work_status == WorkStatus::Paused || item.items.iter().any(effective_paused)
+}
+
+/// Effective has-notes: true if self has notes or any descendant does.
+pub fn effective_has_notes(item: &TodoItem) -> bool {
+    !item.note.is_empty() || item.items.iter().any(effective_has_notes)
+}
