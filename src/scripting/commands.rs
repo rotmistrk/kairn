@@ -11,6 +11,7 @@ pub struct StateSnapshot {
     pub(crate) current_line_text: String,
     pub(crate) split_direction: String,
     pub(crate) split_linked: bool,
+    pub(crate) busy_count: usize,
 }
 
 /// Commands produced by Tcl scripts, drained by the handler.

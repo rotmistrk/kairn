@@ -152,6 +152,12 @@ impl ScriptEngine {
         }
     }
 
+    pub fn set_busy_count(&self, count: usize) {
+        if let Ok(mut snap) = self.snapshot.lock() {
+            snap.busy_count = count;
+        }
+    }
+
     /// Get captured output from puts commands.
     pub fn get_output(&self) -> Vec<String> {
         self.interp.get_output().to_vec()

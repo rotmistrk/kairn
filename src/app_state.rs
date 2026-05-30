@@ -82,6 +82,8 @@ pub struct AppState {
     pub(crate) linked_scroll: bool,
     /// Last output timestamp per terminal tab index (for activity badges).
     pub(crate) pty_last_output: HashMap<usize, Instant>,
+    /// Last emitted window title (to avoid redundant OSC 2 writes).
+    pub(crate) last_window_title: String,
 }
 
 impl AppState {
@@ -199,6 +201,7 @@ impl AppState {
             todo_note_path: None,
             linked_scroll: false,
             pty_last_output: HashMap::new(),
+            last_window_title: String::new(),
         }
     }
 
@@ -237,6 +240,7 @@ impl AppState {
             todo_note_path: None,
             linked_scroll: false,
             pty_last_output: HashMap::new(),
+            last_window_title: String::new(),
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s

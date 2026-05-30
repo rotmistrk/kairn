@@ -16,7 +16,7 @@ use crate::handler_build::{
 use crate::handler_clipboard::{handle_clipboard_commands, update_problems_view};
 use crate::handler_close::{handle_app_quit, handle_save_all, handle_tab_close};
 use crate::handler_confirm::{handle_confirm_response, handle_set_confirm_context};
-use crate::handler_context::{broadcast_context, handle_cursor_moved};
+use crate::handler_context::{broadcast_context, handle_cursor_moved, update_window_title};
 use crate::handler_drain::{
     drain_build, drain_grep, handle_todo_action, open_todo_note, refresh_plugins, save_todo_note, update_todo_note,
 };
@@ -111,7 +111,10 @@ fn dispatch_command(ctx: &mut CommandContext, state: &mut AppState) {
 
 fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
     match ctx.command {
-        CM_TICK => broadcast_context(ctx, state),
+        CM_TICK => {
+            broadcast_context(ctx, state);
+            update_window_title(state);
+        }
         CM_APP_QUIT => handle_app_quit(ctx, state),
         CM_TW_TAB_CLOSE | CM_TAB_CLOSE => handle_tab_close(ctx, state),
         CM_SAVE_ALL => handle_save_all(ctx),

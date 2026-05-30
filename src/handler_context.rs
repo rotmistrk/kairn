@@ -35,9 +35,11 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
     let (split_dir, split_linked) = collect_split_state(desktop, state);
 
     let root = state.root_dir.to_string_lossy().to_string();
+    let busy_count = state.kiro_registry().count();
     state
         .script
         .update_snapshot(&vc, &root, &selection_text, &current_line_text, split_dir, split_linked);
+    state.script.set_busy_count(busy_count);
 
     ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }
@@ -149,5 +151,28 @@ pub(crate) fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState
         if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
             state.cursor_pos = (pos.line().saturating_sub(1), pos.col().saturating_sub(1));
         }
+    }
+}
+
+/// Evaluate window.title-expr and emit OSC 2 if the title changed.
+pub(crate) fn update_window_title(state: &mut AppState) {
+    let expr = state
+        .script
+        .interpreter()
+        .get_var("window.title-expr")
+        .map(|v| v.to_string());
+    let Some(expr) = expr else {
+        return;
+    };
+    if expr.is_empty() {
+        return;
+    }
+    let title = match state.script.eval(&expr) {
+        Ok(t) => t,
+        Err(_) => return,
+    };
+    if title != state.last_window_title {
+        state.last_window_title = title.clone();
+        print!("\x1b]2;{}\x07", title);
     }
 }

@@ -301,6 +301,19 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # system clipboard-get         ;# read system clipboard
 # system clipboard-set <text>  ;# write to system clipboard
 
+# ─── Window Title ────────────────────────────────────────────────────────────
+# Tcl expression evaluated periodically. Result becomes the terminal window title.
+# OSC 2 is emitted only when the result changes.
+#
+# Available commands for use in the expression:
+#   system user              — current username
+#   system hostname          — full hostname
+#   system hostname 1        — first component of hostname (before first '.')
+#   system short-pwd 20      — project root, ~ for home, smart-truncated to 20 chars
+#   system busy              — returns "*" if kiro sessions are active, "" otherwise
+#
+set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd 20][system busy]}
+
 # ─── Project Root Override ───────────────────────────────────────────────────
 # Define a `project-root` proc to override automatic root detection.
 # Called with the file path when opening a file via CLI.

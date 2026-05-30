@@ -47,6 +47,10 @@ impl KiroTabRegistry {
         self.sessions.contains_key(name)
     }
 
+    pub fn count(&self) -> usize {
+        self.sessions.len()
+    }
+
     pub fn to_state(&self) -> Vec<KiroSessionState> {
         self.sessions
             .values()
