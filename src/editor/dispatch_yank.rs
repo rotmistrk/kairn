@@ -16,7 +16,7 @@ impl Editor {
                 self.clamp_cursor();
                 EditorAction::ContentChanged
             }
-            Command::YankLine => {
+            Command::YankLine | Command::OperatorYank => {
                 let line = self.buf().line(self.cursor_line).unwrap_or_default();
                 self.yank_linewise(line);
                 EditorAction::None
@@ -30,19 +30,28 @@ impl Editor {
                 EditorAction::None
             }
             Command::Paste => {
-                self.paste_after();
+                self.do_paste(false);
                 EditorAction::ContentChanged
             }
             Command::PasteBefore => {
-                self.paste_before();
+                self.do_paste(true);
                 EditorAction::ContentChanged
             }
-            Command::OperatorYank => {
-                let line = self.buf().line(self.cursor_line).unwrap_or_default();
-                self.yank_linewise(line);
-                EditorAction::None
-            }
             _ => EditorAction::None,
+        }
+    }
+
+    fn do_paste(&mut self, before: bool) {
+        if self.register_block {
+            if before {
+                self.block_paste_before();
+            } else {
+                self.block_paste_after();
+            }
+        } else if before {
+            self.paste_before();
+        } else {
+            self.paste_after();
         }
     }
 }

@@ -10,7 +10,9 @@ impl EditorView {
     pub(super) fn cursor_style_for_mode(&self) -> CursorStyle {
         match self.editor.mode {
             EditorMode::Insert => self.editor.options.cursor_insert,
-            EditorMode::Normal | EditorMode::Visual | EditorMode::VisualLine => self.editor.options.cursor_normal,
+            EditorMode::Normal | EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => {
+                self.editor.options.cursor_normal
+            }
             EditorMode::Command | EditorMode::Search => self.editor.options.cursor_command,
         }
     }

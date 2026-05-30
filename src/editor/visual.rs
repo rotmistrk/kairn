@@ -14,6 +14,19 @@ impl Editor {
         self.visual_anchor = Some((self.cursor_line, 0));
     }
 
+    pub(super) fn enter_visual_block(&mut self) {
+        self.mode = EditorMode::VisualBlock;
+        self.visual_anchor = Some((self.cursor_line, self.cursor_col));
+    }
+
+    /// Get block selection as (start_line, end_line, start_col, end_col).
+    /// Columns are inclusive on both ends.
+    pub fn block_range(&self) -> Option<(usize, usize, usize, usize)> {
+        let (al, ac) = self.visual_anchor?;
+        let (cl, cc) = (self.cursor_line, self.cursor_col);
+        Some((al.min(cl), al.max(cl), ac.min(cc), ac.max(cc)))
+    }
+
     pub(super) fn exit_visual(&mut self) {
         self.mode = EditorMode::Normal;
         self.visual_anchor = None;

@@ -11,6 +11,7 @@ pub enum EditorMode {
     Insert,
     Visual,
     VisualLine,
+    VisualBlock,
     Command,
     Search,
 }

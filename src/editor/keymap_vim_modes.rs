@@ -32,6 +32,13 @@ impl VimKeymap {
         if key.modifiers.ctrl {
             return Command::Noop;
         }
+        // Handle pending 'r' for block replace
+        if let Some('r') = self.pending.take() {
+            if let KeyCode::Char(ch) = key.code {
+                return Command::BlockReplace(ch);
+            }
+            return Command::Noop;
+        }
         match &key.code {
             KeyCode::Esc => Command::ExitVisual,
             KeyCode::Char('h') | KeyCode::Left => Command::MoveLeft,
@@ -52,6 +59,12 @@ impl VimKeymap {
             KeyCode::Char('>') => Command::VisualIndent,
             KeyCode::Char('<') => Command::VisualUnindent,
             KeyCode::Char(':') => Command::VisualExCommand,
+            KeyCode::Char('I') => Command::BlockInsert,
+            KeyCode::Char('A') => Command::BlockAppend,
+            KeyCode::Char('r') => {
+                self.pending = Some('r');
+                Command::Noop
+            }
             _ => Command::Noop,
         }
     }

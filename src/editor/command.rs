@@ -79,6 +79,7 @@ pub enum Command {
     ExitInsertMode,
     EnterVisual,
     EnterVisualLine,
+    EnterVisualBlock,
     ExitVisual,
 
     // Visual mode operations
@@ -88,6 +89,9 @@ pub enum Command {
     VisualIndent,
     VisualUnindent,
     VisualExCommand,
+    BlockInsert,
+    BlockAppend,
+    BlockReplace(char),
 
     // Search
     SearchForward(String),

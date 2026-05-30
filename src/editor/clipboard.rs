@@ -11,6 +11,7 @@ impl Editor {
     /// Set the yank register and copy to system clipboard via OSC 52.
     pub fn yank(&mut self, text: String) {
         self.register_linewise = false;
+        self.register_block = false;
         self.register = text.clone();
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
@@ -20,6 +21,17 @@ impl Editor {
     /// Set the yank register as linewise (for dd, yy, V-yank).
     pub fn yank_linewise(&mut self, text: String) {
         self.register_linewise = true;
+        self.register_block = false;
+        self.register = text.clone();
+        if let Err(e) = copy_to_clipboard(&text) {
+            self.status = format!("clipboard: {e}");
+        }
+    }
+
+    /// Set the yank register as block (newline-separated column slices).
+    pub fn yank_block(&mut self, text: String) {
+        self.register_linewise = false;
+        self.register_block = true;
         self.register = text.clone();
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");

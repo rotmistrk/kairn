@@ -6,7 +6,7 @@ use super::command::Command;
 use super::keymap::{EditorMode, Keymap};
 
 pub struct VimKeymap {
-    pending: Option<char>,
+    pub(super) pending: Option<char>,
     pending_count: Option<usize>,
 }
 
@@ -46,6 +46,7 @@ impl VimKeymap {
 
     fn normal_ctrl(&self, key: &KeyEvent) -> Command {
         match &key.code {
+            KeyCode::Char('v') => Command::EnterVisualBlock,
             KeyCode::Char('d') => Command::HalfPageDown,
             KeyCode::Char('u') => Command::HalfPageUp,
             KeyCode::Char('f') => Command::PageDown,
@@ -210,7 +211,7 @@ impl Keymap for VimKeymap {
         let cmd = match mode {
             EditorMode::Normal => self.normal_key(key),
             EditorMode::Insert => self.insert_key(key),
-            EditorMode::Visual | EditorMode::VisualLine => self.visual_key(key),
+            EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => self.visual_key(key),
             EditorMode::Command | EditorMode::Search => Command::Noop,
         };
         if cmd != Command::Noop {
@@ -227,6 +228,7 @@ impl Keymap for VimKeymap {
             EditorMode::Insert => "INSERT",
             EditorMode::Visual => "VISUAL",
             EditorMode::VisualLine => "V-LINE",
+            EditorMode::VisualBlock => "V-BLOCK",
             EditorMode::Command => "COMMAND",
             EditorMode::Search => "SEARCH",
         }

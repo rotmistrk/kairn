@@ -23,6 +23,7 @@ pub mod options;
 pub mod save;
 mod search;
 mod visual;
+mod visual_block;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -78,6 +79,7 @@ pub struct Editor {
     pub(crate) keymap: VimKeymap,
     pub(crate) register: String,
     pub(crate) register_linewise: bool,
+    pub(crate) register_block: bool,
     pub(crate) viewport_scroll: usize,
     pub(crate) viewport_height: usize,
     pub(crate) h_scroll: usize,
@@ -165,6 +167,7 @@ impl Editor {
             keymap: VimKeymap::new(),
             register: String::new(),
             register_linewise: false,
+            register_block: false,
             viewport_scroll: 0,
             viewport_height: 24,
             h_scroll: 0,

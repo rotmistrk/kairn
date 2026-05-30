@@ -96,7 +96,7 @@ impl EditorView {
             let name = match self.editor.mode {
                 EditorMode::Normal => "NOR",
                 EditorMode::Insert => "INS",
-                EditorMode::Visual | EditorMode::VisualLine => "VIS",
+                EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => "VIS",
                 EditorMode::Command => "CMD",
                 EditorMode::Search => "CMD",
             };

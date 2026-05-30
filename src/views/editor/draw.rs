@@ -130,7 +130,7 @@ impl EditorView {
             }
         };
 
-        let visual_range = self.editor.visual_range();
+        let visual_range = self.block_visual_range_for_line(line_idx);
         let highlight = self.editor.highlight.take();
         let (visual_row, col_offset) = self.draw_line_spans(
             spans,
@@ -142,6 +142,31 @@ impl EditorView {
         self.editor.highlight = highlight;
         self.draw_line_tail(line_idx, &line, col_offset, visual_row, p, text_x);
         visual_row
+    }
+
+    /// Compute visual byte range for a line, handling block mode per-line.
+    fn block_visual_range_for_line(&self, line_idx: usize) -> Option<(usize, usize)> {
+        use crate::editor::keymap::EditorMode;
+        if self.editor.mode == EditorMode::VisualBlock {
+            let (sl, el, sc, ec) = self.editor.block_range()?;
+            if line_idx < sl || line_idx > el {
+                return None;
+            }
+            let start = self.editor.buf().line_col_to_offset(line_idx, sc)?;
+            let end = self
+                .editor
+                .buf()
+                .line_col_to_offset(line_idx, ec + 1)
+                .unwrap_or_else(|| {
+                    // Line is shorter than ec+1: extend to end of line content
+                    let line_start = self.editor.buf().line_col_to_offset(line_idx, 0).unwrap_or(start);
+                    let line = self.editor.buf().line(line_idx).unwrap_or_default();
+                    line_start + line.len()
+                });
+            Some((start, end))
+        } else {
+            self.editor.visual_range()
+        }
     }
 
     fn draw_gutter(&mut self, line_idx: usize, y: u16, p: &DrawParams) {

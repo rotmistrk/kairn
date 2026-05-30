@@ -29,10 +29,11 @@ impl Editor {
             Command::Undo | Command::Redo | Command::YankLine | Command::YankWord
             | Command::YankToEnd | Command::Paste | Command::PasteBefore
             | Command::OperatorYank => self.dispatch_yank_ops(cmd),
-            Command::EnterVisual | Command::EnterVisualLine | Command::ExitVisual
+            Command::EnterVisual | Command::EnterVisualLine | Command::EnterVisualBlock | Command::ExitVisual
             | Command::VisualDelete | Command::VisualYank | Command::VisualChange
             | Command::VisualIndent | Command::VisualUnindent
-            | Command::VisualExCommand => self.dispatch_visual_ops(cmd),
+            | Command::VisualExCommand | Command::BlockInsert | Command::BlockAppend
+            | Command::BlockReplace(_) => self.dispatch_visual_ops(cmd),
             Command::EnterSearchMode | Command::SearchForward(_)
             | Command::SearchBackward(_) | Command::SearchNext | Command::SearchPrev
             | Command::SearchWordForward | Command::SearchWordBackward
