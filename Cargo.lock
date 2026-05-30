@@ -492,7 +492,7 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 [[package]]
 name = "duir-core"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/duir.git#1a579e6a221bb517db8fd73ac246cc2f42e2eda8"
+source = "git+https://github.com/rotmistrk/duir.git#89adb292d31261329573be9f2f9565d71ac41adc"
 dependencies = [
  "age",
  "base64 0.22.1",

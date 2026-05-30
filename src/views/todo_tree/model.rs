@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::Path;
 
-pub use duir_core::model::{Completion, TodoFile, TodoItem};
+pub use duir_core::model::{Completion, TodoFile, TodoItem, WorkStatus};
 use duir_core::stats::update_completion;
 pub use duir_core::tree_ops::TreePath;
 pub use duir_core::{tree_ops, NodeId};
