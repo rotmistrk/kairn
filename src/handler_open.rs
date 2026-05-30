@@ -118,7 +118,11 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
     }
     let title = tab_title(&path, &state.root_dir);
     match state.broker.open(&title, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => {}
+        OpenResult::AlreadyOpen { slot, .. } => {
+            if let Some(d) = downcast_desktop(desktop) {
+                focus_tab_by_title(d, slot, &title);
+            }
+        }
         OpenResult::Opened => {
             let view: Box<dyn View> = try_open_structured(&path).unwrap_or_else(|| {
                 let syntax_theme = state.current_syntax_theme().to_string();
