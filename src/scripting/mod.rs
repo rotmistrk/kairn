@@ -59,6 +59,11 @@ impl ScriptEngine {
         bridge_todo::register(&mut interp, commands.clone());
         bridge_split::register(&mut interp, commands.clone(), snapshot.clone());
 
+        // Default window title (user config can override)
+        interp
+            .eval("set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd 20][system busy]}")
+            .ok();
+
         Self {
             interp,
             commands,
