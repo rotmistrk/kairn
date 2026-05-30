@@ -172,3 +172,28 @@ fn tab_completes_inside_directory() {
         last_row
     );
 }
+
+/// After Tab completes to a directory (e.g. "src" → "src/"), popup shows directory contents.
+#[test]
+fn tab_completing_to_directory_shows_contents() {
+    let dir = temp_project(&[("src/main.rs", "fn main() {}"), ("src/lib.rs", "// lib")]);
+    let mut h = TestHarness::with_size(dir.path(), 80, 24);
+    h.run_cycles(2);
+    h.inject_key(
+        KeyCode::Char('x'),
+        KeyMod {
+            ctrl: false,
+            alt: true,
+            shift: false,
+        },
+    );
+    h.inject_str("edit src");
+    h.inject_key(KeyCode::Tab, KeyMod::default());
+    h.run_cycles(5);
+    // After completing "src" → "src/", popup should show directory contents
+    let screen = h.screen_text();
+    assert!(
+        screen.contains("main.rs") || screen.contains("lib.rs"),
+        "popup should show directory contents after completing to dir",
+    );
+}
