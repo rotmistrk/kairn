@@ -55,6 +55,8 @@ pub fn apply_chrome_config(interp: &Interpreter, base: Arc<dyn Palette>) -> Arc<
         ("color.chrome.tab_active", StyleId::TabActive),
         ("color.chrome.scrollbar_track", StyleId::ScrollbarTrack),
         ("color.chrome.scrollbar_thumb", StyleId::ScrollbarThumb),
+        ("color.chrome.status_question", StyleId::StatusQuestion),
+        ("color.chrome.status_highlight", StyleId::StatusHighlight),
         ("color.popup.background", StyleId::PopupBackground),
         ("color.popup.border", StyleId::PopupBorder),
         ("color.popup.selected", StyleId::PopupSelected),

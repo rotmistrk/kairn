@@ -98,7 +98,7 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 #
 # Chrome/framework styles (configurable via "fg bg [attrs]" format):
 #   chrome:      status_bar, status_bar_modal, bar, tab_focused, tab_active,
-#                scrollbar_track, scrollbar_thumb
+#                scrollbar_track, scrollbar_thumb, status_question, status_highlight
 #   popup:       background, border, selected
 #   interactive: cursor_focused, input_cursor, search_match
 #
