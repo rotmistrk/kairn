@@ -43,11 +43,11 @@ fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
         .trigger_key(APPROX)
         .prefill_command(CM_COMMAND_PREFILL)
         .add_child(Box::new(input));
-    bar.add(StatusSlot::new(Box::new(command_line)).priority(10).stretch(1));
+    bar.add(StatusSlot::new(Box::new(command_line)).priority(10));
 }
 
 fn add_right_side(bar: &mut StatusBar, root_dir: PathBuf, clock_interval: u16) {
-    bar.add(StatusSlot::new(Box::new(MessageView::new(5))).priority(10).stretch(1));
+    bar.add(StatusSlot::new(Box::new(MessageView::new(5))).priority(10));
     bar.add(
         StatusSlot::new(Box::new(CtxModifiedItem::new()))
             .priority(7)
