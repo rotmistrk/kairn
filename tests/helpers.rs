@@ -12,6 +12,7 @@ use kairn::completer::AppCompleter;
 use kairn::handler::{handle_command, AppState};
 use kairn::settings::{GitKeys, StatusKeys};
 use kairn::status::build_status_bar;
+use txv_widgets::sidekick_manager::SidekickManager;
 
 /// Test harness that mirrors the real app exactly.
 pub struct TestHarness {
@@ -43,7 +44,8 @@ impl TestHarness {
             root_dir.to_path_buf(),
             &StatusKeys::default(),
         );
-        let program = Program::new(Box::new(status), Box::new(desktop));
+        let mut program = Program::new(Box::new(status), Box::new(desktop));
+        program.insert_named("sidekick", Box::new(SidekickManager::new()));
         let backend = MockBackend::new(80, 24);
         Self {
             program,
@@ -64,7 +66,8 @@ impl TestHarness {
             root_dir.to_path_buf(),
             &StatusKeys::default(),
         );
-        let program = Program::new(Box::new(status), Box::new(desktop));
+        let mut program = Program::new(Box::new(status), Box::new(desktop));
+        program.insert_named("sidekick", Box::new(SidekickManager::new()));
         let backend = MockBackend::new(width, height);
         let state = AppState::new(root_dir.to_path_buf());
         Self {
