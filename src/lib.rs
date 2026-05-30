@@ -61,6 +61,7 @@ pub mod handler_mcp_build;
 pub mod handler_mcp_edit;
 pub mod handler_mcp_helpers;
 pub mod handler_open;
+pub mod handler_open_view;
 pub mod handler_script;
 pub mod handler_script_dispatch;
 pub mod handler_script_edit;

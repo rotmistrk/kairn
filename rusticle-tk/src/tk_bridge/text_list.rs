@@ -92,19 +92,19 @@ pub fn register_list(interp: &mut Interpreter, shared: &SendShared) {
                     .ok_or_else(|| TclError::new("list set-items: missing items"))?;
                 let items = tcl_to_string_list(items_val)?;
                 let lv = get_widget::<ListView<StringListData>>(&mut st.desktop, &id, "list set-items")?;
-                lv.data = StringListData::new(items);
+                *lv.data_mut() = StringListData::new(items);
                 Ok(TclValue::Str(String::new()))
             }
             "selected" => {
                 let id = require_arg(args, 1, "list selected")?;
                 let lv = get_widget::<ListView<StringListData>>(&mut st.desktop, &id, "list selected")?;
-                let text = lv.data.items.get(lv.cursor).cloned().unwrap_or_default();
+                let text = lv.data().selected_text(lv.cursor());
                 Ok(TclValue::Str(text))
             }
             "index" => {
                 let id = require_arg(args, 1, "list index")?;
                 let lv = get_widget::<ListView<StringListData>>(&mut st.desktop, &id, "list index")?;
-                Ok(TclValue::Int(lv.cursor as i64))
+                Ok(TclValue::Int(lv.cursor() as i64))
             }
             "on-select" | "on-activate" => {
                 let id = require_arg(args, 1, &format!("list {sub}"))?;

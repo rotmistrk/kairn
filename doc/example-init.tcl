@@ -25,6 +25,7 @@ set editor.cursor_command software
 
 # NOTE: editor.autosave and editor.autosave_delay are not yet configurable via Tcl.
 
+
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
 # Seconds before terminal is considered idle (default: 3)

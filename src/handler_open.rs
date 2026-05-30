@@ -1,6 +1,6 @@
 //! File-open command handlers — CM_OPEN_FILE, :edit.
 
-use std::fs;
+use std::fs::File;
 use std::path::Path;
 
 use txv_core::prelude::*;
@@ -17,11 +17,9 @@ use crate::views::results::{ResultEntry, ResultsView};
 fn tab_title(path: &Path, root: &Path) -> String {
     path.strip_prefix(root).unwrap_or(path).to_string_lossy().to_string()
 }
-use crate::structured::json_doc::JsonDoc;
-use crate::structured::jsonl_doc::JsonlDoc;
-use crate::views::csv_view::CsvView;
+pub(crate) use crate::handler_open_view::open_as_csv;
+use crate::handler_open_view::{open_editor, open_editor_view, try_open_structured};
 use crate::views::editor::EditorView;
-use crate::views::struct_view::StructuredView;
 
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
@@ -108,6 +106,16 @@ fn handle_fresh_open(
 
 pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
+    if path.is_dir() {
+        let msg = Message::warn("edit", format!("Cannot open directory: {arg}"));
+        sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        return;
+    }
+    if path.exists() && File::open(&path).is_err() {
+        let msg = Message::warn("edit", format!("Cannot read file: {arg}"));
+        sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        return;
+    }
     let title = tab_title(&path, &state.root_dir);
     match state.broker.open(&title, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {}
@@ -185,79 +193,5 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
     } else {
         open_editor_view(&path, state)
     };
-    try_insert_tab(d, state, sink, SlotId::Center, title, view);
-}
-
-fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
-    let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
-    let mut ed = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
-    ed.set_root_dir(state.root_dir.clone());
-    let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    ed.buffer_id = Some(state.buffers.register(Some(canon)));
-    Box::new(ed)
-}
-
-/// Try to open a file as a structured view (JSON/JSONC/JSONL/CSV/TSV). Returns None if not applicable or parse fails.
-fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
-    let ext = path.extension()?.to_str()?;
-    let content = fs::read_to_string(path).ok()?;
-    match ext {
-        "json" => {
-            let doc = JsonDoc::parse(&content).ok()?;
-            Some(Box::new(StructuredView::new(path, Box::new(doc))))
-        }
-        "jsonc" => {
-            let doc = JsonDoc::parse_jsonc(&content).ok()?;
-            Some(Box::new(StructuredView::new(path, Box::new(doc))))
-        }
-        "jsonl" | "ndjson" => {
-            let doc = JsonlDoc::parse(&content).ok()?;
-            Some(Box::new(StructuredView::new(path, Box::new(doc))))
-        }
-        "csv" | "tsv" | "tab" | "psv" => Some(Box::new(CsvView::new(path, &content))),
-        _ => None,
-    }
-}
-
-/// Open a file as an EditorView (fallback).
-fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileRequest) -> Box<dyn View> {
-    let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
-    let mut editor = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
-    editor.set_root_dir(state.root_dir.clone());
-    if let (Some(line), Some(col)) = (req.line, req.col) {
-        editor.goto(line, col);
-    }
-    if req.diff {
-        editor.toggle_diff("");
-    }
-    let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let buf_id = state.buffers.register(Some(canon));
-    editor.buffer_id = Some(buf_id);
-    Box::new(editor)
-}
-
-/// Open the current file as a CSV table view.
-pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState) {
-    let Some(d) = downcast_desktop(desktop) else {
-        return;
-    };
-    let Some(title) = active_tab_title(d, SlotId::Center).map(String::from) else {
-        return;
-    };
-    let path = state.root_dir.join(&title);
-    if !path.is_file() {
-        return;
-    }
-    let Ok(content) = fs::read_to_string(&path) else {
-        return;
-    };
-    close_tab_by_title(d, SlotId::Center, &title);
-    state.broker.close(&title);
-    let _ = state.broker.open(&title, SlotId::Center, 0);
-    let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
     try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

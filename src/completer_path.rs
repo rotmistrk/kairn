@@ -37,6 +37,18 @@ pub fn complete_path(
 
     let mut results = collect_entries(entries, prefix, &dir_prefix);
     results.sort_by(|a, b| a.display.cmp(&b.display));
+
+    // If single match is a directory, also list its contents.
+    if results.len() == 1 && results[0].kind == "dir" {
+        let sub_path = format!("{}/", results[0].text.strip_prefix("edit ").unwrap_or(""));
+        let sub_dir = root.join(&sub_path);
+        if let Ok(sub_entries) = fs::read_dir(&sub_dir) {
+            let mut sub = collect_entries(sub_entries, "", &sub_path);
+            sub.sort_by(|a, b| a.display.cmp(&b.display));
+            results.extend(sub);
+        }
+    }
+
     for e in &results {
         if !visitor(e)? {
             break;
@@ -55,13 +67,13 @@ fn collect_entries(entries: fs::ReadDir, prefix: &str, dir_prefix: &str) -> Vec<
         }
         let rel_path = format!("{dir_prefix}{name_str}");
         let is_dir = entry.path().is_dir();
-        let display = if is_dir {
-            format!("{name_str}/")
+        let (text, display) = if is_dir {
+            (format!("edit {rel_path}/"), format!("{name_str}/"))
         } else {
-            name_str.to_string()
+            (format!("edit {rel_path}"), name_str.to_string())
         };
         results.push(Entry {
-            text: format!("edit {rel_path}"),
+            text,
             display,
             kind: if is_dir {
                 "dir"

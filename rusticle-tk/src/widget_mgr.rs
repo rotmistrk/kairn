@@ -14,6 +14,10 @@ impl StringListData {
     pub fn new(items: Vec<String>) -> Self {
         Self { items }
     }
+
+    pub fn selected_text(&self, index: usize) -> String {
+        self.items.get(index).cloned().unwrap_or_default()
+    }
 }
 
 impl ListData for StringListData {
