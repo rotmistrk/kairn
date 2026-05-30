@@ -77,7 +77,8 @@ fn draw_entries(view: &mut ProblemsView, w: u16, h: usize) {
             .strip_prefix(root_str.as_ref())
             .and_then(|s| s.strip_prefix('/'))
             .unwrap_or(&path_str);
-        let line_info = format!(" {}:{}  {}", rel, entry.line + 1, entry.message);
+        let msg_first_line = entry.message.lines().next().unwrap_or("");
+        let line_info = format!(" {}:{}  {}", rel, entry.line + 1, msg_first_line);
         let max = (w as usize).saturating_sub(3);
         let truncated = if line_info.len() > max {
             &line_info[..max]
