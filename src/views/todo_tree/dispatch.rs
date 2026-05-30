@@ -67,4 +67,25 @@ impl TodoTreeView {
     pub(super) fn drain_child_sink(&mut self) {
         self.child_sink.drain();
     }
+
+    pub(super) fn handle_filter_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
+        let result = self.group.dispatch(event);
+        self.drain_child_sink();
+        if let Some(input) = self.input_line_mut() {
+            self.inner.data.filter_text = input.text().to_string();
+        }
+        self.inner.data.rebuild_flat();
+        self.inner.cursor = 0;
+        self.group.mark_dirty();
+        if key.code == KeyCode::Esc {
+            self.cancel_filter();
+        } else if key.code == KeyCode::Enter {
+            self.commit_filter();
+        }
+        if result == HandleResult::Consumed {
+            result
+        } else {
+            HandleResult::Consumed
+        }
+    }
 }
