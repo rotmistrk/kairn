@@ -113,7 +113,7 @@ fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
     match ctx.command {
         CM_TICK => {
             broadcast_context(ctx, state);
-            update_window_title(state);
+            update_window_title(state, ctx.sink);
         }
         CM_APP_QUIT => handle_app_quit(ctx, state),
         CM_TW_TAB_CLOSE | CM_TAB_CLOSE => handle_tab_close(ctx, state),

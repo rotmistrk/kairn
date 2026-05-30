@@ -3,7 +3,9 @@
 use std::fs;
 use std::io::Write;
 
+use txv_core::message::{Message, MsgLevel};
 use txv_core::program::CommandContext;
+use txv_core::view::EventSink;
 use txv_widgets::tiled_workspace::types::SplitDir;
 
 use crate::app_state::AppState;
@@ -156,7 +158,7 @@ pub(crate) fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState
 }
 
 /// Evaluate window.title-expr and emit OSC 2 if the title changed.
-pub(crate) fn update_window_title(state: &mut AppState) {
+pub(crate) fn update_window_title(state: &mut AppState, sink: &EventSink) {
     let expr = state
         .script
         .interpreter()
@@ -168,9 +170,13 @@ pub(crate) fn update_window_title(state: &mut AppState) {
     if expr.is_empty() {
         return;
     }
-    let title = match state.script.eval(&expr) {
+    let title = match state.script.subst(&expr) {
         Ok(t) => t,
-        Err(_) => return,
+        Err(e) => {
+            let msg = Message::new(MsgLevel::Error, "title", format!("eval: {e}"));
+            sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            return;
+        }
     };
     if title != state.last_window_title {
         state.last_window_title = title.clone();

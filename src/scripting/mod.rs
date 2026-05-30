@@ -80,6 +80,16 @@ impl ScriptEngine {
             .map_err(|e| e.message)
     }
 
+    /// Perform Tcl substitution (variable + command) without executing as a command.
+    pub fn subst(&mut self, input: &str) -> Result<String, String> {
+        // Wrap in double quotes so Tcl performs substitution and returns the string
+        let script = format!("return \"{}\"", input.replace('\\', "\\\\").replace('"', "\\\""));
+        self.interp
+            .eval(&script)
+            .map(|v| v.as_str().into_owned())
+            .map_err(|e| e.message)
+    }
+
     /// Check if a Tcl command or proc is registered.
     pub fn has_command(&self, name: &str) -> bool {
         self.interp.has_command(name) || self.interp.proc_names().contains(&name.to_string())
