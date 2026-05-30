@@ -237,10 +237,32 @@ impl View for TodoTreeView {
             return HandleResult::Ignored;
         };
         if self.filter_active {
-            return self.handle_filter_key(key);
+            // Group dispatch routes to focused InputLine child
+            let result = self.group.dispatch(event);
+            self.drain_child_sink();
+            if let Some(input) = self.input_line_mut() {
+                self.inner.data.filter_text = input.text().to_string();
+            }
+            self.inner.data.rebuild_flat();
+            self.inner.cursor = 0;
+            self.group.mark_dirty();
+            if key.code == KeyCode::Esc {
+                self.cancel_filter();
+            } else if key.code == KeyCode::Enter {
+                self.commit_filter();
+            }
+            return if result == HandleResult::Consumed {
+                result
+            } else {
+                HandleResult::Consumed
+            };
         }
         if self.editing_row.is_some() {
-            return self.handle_editing_key(key);
+            // Group dispatch routes to focused InputLine child
+            let _result = self.group.dispatch(event);
+            self.drain_edit_commands();
+            self.group.mark_dirty();
+            return HandleResult::Consumed;
         }
         self.handle_normal_key(key, event)
     }

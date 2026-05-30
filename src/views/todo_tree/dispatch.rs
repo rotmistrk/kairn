@@ -1,4 +1,4 @@
-//! TodoTreeView key dispatch — filter and normal mode.
+//! TodoTreeView key dispatch — normal mode.
 
 use txv_core::prelude::*;
 use txv_widgets::tree_view::TreeData;
@@ -8,33 +8,6 @@ use super::TodoTreeView;
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 
 impl TodoTreeView {
-    pub(super) fn handle_editing_key(&mut self, key: &KeyEvent) -> HandleResult {
-        self.group.dispatch(&Event::Key(*key));
-        self.drain_edit_commands();
-        self.group.mark_dirty();
-        HandleResult::Consumed
-    }
-
-    pub(super) fn handle_filter_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if key.code == KeyCode::Esc {
-            self.cancel_filter();
-            return HandleResult::Consumed;
-        }
-        if key.code == KeyCode::Enter {
-            self.commit_filter();
-            return HandleResult::Consumed;
-        }
-        self.group.dispatch(&Event::Key(*key));
-        self.drain_child_sink();
-        if let Some(input) = self.input_line_mut() {
-            self.inner.data.filter_text = input.text().to_string();
-        }
-        self.inner.data.rebuild_flat();
-        self.inner.cursor = 0;
-        self.group.mark_dirty();
-        HandleResult::Consumed
-    }
-
     pub(super) fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
         if key.code == KeyCode::Char('n') && self.inner.data.visible_count() == 0 {
             self.inner.data.add_first_item();
@@ -67,7 +40,7 @@ impl TodoTreeView {
         result
     }
 
-    fn drain_edit_commands(&mut self) {
+    pub(super) fn drain_edit_commands(&mut self) {
         for ev in self.child_sink.drain() {
             if let Event::Command { id, data, .. } = ev {
                 match id {
@@ -91,7 +64,7 @@ impl TodoTreeView {
         }
     }
 
-    fn drain_child_sink(&mut self) {
+    pub(super) fn drain_child_sink(&mut self) {
         self.child_sink.drain();
     }
 }
