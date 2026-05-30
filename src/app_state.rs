@@ -2,8 +2,6 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::env;
-use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -20,6 +18,7 @@ use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::desktop::SlotId;
 use crate::eviction::PendingTab;
 use crate::grep::GrepState;
+use crate::handler_context::open_tty_for_title;
 use crate::kiro_registry::KiroTabRegistry;
 use crate::lsp::progress::LspStatusTracker;
 use crate::lsp::registry::LspRegistry;
@@ -167,6 +166,10 @@ impl AppState {
         self.pty_last_output.insert(index, when);
     }
 
+    pub fn last_window_title(&self) -> &str {
+        &self.last_window_title
+    }
+
     pub fn refresh_plugins(&mut self) -> Vec<String> {
         self.plugins.refresh(&mut self.script)
     }
@@ -261,13 +264,4 @@ impl AppState {
             .unwrap_or(false);
         self.settings.syntax_theme_for_mode(is_light)
     }
-}
-
-/// Open /dev/tty for OSC 2 title writes, unless the terminal doesn't support it.
-fn open_tty_for_title() -> Option<std::fs::File> {
-    let term = env::var("TERM").unwrap_or_default();
-    if term == "linux" || term == "dumb" || term.is_empty() {
-        return None;
-    }
-    OpenOptions::new().write(true).open("/dev/tty").ok()
 }

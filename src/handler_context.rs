@@ -1,6 +1,7 @@
 //! Assembles ViewContext from current state and broadcasts CM_CONTEXT_UPDATE.
 
-use std::fs;
+use std::env;
+use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 
 use txv_core::message::{Message, MsgLevel};
@@ -184,4 +185,13 @@ pub(crate) fn update_window_title(state: &mut AppState, sink: &EventSink) {
             let _ = write!(tty, "\x1b]2;{}\x07", title);
         }
     }
+}
+
+/// Open /dev/tty for OSC 2 title writes, unless the terminal doesn't support it.
+pub(crate) fn open_tty_for_title() -> Option<File> {
+    let term = env::var("TERM").unwrap_or_default();
+    if term == "linux" || term == "dumb" || term.is_empty() {
+        return None;
+    }
+    OpenOptions::new().write(true).open("/dev/tty").ok()
 }
