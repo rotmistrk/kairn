@@ -67,9 +67,11 @@ impl TodoTreeView {
         let pal = self.edit_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
+        self.group.set_focused_index(0);
         if let Some(child) = self.group.child_mut(0) {
             child.set_sink(sink);
             child.set_palette(pal);
+            child.select();
         }
         self.editing_row = Some(row);
         self.group.mark_dirty();
@@ -86,9 +88,11 @@ impl TodoTreeView {
         let pal = self.filter_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
+        self.group.set_focused_index(0);
         if let Some(child) = self.group.child_mut(0) {
             child.set_sink(sink);
             child.set_palette(pal);
+            child.select();
         }
         self.filter_active = true;
         self.group.mark_dirty();
