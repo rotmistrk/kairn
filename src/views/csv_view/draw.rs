@@ -160,10 +160,13 @@ fn blit_editor(view: &mut CsvView, _w: u16, h: u16, header_offset: u16) {
     if let Some(child) = view.group.child_mut(0) {
         child.draw();
     }
-    // Blit at buffer-relative position
+    // Blit at buffer-relative position (standard group composite pattern)
     let buf_ptr = view.group.buffer_mut() as *mut Buffer;
     if let Some(child) = view.group.child(0) {
-        unsafe { (*buf_ptr).blit(child.buffer(), cx, screen_row) };
+        let cb = child.bounds();
+        let dx = cb.x.saturating_sub(gb.x);
+        let dy = cb.y.saturating_sub(gb.y);
+        unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
     }
 }
 

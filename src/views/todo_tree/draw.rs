@@ -138,7 +138,10 @@ impl TodoTreeView {
         // Blit at buffer-relative position
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(child) = self.group.child(0) {
-            unsafe { (*buf_ptr).blit(child.buffer(), x, y) };
+            let cb = child.bounds();
+            let dx = cb.x.saturating_sub(gb.x);
+            let dy = cb.y.saturating_sub(gb.y);
+            unsafe { (*buf_ptr).blit(child.buffer(), dx, dy) };
         }
     }
 }
