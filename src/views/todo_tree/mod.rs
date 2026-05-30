@@ -6,7 +6,7 @@ use std::sync::Arc;
 use txv_core::prelude::*;
 use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
-use txv_widgets::TreeView;
+use txv_widgets::{TreeView, CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 
 mod apply_action;
 pub mod data;
@@ -19,6 +19,9 @@ pub mod model;
 mod ops;
 
 pub use self::data::TodoTreeData;
+
+/// Group ID for the todo status bar section.
+pub const TODO_STATUS_GROUP: u16 = 1;
 
 /// The todo tree view — a Group that hosts an InputLine child when editing.
 pub struct TodoTreeView {
@@ -75,6 +78,8 @@ impl TodoTreeView {
         }
         self.editing_row = Some(row);
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     fn start_edit_selected(&mut self) {
@@ -96,6 +101,8 @@ impl TodoTreeView {
         }
         self.filter_active = true;
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     /// Palette for item editing: Text = cursor row style (focused).
@@ -140,6 +147,8 @@ impl TodoTreeView {
             self.inner.data.update_title(row, text);
         }
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     /// Cancel the active edit.
@@ -147,6 +156,8 @@ impl TodoTreeView {
         self.remove_input_line();
         self.editing_row = None;
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     /// Commit filter (keep filter text, remove InputLine).
@@ -154,6 +165,8 @@ impl TodoTreeView {
         self.remove_input_line();
         self.filter_active = false;
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     /// Cancel filter (clear filter text, remove InputLine).
@@ -164,6 +177,8 @@ impl TodoTreeView {
         self.inner.data.rebuild_flat();
         self.inner.cursor = 0;
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     /// Whether we're in any editing mode.
@@ -199,11 +214,15 @@ impl View for TodoTreeView {
     fn select(&mut self) {
         self.group.set_focused(true);
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     fn unselect(&mut self) {
         self.group.set_focused(false);
         self.group.mark_dirty();
+        self.group
+            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
     }
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {

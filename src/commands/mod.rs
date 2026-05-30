@@ -144,3 +144,11 @@ pub const CM_TREE_MARK: CommandId = CM_APP_BASE + 176;
 pub const CM_TREE_UNMARK_ALL: CommandId = CM_APP_BASE + 177;
 pub const CM_TREE_MOVE_MARKED: CommandId = CM_APP_BASE + 178;
 pub const CM_TREE_COPY_MARKED: CommandId = CM_APP_BASE + 179;
+
+// Todo status bar commands
+pub const CM_TODO_TOGGLE_PROGRESS: CommandId = CM_APP_BASE + 180;
+pub const CM_TODO_TOGGLE_PAUSE: CommandId = CM_APP_BASE + 181;
+pub const CM_TODO_PRIORITY_UP: CommandId = CM_APP_BASE + 182;
+pub const CM_TODO_PRIORITY_DOWN: CommandId = CM_APP_BASE + 183;
+pub const CM_TODO_LOE_UP: CommandId = CM_APP_BASE + 184;
+pub const CM_TODO_LOE_DOWN: CommandId = CM_APP_BASE + 185;
