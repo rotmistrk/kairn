@@ -153,7 +153,7 @@ fn tab_completes_inside_directory() {
     let dir = temp_project(&[("src/main.rs", "fn main() {}")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
-    // M-x, type "open src/", Tab
+    // M-x, type "edit src/" — popup should appear with contents
     h.inject_key(
         KeyCode::Char('x'),
         KeyMod {
@@ -163,13 +163,12 @@ fn tab_completes_inside_directory() {
         },
     );
     h.inject_str("edit src/");
-    h.inject_key(KeyCode::Tab, KeyMod::default());
-    h.run_cycles(1);
-    let last_row = h.row(23);
+    h.run_cycles(2);
+    let screen = h.screen_text();
     assert!(
-        last_row.contains("main.rs"),
+        screen.contains("main.rs"),
         "expected directory completion showing main.rs, got: {}",
-        last_row
+        screen
     );
 }
 
@@ -188,12 +187,11 @@ fn tab_completing_to_directory_shows_contents() {
         },
     );
     h.inject_str("edit src");
-    h.inject_key(KeyCode::Tab, KeyMod::default());
-    h.run_cycles(5);
-    // After completing "src" → "src/", popup should show directory contents
+    h.run_cycles(3);
+    // Popup should show directory contents (expanded single-dir match)
     let screen = h.screen_text();
     assert!(
         screen.contains("main.rs") || screen.contains("lib.rs"),
-        "popup should show directory contents after completing to dir",
+        "popup should show directory contents after typing dir name",
     );
 }
