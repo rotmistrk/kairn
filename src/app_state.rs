@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -205,7 +206,7 @@ impl AppState {
             linked_scroll: false,
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
-            tty_file: OpenOptions::new().write(true).open("/dev/tty").ok(),
+            tty_file: open_tty_for_title(),
         }
     }
 
@@ -245,7 +246,7 @@ impl AppState {
             linked_scroll: false,
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
-            tty_file: OpenOptions::new().write(true).open("/dev/tty").ok(),
+            tty_file: open_tty_for_title(),
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s
@@ -260,4 +261,13 @@ impl AppState {
             .unwrap_or(false);
         self.settings.syntax_theme_for_mode(is_light)
     }
+}
+
+/// Open /dev/tty for OSC 2 title writes, unless the terminal doesn't support it.
+fn open_tty_for_title() -> Option<std::fs::File> {
+    let term = env::var("TERM").unwrap_or_default();
+    if term == "linux" || term == "dumb" || term.is_empty() {
+        return None;
+    }
+    OpenOptions::new().write(true).open("/dev/tty").ok()
 }
