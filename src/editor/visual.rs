@@ -23,6 +23,19 @@ impl Editor {
     pub fn visual_range(&self) -> Option<(usize, usize)> {
         let (al, ac) = self.visual_anchor?;
         let (cl, cc) = (self.cursor_line, self.cursor_col);
+
+        // In VisualLine mode, expand to full lines
+        if self.mode == EditorMode::VisualLine {
+            let (start_line, end_line) = (al.min(cl), al.max(cl));
+            let start = self.buf().line_col_to_offset(start_line, 0)?;
+            let end = if end_line + 1 < self.buf().line_count() {
+                self.buf().line_col_to_offset(end_line + 1, 0).unwrap_or(start)
+            } else {
+                self.buf().content().len()
+            };
+            return Some((start, end));
+        }
+
         let anchor_off = self.buf().line_col_to_offset(al, ac)?;
         let cursor_off = self.buf().line_col_to_offset(cl, cc)?;
         let content = self.buf().content();
