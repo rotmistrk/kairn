@@ -18,7 +18,7 @@ impl Editor {
         };
         if end_off > start_off {
             let content = self.buf().content();
-            self.yank(content[start_off..end_off].to_string());
+            self.yank_linewise(content[start_off..end_off].to_string());
             self.buf().delete(start_off, end_off);
         }
         let target = start.min(self.buf().line_count().saturating_sub(1));
@@ -38,7 +38,7 @@ impl Editor {
             self.buf().content().len()
         };
         let content = self.buf().content();
-        self.yank(content[start_off..end_off].to_string());
+        self.yank_linewise(content[start_off..end_off].to_string());
         let count = end - start + 1;
         self.status = format!("{count} line(s) yanked");
     }

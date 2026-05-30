@@ -53,7 +53,7 @@ impl Editor {
                 };
                 if end > start {
                     let content = self.buf().content();
-                    self.yank(content[start..end].to_string());
+                    self.yank_linewise(content[start..end].to_string());
                     self.buf().delete(start, end);
                 }
                 let target = start_line.min(self.buf().line_count().saturating_sub(1));
@@ -83,7 +83,7 @@ impl Editor {
                     self.buf().content().len()
                 };
                 let content = self.buf().content();
-                self.yank(content[start..end].to_string());
+                self.yank_linewise(content[start..end].to_string());
             }
         } else if let Some((start, end)) = self.visual_range() {
             let content = self.buf().content();

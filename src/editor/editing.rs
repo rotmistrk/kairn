@@ -104,7 +104,7 @@ impl Editor {
 
     pub(super) fn delete_line(&mut self) {
         let line = self.buf().line(self.cursor_line).unwrap_or_default();
-        self.yank(line);
+        self.yank_linewise(line);
         let start = self.buf().line_col_to_offset(self.cursor_line, 0).unwrap_or(0);
         let end = if self.cursor_line + 1 < self.buf().line_count() {
             self.buf().line_col_to_offset(self.cursor_line + 1, 0).unwrap_or(start)

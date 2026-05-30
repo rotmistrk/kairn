@@ -18,7 +18,7 @@ impl Editor {
             }
             Command::YankLine => {
                 let line = self.buf().line(self.cursor_line).unwrap_or_default();
-                self.yank(line);
+                self.yank_linewise(line);
                 EditorAction::None
             }
             Command::YankWord => {
@@ -39,7 +39,7 @@ impl Editor {
             }
             Command::OperatorYank => {
                 let line = self.buf().line(self.cursor_line).unwrap_or_default();
-                self.yank(line);
+                self.yank_linewise(line);
                 EditorAction::None
             }
             _ => EditorAction::None,

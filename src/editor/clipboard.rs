@@ -10,6 +10,16 @@ use super::Editor;
 impl Editor {
     /// Set the yank register and copy to system clipboard via OSC 52.
     pub fn yank(&mut self, text: String) {
+        self.register_linewise = false;
+        self.register = text.clone();
+        if let Err(e) = copy_to_clipboard(&text) {
+            self.status = format!("clipboard: {e}");
+        }
+    }
+
+    /// Set the yank register as linewise (for dd, yy, V-yank).
+    pub fn yank_linewise(&mut self, text: String) {
+        self.register_linewise = true;
         self.register = text.clone();
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
@@ -17,25 +27,65 @@ impl Editor {
     }
 
     pub(super) fn paste_after(&mut self) {
-        if !self.register.is_empty() {
+        if self.register.is_empty() {
+            return;
+        }
+        if self.register_linewise {
+            // Paste below current line
             let line_len = self.buf().line_len(self.cursor_line);
             let offset = self.buf().line_col_to_offset(self.cursor_line, line_len);
             if let Some(offset) = offset {
-                let text = format!("\n{}", self.register);
+                let text = if self.register.ends_with('\n') {
+                    format!("\n{}", &self.register[..self.register.len() - 1])
+                } else {
+                    format!("\n{}", self.register)
+                };
                 self.buf().insert(offset, &text);
                 self.cursor_line += 1;
                 self.cursor_col = 0;
+            }
+        } else {
+            // Paste after cursor
+            let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
+            if let Some(offset) = offset {
+                let content = self.buf().content();
+                let after = offset + content[offset..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+                self.buf().insert(after, &self.register);
+                let (l, c) = self
+                    .buf()
+                    .offset_to_line_col(after + self.register.len().saturating_sub(1));
+                self.cursor_line = l;
+                self.cursor_col = c;
             }
         }
     }
 
     pub(super) fn paste_before(&mut self) {
-        if !self.register.is_empty() {
+        if self.register.is_empty() {
+            return;
+        }
+        if self.register_linewise {
+            // Paste above current line
             let offset = self.buf().line_col_to_offset(self.cursor_line, 0);
             if let Some(offset) = offset {
-                let text = format!("{}\n", self.register);
+                let text = if self.register.ends_with('\n') {
+                    self.register.clone()
+                } else {
+                    format!("{}\n", self.register)
+                };
                 self.buf().insert(offset, &text);
                 self.cursor_col = 0;
+            }
+        } else {
+            // Paste before cursor
+            let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
+            if let Some(offset) = offset {
+                self.buf().insert(offset, &self.register);
+                let (l, c) = self
+                    .buf()
+                    .offset_to_line_col(offset + self.register.len().saturating_sub(1));
+                self.cursor_line = l;
+                self.cursor_col = c;
             }
         }
     }
@@ -120,7 +170,7 @@ impl Editor {
             result.push_str(&self.buf().line(i).unwrap_or_default());
             result.push('\n');
         }
-        self.yank(result);
+        self.yank_linewise(result);
     }
 
     pub(super) fn delete_lines(&mut self, n: usize) {
