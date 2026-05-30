@@ -123,14 +123,17 @@ fn blit_editor(view: &mut StructuredView, _w: u16, h: u16, cols: &ColLayout) {
         ColFocus::Value => (val_x, cols.val_w as u16),
         ColFocus::Meta => (meta_x, cols.meta_w as u16),
     };
-    view.group.set_child_bounds(0, Rect::new(col_x, y, col_w, 1));
+    let gb = view.group.bounds();
+    // Bounds must be absolute for correct cursor translation
+    view.group
+        .set_child_bounds(0, Rect::new(gb.x + col_x, gb.y + y, col_w, 1));
     if let Some(child) = view.group.child_mut(0) {
         child.draw();
     }
+    // Blit at buffer-relative position
     let buf_ptr = view.group.buffer_mut() as *mut Buffer;
     if let Some(child) = view.group.child(0) {
-        let cb = child.bounds();
-        unsafe { (*buf_ptr).blit(child.buffer(), cb.x, cb.y) };
+        unsafe { (*buf_ptr).blit(child.buffer(), col_x, y) };
     }
 }
 

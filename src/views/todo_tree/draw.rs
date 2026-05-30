@@ -114,6 +114,7 @@ impl TodoTreeView {
         if self.group.child_count() == 0 {
             return;
         }
+        let gb = self.group.bounds();
         let (x, y, cw) = if self.filter_active {
             (1u16, 0u16, w.saturating_sub(1))
         } else if let Some(row) = self.editing_row {
@@ -129,15 +130,15 @@ impl TodoTreeView {
         } else {
             return;
         };
-        self.group.set_child_bounds(0, Rect::new(x, y, cw, 1));
+        // Bounds must be absolute for correct cursor translation by GroupState::cursor()
+        self.group.set_child_bounds(0, Rect::new(gb.x + x, gb.y + y, cw, 1));
         if let Some(child) = self.group.child_mut(0) {
             child.draw();
         }
-        // Safety: child (immutable borrow) and buffer (mutable) are disjoint.
+        // Blit at buffer-relative position
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
         if let Some(child) = self.group.child(0) {
-            let cb = child.bounds();
-            unsafe { (*buf_ptr).blit(child.buffer(), cb.x, cb.y) };
+            unsafe { (*buf_ptr).blit(child.buffer(), x, y) };
         }
     }
 }

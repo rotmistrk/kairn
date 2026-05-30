@@ -153,14 +153,17 @@ fn blit_editor(view: &mut CsvView, _w: u16, h: u16, header_offset: u16) {
         cx += width + 1;
     }
     let col_w = view.col_widths.get(view.cursor_col).copied().unwrap_or(10);
-    view.group.set_child_bounds(0, Rect::new(cx, screen_row, col_w, 1));
+    let gb = view.group.bounds();
+    // Bounds must be absolute for correct cursor translation
+    view.group
+        .set_child_bounds(0, Rect::new(gb.x + cx, gb.y + screen_row, col_w, 1));
     if let Some(child) = view.group.child_mut(0) {
         child.draw();
     }
+    // Blit at buffer-relative position
     let buf_ptr = view.group.buffer_mut() as *mut Buffer;
     if let Some(child) = view.group.child(0) {
-        let cb = child.bounds();
-        unsafe { (*buf_ptr).blit(child.buffer(), cb.x, cb.y) };
+        unsafe { (*buf_ptr).blit(child.buffer(), cx, screen_row) };
     }
 }
 
