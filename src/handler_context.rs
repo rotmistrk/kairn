@@ -1,7 +1,7 @@
 //! Assembles ViewContext from current state and broadcasts CM_CONTEXT_UPDATE.
 
-use std::fs;
-use std::io::{self, Write};
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 
 use txv_core::program::CommandContext;
 use txv_widgets::tiled_workspace::types::SplitDir;
@@ -174,7 +174,8 @@ pub(crate) fn update_window_title(state: &mut AppState) {
     };
     if title != state.last_window_title {
         state.last_window_title = title.clone();
-        let _ = write!(io::stdout(), "\x1b]2;{}\x07", title);
-        let _ = io::stdout().flush();
+        if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
+            let _ = write!(tty, "\x1b]2;{}\x07", title);
+        }
     }
 }
