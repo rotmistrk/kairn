@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -84,6 +85,8 @@ pub struct AppState {
     pub(crate) pty_last_output: HashMap<usize, Instant>,
     /// Last emitted window title (to avoid redundant OSC 2 writes).
     pub(crate) last_window_title: String,
+    /// Persistent handle to /dev/tty for writing OSC sequences.
+    pub(crate) tty_file: Option<std::fs::File>,
 }
 
 impl AppState {
@@ -202,6 +205,7 @@ impl AppState {
             linked_scroll: false,
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
+            tty_file: OpenOptions::new().write(true).open("/dev/tty").ok(),
         }
     }
 
@@ -241,6 +245,7 @@ impl AppState {
             linked_scroll: false,
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
+            tty_file: OpenOptions::new().write(true).open("/dev/tty").ok(),
         };
         s.lsp_pending.timeout_secs = lsp_timeout;
         s

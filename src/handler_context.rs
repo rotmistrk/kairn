@@ -1,6 +1,6 @@
 //! Assembles ViewContext from current state and broadcasts CM_CONTEXT_UPDATE.
 
-use std::fs::{self, OpenOptions};
+use std::fs;
 use std::io::Write;
 
 use txv_core::program::CommandContext;
@@ -174,7 +174,7 @@ pub(crate) fn update_window_title(state: &mut AppState) {
     };
     if title != state.last_window_title {
         state.last_window_title = title.clone();
-        if let Ok(mut tty) = OpenOptions::new().write(true).open("/dev/tty") {
+        if let Some(tty) = state.tty_file.as_mut() {
             let _ = write!(tty, "\x1b]2;{}\x07", title);
         }
     }
