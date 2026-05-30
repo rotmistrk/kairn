@@ -38,7 +38,7 @@ fn todo_tree_renders_open_checkbox() {
     let mut h = TestHarness::new(dir.path());
     focus_todo(&mut h);
 
-    assert!(h.content_contains("[ ] Buy milk"));
+    assert!(h.content_contains("○  Buy milk"));
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn todo_tree_renders_done_checkbox() {
     let mut h = TestHarness::new(dir.path());
     focus_todo(&mut h);
 
-    assert!(h.content_contains("[x] Done task"));
+    assert!(h.content_contains("✓  Done task"));
 }
 
 #[test]

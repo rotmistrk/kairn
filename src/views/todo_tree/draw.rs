@@ -6,7 +6,7 @@ use txv_core::geometry::Rect;
 use txv_core::palette::{palette, StyleId};
 use txv_widgets::tree_view::TreeData;
 
-use super::model::Completion;
+use super::model::{self, Completion, WorkStatus};
 use super::TodoTreeView;
 
 impl TodoTreeView {
@@ -61,17 +61,75 @@ impl TodoTreeView {
         let y = filter_offset + row as u16;
         self.group.buffer_mut().hline(0, y, w, ' ', style);
         self.group.buffer_mut().print(indent, y, marker, style);
-        let checkbox = if let Some(item) = self.inner.data.item_at(id) {
-            match item.completed {
-                Completion::Done => "[x] ",
-                _ => "[ ] ",
-            }
-        } else {
-            "[ ] "
-        };
-        self.group.buffer_mut().print(indent + 2, y, checkbox, style);
+        let (status_icon, prio_icon, notes_icon) = self.badge_for(id);
+        let mut x = indent + 2;
+        self.group.buffer_mut().print(x, y, status_icon, style);
+        x += 1;
+        if !prio_icon.is_empty() {
+            self.group.buffer_mut().print(x, y, prio_icon, style);
+        }
+        x += 1;
+        if !notes_icon.is_empty() {
+            self.group.buffer_mut().print(x, y, notes_icon, style);
+        }
+        x += 1;
         let label = self.inner.data.label(id).to_string();
-        self.group.buffer_mut().print(indent + 6, y, &label, style);
+        self.group.buffer_mut().print(x, y, &label, style);
+    }
+
+    /// Compute badge icons for a node: (status, priority, notes).
+    fn badge_for(&self, id: usize) -> (&'static str, &'static str, &'static str) {
+        let Some(item) = self.inner.data.item_at(id) else {
+            return ("○", "", "");
+        };
+        let collapsed = self.inner.data.is_expandable(id) && !self.inner.data.is_expanded(id);
+        let status = if item.completed == Completion::Done {
+            "✓"
+        } else if collapsed && model::effective_in_progress(item) {
+            "▶"
+        } else if collapsed && model::effective_paused(item) {
+            "⏸"
+        } else if item.work_status == WorkStatus::InProgress {
+            "▶"
+        } else if item.work_status == WorkStatus::Paused {
+            "⏸"
+        } else if item.completed == Completion::Partial {
+            "◐"
+        } else {
+            "○"
+        };
+        let prio = if collapsed {
+            model::effective_priority(item)
+        } else {
+            item.priority.unwrap_or(0)
+        };
+        let prio_icon = Self::priority_braille(prio);
+        let has_notes = if collapsed {
+            model::effective_has_notes(item)
+        } else {
+            !item.note.is_empty()
+        };
+        let notes = if has_notes {
+            "♪"
+        } else {
+            ""
+        };
+        (status, prio_icon, notes)
+    }
+
+    fn priority_braille(prio: u8) -> &'static str {
+        match prio {
+            0 => "",
+            1 => "⠁",
+            2 => "⠃",
+            3 => "⠇",
+            4 => "⡇",
+            5 => "⣇",
+            6 => "⣧",
+            7 => "⣷",
+            8 => "⣿",
+            _ => "⣿",
+        }
     }
 
     fn row_style(&self, idx: usize, id: usize) -> Style {
@@ -124,7 +182,7 @@ impl TodoTreeView {
             let screen_y = filter_offset + (row - scroll_offset) as u16;
             let id = self.inner.data.visible_id(row);
             let depth = self.inner.data.depth(id);
-            let indent = (depth * 2 + 6) as u16;
+            let indent = (depth * 2 + 5) as u16;
             (indent, screen_y, w.saturating_sub(indent))
         } else {
             return;
