@@ -12,9 +12,6 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
         return HandleResult::Ignored;
     };
-    if view.is_editing() {
-        return handle_editing(view, key);
-    }
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => handle_nav_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_nav_up(view),
@@ -35,16 +32,7 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     HandleResult::Consumed
 }
 
-fn handle_editing(view: &mut CsvView, key: &KeyEvent) -> HandleResult {
-    view.group.dispatch(&Event::Key(*key));
-    if let Some(result) = drain_child_commands(view) {
-        return result;
-    }
-    view.group.mark_dirty();
-    HandleResult::Consumed
-}
-
-fn drain_child_commands(view: &mut CsvView) -> Option<HandleResult> {
+pub fn drain_csv_commands(view: &mut CsvView) {
     for ev in view.child_sink.drain() {
         let Event::Command { id, data, .. } = ev else {
             continue;
@@ -60,16 +48,15 @@ fn drain_child_commands(view: &mut CsvView) -> Option<HandleResult> {
                 } else {
                     commit_cell(view, &text);
                 }
-                return Some(HandleResult::Consumed);
+                return;
             }
             CM_CANCEL => {
                 view.cancel_edit();
-                return Some(HandleResult::Consumed);
+                return;
             }
             _ => {}
         }
     }
-    None
 }
 
 fn commit_cell(view: &mut CsvView, text: &str) {

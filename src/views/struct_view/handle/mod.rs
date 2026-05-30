@@ -34,9 +34,6 @@ pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
 
 /// Handle a key event for the structured view.
 pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    if view.is_editing() {
-        return handle_editing_mode(view, key);
-    }
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => handle_move_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_move_up(view),
@@ -85,10 +82,7 @@ fn handle_struct_ops(view: &mut StructuredView, key: &KeyEvent) -> HandleResult 
     HandleResult::Consumed
 }
 
-fn handle_editing_mode(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    // Route key to InputLine child
-    view.group.dispatch(&Event::Key(*key));
-    // Drain child_sink for commands
+pub fn drain_edit_commands(view: &mut StructuredView) {
     for ev in view.child_sink.drain() {
         if let Event::Command { id, data, .. } = ev {
             match id {
@@ -98,20 +92,18 @@ fn handle_editing_mode(view: &mut StructuredView, key: &KeyEvent) -> HandleResul
                         .map(|s| *s)
                         .unwrap_or_default();
                     handle_commit(view, text);
-                    return HandleResult::Consumed;
+                    return;
                 }
                 CM_CANCEL => {
                     view.filtering = false;
                     view.sort_path_target = None;
                     view.cancel_edit();
-                    return HandleResult::Consumed;
+                    return;
                 }
                 _ => {}
             }
         }
     }
-    view.group.mark_dirty();
-    HandleResult::Consumed
 }
 
 fn handle_commit(view: &mut StructuredView, text: String) {

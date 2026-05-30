@@ -140,9 +140,11 @@ impl CsvView {
         let pal = self.edit_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
+        self.group.set_focused_index(0);
         if let Some(child) = self.group.child_mut(0) {
             child.set_sink(sink);
             child.set_palette(pal);
+            child.select();
         }
         self.editing_row = Some(self.cursor_row);
         self.group.mark_dirty();
@@ -200,6 +202,12 @@ impl View for CsvView {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        if self.is_editing() {
+            let _result = self.group.dispatch(event);
+            handle::drain_csv_commands(self);
+            self.group.mark_dirty();
+            return HandleResult::Consumed;
+        }
         handle::handle_csv_event(self, event)
     }
 }

@@ -25,9 +25,11 @@ impl StructuredView {
         let pal = self.edit_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
+        self.group.set_focused_index(0);
         if let Some(child) = self.group.child_mut(0) {
             child.set_sink(sink);
             child.set_palette(pal);
+            child.select();
         }
         self.editing_row = Some(self.cursor);
         self.group.mark_dirty();
@@ -98,9 +100,11 @@ impl StructuredView {
         let pal = self.edit_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
+        self.group.set_focused_index(0);
         if let Some(child) = self.group.child_mut(0) {
             child.set_sink(sink);
             child.set_palette(pal);
+            child.select();
         }
         self.editing_row = Some(self.cursor);
         self.group.mark_dirty();

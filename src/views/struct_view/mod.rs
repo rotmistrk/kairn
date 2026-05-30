@@ -247,6 +247,13 @@ impl View for StructuredView {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+        // When editing, group dispatch routes to focused InputLine child
+        if self.is_editing() {
+            let _result = self.group.dispatch(event);
+            handle::drain_edit_commands(self);
+            self.group.mark_dirty();
+            return HandleResult::Consumed;
+        }
         handle::handle_struct_key(self, key)
     }
 }
