@@ -6,7 +6,7 @@ use std::sync::Arc;
 use txv_core::prelude::*;
 use txv_widgets::input_line::InputLine;
 use txv_widgets::tree_view::TreeData;
-use txv_widgets::{TreeView, CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
+use txv_widgets::{TreeTableView, CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 
 mod apply_action;
 pub mod data;
@@ -17,6 +17,7 @@ mod handle;
 mod mcp;
 pub mod model;
 mod ops;
+mod source;
 
 pub use self::data::TodoTreeData;
 
@@ -26,7 +27,7 @@ pub const TODO_STATUS_GROUP: u16 = 1;
 /// The todo tree view — a Group that hosts an InputLine child when editing.
 pub struct TodoTreeView {
     group: GroupState,
-    inner: TreeView<TodoTreeData>,
+    inner: TreeTableView<TodoTreeData>,
     /// Sink for capturing InputLine commands (separate from group sink).
     child_sink: EventSink,
     /// Editing state: which visible row is being edited.
@@ -48,7 +49,7 @@ impl TodoTreeView {
         let data = TodoTreeData::new(&todo_path);
         Self {
             group: GroupState::default(),
-            inner: TreeView::new(data),
+            inner: TreeTableView::new(data, &[3, 2]),
             child_sink: EventSink::new(),
             editing_row: None,
             filter_active: false,
@@ -175,7 +176,7 @@ impl TodoTreeView {
         self.filter_active = false;
         self.inner.data.filter_text.clear();
         self.inner.data.rebuild_flat();
-        self.inner.cursor = 0;
+        self.inner.set_cursor(0);
         self.group.mark_dirty();
         self.group
             .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));

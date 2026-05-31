@@ -77,7 +77,8 @@ fn content_definitions() -> Vec<Value> {
 fn update_todo_definition() -> Vec<Value> {
     vec![json!({
         "name": "update_todo",
-        "description": "Modify the todo tree: toggle, add, remove, move, promote, demote, get/set notes",
+        "description": "Modify the todo tree: toggle, add, remove, move, promote, demote, \
+            get/set notes. Identify items by 'id' (stable UUID) or 'path' (ordinal index array).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -89,10 +90,14 @@ fn update_todo_definition() -> Vec<Value> {
                     ],
                     "description": "Action to perform"
                 },
+                "id": {
+                    "type": "string",
+                    "description": "Stable UUID of the item (preferred over path)"
+                },
                 "path": {
                     "type": "array",
                     "items": {"type": "integer"},
-                    "description": "Index path to the item"
+                    "description": "Index path to the item (fallback if id not provided)"
                 },
                 "title": {
                     "type": "string",
@@ -103,7 +108,7 @@ fn update_todo_definition() -> Vec<Value> {
                     "description": "Note content (required for 'set_note' action)"
                 }
             },
-            "required": ["action", "path"]
+            "required": ["action"]
         }
     })]
 }
@@ -111,14 +116,19 @@ fn update_todo_definition() -> Vec<Value> {
 fn add_subtree_definition() -> Vec<Value> {
     vec![json!({
         "name": "add_subtree",
-        "description": "Add a subtree of todo items as children of the item at path",
+        "description": "Add a subtree of todo items as children of the item at path. \
+            Identify parent by 'id' (stable UUID) or 'path' (ordinal index array).",
         "inputSchema": {
             "type": "object",
             "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Stable UUID of the parent item (preferred over path)"
+                },
                 "path": {
                     "type": "array",
                     "items": {"type": "integer"},
-                    "description": "Index path to the parent item"
+                    "description": "Index path to the parent item (fallback if id not provided)"
                 },
                 "items": {
                     "type": "array",
@@ -133,7 +143,7 @@ fn add_subtree_definition() -> Vec<Value> {
                     "description": "Tree of items to add"
                 }
             },
-            "required": ["path", "items"]
+            "required": ["items"]
         }
     })]
 }

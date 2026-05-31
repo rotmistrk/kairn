@@ -35,10 +35,11 @@ fn todo_tree_renders_open_checkbox() {
     let todo = todo_json(&item("Buy milk"));
     std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
 
-    let mut h = TestHarness::new(dir.path());
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
     focus_todo(&mut h);
 
-    assert!(h.content_contains("○  Buy milk"));
+    assert!(h.content_contains("Buy milk"));
+    assert!(h.content_contains("○"));
 }
 
 #[test]
@@ -47,10 +48,11 @@ fn todo_tree_renders_done_checkbox() {
     let todo = todo_json(&done_item("Done task"));
     std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
 
-    let mut h = TestHarness::new(dir.path());
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
     focus_todo(&mut h);
 
-    assert!(h.content_contains("✓  Done task"));
+    assert!(h.content_contains("Done task"));
+    assert!(h.content_contains("✓"));
 }
 
 #[test]
@@ -180,4 +182,65 @@ fn edit_existing_item() {
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
     assert!(content.contains("New title"));
     assert!(!content.contains("Old title"));
+}
+
+#[test]
+fn priority_up_sets_priority() {
+    let dir = temp_project(&[("x.txt", "")]);
+    let todo = todo_json(&item("Task"));
+    std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
+
+    let mut h = TestHarness::new(dir.path());
+    focus_todo(&mut h);
+
+    // Press '+' three times to set priority to 3
+    h.inject_key(KeyCode::Char('+'), KeyMod::default());
+    h.run_cycles(2);
+    h.inject_key(KeyCode::Char('+'), KeyMod::default());
+    h.run_cycles(2);
+    h.inject_key(KeyCode::Char('+'), KeyMod::default());
+    h.run_cycles(2);
+
+    let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
+    eprintln!("DEBUG: {content}");
+    assert!(content.contains("\"priority\": 3"));
+    // Badge should show braille for priority 3
+    assert!(h.content_contains("⠇"));
+}
+
+#[test]
+fn toggle_in_progress() {
+    let dir = temp_project(&[("x.txt", "")]);
+    let todo = todo_json(&item("Task"));
+    std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
+
+    let mut h = TestHarness::new(dir.path());
+    focus_todo(&mut h);
+
+    h.inject_key(KeyCode::Char('i'), KeyMod::default());
+    h.run_cycles(2);
+
+    let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
+    assert!(content.contains("\"work_status\": \"InProgress\""));
+    assert!(h.content_contains("▶"));
+}
+
+#[test]
+fn loe_cycles_fibonacci() {
+    let dir = temp_project(&[("x.txt", "")]);
+    let todo = todo_json(&item("Task"));
+    std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
+
+    let mut h = TestHarness::new(dir.path());
+    focus_todo(&mut h);
+
+    // Press '>' four times: 0->1->2->3->5
+    h.inject_key(KeyCode::Char('>'), KeyMod::default());
+    h.inject_key(KeyCode::Char('>'), KeyMod::default());
+    h.inject_key(KeyCode::Char('>'), KeyMod::default());
+    h.inject_key(KeyCode::Char('>'), KeyMod::default());
+    h.run_cycles(2);
+
+    let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
+    assert!(content.contains("\"effort\": 5"));
 }

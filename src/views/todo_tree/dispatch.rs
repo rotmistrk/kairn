@@ -2,9 +2,10 @@
 
 use txv_core::prelude::*;
 use txv_widgets::tree_view::TreeData;
+use txv_widgets::CM_ACTIVATE_GROUP;
 
 use super::handle::{self, HandleAction};
-use super::TodoTreeView;
+use super::{TodoTreeView, TODO_STATUS_GROUP};
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 
 impl TodoTreeView {
@@ -52,6 +53,9 @@ impl TodoTreeView {
                         let row = self.editing_row.take().unwrap_or(0);
                         self.remove_input_line();
                         self.inner.data.update_title(row, text);
+                        self.group.mark_dirty();
+                        self.group
+                            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
                         return;
                     }
                     CM_CANCEL => {
@@ -75,7 +79,7 @@ impl TodoTreeView {
             self.inner.data.filter_text = input.text().to_string();
         }
         self.inner.data.rebuild_flat();
-        self.inner.cursor = 0;
+        self.inner.set_cursor(0);
         self.group.mark_dirty();
         if key.code == KeyCode::Esc {
             self.cancel_filter();

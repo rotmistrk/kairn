@@ -12,7 +12,7 @@ impl TodoTreeView {
         self.dispatch_mcp_action(action)?;
         self.inner.data.save();
         self.inner.data.rebuild_flat();
-        self.inner.mark_dirty();
+        self.inner.state.mark_dirty();
         Ok(json!({"ok": true}))
     }
 

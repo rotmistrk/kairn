@@ -88,10 +88,16 @@ pub fn clone_subtree(file: &mut TodoFile, path: &TreePath) -> bool {
 }
 
 /// Load a TodoFile from path, creating empty if absent.
+/// If the file lacks `id` fields (legacy format), IDs are generated and saved back.
 pub fn load_todo_file(path: &Path) -> TodoFile {
     match fs::read_to_string(path) {
         Ok(content) if !content.trim().is_empty() => {
-            serde_json::from_str(&content).unwrap_or_else(|_| TodoFile::new("Todo"))
+            let file: TodoFile = serde_json::from_str(&content).unwrap_or_else(|_| TodoFile::new("Todo"));
+            // Persist generated IDs if the file lacked them.
+            if !content.contains("\"id\"") && !file.items.is_empty() {
+                let _ = save_todo_file(path, &file);
+            }
+            file
         }
         _ => TodoFile::new("Todo"),
     }

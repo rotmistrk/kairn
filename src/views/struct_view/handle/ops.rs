@@ -4,20 +4,24 @@ use crate::structured::NodeKind;
 use crate::views::struct_view::{EditTarget, StructuredView};
 
 pub fn handle_new_sibling(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
-    let parent_kind = view.doc.parent(node_id).map(|p| view.doc.node_kind(p));
+    let parent_kind = view
+        .tree
+        .data
+        .doc
+        .parent(node_id)
+        .map(|p| view.tree.data.doc.node_kind(p));
     view.save_undo_point();
-    if let Ok(new_id) = view.doc.add_sibling(node_id) {
+    if let Ok(new_id) = view.tree.data_mut().doc.add_sibling(node_id) {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == new_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == new_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
         if parent_kind == Some(NodeKind::Dict) {
             view.start_edit(EditTarget::Key);
         }
@@ -25,58 +29,60 @@ pub fn handle_new_sibling(view: &mut StructuredView) {
 }
 
 pub fn handle_new_child(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
-    if view.doc.node_kind(node_id) == NodeKind::Scalar {
+    if view.tree.data.doc.node_kind(node_id) == NodeKind::Scalar {
         return;
     }
     view.save_undo_point();
-    if let Ok(new_id) = view.doc.add_child(node_id) {
+    if let Ok(new_id) = view.tree.data_mut().doc.add_child(node_id) {
         view.dirty = true;
         view.sync_title();
-        if !view.doc.is_expanded(node_id) {
-            view.doc.toggle_expand(node_id);
+        if !view.tree.data.doc.is_expanded(node_id) {
+            view.tree.data_mut().doc.toggle_expand(node_id);
         }
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == new_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == new_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_delete(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    if view.doc.remove(node_id).is_ok() {
+    if view.tree.data_mut().doc.remove(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
         view.clamp_cursor();
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_clone(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
-    let parent_kind = view.doc.parent(node_id).map(|p| view.doc.node_kind(p));
+    let parent_kind = view
+        .tree
+        .data
+        .doc
+        .parent(node_id)
+        .map(|p| view.tree.data.doc.node_kind(p));
     view.save_undo_point();
-    if let Ok(new_id) = view.doc.clone_node(node_id) {
+    if let Ok(new_id) = view.tree.data_mut().doc.clone_node(node_id) {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == new_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == new_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
         if parent_kind == Some(NodeKind::Dict) {
             view.start_edit(EditTarget::Key);
         }
@@ -84,115 +90,112 @@ pub fn handle_clone(view: &mut StructuredView) {
 }
 
 pub fn handle_cycle_type(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    view.doc.cycle_type(node_id);
-    view.dirty = true;
-    view.sync_title();
-    view.group.mark_dirty();
-}
-
-pub fn handle_convert_container(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
-        return;
-    };
-    view.save_undo_point();
-    view.doc.convert_container(node_id);
+    view.tree.data_mut().doc.cycle_type(node_id);
     view.dirty = true;
     view.sync_title();
     view.rebuild_visible();
-    view.group.mark_dirty();
+    view.tree.state.mark_dirty();
 }
 
-pub fn handle_swap_down(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+pub fn handle_convert_container(view: &mut StructuredView) {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    if view.doc.swap_down(node_id).is_ok() {
+    view.tree.data_mut().doc.convert_container(node_id);
+    view.dirty = true;
+    view.sync_title();
+    view.rebuild_visible();
+    view.tree.state.mark_dirty();
+}
+
+pub fn handle_swap_down(view: &mut StructuredView) {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+        return;
+    };
+    view.save_undo_point();
+    if view.tree.data_mut().doc.swap_down(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == node_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == node_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_swap_up(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    if view.doc.swap_up(node_id).is_ok() {
+    if view.tree.data_mut().doc.swap_up(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == node_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == node_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_promote(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    if view.doc.promote(node_id).is_ok() {
+    if view.tree.data_mut().doc.promote(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == node_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == node_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_demote(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    if view.doc.demote(node_id).is_ok() {
+    if view.tree.data_mut().doc.demote(node_id).is_ok() {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.visible_nodes.iter().position(|&n| n == node_id) {
-            view.cursor = pos;
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == node_id) {
+            view.tree.set_cursor(pos);
         }
-        view.sync_scroll();
-        view.group.mark_dirty();
+        view.tree.state.mark_dirty();
     }
 }
 
 pub fn handle_toggle_inline(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
     view.save_undo_point();
-    view.doc.toggle_inline(node_id);
+    view.tree.data_mut().doc.toggle_inline(node_id);
     view.dirty = true;
     view.sync_title();
-    view.group.mark_dirty();
+    view.tree.state.mark_dirty();
 }
 
 pub fn handle_sort(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
-    let target = if view.doc.node_kind(node_id) != NodeKind::Scalar {
+    let target = if view.tree.data.doc.node_kind(node_id) != NodeKind::Scalar {
         node_id
     } else {
-        match view.doc.parent(node_id) {
+        match view.tree.data.doc.parent(node_id) {
             Some(p) => p,
             None => return,
         }
@@ -205,21 +208,21 @@ pub fn handle_sort(view: &mut StructuredView) {
     view.last_sort_node = Some(target);
     view.last_sort_asc = ascending;
     view.save_undo_point();
-    view.doc.sort_children(target, ascending);
+    view.tree.data_mut().doc.sort_children(target, ascending);
     view.dirty = true;
     view.sync_title();
     view.rebuild_visible();
-    view.group.mark_dirty();
+    view.tree.state.mark_dirty();
 }
 
 pub fn handle_sort_by_path_start(view: &mut StructuredView) {
-    let Some(&node_id) = view.visible_nodes.get(view.cursor) else {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
         return;
     };
-    let target = if view.doc.node_kind(node_id) != NodeKind::Scalar {
+    let target = if view.tree.data.doc.node_kind(node_id) != NodeKind::Scalar {
         node_id
     } else {
-        match view.doc.parent(node_id) {
+        match view.tree.data.doc.parent(node_id) {
             Some(p) => p,
             None => return,
         }
@@ -230,16 +233,15 @@ pub fn handle_sort_by_path_start(view: &mut StructuredView) {
 
 pub fn handle_filter_start(view: &mut StructuredView) {
     view.filtering = true;
-    let ft = view.filter_text.clone();
+    let ft = view.tree.data.filter_text.clone();
     view.start_input_line(&ft);
 }
 
 pub fn handle_filter_clear(view: &mut StructuredView) {
-    view.filter_text.clear();
+    view.tree.data_mut().filter_text.clear();
     view.filtering = false;
     view.rebuild_visible();
     view.clamp_cursor();
-    view.sync_scroll();
     view.sync_title();
-    view.group.mark_dirty();
+    view.tree.state.mark_dirty();
 }

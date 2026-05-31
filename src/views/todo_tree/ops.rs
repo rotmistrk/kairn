@@ -143,6 +143,13 @@ impl TodoTreeView {
             return;
         };
         let current = item.effort.unwrap_or(0);
+        if !up && current == 0 {
+            // Already at 0 and pressing < — toggle LOE column off if no items have effort.
+            if self.inner.data.show_loe && !self.inner.data.loe_strings.iter().any(|s| s.trim() != "") {
+                self.inner.data.show_loe = false;
+            }
+            return;
+        }
         let idx = FIBONACCI.iter().position(|&v| v >= current).unwrap_or(0);
         let new_idx = if up {
             (idx + 1).min(FIBONACCI.len() - 1)
@@ -155,5 +162,8 @@ impl TodoTreeView {
         } else {
             Some(new_val)
         };
+        if !self.inner.data.show_loe {
+            self.inner.data.show_loe = true;
+        }
     }
 }

@@ -3,6 +3,7 @@
 use std::env;
 use std::fs;
 
+use duir_core::tree_ops::find_node_path;
 use serde_json::{json, Map, Value};
 
 use super::commands::{McpAction, McpCommandQueue};
@@ -25,6 +26,7 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
         .iter()
         .map(|item| {
             let mut obj = json!({
+                "id": item.id.0,
                 "title": item.title,
                 "completed": format!("{:?}", item.completed).to_lowercase(),
             });
@@ -42,17 +44,28 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
         .collect()
 }
 
+/// Resolve a todo item path from args: accepts either `"id"` (string NodeId) or `"path"` (ordinal array).
+/// Prefers `id` when both are present.
+fn resolve_path(args: &Map<String, Value>) -> Result<Vec<usize>, String> {
+    if let Some(id_str) = args.get("id").and_then(Value::as_str) {
+        let file_path = env::current_dir()
+            .map(|d| d.join(".kairn.todo"))
+            .map_err(|e| e.to_string())?;
+        let content = fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
+        let file: duir_core::TodoFile = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        let node_id = duir_core::NodeId(id_str.to_string());
+        find_node_path(&file, &node_id).ok_or_else(|| format!("Node not found: {id_str}"))
+    } else if let Some(arr) = args.get("path").and_then(Value::as_array) {
+        Ok(arr.iter().filter_map(Value::as_u64).map(|n| n as usize).collect())
+    } else {
+        Err("Missing 'id' or 'path'".to_string())
+    }
+}
+
 pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
     let queue = cmd_queue.ok_or("Write operations disabled")?;
     let action_str = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
-    let path: Vec<usize> = args
-        .get("path")
-        .and_then(Value::as_array)
-        .ok_or("Missing 'path'")?
-        .iter()
-        .filter_map(Value::as_u64)
-        .map(|n| n as usize)
-        .collect();
+    let path = resolve_path(args)?;
 
     let action = match action_str {
         "toggle" => McpAction::TodoToggle { path },
@@ -104,14 +117,7 @@ fn tool_get_note(path: &[usize]) -> Result<Value, String> {
 
 pub fn tool_add_subtree(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
     let queue = cmd_queue.ok_or("Write operations disabled")?;
-    let path: Vec<usize> = args
-        .get("path")
-        .and_then(Value::as_array)
-        .ok_or("Missing 'path'")?
-        .iter()
-        .filter_map(Value::as_u64)
-        .map(|n| n as usize)
-        .collect();
+    let path = resolve_path(args)?;
     let items = args
         .get("items")
         .and_then(Value::as_array)

@@ -14,14 +14,14 @@ impl TodoTreeView {
             HandleAction::MoveDown => {
                 let max = self.inner.data.visible_count().saturating_sub(1);
                 if self.inner.cursor < max {
-                    self.inner.cursor += 1;
+                    self.inner.set_cursor(self.inner.cursor + 1);
                 }
             }
             HandleAction::MoveTo(row) => {
-                self.inner.cursor = row;
+                self.inner.set_cursor(row);
             }
             HandleAction::EditNew(row) => {
-                self.inner.cursor = row;
+                self.inner.set_cursor(row);
                 self.start_edit_selected();
             }
             HandleAction::ConfirmDelete => {}

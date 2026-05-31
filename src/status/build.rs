@@ -58,9 +58,12 @@ fn add_todo_group(bar: &mut StatusBar) {
     let mut group = FocusGatedGroup::new(TODO_STATUS_GROUP);
     group.add_child(Box::new(KeyLabelView::new(key('i'), CM_TODO_TOGGLE_PROGRESS, "▶")));
     group.add_child(Box::new(KeyLabelView::new(key('\\'), CM_TODO_TOGGLE_PAUSE, "⏸")));
-    group.add_child(Box::new(KeyLabelView::new(key('+'), CM_TODO_PRIORITY_UP, "prio")));
-    group.add_child(Box::new(KeyLabelView::new(key('>'), CM_TODO_LOE_UP, "loe")));
-    bar.add(StatusSlot::new(Box::new(group)).priority(5));
+    group.add_child(Box::new(KeyLabelView::new(key('+'), CM_TODO_PRIORITY_UP, "+prio")));
+    group.add_child(Box::new(KeyLabelView::new(key('='), CM_TODO_PRIORITY_UP, "")));
+    group.add_child(Box::new(KeyLabelView::new(key('-'), CM_TODO_PRIORITY_DOWN, "")));
+    group.add_child(Box::new(KeyLabelView::new(key('>'), CM_TODO_LOE_UP, ">loe")));
+    group.add_child(Box::new(KeyLabelView::new(key('<'), CM_TODO_LOE_DOWN, "")));
+    bar.add(StatusSlot::new(Box::new(group)).priority(8));
 }
 
 fn add_right_side(bar: &mut StatusBar, root_dir: PathBuf, clock_interval: u16) {

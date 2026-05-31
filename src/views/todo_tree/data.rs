@@ -17,9 +17,15 @@ use super::model::{self, Completion, TodoFile, TodoItem, TreePath};
 pub struct TodoTreeData {
     pub(crate) file: TodoFile,
     file_path: PathBuf,
-    nodes: Vec<FlatNode>,
+    pub(super) nodes: Vec<FlatNode>,
     visible: Vec<usize>,
     pub(crate) filter_text: String,
+    /// Precomputed badge strings per node index.
+    pub(super) badges: Vec<String>,
+    /// Precomputed LOE strings per node index.
+    pub(super) loe_strings: Vec<String>,
+    /// Whether LOE column is visible.
+    pub(crate) show_loe: bool,
     /// Last known mtime of the file on disk.
     last_mtime: Option<SystemTime>,
 }
@@ -41,6 +47,9 @@ impl TodoTreeData {
             nodes: Vec::new(),
             visible: Vec::new(),
             filter_text: String::new(),
+            badges: Vec::new(),
+            loe_strings: Vec::new(),
+            show_loe: false,
             last_mtime: mtime,
         };
         data.rebuild_flat();
@@ -83,6 +92,11 @@ impl TodoTreeData {
         self.visible.clear();
         self.flatten_items(&self.file.items.clone(), &[], 0);
         self.rebuild_visible();
+        self.rebuild_badges();
+        // Auto-show LOE column if any item has effort set.
+        if !self.show_loe && self.loe_strings.iter().any(|s| s.trim() != "") {
+            self.show_loe = true;
+        }
     }
 
     fn flatten_items(&mut self, items: &[TodoItem], parent_path: &[usize], depth: usize) {
@@ -240,11 +254,10 @@ impl TreeData for TodoTreeData {
             return Style::default();
         };
         let app = app_palette();
-        let fg = match (&item.completed, item.important) {
-            (Completion::Done, _) => app.todo().done().fg,
-            (_, true) => app.todo().important().fg,
-            _ => app.todo().normal().fg,
-        };
-        Style { fg, ..Style::default() }
+        if item.completed == Completion::Done {
+            app.todo().done()
+        } else {
+            app.todo().normal()
+        }
     }
 }

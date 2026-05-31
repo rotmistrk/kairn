@@ -15,7 +15,7 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
         KeyCode::Left if key.modifiers.shift => handle_shift_move(data, id, model::promote),
         KeyCode::Right if key.modifiers.shift => handle_shift_move(data, id, model::demote),
         KeyCode::Char(' ') => handle_toggle_complete(data, id),
-        KeyCode::Char('!') => handle_toggle_important(data, id),
+        KeyCode::Char('!') => handle_set_priority_5(data, id),
         KeyCode::Char('n') => handle_new_sibling(data, id, cursor),
         KeyCode::Char('b') => handle_new_child(data, id, cursor),
         KeyCode::Char('d') => handle_delete(data, id, cursor),
@@ -59,10 +59,15 @@ fn handle_toggle_complete(data: &mut TodoTreeData, id: usize) -> Option<HandleAc
     Some(HandleAction::Stay)
 }
 
-fn handle_toggle_important(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
+fn handle_set_priority_5(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
     let path = data.path_at(id)?.clone();
     let item = model::get_item_mut(&mut data.file, &path)?;
-    item.important = !item.important;
+    let current = item.priority.unwrap_or(0);
+    item.priority = Some(if current == 5 {
+        0
+    } else {
+        5
+    });
     data.save();
     data.rebuild_flat();
     Some(HandleAction::Stay)
