@@ -6,10 +6,10 @@ use std::process::Command;
 use crossterm::event;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
-pub(crate) fn suspend_to_shell() {
+pub(crate) fn suspend_to_shell() -> Result<(), String> {
     // Nesting guard: if KAIRN_SUSPENDED is set, we're already inside a suspend
     if env::var("KAIRN_SUSPENDED").is_ok() {
-        return;
+        return Err("already inside a suspended session".into());
     }
     // Leave TUI
     let _ = disable_raw_mode();
@@ -21,9 +21,7 @@ pub(crate) fn suspend_to_shell() {
     );
     // Spawn shell with guard env var
     let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".into());
-    if let Err(e) = Command::new(&shell).env("KAIRN_SUSPENDED", "1").status() {
-        log::error!("suspend: failed to spawn shell {shell}: {e}");
-    }
+    let result = Command::new(&shell).env("KAIRN_SUSPENDED", "1").status();
     // Re-enter TUI
     let _ = crossterm::execute!(
         std::io::stdout(),
@@ -32,6 +30,7 @@ pub(crate) fn suspend_to_shell() {
         crossterm::event::EnableBracketedPaste
     );
     let _ = enable_raw_mode();
+    result.map(|_| ()).map_err(|e| format!("spawn {shell}: {e}"))
 }
 
 pub(crate) fn peek_screen() {

@@ -21,22 +21,20 @@ pub use restore::{restore_kiro_tabs, restore_session, restore_tabs};
 const STATE_FILE: &str = ".kairn.state";
 
 /// Collect current state from the desktop and save to `.kairn.state`.
-pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry: &KiroTabRegistry, roots: &[&Path]) {
+/// Returns Err if serialization or write fails.
+pub fn save_session(
+    desktop: &mut TiledWorkspace,
+    root_dir: &Path,
+    kiro_registry: &KiroTabRegistry,
+    roots: &[&Path],
+) -> Result<(), String> {
     let state = save::collect_state(desktop, root_dir, kiro_registry, roots);
     if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() && state.kiro_sessions.is_empty() {
-        return;
+        return Ok(());
     }
     let path = root_dir.join(STATE_FILE);
-    let json = match serde_json::to_string_pretty(&state) {
-        Ok(j) => j,
-        Err(e) => {
-            log::warn!("session: failed to serialize: {e}");
-            return;
-        }
-    };
-    if let Err(e) = fs::write(&path, json) {
-        log::warn!("session: failed to write {}: {e}", path.display());
-    }
+    let json = serde_json::to_string_pretty(&state).map_err(|e| format!("serialize: {e}"))?;
+    fs::write(&path, json).map_err(|e| format!("write {}: {e}", path.display()))
 }
 
 /// Load session state from `.kairn.state`. Returns None if missing/corrupt.

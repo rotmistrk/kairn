@@ -13,6 +13,7 @@ use crossterm::terminal::disable_raw_mode;
 use env_logger::{Builder as LogBuilder, Target as LogTarget};
 use log::LevelFilter;
 use txv_core::glyphs::{detect_glyph_tier, set_glyphs, GlyphSet, GlyphTier};
+use txv_core::message::Message;
 use txv_core::palette::{self as pal, set_palette, ThemeMode};
 use txv_render::color::{detect_color_mode, ColorMode};
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -88,11 +89,19 @@ pub fn init_logging(log_file_path: &Path, log_level: &str) -> anyhow::Result<()>
 }
 
 pub fn configure_app_state(app_state: &mut AppState, root_dir: &Path) {
-    app_state.script_mut().load_config(root_dir);
+    let config_warnings = app_state.script_mut().load_config(root_dir);
     app_state.add_plugin_dir(root_dir.join(".kairn/plugins"));
     let plugin_warnings = app_state.refresh_plugins();
-    for w in &plugin_warnings {
-        log::warn!("plugin: {w}");
+
+    // Surface config/plugin errors to message ring
+    for w in config_warnings.iter().chain(plugin_warnings.iter()) {
+        log::warn!("{w}");
+        if let Ok(mut ring) = app_state.messages.lock() {
+            ring.push(Message::error("config", w.clone()));
+        }
+    }
+    if !config_warnings.is_empty() || !plugin_warnings.is_empty() {
+        app_state.show_messages_on_start = true;
     }
     refresh_commands(app_state.command_list(), app_state.script());
     refresh_lsp_languages(app_state);

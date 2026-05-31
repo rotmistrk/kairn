@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use txv_core::cell::Style;
 use txv_core::palette::{palette, StyleId};
+use txv_core::view::ViewState;
 
 use crate::lsp::diagnostics::Severity;
 
@@ -40,12 +41,46 @@ pub(super) fn draw(view: &mut ProblemsView) {
 }
 
 fn adjust_scroll(view: &mut ProblemsView, h: usize) {
+    if h == 0 {
+        return;
+    }
     if view.cursor < view.scroll {
         view.scroll = view.cursor;
+        return;
     }
-    if view.cursor >= view.scroll + h {
-        view.scroll = view.cursor - h + 1;
+    while !cursor_visible(view, h) {
+        view.scroll += 1;
+        if view.scroll > view.cursor {
+            view.scroll = view.cursor;
+            break;
+        }
     }
+}
+
+fn cursor_visible(view: &ProblemsView, h: usize) -> bool {
+    let mut row = 0;
+    for idx in view.scroll..view.entries.len() {
+        let lines = if idx == view.cursor {
+            selected_line_count(view)
+        } else {
+            1
+        };
+        if idx == view.cursor {
+            return row + lines <= h;
+        }
+        row += lines;
+        if row >= h {
+            return false;
+        }
+    }
+    false
+}
+
+fn selected_line_count(view: &ProblemsView) -> usize {
+    view.entries
+        .get(view.cursor)
+        .map(|e| e.message.lines().count().max(1))
+        .unwrap_or(1)
 }
 
 fn draw_entries(view: &mut ProblemsView, w: u16, h: usize) {
@@ -54,38 +89,87 @@ fn draw_entries(view: &mut ProblemsView, w: u16, h: usize) {
     let cursor_style = base.style(StyleId::CursorFocused);
     let root_str = view.root.to_string_lossy();
 
-    for i in 0..h {
-        let idx = view.scroll + i;
-        if idx >= view.entries.len() {
-            break;
-        }
-        let entry = &view.entries[idx];
-        let y = i as u16;
-        let style = if idx == view.cursor {
+    let mut y: usize = 0;
+    let mut idx = view.scroll;
+    while y < h && idx < view.entries.len() {
+        let selected = idx == view.cursor;
+        let style = if selected {
             cursor_style
         } else {
             normal
         };
-        let buf = view.state.buffer_mut();
-        buf.hline(0, y, w, ' ', style);
-
-        let (sev_ch, sev_style) = severity_indicator(entry.severity, style);
-        buf.put(1, y, sev_ch, sev_style);
+        let entry = &view.entries[idx];
 
         let path_str = entry.path.to_string_lossy();
         let rel = path_str
             .strip_prefix(root_str.as_ref())
             .and_then(|s| s.strip_prefix('/'))
             .unwrap_or(&path_str);
-        let msg_first_line = entry.message.lines().next().unwrap_or("");
-        let line_info = format!(" {}:{}  {}", rel, entry.line + 1, msg_first_line);
-        let max = (w as usize).saturating_sub(3);
-        let truncated = if line_info.len() > max {
-            &line_info[..max]
+        let prefix = format!(" {}:{} ", rel, entry.line + 1);
+
+        if selected {
+            y += draw_expanded(&mut view.state, entry, &prefix, style, w, y, h);
         } else {
-            &line_info
-        };
-        buf.print(2, y, truncated, style);
+            draw_collapsed(&mut view.state, entry, &prefix, style, w, y as u16);
+            y += 1;
+        }
+        idx += 1;
+    }
+}
+
+fn draw_expanded(
+    state: &mut ViewState,
+    entry: &Entry,
+    prefix: &str,
+    style: Style,
+    w: u16,
+    start_y: usize,
+    h: usize,
+) -> usize {
+    let (sev_ch, sev_style) = severity_indicator(entry.severity, style);
+    let max_msg = (w as usize).saturating_sub(3 + prefix.len());
+    let mut drawn = 0;
+    for (li, msg_line) in entry.message.lines().enumerate() {
+        if start_y + drawn >= h {
+            break;
+        }
+        let row = (start_y + drawn) as u16;
+        let buf = state.buffer_mut();
+        buf.hline(0, row, w, ' ', style);
+        if li == 0 {
+            buf.put(1, row, sev_ch, sev_style);
+            buf.print(2, row, prefix, style);
+            buf.print((2 + prefix.len()) as u16, row, truncate(msg_line, max_msg), style);
+        } else {
+            let indent = 3 + prefix.len();
+            buf.print(
+                indent as u16,
+                row,
+                truncate(msg_line, (w as usize).saturating_sub(indent)),
+                style,
+            );
+        }
+        drawn += 1;
+    }
+    drawn
+}
+
+fn draw_collapsed(state: &mut ViewState, entry: &Entry, prefix: &str, style: Style, w: u16, row: u16) {
+    let (sev_ch, sev_style) = severity_indicator(entry.severity, style);
+    let max_msg = (w as usize).saturating_sub(3 + prefix.len());
+    let msg_first = entry.message.lines().next().unwrap_or("");
+    let buf = state.buffer_mut();
+    buf.hline(0, row, w, ' ', style);
+    buf.put(1, row, sev_ch, sev_style);
+    buf.print(2, row, prefix, style);
+    buf.print((2 + prefix.len()) as u16, row, truncate(msg_first, max_msg), style);
+}
+
+fn truncate(s: &str, max: usize) -> &str {
+    if s.len() <= max {
+        s
+    } else {
+        &s[..max]
     }
 }
 

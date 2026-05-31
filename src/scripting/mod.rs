@@ -189,24 +189,26 @@ impl ScriptEngine {
         self.interp.clear_output();
     }
 
-    /// Load config files in standard order. Errors are logged, never fatal.
+    /// Load config files in standard order. Errors are collected, never fatal.
     /// Plugins are handled separately by PluginManager.
-    pub fn load_config(&mut self, root_dir: &Path) {
+    pub fn load_config(&mut self, root_dir: &Path) -> Vec<String> {
+        let mut warnings = Vec::new();
         let home = env::var("HOME").unwrap_or_default();
         if !home.is_empty() {
             let config = Path::new(&home).join(".kairn/config.tcl");
             if config.exists() {
                 if let Err(e) = self.load_file(&config) {
-                    log::warn!("config.tcl: {e}");
+                    warnings.push(format!("config.tcl: {e}"));
                 }
             }
         }
         let project_init = root_dir.join(".kairn/init.tcl");
         if project_init.exists() {
             if let Err(e) = self.load_file(&project_init) {
-                log::warn!("init.tcl: {e}");
+                warnings.push(format!("init.tcl: {e}"));
             }
         }
+        warnings
     }
 }
 

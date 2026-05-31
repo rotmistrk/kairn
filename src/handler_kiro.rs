@@ -10,34 +10,46 @@ use crate::mcp::agent_patch::ensure_agent_patched;
 use crate::views::terminal::new_kiro_terminal_argv;
 
 pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
-        let kiro = state.settings.kiro();
-        let mut argv: Vec<String> = kiro.cmd.clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let extra_args = shell_words(arg);
+    let agent_name = extract_agent_name(&extra_args).unwrap_or("kairn");
 
-        // Parse extra args from the M-x argument string
-        let extra_args = shell_words(arg);
-        let agent_name = extract_agent_name(&extra_args).unwrap_or("kairn");
-
-        // Ensure agent file is patched for kairn MCP
-        if let Err(e) = ensure_agent_patched(&state.root_dir, agent_name) {
-            log::warn!("agent patch {agent_name}: {e}");
+    let patched_agent = match ensure_agent_patched(&state.root_dir, agent_name) {
+        Ok(name) => name,
+        Err(e) => {
+            ctx.sink.push_command(
+                txv_widgets::CM_STATUS_MESSAGE,
+                Some(Box::new(Message::error("kiro", e))),
+            );
+            return;
         }
+    };
 
-        // Append --agent if not already present
-        if !argv.iter().any(|a| a.starts_with("--agent")) && !extra_args.iter().any(|a| a.starts_with("--agent")) {
-            argv.push(format!("--agent={agent_name}"));
-        }
-        argv.extend(extra_args.into_iter().map(|s| s.to_string()));
+    let argv = build_kiro_argv(&state.settings.kiro().cmd, &patched_agent, &extra_args);
+    let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
+    let term = new_kiro_terminal_argv(&argv, &state.root_dir);
+    try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
+    state.kiro_registry.register(&name);
+    ctx.sink.push_command(
+        txv_widgets::CM_STATUS_MESSAGE,
+        Some(Box::new(Message::info("kiro", format!("Started: {name}")))),
+    );
+}
 
-        let term = new_kiro_terminal_argv(&argv, &state.root_dir);
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
-        state.kiro_registry.register(&name);
-        ctx.sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("kiro", format!("Started: {name}")))),
-        );
+fn build_kiro_argv(base_cmd: &[String], agent: &str, extra_args: &[&str]) -> Vec<String> {
+    let mut argv = base_cmd.to_vec();
+    if !argv.iter().any(|a| a.starts_with("--agent")) {
+        argv.push(format!("--agent={agent}"));
     }
+    argv.extend(
+        extra_args
+            .iter()
+            .filter(|a| !a.starts_with("--agent"))
+            .map(|s| s.to_string()),
+    );
+    argv
 }
 
 /// Extract agent name from args like ["--agent=foo"] or ["--agent", "foo"].

@@ -95,6 +95,8 @@ pub struct AppState {
     pub(crate) tty_file: Option<std::fs::File>,
     /// Flag: tab titles need recomputation via disambiguate.
     pub(crate) tab_titles_dirty: bool,
+    /// Flag: open Messages pane on first tick due to startup errors.
+    pub(crate) show_messages_on_start: bool,
 }
 
 impl AppState {
@@ -206,15 +208,26 @@ impl AppState {
     }
 
     pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {
-        let lsp_timeout = settings.lsp_timeout;
+        let lsp_pending = PendingRequests::with_timeout(settings.lsp_timeout);
         Self {
-            broker: FileBroker::new(),
-            buffers: BufferRegistry::new(),
             roots: WorkspaceRoots::new(root_dir.clone()),
             root_dir,
             settings,
+            lsp_pending,
+            tab_titles_dirty: true,
+            ..Self::empty()
+        }
+    }
+
+    fn empty() -> Self {
+        Self {
+            broker: FileBroker::new(),
+            buffers: BufferRegistry::new(),
+            roots: WorkspaceRoots::new(PathBuf::new()),
+            root_dir: PathBuf::new(),
+            settings: AppSettings::default(),
             lsp: LspRegistry::new(),
-            lsp_pending: PendingRequests::with_timeout(lsp_timeout),
+            lsp_pending: PendingRequests::with_timeout(5),
             build_errors: Vec::new(),
             build_error_idx: 0,
             cursor_pos: (0, 0),
@@ -244,7 +257,8 @@ impl AppState {
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: open_tty_for_title(),
-            tab_titles_dirty: true,
+            tab_titles_dirty: false,
+            show_messages_on_start: false,
         }
     }
 

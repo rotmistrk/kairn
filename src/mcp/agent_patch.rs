@@ -11,18 +11,33 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-/// Ensure the local agent file has kairn MCP patched in.
-/// Returns Ok(()) if already up-to-date or successfully patched.
-pub fn ensure_agent_patched(root: &Path, agent_name: &str) -> Result<(), String> {
-    let local_path = root.join(format!(".kiro/agents/{agent_name}.json"));
-    let source_path = resolve_source_path(agent_name);
-
-    if needs_patch(&local_path, source_path.as_deref()) {
-        let base = load_source(source_path.as_deref(), &local_path)?;
-        let patched = patch_agent(base)?;
-        write_patched(root, &local_path, &patched)?;
+/// Ensure a patched agent file exists at `.kiro/agents/kairn-<name>.json`.
+/// Returns the patched agent name to pass to `--agent=`.
+/// For the "kairn" agent itself, returns "kairn" (written by agent_file.rs).
+pub fn ensure_agent_patched(root: &Path, agent_name: &str) -> Result<String, String> {
+    if agent_name == "kairn" {
+        return Ok("kairn".into());
     }
-    Ok(())
+
+    let source_path = resolve_source_path(agent_name);
+    let local_source = root.join(format!(".kiro/agents/{agent_name}.json"));
+
+    // Agent must exist somewhere
+    if !local_source.is_file() && source_path.is_none() {
+        return Err(format!(
+            "agent '{agent_name}' not found in ~/.kiro/agents/ or .kiro/agents/"
+        ));
+    }
+
+    let patched_name = format!("kairn-{agent_name}");
+    let patched_path = root.join(format!(".kiro/agents/{patched_name}.json"));
+
+    if needs_patch(&patched_path, source_path.as_deref().or(Some(&local_source))) {
+        let base = load_source(source_path.as_deref(), &local_source, agent_name)?;
+        let patched = patch_agent(base)?;
+        write_patched(root, &patched_path, &patched)?;
+    }
+    Ok(patched_name)
 }
 
 /// Find the source agent file in ~/.kiro/agents/.
@@ -36,12 +51,11 @@ fn resolve_source_path(agent_name: &str) -> Option<std::path::PathBuf> {
     }
 }
 
-/// Check if patching is needed: local missing, or source is newer.
+/// Check if patching is needed: local missing/lacks kairn MCP, or source is newer.
 fn needs_patch(local: &Path, source: Option<&Path>) -> bool {
     if !local.is_file() {
         return source.is_some();
     }
-    // If local exists, check if it already has kairn MCP
     if !local_has_kairn_mcp(local) {
         return true;
     }
@@ -72,11 +86,18 @@ fn mtime(path: &Path) -> Result<SystemTime, std::io::Error> {
     fs::metadata(path)?.modified()
 }
 
-/// Load the base agent JSON from source or existing local.
-fn load_source(source: Option<&Path>, local: &Path) -> Result<Value, String> {
-    let path = source.unwrap_or(local);
-    let content = fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
-    serde_json::from_str(&content).map_err(|e| format!("parse {}: {e}", path.display()))
+/// Load the base agent JSON from source, existing local, or create minimal.
+fn load_source(source: Option<&Path>, local: &Path, agent_name: &str) -> Result<Value, String> {
+    if let Some(path) = source {
+        let content = fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+        return serde_json::from_str(&content).map_err(|e| format!("parse {}: {e}", path.display()));
+    }
+    if local.is_file() {
+        let content = fs::read_to_string(local).map_err(|e| format!("read {}: {e}", local.display()))?;
+        return serde_json::from_str(&content).map_err(|e| format!("parse {}: {e}", local.display()));
+    }
+    // No source, no local — create minimal agent with just the name
+    Ok(serde_json::json!({"name": agent_name, "tools": ["*"]}))
 }
 
 /// Patch the agent JSON to include kairn MCP server and allowedTools.
@@ -108,10 +129,11 @@ fn kairn_mcp_server_def() -> Value {
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| "kairn".to_owned());
 
+    let socket = env::var("KAIRN_MCP_SOCKET").unwrap_or_default();
     serde_json::json!({
         "command": bin,
         "args": ["--mcp-connect"],
-        "env": {"KAIRN_MCP_SOCKET": "${KAIRN_MCP_SOCKET}"}
+        "env": {"KAIRN_MCP_SOCKET": socket}
     })
 }
 
@@ -183,7 +205,7 @@ mod tests {
         assert!(!local.exists());
 
         // Call the internal functions directly (can't override HOME easily)
-        let base = load_source(Some(&source), &local).unwrap();
+        let base = load_source(Some(&source), &local, "myagent").unwrap();
         let patched = patch_agent(base).unwrap();
         write_patched(&root, &local, &patched).unwrap();
 

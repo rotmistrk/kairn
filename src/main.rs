@@ -160,7 +160,9 @@ fn save_session_on_exit(program: &mut Program, app_state: &AppState, root_dir: &
         .and_then(|a| a.downcast_mut::<TiledWorkspace>())
     {
         let roots = app_state.roots().paths();
-        session::save_session(desktop, root_dir, app_state.kiro_registry(), &roots);
+        if let Err(e) = session::save_session(desktop, root_dir, app_state.kiro_registry(), &roots) {
+            log::warn!("session save: {e}");
+        }
     }
 }
 

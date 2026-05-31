@@ -114,10 +114,7 @@ fn dispatch_command(ctx: &mut CommandContext, state: &mut AppState) {
 
 fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
     match ctx.command {
-        CM_TICK => {
-            broadcast_context(ctx, state);
-            update_window_title(state, ctx.sink);
-        }
+        CM_TICK => handle_tick(ctx, state),
         CM_APP_QUIT => handle_app_quit(ctx, state),
         CM_TW_TAB_CLOSE | CM_TAB_CLOSE => handle_tab_close(ctx, state),
         CM_SAVE_ALL => handle_save_all(ctx),
@@ -138,7 +135,7 @@ fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
         CM_NEXT_ERROR => handle_next_error(ctx, state),
         CM_PREV_ERROR => handle_prev_error(ctx, state),
         CM_SET_GLOBAL => handle_set_global(ctx, state),
-        CM_SUSPEND => suspend_to_shell(),
+        CM_SUSPEND => handle_suspend(ctx),
         CM_PEEK => peek_screen(),
         CM_GIT_STAGE => handle_git_stage(ctx, state),
         CM_GIT_UNSTAGE => handle_git_unstage(ctx, state),
@@ -149,6 +146,24 @@ fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
         _ => return false,
     }
     true
+}
+
+fn handle_tick(ctx: &mut CommandContext, state: &mut AppState) {
+    if state.show_messages_on_start {
+        state.show_messages_on_start = false;
+        handle_show_messages(ctx, state);
+    }
+    broadcast_context(ctx, state);
+    update_window_title(state, ctx.sink);
+}
+
+fn handle_suspend(ctx: &mut CommandContext) {
+    if let Err(e) = suspend_to_shell() {
+        ctx.sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::error("suspend", e))),
+        );
+    }
 }
 
 fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
