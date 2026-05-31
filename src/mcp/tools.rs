@@ -6,7 +6,9 @@ use serde_json::{json, Map, Value};
 
 use super::commands::{McpAction, McpCommandQueue};
 use super::snapshot::McpSnapshot;
-use super::tools_extra::{tool_eval_tcl, tool_git_ops, tool_lsp_semantic, tool_send_terminal_input, tool_undo_redo};
+use super::tools_extra::{
+    tool_eval_tcl, tool_git_ops, tool_lsp_semantic, tool_send_terminal_input, tool_undo_redo, tool_workspace_roots,
+};
 use super::tools_todo::{tool_add_subtree, tool_get_todo_tree, tool_update_todo};
 use super::tools_write::{
     tool_close_tab, tool_create_file, tool_diff_revert, tool_edit_buffer, tool_get_build_errors, tool_get_diagnostics,
@@ -51,6 +53,7 @@ pub fn handle_tool_call(
         "lsp_semantic" => tool_lsp_semantic(cmd_queue, args),
         "undo_redo" => tool_undo_redo(cmd_queue, args),
         "eval_tcl" => tool_eval_tcl(cmd_queue, args),
+        "workspace_roots" => tool_workspace_roots(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }

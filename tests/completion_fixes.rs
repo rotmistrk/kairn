@@ -23,6 +23,7 @@ fn open_and_focus(h: &mut TestHarness, dir: &std::path::Path, file: &str) {
 
 fn inject_completion(h: &mut TestHarness, items: Vec<CompletionItem>) {
     h.backend.inject(Event::Command {
+        broadcast: false,
         id: CM_LSP_COMPLETION,
         data: Some(Box::new(items)),
     });

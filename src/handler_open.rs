@@ -8,14 +8,17 @@ use txv_core::program::CommandContext;
 
 use crate::broker::OpenResult;
 use crate::commands::*;
-use crate::desktop::{active_tab_title, close_tab_by_title, focus_tab_by_title, SlotId};
+use crate::desktop::{close_tab_by_title, focus_editor_by_path, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::views::results::{ResultEntry, ResultsView};
 
-/// Compute tab title: relative path within project, or full path for external files.
-fn tab_title(path: &Path, root: &Path) -> String {
-    path.strip_prefix(root).unwrap_or(path).to_string_lossy().to_string()
+/// Initial tab label — just the filename. `sync_tab_titles` will disambiguate.
+fn initial_title(path: &Path) -> String {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("untitled")
+        .to_string()
 }
 pub(crate) use crate::handler_open_view::open_as_csv;
 use crate::handler_open_view::{open_editor, open_editor_view, try_open_structured};
@@ -31,12 +34,12 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
         return;
     };
     let path = &req.path;
-    let title = tab_title(path, &state.root_dir);
-    log::info!("Open file: {title} (broker check)");
+    let abs_key = path.to_string_lossy().to_string();
+    log::info!("Open file: {abs_key} (broker check)");
 
-    match state.broker.open(&title, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => handle_already_open(ctx, state, req, &title, focus_center),
-        OpenResult::Opened => handle_fresh_open(ctx, state, req, &title, focus_center),
+    match state.broker.open(&abs_key, SlotId::Center, 0) {
+        OpenResult::AlreadyOpen { .. } => handle_already_open(ctx, state, req, &abs_key, focus_center),
+        OpenResult::Opened => handle_fresh_open(ctx, state, req, &abs_key, focus_center),
     }
 }
 
@@ -44,26 +47,27 @@ fn handle_already_open(
     ctx: &mut CommandContext,
     state: &mut AppState,
     req: &OpenFileRequest,
-    title: &str,
+    abs_key: &str,
     focus_center: bool,
 ) {
-    log::info!("Already open: {title}");
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        if !focus_tab_by_title(desktop, SlotId::Center, title) {
-            state.broker.close(title);
+        if !focus_editor_by_path(desktop, abs_key) {
+            state.broker.close(abs_key);
             let path = &req.path;
+            let title = initial_title(path);
             let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
-            try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
+            try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title, view);
             if focus_center {
                 desktop.focus_panel(SlotId::Center as usize);
             }
             ctx.sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
+                Some(Box::new(Message::info("editor", format!("Opened: {abs_key}")))),
             );
             return;
         }
-        if let (Some(line), Some(col)) = (req.line, req.col) {
+        if let Some(line) = req.line {
+            let col = req.col.unwrap_or(0);
             let ed = desktop
                 .panel_mut(SlotId::Center as usize)
                 .and_then(|p| p.active_view_mut())
@@ -86,14 +90,16 @@ fn handle_fresh_open(
     ctx: &mut CommandContext,
     state: &mut AppState,
     req: &OpenFileRequest,
-    title: &str,
+    _abs_key: &str,
     focus_center: bool,
 ) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         close_tab_by_title(desktop, SlotId::Center, "Welcome");
         let path = &req.path;
+        let title = initial_title(path);
         let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.to_string(), view);
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
+        state.tab_titles_dirty = true;
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
         }
@@ -116,11 +122,12 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
         sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         return;
     }
-    let title = tab_title(&path, &state.root_dir);
-    match state.broker.open(&title, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { slot, .. } => {
+    let abs_key = path.to_string_lossy().to_string();
+    let title = initial_title(&path);
+    match state.broker.open(&abs_key, SlotId::Center, 0) {
+        OpenResult::AlreadyOpen { .. } => {
             if let Some(d) = downcast_desktop(desktop) {
-                focus_tab_by_title(d, slot, &title);
+                focus_editor_by_path(d, &abs_key);
             }
         }
         OpenResult::Opened => {
@@ -137,6 +144,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
             });
             if let Some(d) = downcast_desktop(desktop) {
                 try_insert_tab(d, state, sink, SlotId::Center, title, view);
+                state.tab_titles_dirty = true;
             }
         }
     }
@@ -182,16 +190,26 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
-    let Some(title) = active_tab_title(d, SlotId::Center).map(String::from) else {
+    let abs_path = d
+        .panel_mut(SlotId::Center as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_ref::<EditorView>())
+        .map(|ev| ev.path().to_path_buf());
+    let Some(path) = abs_path else {
         return;
     };
-    let path = state.root_dir.join(&title);
     if !path.is_file() {
         return;
     }
-    close_tab_by_title(d, SlotId::Center, &title);
-    state.broker.close(&title);
-    let _ = state.broker.open(&title, SlotId::Center, 0);
+    let abs_key = path.to_string_lossy().to_string();
+    let title = initial_title(&path);
+    let panel = d.panel_mut(SlotId::Center as usize);
+    if let Some(p) = panel {
+        p.close_active();
+    }
+    state.broker.close(&abs_key);
+    let _ = state.broker.open(&abs_key, SlotId::Center, 0);
     let view: Box<dyn View> = if to_structured {
         try_open_structured(&path).unwrap_or_else(|| open_editor_view(&path, state))
     } else {

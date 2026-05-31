@@ -151,6 +151,9 @@ File operations via `Alt-f` (ƒ on macOS) prefix:
 | `test-file` / `test-at-cursor` | Targeted tests |
 | `next-error` / `prev-error` | Error navigation |
 | `grep <pattern>` | Project-wide search |
+| `grep -a <pattern>` | Search all workspace roots |
+| `add-root <path>` | Add workspace root directory |
+| `remove-root <path>` | Remove workspace root |
 | `diff` | Diff current file |
 | `lsp-rename <name>` | Rename symbol |
 | `lsp-status` | Show LSP status |
@@ -223,7 +226,7 @@ Any M-x command that isn't a built-in is evaluated as Tcl. Available namespaces:
 | `split` | vsplit, hsplit, close, focus, open, direction, linked |
 | `keymap` | bind, unbind |
 | `hook` | add, remove, list |
-| `system` | exec, env, set-env, root-dir, home-dir, platform, user, hostname, short-pwd, busy, clipboard-get, clipboard-set |
+| `system` | exec, env, set-env, root-dir, roots, add-root, remove-root, home-dir, platform, user, hostname, short-pwd, busy, clipboard-get, clipboard-set |
 
 Example:
 ```tcl
@@ -257,6 +260,25 @@ hook add lsp-start -filter "rust" {
 }
 ```
 
+## Multi-Root Workspace
+
+Open multiple project directories in a single session. Each root gets a distinct color badge in the file tree and editor tabs.
+
+```tcl
+# Add roots via M-x or Tcl
+system add-root /path/to/other/project
+system remove-root /path/to/other/project
+system roots   ;# returns newline-separated list
+```
+
+Features:
+- File tree shows each root as a top-level expandable node with a colored badge
+- Editor tabs show a colored dot indicating which root the file belongs to
+- Git panel aggregates changes from all roots
+- `grep -a <pattern>` searches across all roots (default: primary root only)
+- Session persistence: roots are saved/restored with `.kairn.state`
+- MCP: `workspace_roots` tool (list/add/remove), `search_project` supports `all_roots` parameter
+
 ## Environment Variables
 
 | Variable | Description |
@@ -280,6 +302,7 @@ Exposes kairn state to Kiro AI via JSON-RPC over Unix socket. Tools:
 - **Git**: stage, unstage, commit
 - **LSP**: start/restart/stop/timeout/args/status, hover/definition/references/rename/code-action
 - **Scripting**: eval Tcl
+- **Workspace**: list/add/remove roots, search across all roots
 - **Messages**: read message log
 
 ## Tech Stack

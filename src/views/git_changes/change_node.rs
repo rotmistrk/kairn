@@ -16,4 +16,7 @@ pub(super) struct ChangeNode {
     pub(super) file_path: Option<PathBuf>,
     pub(super) color: Color,
     pub(super) status: Option<FileStatus>,
+    /// Stable identity key for preserving expand state across rebuilds.
+    /// Root headers: absolute path. Categories: "{root_path}:{status_name}".
+    pub(super) key: Option<String>,
 }

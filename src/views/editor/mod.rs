@@ -155,7 +155,7 @@ impl EditorView {
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             return self.handle_command_event(*id, data);
         }
         HandleResult::Ignored

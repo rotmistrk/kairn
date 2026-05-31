@@ -92,3 +92,37 @@ fn config_sets_layout_thresholds() {
     assert_eq!(s.layout_wide_threshold, 250);
     assert_eq!(s.layout_tall_threshold, 180);
 }
+
+#[test]
+fn config_sets_kiro_cmd_list() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_config(tmp.path(), r#"set kiro.cmd %[kiro-cli, chat, --tui]"#);
+    let s = load_config_from(&path);
+    assert_eq!(s.kiro.cmd, vec!["kiro-cli", "chat", "--tui"]);
+}
+
+#[test]
+fn config_sets_kiro_resume_first() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_config(tmp.path(), r#"set kiro.resume-first %[--resume]"#);
+    let s = load_config_from(&path);
+    assert_eq!(s.kiro.resume_first, vec!["--resume"]);
+}
+
+#[test]
+fn config_sets_kiro_resume_rest() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_config(tmp.path(), r#"set kiro.resume-rest %[--resume-picker]"#);
+    let s = load_config_from(&path);
+    assert_eq!(s.kiro.resume_rest, vec!["--resume-picker"]);
+}
+
+#[test]
+fn config_kiro_cmd_default_without_setting() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_config(tmp.path(), "set editor.wrap off");
+    let s = load_config_from(&path);
+    assert_eq!(s.kiro.cmd, vec!["kiro-cli", "chat"]);
+    assert_eq!(s.kiro.resume_first, vec!["--resume"]);
+    assert_eq!(s.kiro.resume_rest, vec!["--resume-picker"]);
+}

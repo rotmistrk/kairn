@@ -21,6 +21,7 @@ use crate::completer::refresh_commands;
 use crate::config_colors::apply_chrome_config;
 use crate::desktop::SlotId;
 use crate::handler::AppState;
+use crate::handler_exec_table2::refresh_completer_roots;
 use crate::handler_lsp_cmd::refresh_lsp_languages;
 use crate::mcp::agent_file::write_agent_file;
 use crate::mcp::listener::{start_mcp_listener, SharedCommandQueue};
@@ -95,6 +96,7 @@ pub fn configure_app_state(app_state: &mut AppState, root_dir: &Path) {
     }
     refresh_commands(app_state.command_list(), app_state.script());
     refresh_lsp_languages(app_state);
+    refresh_completer_roots(app_state);
 
     let theme_mode = match app_state.settings().theme_mode() {
         "dark" => ThemeMode::Dark,
@@ -123,6 +125,15 @@ pub fn restore_saved_session(
     root_dir: &Path,
     app_state: &mut AppState,
 ) {
+    // Restore additional workspace roots from session.
+    if !sess.roots().is_empty() {
+        for root_str in sess.roots() {
+            let path = PathBuf::from(root_str);
+            if path.is_dir() {
+                app_state.roots_mut().add(path);
+            }
+        }
+    }
     session::restore_session(desktop, sess);
     session::restore_tabs(
         desktop,
@@ -132,9 +143,19 @@ pub fn restore_saved_session(
         app_state.current_syntax_theme(),
     );
     for tab in sess.editor_tabs() {
-        app_state.broker_open(tab.path(), SlotId::Center, 0);
+        let p = Path::new(tab.path());
+        if p.is_absolute() && p.is_file() {
+            app_state.broker_open(tab.path(), SlotId::Center, 0);
+        }
     }
-    session::restore_kiro_tabs(desktop, sess.kiro_sessions(), root_dir, app_state.kiro_registry_mut());
+    let kiro_settings = app_state.settings().kiro().clone();
+    session::restore_kiro_tabs(
+        desktop,
+        sess.kiro_sessions(),
+        root_dir,
+        app_state.kiro_registry_mut(),
+        &kiro_settings,
+    );
 }
 
 pub fn start_mcp(

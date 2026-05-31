@@ -13,13 +13,14 @@ use crate::broker::FileBroker;
 use crate::buffer_registry::BufferRegistry;
 use crate::build::ErrorLocation;
 use crate::commands::ConfirmContext;
-use crate::completer::{new_command_list, CommandList, LspLanguageList};
+use crate::completer::{new_command_list, CommandList, LspLanguageList, RootsList};
 use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::desktop::SlotId;
 use crate::eviction::PendingTab;
 use crate::grep::GrepState;
 use crate::handler_context::open_tty_for_title;
 use crate::kiro_registry::KiroTabRegistry;
+use crate::lsp::pending::PendingRequests;
 use crate::lsp::progress::LspStatusTracker;
 use crate::lsp::registry::LspRegistry;
 use crate::mcp::commands::McpCommandQueue;
@@ -31,12 +32,15 @@ use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
 use crate::task_output::TaskOutput;
 use crate::theme_state::ThemeState;
+use crate::workspace_roots::WorkspaceRoots;
 
 /// Application state shared across command handler invocations.
 pub struct AppState {
     pub(crate) broker: FileBroker,
     pub(crate) buffers: BufferRegistry,
     pub(crate) root_dir: PathBuf,
+    /// All workspace roots (sorted alphabetically).
+    pub(crate) roots: WorkspaceRoots,
     pub(crate) settings: AppSettings,
     pub(crate) lsp: LspRegistry,
     pub(crate) lsp_pending: crate::lsp::handler::PendingRequests,
@@ -71,6 +75,8 @@ pub struct AppState {
     pub(crate) command_list: CommandList,
     /// Known LSP language IDs for completions (shared with completer).
     pub(crate) lsp_languages: LspLanguageList,
+    /// Workspace root paths for completions (shared with completer).
+    pub(crate) completer_roots: RootsList,
     /// Plugin hot-reload manager.
     pub(crate) plugins: PluginManager,
     /// Deferred LSP requests waiting for server initialization.
@@ -87,14 +93,32 @@ pub struct AppState {
     pub(crate) last_window_title: String,
     /// Persistent handle to /dev/tty for writing OSC sequences.
     pub(crate) tty_file: Option<std::fs::File>,
+    /// Flag: tab titles need recomputation via disambiguate.
+    pub(crate) tab_titles_dirty: bool,
 }
 
 impl AppState {
     pub fn broker_open(&mut self, path: &str, slot: SlotId, idx: usize) -> crate::broker::OpenResult {
         self.broker.open(path, slot, idx)
     }
+    pub fn broker_is_open(&self, path: &str) -> bool {
+        self.broker.is_open(path)
+    }
+    pub fn broker_open_count(&self) -> usize {
+        self.broker.open_paths().len()
+    }
     pub fn root_dir(&self) -> &PathBuf {
         &self.root_dir
+    }
+
+    /// Access workspace roots.
+    pub fn roots(&self) -> &WorkspaceRoots {
+        &self.roots
+    }
+
+    /// Mutable access to workspace roots.
+    pub fn roots_mut(&mut self) -> &mut WorkspaceRoots {
+        &mut self.roots
     }
     pub fn settings(&self) -> &AppSettings {
         &self.settings
@@ -144,6 +168,9 @@ impl AppState {
     pub fn lsp_languages(&self) -> &LspLanguageList {
         &self.lsp_languages
     }
+    pub fn completer_roots(&self) -> &RootsList {
+        &self.completer_roots
+    }
     pub fn kiro_registry(&self) -> &KiroTabRegistry {
         &self.kiro_registry
     }
@@ -175,53 +202,19 @@ impl AppState {
     }
 
     pub fn new(root_dir: PathBuf) -> Self {
-        Self {
-            broker: FileBroker::new(),
-            buffers: BufferRegistry::new(),
-            root_dir,
-            settings: AppSettings::default(),
-            lsp: LspRegistry::new(),
-            lsp_pending: Default::default(),
-            build_errors: Vec::new(),
-            build_error_idx: 0,
-            cursor_pos: (0, 0),
-            messages: Arc::new(Mutex::new(MessageRing::new())),
-            kiro_registry: KiroTabRegistry::default(),
-            doc_versions: HashMap::new(),
-            lsp_opened_files: HashSet::new(),
-            mcp_snapshot: None,
-            mcp_commands: None,
-            mcp_tick: 0,
-            waker: None,
-            theme_state: None,
-            grep_pending: None,
-            build_pending: None,
-            pending_tab: None,
-            confirm_context: None,
-            script: ScriptEngine::new(),
-            pending_hooks: Vec::new(),
-            command_list: new_command_list(),
-            lsp_languages: Arc::new(Mutex::new(Vec::new())),
-            plugins: PluginManager::new(),
-            deferred_lsp: Vec::new(),
-            lsp_status: LspStatusTracker::new(),
-            todo_note_path: None,
-            linked_scroll: false,
-            pty_last_output: HashMap::new(),
-            last_window_title: String::new(),
-            tty_file: open_tty_for_title(),
-        }
+        Self::with_settings(root_dir, AppSettings::default())
     }
 
     pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {
         let lsp_timeout = settings.lsp_timeout;
-        let mut s = Self {
+        Self {
             broker: FileBroker::new(),
             buffers: BufferRegistry::new(),
+            roots: WorkspaceRoots::new(root_dir.clone()),
             root_dir,
             settings,
             lsp: LspRegistry::new(),
-            lsp_pending: Default::default(),
+            lsp_pending: PendingRequests::with_timeout(lsp_timeout),
             build_errors: Vec::new(),
             build_error_idx: 0,
             cursor_pos: (0, 0),
@@ -242,6 +235,7 @@ impl AppState {
             pending_hooks: Vec::new(),
             command_list: new_command_list(),
             lsp_languages: Arc::new(Mutex::new(Vec::new())),
+            completer_roots: Arc::new(Mutex::new(Vec::new())),
             plugins: PluginManager::new(),
             deferred_lsp: Vec::new(),
             lsp_status: LspStatusTracker::new(),
@@ -250,9 +244,8 @@ impl AppState {
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: open_tty_for_title(),
-        };
-        s.lsp_pending.timeout_secs = lsp_timeout;
-        s
+            tab_titles_dirty: true,
+        }
     }
 
     /// Returns the syntax theme name appropriate for the current light/dark mode.

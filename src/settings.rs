@@ -2,6 +2,7 @@
 
 pub use crate::editor_settings::{CursorStyle, EditorSettings};
 pub use crate::git_keys::GitKeys;
+pub use crate::kiro_settings::KiroLaunchSettings;
 pub use crate::status_keys::StatusKeys;
 
 /// Global application settings.
@@ -25,6 +26,7 @@ pub struct AppSettings {
     pub(crate) terminal_auto_close: bool,
     pub(crate) layout_wide_threshold: u16,
     pub(crate) layout_tall_threshold: u16,
+    pub(crate) kiro: KiroLaunchSettings,
 }
 
 impl Default for AppSettings {
@@ -48,6 +50,7 @@ impl Default for AppSettings {
             terminal_auto_close: true,
             layout_wide_threshold: 300,
             layout_tall_threshold: 200,
+            kiro: KiroLaunchSettings::default(),
         }
     }
 }
@@ -86,5 +89,8 @@ impl AppSettings {
         } else {
             &self.theme_syntax_dark
         }
+    }
+    pub fn kiro(&self) -> &KiroLaunchSettings {
+        &self.kiro
     }
 }

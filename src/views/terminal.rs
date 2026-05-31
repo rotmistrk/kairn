@@ -45,38 +45,34 @@ pub fn new_shell_with_command(cmd: &str, cwd: &Path) -> Box<dyn View> {
     }
 }
 
-/// Create a kiro-cli chat terminal, optionally with a specific agent.
-pub fn new_kiro_terminal(agent: Option<&str>, cwd: &Path) -> Box<dyn View> {
-    new_kiro_terminal_with_resume(agent, None, cwd)
-}
-
-/// Create a kiro-cli chat terminal with optional agent and resume-id.
-pub fn new_kiro_terminal_with_resume(agent: Option<&str>, resume_id: Option<&str>, cwd: &Path) -> Box<dyn View> {
+/// Spawn a kiro terminal from a fully-built argv list.
+/// First element is the program, rest are arguments.
+/// KAIRN_MCP_SOCKET is always injected into the environment.
+pub fn new_kiro_terminal_argv(argv: &[String], cwd: &Path) -> Box<dyn View> {
     if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Kiro"));
     }
-    let mut args = vec!["chat"];
-    let agent_flag;
-    if let Some(name) = agent {
-        agent_flag = format!("--agent={name}");
-        args.push(&agent_flag);
-    }
-    let resume_flag;
-    if let Some(id) = resume_id {
-        resume_flag = format!("--resume-id={id}");
-        args.push(&resume_flag);
-    }
+    let (program, args) = match argv.split_first() {
+        Some((p, a)) => (p.as_str(), a),
+        None => {
+            return Box::new(FallbackTerminal::with_error(
+                "Kiro (failed)",
+                "empty kiro.cmd".to_string(),
+            ));
+        }
+    };
+    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let socket_val = env::var("KAIRN_MCP_SOCKET").unwrap_or_default();
     let envs: Vec<(&str, &str)> = if socket_val.is_empty() {
         vec![]
     } else {
         vec![("KAIRN_MCP_SOCKET", &socket_val)]
     };
-    match TerminalView::spawn_command_with_env("kiro-cli", &args, cwd, 80, 24, &envs) {
+    match TerminalView::spawn_command_with_env(program, &arg_refs, cwd, 80, 24, &envs) {
         Ok(term) => Box::new(term),
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);
-            Box::new(FallbackTerminal::with_error("Kiro (failed)", format!("kiro-cli: {e}")))
+            Box::new(FallbackTerminal::with_error("Kiro (failed)", format!("{program}: {e}")))
         }
     }
 }

@@ -65,6 +65,7 @@ fn toggle_diff_via_command() {
 
     // Send CM_DIFF command (simulates Ctrl-D)
     let cmd = Event::Command {
+        broadcast: false,
         id: kairn::commands::CM_DIFF,
         data: None,
     };

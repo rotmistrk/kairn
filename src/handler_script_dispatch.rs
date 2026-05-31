@@ -1,13 +1,15 @@
 //! Script command dispatch — git, todo, split, lsp, grep variants.
 
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use txv_core::program::CommandContext;
 use txv_core::run::Waker;
 
 use crate::app_state::AppState;
 use crate::commands::*;
-use crate::grep::grep_async;
+use crate::grep;
+use crate::handler_exec_table2::refresh_completer_roots;
 use crate::handler_script_util::lsp_cmd;
 use crate::mcp::commands::McpAction;
 use crate::scripting::ScriptCommand;
@@ -40,21 +42,67 @@ pub(crate) fn dispatch_extended(cmd: ScriptCommand, ctx: &mut CommandContext, st
         | ScriptCommand::SplitOpen { .. }
         | ScriptCommand::SplitLinked { .. }
         | ScriptCommand::DiffRevert => dispatch_split(cmd, ctx),
-        ScriptCommand::Grep { pattern } => {
-            let root = state.root_dir.clone();
-            let waker = state.waker.clone().unwrap_or_else(Waker::noop);
-            let grep_state = grep_async(&pattern, &root, waker);
-            state.grep_pending = Some((format!("grep:{pattern}"), grep_state, root));
-            true
-        }
+        ScriptCommand::Grep { pattern } => dispatch_grep(state, &pattern),
         ScriptCommand::LspStart { .. }
         | ScriptCommand::LspRestart { .. }
         | ScriptCommand::LspStop { .. }
         | ScriptCommand::LspTimeout { .. }
         | ScriptCommand::LspArgs { .. }
         | ScriptCommand::LspEnv { .. } => dispatch_lsp_control(cmd, ctx, state),
+        ScriptCommand::AddRoot { .. } | ScriptCommand::RemoveRoot { .. } => dispatch_root(cmd, ctx, state),
         _ => false,
     }
+}
+
+fn dispatch_root(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppState) -> bool {
+    let changed = match cmd {
+        ScriptCommand::AddRoot { path } => {
+            let full = resolve_root_path(&path, &state.root_dir);
+            let added = state.roots.add(full);
+            refresh_completer_roots(state);
+            added
+        }
+        ScriptCommand::RemoveRoot { path } => {
+            let full = resolve_root_path(&path, &state.root_dir);
+            let removed = state.roots.remove(&full);
+            refresh_completer_roots(state);
+            removed
+        }
+        _ => return false,
+    };
+    if changed {
+        let data = RootsChangedData::from_roots(&state.roots);
+        ctx.sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+    }
+    true
+}
+
+fn dispatch_grep(state: &mut AppState, pattern: &str) -> bool {
+    let (all, pat) = if let Some(rest) = pattern.strip_prefix("-a ") {
+        (true, rest)
+    } else {
+        (false, pattern)
+    };
+    let root = state.root_dir.clone();
+    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
+    let grep_state = if all && state.roots.len() > 1 {
+        let roots: Vec<_> = state.roots.all().iter().map(|r| r.path.clone()).collect();
+        grep::grep_async_roots(pat, &roots, waker)
+    } else {
+        grep::grep_async(pat, &root, waker)
+    };
+    state.grep_pending = Some((format!("grep:{pat}"), grep_state, root));
+    true
+}
+
+fn resolve_root_path(path: &str, root_dir: &Path) -> PathBuf {
+    let p = PathBuf::from(path);
+    let p = if p.is_relative() {
+        root_dir.join(&p)
+    } else {
+        p
+    };
+    fs::canonicalize(&p).unwrap_or(p)
 }
 
 fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppState) -> bool {

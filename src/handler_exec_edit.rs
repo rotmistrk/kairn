@@ -7,7 +7,7 @@ use txv_core::run::Waker;
 use crate::clipboard::paste_from_clipboard;
 use crate::commands::*;
 use crate::desktop::{focus_tab_by_title, next_tab_name, SlotId};
-use crate::grep::grep_async;
+use crate::grep::{grep_async, grep_async_roots};
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::handler_log::open_git_log;
@@ -16,7 +16,7 @@ use crate::handler_open::{handle_edit_file, open_as_csv, toggle_view_mode};
 use crate::lsp::config_commands::format_lsp_status;
 use crate::views::help::HelpView;
 use crate::views::results::ResultsView;
-use crate::views::terminal::{new_kiro_terminal, new_shell_terminal};
+use crate::views::terminal::new_shell_terminal;
 use crate::views::welcome::WelcomeView;
 
 pub(crate) fn cmd_blame(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
@@ -61,16 +61,24 @@ pub(crate) fn cmd_git_untrack(ctx: &mut CommandContext, _state: &mut AppState, a
 
 pub(crate) fn cmd_grep(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     if arg.is_empty() {
-        let msg = Message::warn("grep", "Usage: :grep <pattern>");
-        ctx.sink
-            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        push_status(ctx, Message::warn("grep", "Usage: :grep [-a] <pattern>"));
         return;
     }
+    let (all_roots, pattern) = if let Some(rest) = arg.strip_prefix("-a ") {
+        (true, rest.trim_start())
+    } else {
+        (false, arg)
+    };
     let root = state.root_dir.clone();
     let waker = state.waker.clone().unwrap_or_else(Waker::noop);
-    let grep_state = grep_async(arg, &root, waker);
-    state.grep_pending = Some((format!("grep:{arg}"), grep_state, root.clone()));
-    let title = format!("grep:{arg}");
+    let grep_state = if all_roots && state.roots().len() > 1 {
+        let roots: Vec<_> = state.roots().all().iter().map(|r| r.path.clone()).collect();
+        grep_async_roots(pattern, &roots, waker)
+    } else {
+        grep_async(pattern, &root, waker)
+    };
+    state.grep_pending = Some((format!("grep:{pattern}"), grep_state, root.clone()));
+    let title = format!("grep:{pattern}");
     let view = ResultsView::searching(&title, &root);
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title, Box::new(view));
@@ -93,36 +101,13 @@ pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, _arg: &st
     }
 }
 
-pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
-        let agent_arg = if arg.starts_with("--agent=") {
-            Some(arg.trim_start_matches("--agent="))
-        } else if !arg.is_empty() {
-            Some(arg)
-        } else {
-            Some("kairn")
-        };
-        let term = new_kiro_terminal(agent_arg, &state.root_dir);
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
-        state.kiro_registry.register(&name);
-        ctx.sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("kiro", format!("Started: {name}")))),
-        );
-    }
-}
-
 pub(crate) fn cmd_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     open_git_log(ctx, state, arg);
 }
 
 pub(crate) fn cmd_lsp(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     let msg = handle_lsp_cmd(arg, state);
-    ctx.sink.push_command(
-        txv_widgets::CM_STATUS_MESSAGE,
-        Some(Box::new(Message::info("lsp", msg))),
-    );
+    push_status(ctx, Message::info("lsp", msg));
 }
 
 pub(crate) fn cmd_lsp_rename(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
@@ -156,11 +141,7 @@ pub(crate) fn cmd_noblame(ctx: &mut CommandContext, _state: &mut AppState, _arg:
 pub(crate) fn cmd_paste(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     match paste_from_clipboard() {
         Ok(text) => ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
-        Err(e) => {
-            let msg = Message::error("clipboard", e);
-            ctx.sink
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
+        Err(e) => push_status(ctx, Message::error("clipboard", e)),
     }
 }
 
@@ -178,6 +159,7 @@ pub(crate) fn cmd_run(ctx: &mut CommandContext, _state: &mut AppState, _arg: &st
 
 pub(crate) fn cmd_save(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     ctx.sink.push_command(CM_SAVE, None);
+    ctx.sink.push_broadcast(CM_FS_CHANGED, None);
 }
 
 pub(crate) fn cmd_shell(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
@@ -270,4 +252,9 @@ pub(crate) fn cmd_welcome(ctx: &mut CommandContext, state: &mut AppState, _arg: 
             );
         }
     }
+}
+
+fn push_status(ctx: &mut CommandContext, msg: Message) {
+    ctx.sink
+        .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }

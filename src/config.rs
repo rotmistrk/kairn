@@ -60,6 +60,7 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
     extract_editor_settings(interp, &mut settings);
     extract_app_settings(interp, &mut settings);
     extract_key_settings(interp, &mut settings);
+    extract_kiro_settings(interp, &mut settings);
     settings
 }
 
@@ -160,6 +161,27 @@ fn extract_theme_settings(interp: &Interpreter, settings: &mut AppSettings) {
         let s = val.as_str();
         if s == "ascii" || s == "utf" || s == "nerd" || s == "auto" {
             settings.theme_glyphs = s.to_string();
+        }
+    }
+}
+
+fn extract_kiro_settings(interp: &Interpreter, settings: &mut AppSettings) {
+    if let Some(val) = interp.get_var("kiro.cmd") {
+        if let Ok(items) = val.as_list() {
+            let v: Vec<String> = items.iter().map(|i| i.as_str().to_string()).collect();
+            if !v.is_empty() {
+                settings.kiro.cmd = v;
+            }
+        }
+    }
+    if let Some(val) = interp.get_var("kiro.resume-first") {
+        if let Ok(items) = val.as_list() {
+            settings.kiro.resume_first = items.iter().map(|i| i.as_str().to_string()).collect();
+        }
+    }
+    if let Some(val) = interp.get_var("kiro.resume-rest") {
+        if let Ok(items) = val.as_list() {
+            settings.kiro.resume_rest = items.iter().map(|i| i.as_str().to_string()).collect();
         }
     }
 }

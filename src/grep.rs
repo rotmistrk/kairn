@@ -6,7 +6,7 @@
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ignore::WalkBuilder;
@@ -89,19 +89,24 @@ pub type GrepState = TaskOutput;
 /// Spawn async grep. Parses POSIX flags from the input string.
 /// Example inputs: `-i "hello world"`, `-iF fixed`, `-w MyStruct`
 pub fn grep_async(input: &str, root: &Path, waker: Waker) -> Arc<GrepState> {
+    grep_async_roots(input, &[root.to_path_buf()], waker)
+}
+
+/// Grep across multiple root directories.
+pub fn grep_async_roots(input: &str, roots: &[PathBuf], waker: Waker) -> Arc<GrepState> {
     let state = TaskOutput::new();
     let state_clone = state.clone();
     let input = input.to_string();
-    let root = root.to_path_buf();
+    let roots = roots.to_vec();
 
     std::thread::spawn(move || {
-        grep_thread(&input, &root, &state_clone, &waker);
+        grep_thread_multi(&input, &roots, &state_clone, &waker);
     });
 
     state
 }
 
-fn grep_thread(input: &str, root: &Path, state: &Arc<TaskOutput>, waker: &Waker) {
+fn grep_thread_multi(input: &str, roots: &[PathBuf], state: &Arc<TaskOutput>, waker: &Waker) {
     let opts = match parse_grep_args(input) {
         Ok(o) => o,
         Err(e) => {
@@ -122,7 +127,9 @@ fn grep_thread(input: &str, root: &Path, state: &Arc<TaskOutput>, waker: &Waker)
         }
     };
 
-    search_files(root, &re, state, waker);
+    for root in roots {
+        search_files(root, &re, state, waker);
+    }
     state.mark_done();
     waker.wake();
 }

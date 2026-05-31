@@ -1,5 +1,12 @@
 //! Dispatch table part 2 (N-Z).
 
+use std::fs;
+
+use txv_core::message::Message;
+use txv_core::program::CommandContext;
+
+use crate::commands::CM_ROOTS_CHANGED;
+use crate::handler::AppState;
 use crate::handler_exec::ExecEntry;
 
 pub static TABLE_PART2: &[ExecEntry] = &[
@@ -158,4 +165,85 @@ pub static TABLE_PART2: &[ExecEntry] = &[
         requires_arg: false,
         handler: crate::handler_exec_nav::cmd_zoom,
     },
+    ExecEntry {
+        names: &["add-root"],
+        requires_arg: true,
+        handler: cmd_add_root,
+    },
+    ExecEntry {
+        names: &["remove-root"],
+        requires_arg: true,
+        handler: cmd_remove_root,
+    },
 ];
+
+fn cmd_add_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    use std::path::PathBuf;
+    let path = PathBuf::from(arg);
+    let path = if path.is_relative() {
+        state.root_dir().join(&path)
+    } else {
+        path
+    };
+    let Some(path) = fs::canonicalize(&path).ok() else {
+        push_msg(state, Message::error("root", format!("Not found: {arg}")));
+        return;
+    };
+    if !path.is_dir() {
+        push_msg(state, Message::error("root", format!("Not a directory: {arg}")));
+        return;
+    }
+    if !state.roots_mut().add(path.clone()) {
+        push_msg(
+            state,
+            Message::warn("root", format!("Already a root: {}", path.display())),
+        );
+        return;
+    }
+    push_msg(state, Message::info("root", format!("Added root: {}", path.display())));
+    refresh_completer_roots(state);
+    emit_roots_changed(ctx, state);
+}
+
+fn cmd_remove_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    use std::path::PathBuf;
+    let path = PathBuf::from(arg);
+    let path = if path.is_relative() {
+        state.root_dir().join(&path)
+    } else {
+        path
+    };
+    let path = fs::canonicalize(&path).unwrap_or(path);
+    if !state.roots_mut().remove(&path) {
+        push_msg(
+            state,
+            Message::warn("root", format!("Not a root or last root: {}", path.display())),
+        );
+        return;
+    }
+    push_msg(
+        state,
+        Message::info("root", format!("Removed root: {}", path.display())),
+    );
+    refresh_completer_roots(state);
+    emit_roots_changed(ctx, state);
+}
+
+pub(crate) fn refresh_completer_roots(state: &AppState) {
+    let paths: Vec<String> = state.roots().paths().iter().map(|p| p.display().to_string()).collect();
+    if let Ok(mut guard) = state.completer_roots.lock() {
+        *guard = paths;
+    }
+}
+
+fn emit_roots_changed(ctx: &mut CommandContext, state: &AppState) {
+    use crate::commands::RootsChangedData;
+    let data = RootsChangedData::from_roots(state.roots());
+    ctx.sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+}
+
+fn push_msg(state: &AppState, msg: Message) {
+    if let Ok(mut ring) = state.messages().lock() {
+        ring.push(msg);
+    }
+}

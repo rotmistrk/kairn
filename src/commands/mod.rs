@@ -6,6 +6,7 @@ mod context;
 mod data;
 mod diff_split_request;
 mod open_file_request;
+mod roots_changed_data;
 mod split_request;
 mod view_context_builder;
 
@@ -14,6 +15,7 @@ pub use context::ViewContext;
 pub use data::ConfirmContext;
 pub use diff_split_request::DiffSplitRequest;
 pub use open_file_request::OpenFileRequest;
+pub use roots_changed_data::RootsChangedData;
 pub use split_request::SplitRequest;
 pub use view_context_builder::ViewContextBuilder;
 
@@ -152,3 +154,10 @@ pub const CM_TODO_PRIORITY_UP: CommandId = CM_APP_BASE + 182;
 pub const CM_TODO_PRIORITY_DOWN: CommandId = CM_APP_BASE + 183;
 pub const CM_TODO_LOE_UP: CommandId = CM_APP_BASE + 184;
 pub const CM_TODO_LOE_DOWN: CommandId = CM_APP_BASE + 185;
+
+// Workspace roots changed (data: Vec<PathBuf>)
+pub const CM_ROOTS_CHANGED: CommandId = CM_APP_BASE + 190;
+/// Filesystem changed — broadcast to refresh tree, git status, etc.
+pub const CM_FS_CHANGED: CommandId = CM_APP_BASE + 191;
+/// Set of open editor files changed — broadcast to update tree badges.
+pub const CM_OPEN_FILES_CHANGED: CommandId = CM_APP_BASE + 192;

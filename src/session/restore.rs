@@ -1,7 +1,7 @@
 //! Session restore — apply saved state to workspace.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use txv_widgets::tab_panel::TabPanel;
 use txv_widgets::tiled_workspace::types::WorkspaceState;
@@ -11,7 +11,7 @@ use crate::desktop::{close_tab_by_title, insert_tab, LayoutMode, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::settings::EditorSettings;
 use crate::views::editor::EditorView;
-use crate::views::terminal::new_kiro_terminal_with_resume;
+use crate::views::terminal::new_kiro_terminal_argv;
 use crate::views::tree::FileTreeView;
 
 use super::schema::{KiroSessionState, SessionState};
@@ -124,16 +124,22 @@ fn open_second_panel_tabs(
         let Some(tab) = state.editor_tabs.get(i) else {
             continue;
         };
-        let path = root_dir.join(&tab.path);
+        let path = PathBuf::from(&tab.path);
+        let path = if path.is_absolute() {
+            path
+        } else {
+            log::warn!("session restore: rejecting relative path in split: {}", tab.path);
+            continue;
+        };
         if !path.is_file() {
             continue;
         }
+        let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
         let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
             .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
         editor.set_root_dir(root_dir.to_path_buf());
         editor.goto(tab.line, tab.col);
-        let title = tab.path.clone();
-        insert_into_second_panel(desktop, editor, &title);
+        insert_into_second_panel(desktop, editor, title);
     }
 }
 
@@ -202,15 +208,23 @@ fn open_tab_in_panel(
     editor_defaults: &EditorSettings,
     syntax_theme: &str,
 ) {
-    let path = root_dir.join(&tab.path);
+    let path = PathBuf::from(&tab.path);
+    // Reject relative paths — session must store absolute
+    let path = if path.is_absolute() {
+        path
+    } else {
+        log::warn!("session restore: rejecting relative path: {}", tab.path);
+        return;
+    };
     if !path.is_file() {
         return;
     }
+    let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
     let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
     editor.set_root_dir(root_dir.to_path_buf());
     editor.goto(tab.line, tab.col);
-    insert_tab(desktop, SlotId::Center, &tab.path, Box::new(editor));
+    insert_tab(desktop, SlotId::Center, title, Box::new(editor));
 }
 
 /// Restore kiro tabs from saved session state.
@@ -219,10 +233,22 @@ pub fn restore_kiro_tabs(
     sessions: &[KiroSessionState],
     root_dir: &Path,
     registry: &mut KiroTabRegistry,
+    kiro: &crate::settings::KiroLaunchSettings,
 ) {
-    for session in sessions {
-        let resume_id = session.session_id.as_deref();
-        let term = new_kiro_terminal_with_resume(Some("kairn"), resume_id, root_dir);
+    for (i, session) in sessions.iter().enumerate() {
+        let mut argv: Vec<String> = kiro.cmd.clone();
+        // First session gets resume-first args, rest get resume-rest
+        let extra = if i == 0 {
+            &kiro.resume_first
+        } else {
+            &kiro.resume_rest
+        };
+        argv.extend(extra.iter().cloned());
+        // Ensure --agent is present (default to kairn)
+        if !argv.iter().any(|a| a.starts_with("--agent")) {
+            argv.push("--agent=kairn".to_string());
+        }
+        let term = new_kiro_terminal_argv(&argv, root_dir);
         insert_tab(desktop, SlotId::Tools, &session.name, term);
         registry.register_with_id(&session.name, session.session_id.clone());
     }

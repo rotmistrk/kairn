@@ -11,6 +11,7 @@ use crate::git_watcher::WatchHandle;
 use crate::settings::GitKeys;
 
 pub use self::data::GitChangesData;
+mod builders;
 mod change_node;
 mod data;
 
@@ -19,6 +20,7 @@ pub struct GitChangesView {
     inner: TreeView<GitChangesData>,
     watcher: Option<WatchHandle>,
     root: PathBuf,
+    roots: Vec<PathBuf>,
     last_key_was_right: bool,
     keys: GitKeys,
     needs_rebuild: bool,
@@ -33,7 +35,25 @@ impl GitChangesView {
         Self {
             inner: TreeView::new(data),
             watcher,
+            roots: vec![root.clone()],
             root,
+            last_key_was_right: false,
+            keys,
+            needs_rebuild: true,
+            tick_counter: 0,
+            cooldown: 0,
+        }
+    }
+
+    /// Create with multiple workspace roots.
+    pub fn with_roots(roots: Vec<PathBuf>, watcher: Option<WatchHandle>, keys: GitKeys) -> Self {
+        let primary = roots.first().cloned().unwrap_or_default();
+        let data = GitChangesData::new(&primary);
+        Self {
+            inner: TreeView::new(data),
+            watcher,
+            root: primary,
+            roots,
             last_key_was_right: false,
             keys,
             needs_rebuild: true,
@@ -47,6 +67,12 @@ impl GitChangesView {
         let row = self.inner.cursor;
         let id = self.inner.data.visible_id(row);
         let abs = self.inner.data.file_path(id)?;
+        // Try each root to find the matching one
+        for root in &self.roots {
+            if let Ok(rel) = abs.strip_prefix(root) {
+                return Some(rel.to_string_lossy().to_string());
+            }
+        }
         abs.strip_prefix(&self.root)
             .ok()
             .map(|p| p.to_string_lossy().to_string())
@@ -68,7 +94,23 @@ impl View for GitChangesView {
         if let Event::Tick = event {
             return self.handle_tick();
         }
-        if let Event::Command { id, data } = event {
+        if let Event::Command {
+            id,
+            data,
+            broadcast: true,
+        } = event
+        {
+            if *id == CM_ROOTS_CHANGED {
+                if let Some(rcd) = data.as_ref().and_then(|d| d.downcast_ref::<RootsChangedData>()) {
+                    self.roots = rcd.paths.clone();
+                    self.inner.data.set_root_badge_colors(rcd.colors.clone());
+                    self.inner.data.set_root_labels(rcd.labels.clone());
+                    self.needs_rebuild = true;
+                }
+                return HandleResult::Ignored;
+            }
+        }
+        if let Event::Command { id, data, .. } = event {
             if *id == CM_OK {
                 return self.handle_cm_ok(data);
             }
@@ -99,7 +141,7 @@ impl GitChangesView {
         let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
         if changed {
             self.needs_rebuild = false;
-            self.inner.data.rebuild(&self.root);
+            self.inner.data.rebuild_roots(&self.roots);
             self.inner.mark_dirty();
             self.cooldown = 4;
         }

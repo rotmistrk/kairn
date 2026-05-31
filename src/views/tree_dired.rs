@@ -101,7 +101,7 @@ impl FileTreeView {
         self.inner
             .state
             .put_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("file", msg))));
-        self.inner.state.put_command(CM_SAVE, None);
+        self.inner.state.put_broadcast(CM_FS_CHANGED, None);
     }
 }
 

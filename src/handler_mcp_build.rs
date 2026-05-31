@@ -1,6 +1,7 @@
 //! MCP build/search handlers — Tier 5 operations.
 
 use std::fs::read_to_string;
+use std::path::Path;
 
 use ignore::WalkBuilder;
 use regex::RegexBuilder;
@@ -27,23 +28,30 @@ pub fn mcp_get_build_errors(state: &AppState) -> Result<serde_json::Value, Strin
     Ok(serde_json::json!({"errors": errors}))
 }
 
-pub fn mcp_search_project(state: &AppState, pattern: &str) -> Result<serde_json::Value, String> {
+pub fn mcp_search_project(state: &AppState, pattern: &str, all_roots: bool) -> Result<serde_json::Value, String> {
     let re = RegexBuilder::new(pattern)
         .case_insensitive(false)
         .build()
         .map_err(|e| format!("Invalid regex: {e}"))?;
     let mut results = Vec::new();
-    let walker = WalkBuilder::new(&state.root_dir).hidden(true).git_ignore(true).build();
-    for entry in walker.flatten() {
-        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
-            continue;
-        }
-        let path = entry.path();
-        let Ok(content) = read_to_string(path) else {
-            continue;
-        };
-        if let Some(val) = search_file_lines(&re, path, &content, &state.root_dir, &mut results) {
-            return Ok(val);
+    let dirs: Vec<&Path> = if all_roots && state.roots().len() > 1 {
+        state.roots().all().iter().map(|r| r.path.as_path()).collect()
+    } else {
+        vec![state.root_dir.as_path()]
+    };
+    for dir in dirs {
+        let walker = WalkBuilder::new(dir).hidden(true).git_ignore(true).build();
+        for entry in walker.flatten() {
+            if !entry.file_type().is_some_and(|ft| ft.is_file()) {
+                continue;
+            }
+            let path = entry.path();
+            let Ok(content) = read_to_string(path) else {
+                continue;
+            };
+            if let Some(val) = search_file_lines(&re, path, &content, dir, &mut results) {
+                return Ok(val);
+            }
         }
     }
     Ok(serde_json::json!({"matches": results, "truncated": false}))

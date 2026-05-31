@@ -7,6 +7,7 @@ use crate::commands::ViewContext;
 pub struct StateSnapshot {
     pub(crate) context: ViewContext,
     pub(crate) root_dir: String,
+    pub(crate) roots: Vec<String>,
     pub(crate) selection_text: String,
     pub(crate) current_line_text: String,
     pub(crate) split_direction: String,
@@ -176,5 +177,11 @@ pub enum ScriptCommand {
         pattern: String,
         key: String,
         value: String,
+    },
+    AddRoot {
+        path: String,
+    },
+    RemoveRoot {
+        path: String,
     },
 }

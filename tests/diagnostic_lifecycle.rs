@@ -23,6 +23,7 @@ fn open_file(h: &mut TestHarness, dir: &std::path::Path, file: &str) {
 
 fn inject_diagnostics(h: &mut TestHarness, uri: &str, diags: Vec<Diagnostic>) {
     h.backend.inject(Event::Command {
+        broadcast: false,
         id: CM_DIAGNOSTIC,
         data: Some(Box::new((uri.to_string(), diags))),
     });

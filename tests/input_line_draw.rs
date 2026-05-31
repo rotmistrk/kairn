@@ -237,6 +237,7 @@ fn paste_multiline_takes_first_line_only() {
     input.set_bounds(Rect::new(0, 0, 40, 1));
     input.select();
     let paste = Event::Command {
+        broadcast: false,
         id: CM_CLIPBOARD_PASTE,
         data: Some(Box::new("first\nsecond\nthird".to_string())),
     };

@@ -15,4 +15,5 @@ pub mod struct_view;
 pub mod terminal;
 pub mod todo_tree;
 pub mod tree;
+mod tree_handlers;
 pub mod welcome;

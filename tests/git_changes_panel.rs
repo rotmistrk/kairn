@@ -57,6 +57,29 @@ fn git_changes_data_collapse_category() {
 }
 
 #[test]
+fn git_changes_data_collapse_preserved_across_rebuild() {
+    let dir = tempfile::tempdir().unwrap();
+    if git2::Repository::init(dir.path()).is_err() {
+        return;
+    }
+    std::fs::write(dir.path().join("a.txt"), "a").unwrap();
+
+    let mut data = GitChangesData::new(dir.path());
+    // Collapse the Untracked category
+    let first_id = data.visible_id(0);
+    assert!(data.is_expandable(first_id));
+    data.toggle(first_id);
+    assert!(!data.is_expanded(first_id), "should be collapsed");
+    let collapsed_count = data.visible_count();
+
+    // Rebuild — collapsed state should be preserved
+    data.rebuild_roots(&[dir.path().to_path_buf()]);
+    let first_id = data.visible_id(0);
+    assert!(!data.is_expanded(first_id), "collapse state should survive rebuild");
+    assert_eq!(data.visible_count(), collapsed_count);
+}
+
+#[test]
 fn git_changes_view_is_non_closeable() {
     let dir = tempfile::tempdir().unwrap();
     if git2::Repository::init(dir.path()).is_err() {
@@ -70,4 +93,52 @@ fn git_changes_view_is_non_closeable() {
         top_row.contains("Files"),
         "Left slot should show Files tab, got: {top_row}"
     );
+}
+
+#[test]
+fn git_changes_data_multi_root_groups_by_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root_a = dir.path().join("alpha");
+    let root_b = dir.path().join("beta");
+    std::fs::create_dir_all(&root_a).unwrap();
+    std::fs::create_dir_all(&root_b).unwrap();
+    if git2::Repository::init(&root_a).is_err() || git2::Repository::init(&root_b).is_err() {
+        return;
+    }
+    std::fs::write(root_a.join("a.txt"), "aaa").unwrap();
+    std::fs::write(root_b.join("b.txt"), "bbb").unwrap();
+
+    let mut data = GitChangesData::new(&root_a);
+    data.set_root_badge_colors(vec![txv_core::cell::Color::Ansi(2), txv_core::cell::Color::Ansi(3)]);
+    data.rebuild_roots(&[root_a, root_b]);
+
+    // Should have root headers at depth 0
+    assert!(data.visible_count() >= 4, "expected root headers + categories + files");
+    let first_id = data.visible_id(0);
+    assert_eq!(data.depth(first_id), 0, "first node should be root header");
+    assert!(
+        data.label(first_id).contains("alpha"),
+        "first root header should be alpha"
+    );
+    assert!(data.is_expandable(first_id));
+
+    // Badge color should be set on root headers
+    assert_eq!(data.badge_color(first_id), Some(txv_core::cell::Color::Ansi(2)));
+}
+
+#[test]
+fn git_changes_data_single_root_no_root_headers() {
+    let dir = tempfile::tempdir().unwrap();
+    if git2::Repository::init(dir.path()).is_err() {
+        return;
+    }
+    std::fs::write(dir.path().join("x.txt"), "x").unwrap();
+
+    let data = GitChangesData::new(dir.path());
+    // Single root: first node is a category, not a root header
+    let first_id = data.visible_id(0);
+    assert_eq!(data.depth(first_id), 0);
+    assert!(data.label(first_id).contains("Untracked"));
+    // No badge on categories in single-root mode
+    assert_eq!(data.badge_color(first_id), None);
 }

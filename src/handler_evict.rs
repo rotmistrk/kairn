@@ -70,12 +70,15 @@ fn evict_and_insert(
     if state.settings.editor_defaults.autosave {
         autosave_tab(desktop, slot, lru_idx);
     }
-    if let Some(panel) = desktop.panel(slot as usize) {
-        if let Some(tab_title) = panel.tab_title(lru_idx).map(String::from) {
-            state.broker.close(&tab_title);
-        }
-    }
     if let Some(panel) = desktop.panel_mut(slot as usize) {
+        let abs_path = panel
+            .view_at_mut(lru_idx)
+            .and_then(|v| v.as_any_mut())
+            .and_then(|a| a.downcast_ref::<EditorView>())
+            .map(|ev| ev.path().to_string_lossy().to_string());
+        if let Some(p) = abs_path {
+            state.broker.close(&p);
+        }
         panel.remove_tab(lru_idx);
     }
     desktop.insert_tab(slot as usize, &title, view);

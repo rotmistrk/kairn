@@ -104,8 +104,10 @@ pub fn tool_get_build_errors(cmd_queue: Option<&McpCommandQueue>, _args: &Map<St
 pub fn tool_search_project(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
     let queue = cmd_queue.ok_or("MCP command queue not available")?;
     let pattern = args.get("pattern").and_then(Value::as_str).ok_or("Missing 'pattern'")?;
+    let all_roots = args.get("all_roots").and_then(Value::as_bool).unwrap_or(false);
     queue.send(McpAction::SearchProject {
         pattern: pattern.to_string(),
+        all_roots,
     })
 }
 

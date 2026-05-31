@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use crate::commands::CM_SAVE;
+use crate::commands::CM_FS_CHANGED;
 
 use super::handle;
 use super::StructuredView;
@@ -81,10 +81,16 @@ impl View for StructuredView {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        if let Event::Command { id, .. } = event {
-            if *id == CM_SAVE {
+        if let Event::Command {
+            id, broadcast: true, ..
+        } = event
+        {
+            if *id == CM_FS_CHANGED {
                 return handle::handle_save_command(self);
             }
+            return HandleResult::Ignored;
+        }
+        if let Event::Command { .. } = event {
             return HandleResult::Ignored;
         }
         let Event::Key(key) = event else {

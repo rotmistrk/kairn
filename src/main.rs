@@ -13,7 +13,7 @@ use txv_render::backend::CrosstermBackend;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use kairn::build_desktop::build_workspace;
-use kairn::commands::{OpenFileRequest, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS};
+use kairn::commands::{OpenFileRequest, RootsChangedData, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_ROOTS_CHANGED};
 use kairn::completer::AppCompleter;
 use kairn::config::load_config;
 use kairn::handler::{handle_command, AppState};
@@ -124,6 +124,7 @@ fn run_app(
 ) -> anyhow::Result<()> {
     let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
     completer.set_lsp_languages(app_state.lsp_languages().clone());
+    completer.set_roots(app_state.completer_roots().clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),
@@ -136,19 +137,31 @@ fn run_app(
     let mut backend = init_backend(app_state, &mcp_cmd_queue);
 
     push_initial_open(&program, open_file, saved_session, root_dir);
+
+    // Notify tree of restored roots
+    if app_state.roots().paths().len() > 1 {
+        let data = RootsChangedData::from_roots(app_state.roots());
+        program.sink().push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+    }
+
     program.run(&mut backend, |ctx| {
         handle_command(ctx, app_state);
     });
 
     app_state.lsp_shutdown_all();
+    save_session_on_exit(&mut program, app_state, root_dir);
+    Ok(())
+}
+
+fn save_session_on_exit(program: &mut Program, app_state: &AppState, root_dir: &std::path::Path) {
     if let Some(desktop) = program
         .desktop_mut()
         .as_any_mut()
         .and_then(|a| a.downcast_mut::<TiledWorkspace>())
     {
-        session::save_session(desktop, root_dir, app_state.kiro_registry());
+        let roots = app_state.roots().paths();
+        session::save_session(desktop, root_dir, app_state.kiro_registry(), &roots);
     }
-    Ok(())
 }
 
 fn init_backend(app_state: &mut AppState, mcp_cmd_queue: &SharedCommandQueue) -> CrosstermBackend {

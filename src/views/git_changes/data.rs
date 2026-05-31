@@ -1,23 +1,26 @@
 //! GitChangesData — tree data provider for git changes panel.
-//! Groups changed files by status category.
+//! Groups changed files by status category, optionally per-root.
 
-use std::collections::HashMap;
-use std::fs;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use git2::Repository;
 use txv_core::cell::{Color, Style};
 use txv_widgets::tree_view::TreeData;
 
 use crate::app_palette::app_palette;
-use crate::git_status::{collect_git_status, FileStatus};
+use crate::git_status::FileStatus;
 
+use super::builders::{build_category_nodes, collect_statuses_flat, discover_git_roots};
 use super::change_node::ChangeNode;
 
 /// Data provider for the git changes tree.
 pub struct GitChangesData {
     nodes: Vec<ChangeNode>,
     visible: Vec<usize>,
+    /// Badge colors for root header nodes (only in multi-root mode).
+    root_badge_colors: Vec<Color>,
+    /// Disambiguated display labels for root headers.
+    root_labels: Vec<String>,
 }
 
 impl GitChangesData {
@@ -25,6 +28,8 @@ impl GitChangesData {
         let mut data = Self {
             nodes: Vec::new(),
             visible: Vec::new(),
+            root_badge_colors: Vec::new(),
+            root_labels: Vec::new(),
         };
         data.rebuild(root);
         data
@@ -32,13 +37,89 @@ impl GitChangesData {
 
     /// Rebuild the tree from current git status.
     pub fn rebuild(&mut self, root: &Path) {
+        self.rebuild_roots(&[root.to_path_buf()]);
+    }
+
+    /// Set badge colors for root headers (one per root, in order).
+    pub fn set_root_badge_colors(&mut self, colors: Vec<Color>) {
+        self.root_badge_colors = colors;
+    }
+
+    /// Set disambiguated display labels for root headers.
+    pub fn set_root_labels(&mut self, labels: Vec<String>) {
+        self.root_labels = labels;
+    }
+
+    /// Rebuild from multiple workspace roots.
+    pub fn rebuild_roots(&mut self, roots: &[PathBuf]) {
+        // Preserve collapsed state using stable identity keys
+        let collapsed: HashSet<String> = self
+            .nodes
+            .iter()
+            .filter(|n| n.expandable && !n.expanded)
+            .filter_map(|n| n.key.clone())
+            .collect();
+
         self.nodes.clear();
         self.visible.clear();
 
-        let roots = discover_git_roots(root);
-        let by_status = collect_statuses(root, &roots);
-        build_category_nodes(&mut self.nodes, &by_status);
+        if roots.len() > 1 {
+            self.rebuild_multi_root(roots);
+        } else {
+            self.rebuild_single_root(roots);
+        }
+
+        // Restore collapsed state
+        for node in &mut self.nodes {
+            if node.expandable && node.key.as_ref().is_some_and(|k| collapsed.contains(k)) {
+                node.expanded = false;
+            }
+        }
         self.rebuild_visible();
+    }
+
+    fn rebuild_single_root(&mut self, roots: &[PathBuf]) {
+        let git_roots: Vec<PathBuf> = roots.iter().flat_map(|r| discover_git_roots(r)).collect();
+        let parent = roots.first().map(|r| r.as_path()).unwrap_or(Path::new("."));
+        let by_status = collect_statuses_flat(parent, &git_roots);
+        let root = roots.first().cloned().unwrap_or_default();
+        build_category_nodes(&mut self.nodes, &by_status, 0, 1, &root);
+    }
+
+    fn rebuild_multi_root(&mut self, roots: &[PathBuf]) {
+        let app = app_palette();
+        for (root_idx, root) in roots.iter().enumerate() {
+            let git_roots = discover_git_roots(root);
+            if git_roots.is_empty() {
+                continue;
+            }
+            let by_status = collect_statuses_flat(root, &git_roots);
+            if by_status.is_empty() {
+                continue;
+            }
+            let root_name = self.root_labels.get(root_idx).cloned().unwrap_or_else(|| {
+                root.file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| root.to_string_lossy().to_string())
+            });
+            let color = self
+                .root_badge_colors
+                .get(root_idx)
+                .copied()
+                .unwrap_or(app.git().modified().fg);
+            // Root header node
+            self.nodes.push(ChangeNode {
+                label: root_name,
+                depth: 0,
+                expandable: true,
+                expanded: true,
+                file_path: None,
+                color,
+                status: None,
+                key: Some(root.to_string_lossy().to_string()),
+            });
+            build_category_nodes(&mut self.nodes, &by_status, 1, 2, root);
+        }
     }
 
     fn rebuild_visible(&mut self) {
@@ -109,100 +190,15 @@ impl TreeData for GitChangesData {
             ..Style::default()
         }
     }
-}
-
-fn collect_statuses(root: &Path, roots: &[PathBuf]) -> HashMap<FileStatus, Vec<(String, PathBuf)>> {
-    let multi_root = roots.len() > 1;
-    let mut by_status: HashMap<FileStatus, Vec<(String, PathBuf)>> = HashMap::new();
-    for git_root in roots {
-        let statuses = collect_git_status(git_root);
-        let root_name = git_root
-            .strip_prefix(root)
-            .unwrap_or(git_root)
-            .to_string_lossy()
-            .to_string();
-        let root_label = if root_name.is_empty() {
-            ".".to_string()
-        } else {
-            root_name
-        };
-        for (rel_path, status) in statuses {
-            if status == FileStatus::Clean || status == FileStatus::Ignored {
-                continue;
-            }
-            let abs_path = git_root.join(&rel_path);
-            let entry = if multi_root {
-                (format!("{root_label}/{rel_path}"), abs_path)
-            } else {
-                (rel_path, abs_path)
-            };
-            by_status.entry(status).or_default().push(entry);
+    fn badge_color(&self, id: usize) -> Option<Color> {
+        if self.root_badge_colors.is_empty() {
+            return None;
         }
-    }
-    by_status
-}
-
-fn build_category_nodes(nodes: &mut Vec<ChangeNode>, by_status: &HashMap<FileStatus, Vec<(String, PathBuf)>>) {
-    let app = app_palette();
-    let categories = [
-        (FileStatus::Conflict, "Conflicts", app.git().conflict().fg),
-        (FileStatus::Modified, "Modified", app.git().modified().fg),
-        (FileStatus::Added, "Added", app.git().added().fg),
-        (FileStatus::Untracked, "Untracked", app.git().untracked().fg),
-    ];
-    for (status, name, color) in &categories {
-        let Some(files) = by_status.get(status) else {
-            continue;
-        };
-        if files.is_empty() {
-            continue;
+        let node = self.nodes.get(id)?;
+        // Only root headers (depth 0, expandable, no file_path) get badges
+        if node.depth != 0 || node.file_path.is_some() {
+            return None;
         }
-        let label = format!("{name} ({})", files.len());
-        nodes.push(ChangeNode {
-            label,
-            depth: 0,
-            expandable: true,
-            expanded: true,
-            file_path: None,
-            color: *color,
-            status: None,
-        });
-        let mut sorted = files.clone();
-        sorted.sort_by(|a, b| a.0.cmp(&b.0));
-        for (rel, abs) in sorted {
-            nodes.push(ChangeNode {
-                label: rel,
-                depth: 1,
-                expandable: false,
-                expanded: false,
-                file_path: Some(abs),
-                color: *color,
-                status: Some(*status),
-            });
-        }
+        Some(node.color)
     }
-}
-
-/// Discover all git roots under the workspace root.
-fn discover_git_roots(root: &Path) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if root.join(".git").exists() {
-        roots.push(root.to_path_buf());
-    }
-    if let Ok(entries) = fs::read_dir(root) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() && path.join(".git").exists() && path != root {
-                roots.push(path);
-            }
-        }
-    }
-    if roots.is_empty() {
-        if let Ok(repo) = Repository::discover(root) {
-            if let Some(workdir) = repo.workdir() {
-                roots.push(workdir.to_path_buf());
-            }
-        }
-    }
-    roots
 }

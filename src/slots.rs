@@ -79,3 +79,28 @@ pub fn next_tab_name(ws: &TiledWorkspace, slot: SlotId, prefix: &str) -> String 
     ws.panel(slot as usize)
         .map_or_else(|| format!("{prefix} 1"), |p| p.next_tab_name(prefix))
 }
+
+/// Focus a center-panel tab whose EditorView has the given absolute path.
+/// Returns true if found and focused.
+pub fn focus_editor_by_path(ws: &mut TiledWorkspace, abs_path: &str) -> bool {
+    use crate::views::editor::EditorView;
+    let Some(panel) = ws.panel_mut(SlotId::Center as usize) else {
+        log::error!("focus_editor_by_path: no center panel");
+        return false;
+    };
+    let count = panel.tab_count();
+    let idx = (0..count).find(|&i| {
+        panel
+            .view_at_mut(i)
+            .and_then(|v| v.as_any_mut())
+            .and_then(|a| a.downcast_ref::<EditorView>())
+            .is_some_and(|ev| ev.path().to_string_lossy() == abs_path)
+    });
+    if let Some(i) = idx {
+        panel.set_active(i);
+        true
+    } else {
+        log::error!("focus_editor_by_path: not found abs_path={abs_path} tabs={count}");
+        false
+    }
+}

@@ -20,6 +20,15 @@ impl Default for PendingRequests {
     }
 }
 
+impl PendingRequests {
+    pub fn with_timeout(timeout_secs: u64) -> Self {
+        Self {
+            timeout_secs,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum PendingKind {
     GotoDefinition,

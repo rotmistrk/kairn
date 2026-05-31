@@ -54,6 +54,7 @@ impl Default for AppPalette {
             todo: TodoPalette::new(fg(7), fg(8), fg(1)),
             msg: MsgPalette::new(fg(9), fg(11), fg(7), fg(8)),
             badge: BadgePalette::new(fg(2), fg(3), fg(1)),
+            roots: default_roots_palette(),
         }
     }
 }
@@ -94,4 +95,18 @@ fn default_diag_palette() -> DiagPalette {
         },
     };
     DiagPalette::new(underline(1), underline(3), underline(6), underline(8))
+}
+
+fn default_roots_palette() -> RootsPalette {
+    // Excludes blue (active tab), gray/light-gray (inactive tab) to avoid confusion.
+    RootsPalette::new(vec![
+        Color::Ansi(2),  // green
+        Color::Ansi(3),  // yellow/orange
+        Color::Ansi(5),  // magenta
+        Color::Ansi(6),  // cyan
+        Color::Ansi(1),  // red
+        Color::Ansi(13), // bright magenta
+        Color::Ansi(14), // bright cyan
+        Color::Ansi(11), // bright yellow
+    ])
 }

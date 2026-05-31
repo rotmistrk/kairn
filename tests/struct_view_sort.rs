@@ -150,8 +150,9 @@ fn save_writes_file() {
     assert!(h.content_contains("changed"), "value should show 'changed' after edit");
     // Save via CM_SAVE dispatched through the group
     let event = txv_core::event::Event::Command {
-        id: kairn::commands::CM_SAVE,
+        id: kairn::commands::CM_FS_CHANGED,
         data: None,
+        broadcast: true,
     };
     h.backend.inject(event);
     h.run_cycles(1);

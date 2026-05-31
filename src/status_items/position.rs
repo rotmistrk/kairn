@@ -36,7 +36,7 @@ impl View for CtxPositionItem {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        let Event::Command { id, data } = event else {
+        let Event::Command { id, data, .. } = event else {
             return HandleResult::Ignored;
         };
         if *id == CM_CURSOR_MOVED {

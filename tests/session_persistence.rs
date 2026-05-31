@@ -27,7 +27,7 @@ fn save_and_load_session_roundtrip() {
     desktop.set_layout_mode(LayoutMode::Wide);
 
     // Save
-    session::save_session(&mut desktop, &root, &KiroTabRegistry::default());
+    session::save_session(&mut desktop, &root, &KiroTabRegistry::default(), &[]);
 
     // Verify file exists
     let state_path = root.join(".kairn.state");
@@ -38,7 +38,12 @@ fn save_and_load_session_roundtrip() {
     assert_eq!(loaded.version(), SESSION_VERSION);
     assert_eq!(loaded.layout(), "wide");
     assert_eq!(loaded.editor_tabs().len(), 1);
-    assert_eq!(loaded.editor_tabs()[0].path(), "hello.rs");
+    let saved_path = loaded.editor_tabs()[0].path();
+    assert!(
+        std::path::Path::new(saved_path).is_absolute(),
+        "session must store absolute paths, got: {saved_path}"
+    );
+    assert!(saved_path.ends_with("hello.rs"));
     assert_eq!(loaded.editor_tabs()[0].line(), 0);
     assert_eq!(loaded.editor_tabs()[0].col(), 5);
 }
@@ -71,11 +76,12 @@ fn restore_tabs_opens_editors() {
     let root = tmp.path().to_path_buf();
     std::fs::write(root.join("foo.rs"), "let x = 1;\nlet y = 2;\n").unwrap();
 
+    let abs_path = root.join("foo.rs").to_string_lossy().to_string();
     let state = SessionState::builder()
         .version(SESSION_VERSION)
         .layout("auto")
         .active_tab(0)
-        .editor_tabs(vec![EditorTabState::new("foo.rs", 1, 4)])
+        .editor_tabs(vec![EditorTabState::new(&abs_path, 1, 4)])
         .build();
 
     let mut desktop =
@@ -95,11 +101,12 @@ fn restore_skips_missing_files() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().to_path_buf();
 
+    let abs_path = root.join("nonexistent.rs").to_string_lossy().to_string();
     let state = SessionState::builder()
         .version(SESSION_VERSION)
         .layout("auto")
         .active_tab(0)
-        .editor_tabs(vec![EditorTabState::new("nonexistent.rs", 0, 0)])
+        .editor_tabs(vec![EditorTabState::new(&abs_path, 0, 0)])
         .build();
 
     let mut desktop =

@@ -88,7 +88,7 @@ impl ProblemsView {
 
     fn open_and_focus(&mut self) {
         self.open_at_cursor();
-        self.state.put_command(CM_TW_FOCUS_PANEL, Some(Box::new(1u8)));
+        self.state.put_command(CM_TW_FOCUS_PANEL, Some(Box::new(1usize)));
     }
 
     pub fn count(&self) -> usize {

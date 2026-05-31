@@ -13,15 +13,27 @@ use crate::clipboard::{copy_to_clipboard, paste_from_clipboard};
 
 use super::StateSnapshot;
 
-pub fn register(interp: &mut Interpreter, snapshot: Arc<Mutex<StateSnapshot>>) {
+use super::ScriptCommand;
+
+pub fn register(
+    interp: &mut Interpreter,
+    snapshot: Arc<Mutex<StateSnapshot>>,
+    commands: Arc<Mutex<Vec<ScriptCommand>>>,
+) {
     let snap = snapshot;
+    let cmds = commands;
     interp.register_fn("system", move |_interp, args| {
         let sub = super::arg_str(args, 0)?;
-        handle_system_cmd(&snap, args, &sub)
+        handle_system_cmd(&snap, &cmds, args, &sub)
     });
 }
 
-fn handle_system_cmd(snap: &Arc<Mutex<StateSnapshot>>, args: &[TclValue], sub: &str) -> Result<TclValue, TclError> {
+fn handle_system_cmd(
+    snap: &Arc<Mutex<StateSnapshot>>,
+    cmds: &Arc<Mutex<Vec<ScriptCommand>>>,
+    args: &[TclValue],
+    sub: &str,
+) -> Result<TclValue, TclError> {
     match sub {
         "exec" => handle_exec(args),
         "env" => {
@@ -38,6 +50,11 @@ fn handle_system_cmd(snap: &Arc<Mutex<StateSnapshot>>, args: &[TclValue], sub: &
             let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
             Ok(TclValue::Str(s.root_dir.clone()))
         }
+        "roots" => {
+            let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
+            Ok(TclValue::Str(s.roots.join("\n")))
+        }
+        "add-root" | "remove-root" => handle_root_cmd(cmds, args, sub),
         "home-dir" => Ok(TclValue::Str(env::var("HOME").unwrap_or_default())),
         "platform" => Ok(TclValue::Str(platform_name().into())),
         "clipboard-get" => {
@@ -82,6 +99,19 @@ fn handle_title_cmds(snap: &Arc<Mutex<StateSnapshot>>, args: &[TclValue], sub: &
         }
         other => Err(TclError::new(format!("system: unknown subcommand '{other}'"))),
     }
+}
+
+fn handle_root_cmd(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, args: &[TclValue], sub: &str) -> Result<TclValue, TclError> {
+    let path = super::arg_str(args, 1)?;
+    let cmd = if sub == "add-root" {
+        ScriptCommand::AddRoot { path }
+    } else {
+        ScriptCommand::RemoveRoot { path }
+    };
+    if let Ok(mut q) = cmds.lock() {
+        q.push(cmd);
+    }
+    Ok(TclValue::Str(String::new()))
 }
 
 fn handle_exec(args: &[TclValue]) -> Result<TclValue, TclError> {

@@ -44,6 +44,13 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         .script
         .update_snapshot(&vc, &root, &selection_text, &current_line_text, split_dir, split_linked);
     state.script.set_busy_count(busy_count);
+    let root_paths: Vec<&str> = state
+        .roots()
+        .all()
+        .iter()
+        .map(|r| r.path.to_str().unwrap_or(""))
+        .collect();
+    state.script.set_roots(&root_paths);
 
     ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }

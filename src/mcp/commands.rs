@@ -108,6 +108,7 @@ pub enum McpAction {
     /// Search project files (synchronous grep).
     SearchProject {
         pattern: String,
+        all_roots: bool,
     },
     /// Trigger a build command.
     RunBuild {
@@ -190,6 +191,16 @@ pub enum McpAction {
     /// Evaluate a Tcl script.
     EvalTcl {
         script: String,
+    },
+    /// List workspace roots.
+    ListRoots,
+    /// Add a workspace root.
+    AddRoot {
+        path: String,
+    },
+    /// Remove a workspace root.
+    RemoveRoot {
+        path: String,
     },
 }
 

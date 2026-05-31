@@ -48,7 +48,7 @@ impl EditorView {
     fn action_save(&mut self) {
         let name = self.path.file_name().unwrap_or(self.path.as_os_str()).to_os_string();
         if self.save_buffer() {
-            self.state.put_command(CM_SAVE, None);
+            self.state.put_broadcast(CM_FS_CHANGED, None);
             let msg = Message::info("editor", format!("Saved: {}", name.to_string_lossy()));
             self.state
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));

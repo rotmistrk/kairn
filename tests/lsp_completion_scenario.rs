@@ -25,7 +25,11 @@ fn open_file(h: &mut TestHarness, path: std::path::PathBuf) {
 
 /// Send a command event directly to the focused view (bypasses main handler).
 fn send_to_view(h: &mut TestHarness, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
-    let event = Event::Command { id, data };
+    let event = Event::Command {
+        broadcast: false,
+        id,
+        data,
+    };
     h.backend.inject(event);
     h.run_cycles(1);
 }
@@ -129,6 +133,7 @@ fn lsp_error_shown_in_status() {
     use txv_core::message::Message;
     let msg = Message::error("lsp", "not ready");
     h.backend.inject(Event::Command {
+        broadcast: false,
         id: txv_widgets::CM_STATUS_MESSAGE,
         data: Some(Box::new(msg)),
     });

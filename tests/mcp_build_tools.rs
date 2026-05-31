@@ -31,6 +31,7 @@ fn mcp_search_project_finds_matches() {
         &mut h,
         McpAction::SearchProject {
             pattern: "hello".to_string(),
+            all_roots: false,
         },
     );
     assert!(result.is_ok(), "search_project failed: {result:?}");
@@ -62,6 +63,7 @@ fn mcp_search_project_invalid_regex_returns_error() {
         &mut h,
         McpAction::SearchProject {
             pattern: "[invalid".to_string(),
+            all_roots: false,
         },
     );
     assert!(result.is_err(), "Expected error for invalid regex");

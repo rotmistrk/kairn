@@ -154,11 +154,12 @@ fn build_search_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "search_project",
-            "description": "Search project files for a regex pattern (respects .gitignore)",
+            "description": "Search project files for a regex pattern. Use all_roots for all workspace roots.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "pattern": {"type": "string", "description": "Regex pattern to search for"}
+                    "pattern": {"type": "string", "description": "Regex pattern to search for"},
+                    "all_roots": {"type": "boolean", "description": "Search all roots (default: primary only)"}
                 },
                 "required": ["pattern"]
             }

@@ -1,13 +1,14 @@
 //! MCP helper functions — file/tab/terminal operations.
 
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use txv_core::prelude::*;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::broker::OpenResult;
-use crate::commands::{SplitRequest, CM_SPLIT};
-use crate::desktop::{close_tab_by_title, focus_tab_by_title, SlotId};
+use crate::commands::{RootsChangedData, SplitRequest, CM_ROOTS_CHANGED, CM_SPLIT};
+use crate::desktop::{close_tab_by_title, focus_editor_by_path, SlotId};
 use crate::handler::AppState;
 use crate::handler_evict::try_insert_tab;
 use crate::views::editor::EditorView;
@@ -27,7 +28,7 @@ pub(crate) fn mcp_open_file(
     let title = rel_path.to_string();
     match state.broker.open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
-            focus_tab_by_title(desktop, SlotId::Center, &title);
+            focus_editor_by_path(desktop, &path_str);
         }
         OpenResult::Opened => {
             let defaults = &state.settings.editor_defaults;
@@ -89,16 +90,26 @@ pub(crate) fn find_editor<'a>(desktop: &'a mut TiledWorkspace, name: &str) -> Re
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
         return Err("Panel not found".to_string());
     };
-    for i in 0..panel.tab_count() {
-        if panel.tab_title(i) == Some(name) {
-            let view = panel.view_at_mut(i).ok_or("View not accessible")?;
-            let any = view.as_any_mut().ok_or("View has no Any")?;
-            return any
-                .downcast_mut::<EditorView>()
-                .ok_or_else(|| format!("Tab '{name}' is not an editor"));
-        }
-    }
-    Err(format!("Tab not found: {name}"))
+    // Match by title first, then by path suffix
+    let idx = (0..panel.tab_count())
+        .find(|&i| panel.tab_title(i) == Some(name))
+        .or_else(|| {
+            (0..panel.tab_count()).find(|&i| {
+                panel
+                    .view_at_mut(i)
+                    .and_then(|v| v.as_any_mut())
+                    .and_then(|a| a.downcast_ref::<EditorView>())
+                    .is_some_and(|ev| {
+                        let p = ev.path().to_string_lossy();
+                        p.ends_with(name) || p == name
+                    })
+            })
+        })
+        .ok_or_else(|| format!("Tab not found: {name}"))?;
+    let view = panel.view_at_mut(idx).ok_or("View not accessible")?;
+    let any = view.as_any_mut().ok_or("View has no Any")?;
+    any.downcast_mut::<EditorView>()
+        .ok_or_else(|| format!("Tab '{name}' is not an editor"))
 }
 
 pub(crate) fn mcp_diff_revert(desktop: &mut TiledWorkspace, name: &str) -> Result<serde_json::Value, String> {
@@ -156,4 +167,35 @@ pub(crate) fn mcp_eval_tcl(state: &mut AppState, script: &str) -> Result<serde_j
         Ok(result) => Ok(serde_json::json!({"result": result})),
         Err(e) => Err(format!("Tcl error: {e}")),
     }
+}
+
+pub(crate) fn mcp_list_roots(state: &AppState) -> Result<serde_json::Value, String> {
+    let roots: Vec<&str> = state.roots().all().iter().filter_map(|r| r.path.to_str()).collect();
+    Ok(serde_json::json!({"roots": roots}))
+}
+
+pub(crate) fn mcp_add_root(state: &mut AppState, sink: &EventSink, path: &str) -> Result<serde_json::Value, String> {
+    let p = PathBuf::from(path);
+    if !p.is_dir() {
+        return Err(format!("Not a directory: {path}"));
+    }
+    let added = state.roots_mut().add(p);
+    if added {
+        emit_roots_changed_sink(state, sink);
+    }
+    Ok(serde_json::json!({"added": added}))
+}
+
+pub(crate) fn mcp_remove_root(state: &mut AppState, sink: &EventSink, path: &str) -> Result<serde_json::Value, String> {
+    let p = Path::new(path);
+    let removed = state.roots_mut().remove(p);
+    if removed {
+        emit_roots_changed_sink(state, sink);
+    }
+    Ok(serde_json::json!({"removed": removed}))
+}
+
+fn emit_roots_changed_sink(state: &AppState, sink: &EventSink) {
+    let data = RootsChangedData::from_roots(state.roots());
+    sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
 }

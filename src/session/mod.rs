@@ -21,8 +21,8 @@ pub use restore::{restore_kiro_tabs, restore_session, restore_tabs};
 const STATE_FILE: &str = ".kairn.state";
 
 /// Collect current state from the desktop and save to `.kairn.state`.
-pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry: &KiroTabRegistry) {
-    let state = save::collect_state(desktop, root_dir, kiro_registry);
+pub fn save_session(desktop: &mut TiledWorkspace, root_dir: &Path, kiro_registry: &KiroTabRegistry, roots: &[&Path]) {
+    let state = save::collect_state(desktop, root_dir, kiro_registry, roots);
     if state.editor_tabs.is_empty() && state.unfolded_dirs.is_empty() && state.kiro_sessions.is_empty() {
         return;
     }

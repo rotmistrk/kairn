@@ -7,10 +7,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use txv_core::cell::Color;
+use txv_core::cursor::{CursorRequest, CursorShape};
 use txv_core::prelude::*;
 use txv_widgets::{FileTreeData, TreeView};
 
-use crate::commands::{OpenFileRequest, CM_COMMAND_PREFILL, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_SAVE};
+use crate::app_palette::app_palette;
+use crate::commands::{RootsChangedData, CM_COMMAND_PREFILL, CM_FS_CHANGED, CM_OPEN_FILES_CHANGED, CM_ROOTS_CHANGED};
 use std::collections::HashSet;
 
 use crate::git_status::{collect_git_status, FileStatus};
@@ -18,11 +20,11 @@ use crate::git_watcher::WatchHandle;
 
 pub struct FileTreeView {
     pub(super) inner: TreeView<FileTreeData>,
-    last_key_was_right: bool,
-    watcher: Option<WatchHandle>,
+    pub(super) last_key_was_right: bool,
+    pub(super) watcher: Option<WatchHandle>,
     pub(super) root: PathBuf,
-    refresh_counter: u16,
-    filter_active: bool,
+    pub(super) refresh_counter: u16,
+    pub(super) filter_active: bool,
     pub(super) marked: HashSet<PathBuf>,
 }
 
@@ -42,12 +44,30 @@ impl FileTreeView {
         view
     }
 
-    fn update_colors(&mut self) {
-        let statuses = collect_git_status(&self.root);
-        let colors: HashMap<String, Color> = statuses
-            .into_iter()
-            .map(|(path, status)| (path, status_color(status)))
-            .collect();
+    /// Create a multi-root file tree view.
+    pub fn with_roots(roots: Vec<PathBuf>, watcher: Option<WatchHandle>) -> Self {
+        let primary = roots.first().cloned().unwrap_or_default();
+        let data = FileTreeData::with_roots(roots);
+        let mut view = Self {
+            inner: TreeView::new(data),
+            last_key_was_right: false,
+            watcher,
+            root: primary,
+            refresh_counter: 0,
+            filter_active: false,
+            marked: HashSet::new(),
+        };
+        view.update_colors();
+        view
+    }
+
+    pub(super) fn update_colors(&mut self) {
+        let mut colors: HashMap<String, Color> = HashMap::new();
+        for root in self.inner.data.all_roots() {
+            for (path, status) in collect_git_status(root) {
+                colors.insert(path, status_color(status));
+            }
+        }
         self.inner.data.set_colors(colors);
     }
 
@@ -58,7 +78,7 @@ impl FileTreeView {
         }
     }
 
-    fn clear_filter(&mut self) {
+    pub(super) fn clear_filter(&mut self) {
         if self.filter_active {
             self.filter_active = false;
             self.inner.data.set_filter("");
@@ -78,7 +98,7 @@ impl FileTreeView {
 }
 
 fn status_color(status: FileStatus) -> Color {
-    let app = crate::app_palette::app_palette();
+    let app = app_palette();
     match status {
         FileStatus::Modified => app.git().modified().fg,
         FileStatus::Added => app.git().added().fg,
@@ -100,10 +120,10 @@ impl View for FileTreeView {
         if !self.filter_active {
             return None;
         }
-        Some(txv_core::cursor::CursorRequest {
+        Some(CursorRequest {
             x: 1 + self.inner.data.filter().len() as u16,
             y: self.inner.bounds().h.saturating_sub(1),
-            shape: txv_core::cursor::CursorShape::Bar,
+            shape: CursorShape::Bar,
         })
     }
 
@@ -120,12 +140,13 @@ impl View for FileTreeView {
         if let Event::Tick = event {
             return self.handle_tick();
         }
-        if let Event::Command { id: CM_SAVE, .. } = event {
-            self.notify_save();
-            self.inner.data.refresh();
-            self.inner.mark_dirty();
-            self.update_colors();
-            return HandleResult::Ignored;
+        if let Event::Command {
+            id,
+            data,
+            broadcast: true,
+        } = event
+        {
+            return self.handle_broadcast(*id, data);
         }
         if let Event::Key(key) = event {
             self.last_key_was_right = key.code == KeyCode::Right;
@@ -133,7 +154,7 @@ impl View for FileTreeView {
                 return result;
             }
         }
-        if let Event::Command { id, .. } = event {
+        if let Event::Command { id, data, .. } = event {
             if self.handle_mark_cmd(*id) {
                 return HandleResult::Consumed;
             }
@@ -143,8 +164,6 @@ impl View for FileTreeView {
                     .put_command(CM_COMMAND_PREFILL, Some(Box::new(prefill)));
                 return HandleResult::Consumed;
             }
-        }
-        if let Event::Command { id, data } = event {
             if *id == CM_OK {
                 return self.handle_cm_ok(data);
             }
@@ -154,122 +173,27 @@ impl View for FileTreeView {
 }
 
 impl FileTreeView {
-    fn handle_tick(&mut self) -> HandleResult {
-        if self.filter_active {
+    fn handle_broadcast(&mut self, id: u16, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        if id == CM_FS_CHANGED {
+            return self.handle_save();
+        }
+        if id == CM_ROOTS_CHANGED {
+            if let Some(rcd) = data.as_ref().and_then(|d| d.downcast_ref::<RootsChangedData>()) {
+                self.inner.data.set_roots(rcd.paths.clone());
+                self.inner.data.set_root_labels(&rcd.labels);
+                self.inner.data.set_root_badge_colors(rcd.colors.clone());
+                self.inner.mark_dirty();
+                self.update_colors();
+            }
             return HandleResult::Ignored;
         }
-        self.refresh_counter += 1;
-        if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
-            self.update_colors();
-            self.inner.data.refresh();
-            self.inner.mark_dirty();
-            self.refresh_counter = 0;
-        }
-        if self.refresh_counter >= 60 {
-            self.refresh_counter = 0;
-            self.inner.data.refresh();
-            self.inner.mark_dirty();
-            self.update_colors();
+        if id == CM_OPEN_FILES_CHANGED {
+            if let Some(set) = data.as_ref().and_then(|d| d.downcast_ref::<HashSet<PathBuf>>()) {
+                self.inner.data.set_open_files(set.clone());
+                self.inner.mark_dirty();
+            }
+            return HandleResult::Ignored;
         }
         HandleResult::Ignored
-    }
-
-    fn handle_filter_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
-        match key.code {
-            KeyCode::Char('/') if !self.filter_active => {
-                self.filter_active = true;
-                self.inner.data.ensure_all_loaded();
-                self.inner.mark_dirty();
-                Some(HandleResult::Consumed)
-            }
-            KeyCode::Esc if self.filter_active => {
-                self.clear_filter();
-                Some(HandleResult::Consumed)
-            }
-            KeyCode::Backspace if self.filter_active => {
-                let mut f = self.inner.data.filter().to_string();
-                f.pop();
-                if f.is_empty() {
-                    self.clear_filter();
-                } else {
-                    self.inner.data.set_filter(&f);
-                    self.inner.cursor = 0;
-                    self.inner.mark_dirty();
-                }
-                Some(HandleResult::Consumed)
-            }
-            KeyCode::Char(c) if self.filter_active => {
-                let mut f = self.inner.data.filter().to_string();
-                f.push(c);
-                self.inner.data.set_filter(&f);
-                self.inner.cursor = 0;
-                self.inner.mark_dirty();
-                Some(HandleResult::Consumed)
-            }
-            _ => None,
-        }
-    }
-
-    fn handle_cm_ok(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
-        if let Some(boxed) = data.as_ref() {
-            if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                let path = self.inner.data.path(node_id).to_path_buf();
-                if !path.is_dir() {
-                    let cmd = if self.last_key_was_right {
-                        CM_OPEN_FILE_FOCUS
-                    } else {
-                        CM_OPEN_FILE
-                    };
-                    self.inner
-                        .state
-                        .put_command(cmd, Some(Box::new(OpenFileRequest::new(path))));
-                }
-                return HandleResult::Consumed;
-            }
-        }
-        HandleResult::Ignored
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::FileTreeView;
-    use crate::commands::CM_OPEN_FILE;
-    use txv_core::prelude::*;
-
-    #[test]
-    fn right_arrow_on_expanded_dir_does_not_open_file() {
-        // Create a temp dir with a subdirectory
-        let tmp = tempfile::tempdir().unwrap();
-        let sub = tmp.path().join("subdir");
-        std::fs::create_dir(&sub).unwrap();
-        std::fs::write(sub.join("file.txt"), "hello").unwrap();
-
-        let sink = EventSink::new();
-        let mut view = FileTreeView::new(tmp.path().to_path_buf(), None);
-        view.set_bounds(Rect::new(0, 0, 40, 10));
-        view.set_sink(sink.clone());
-
-        // First Right arrow expands the directory
-        let right = Event::Key(KeyEvent {
-            code: KeyCode::Right,
-            modifiers: KeyMod::default(),
-        });
-        view.handle(&right);
-        // Should not emit CM_OPEN_FILE (just expanded)
-        let events = sink.drain();
-        assert!(!events
-            .iter()
-            .any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)));
-
-        // Second Right arrow on already-expanded dir should NOT emit CM_OPEN_FILE
-        view.handle(&right);
-        let events = sink.drain();
-        assert!(
-            !events
-                .iter()
-                .any(|e| matches!(e, Event::Command { id, .. } if *id == CM_OPEN_FILE)),
-            "CM_OPEN_FILE should not be emitted for directories"
-        );
     }
 }

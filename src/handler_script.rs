@@ -151,6 +151,7 @@ fn dispatch_save(ctx: &mut CommandContext, state: &mut AppState) {
         }
     }
     ctx.sink.push_command(CM_SAVE, None);
+    ctx.sink.push_broadcast(CM_FS_CHANGED, None);
     let _ = state;
 }
 

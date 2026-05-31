@@ -6,7 +6,7 @@ use std::path::Path;
 use txv_core::prelude::*;
 
 use crate::commands::*;
-use crate::desktop::{active_tab_title, close_tab_by_title, SlotId};
+use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::structured::json_doc::JsonDoc;
@@ -69,22 +69,37 @@ pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileReque
 
 /// Open the current file as a CSV table view.
 pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState) {
+    use crate::views::editor::EditorView;
     let Some(d) = downcast_desktop(desktop) else {
         return;
     };
-    let Some(title) = active_tab_title(d, SlotId::Center).map(String::from) else {
+    let abs_path = d
+        .panel_mut(SlotId::Center as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_ref::<EditorView>())
+        .map(|ev| ev.path().to_path_buf());
+    let Some(path) = abs_path else {
         return;
     };
-    let path = state.root_dir.join(&title);
     if !path.is_file() {
         return;
     }
     let Ok(content) = fs::read_to_string(&path) else {
         return;
     };
-    close_tab_by_title(d, SlotId::Center, &title);
-    state.broker.close(&title);
-    let _ = state.broker.open(&title, SlotId::Center, 0);
+    let abs_key = path.to_string_lossy().to_string();
+    let title = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("untitled")
+        .to_string();
+    let panel = d.panel_mut(SlotId::Center as usize);
+    if let Some(p) = panel {
+        p.close_active();
+    }
+    state.broker.close(&abs_key);
+    let _ = state.broker.open(&abs_key, SlotId::Center, 0);
     let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
     try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

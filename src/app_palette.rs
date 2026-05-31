@@ -47,6 +47,7 @@ pub struct AppPalette {
     pub(crate) todo: TodoPalette,
     pub(crate) msg: MsgPalette,
     pub(crate) badge: BadgePalette,
+    pub(crate) roots: RootsPalette,
 }
 
 impl AppPalette {
@@ -73,6 +74,9 @@ impl AppPalette {
     }
     pub fn badge(&self) -> &BadgePalette {
         &self.badge
+    }
+    pub fn roots(&self) -> &RootsPalette {
+        &self.roots
     }
 
     pub fn git_mut(&mut self) -> &mut GitPalette {

@@ -49,7 +49,7 @@ impl ScriptEngine {
         let mut interp = Interpreter::new();
         bridge_editor::register(&mut interp, commands.clone(), snapshot.clone());
         bridge_view::register(&mut interp, commands.clone());
-        bridge_system::register(&mut interp, snapshot.clone());
+        bridge_system::register(&mut interp, snapshot.clone(), commands.clone());
         bridge_build::register(&mut interp, commands.clone());
         bridge_build::register_grep(&mut interp, commands.clone());
         bridge_keymap::register(&mut interp, commands.clone());
@@ -170,6 +170,12 @@ impl ScriptEngine {
     pub fn set_busy_count(&self, count: usize) {
         if let Ok(mut snap) = self.snapshot.lock() {
             snap.busy_count = count;
+        }
+    }
+
+    pub fn set_roots(&self, roots: &[&str]) {
+        if let Ok(mut snap) = self.snapshot.lock() {
+            snap.roots = roots.iter().map(|s| s.to_string()).collect();
         }
     }
 

@@ -7,6 +7,8 @@
 # set run.command "cargo run"
 # set test.command "cargo test"
 
+set kiro.cmd %[kiro-cli, chat, --tui]
+
 # ─── Editor ──────────────────────────────────────────────────────────────────
 # set editor.tabstop 4
 

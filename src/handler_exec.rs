@@ -144,7 +144,7 @@ mod tests {
 
         let events = sink.drain();
         let produced_unknown = events.iter().any(|ev| {
-            if let txv_core::event::Event::Command { id, data } = ev {
+            if let txv_core::event::Event::Command { id, data, .. } = ev {
                 if *id == txv_widgets::CM_STATUS_MESSAGE {
                     if let Some(msg) = data
                         .as_ref()

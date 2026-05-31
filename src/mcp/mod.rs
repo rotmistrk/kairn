@@ -1,6 +1,7 @@
 //! MCP server module — Unix socket server for kiro integration.
 
 pub mod agent_file;
+pub mod agent_patch;
 pub mod bridge;
 pub mod collect;
 pub mod command_queue;

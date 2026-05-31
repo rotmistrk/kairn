@@ -63,7 +63,7 @@ impl View for LspStatusItem {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        if let Event::Command { id, data } = event {
+        if let Event::Command { id, data, .. } = event {
             if *id == CM_LSP_STATUS_UPDATE {
                 if let Some(snapshot) = data
                     .as_ref()

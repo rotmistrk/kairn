@@ -116,7 +116,7 @@ pub static TABLE_PART1: &[ExecEntry] = &[
     ExecEntry {
         names: &["kiro"],
         requires_arg: false,
-        handler: crate::handler_exec_edit::cmd_kiro,
+        handler: crate::handler_kiro::cmd_kiro,
     },
     ExecEntry {
         names: &["layout"],

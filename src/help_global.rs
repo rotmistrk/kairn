@@ -166,6 +166,9 @@ fn help_commands_core() -> &'static str {
   paste           Paste from system clipboard
   messages        Show messages window
   grep <pattern>  Search files for pattern
+  grep -a <pat>   Search all workspace roots
+  add-root <path> Add workspace root directory
+  remove-root <p> Remove workspace root
 
 "
 }

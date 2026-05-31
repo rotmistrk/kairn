@@ -19,6 +19,9 @@ pub type CommandList = Arc<Mutex<Vec<String>>>;
 /// Shared list of known LSP language IDs for completions.
 pub type LspLanguageList = Arc<Mutex<Vec<String>>>;
 
+/// Shared list of workspace root paths for completions.
+pub type RootsList = Arc<Mutex<Vec<String>>>;
+
 /// Create a new command list from the dispatch table + extras.
 pub fn new_command_list() -> CommandList {
     let mut cmds: Vec<String> = crate::handler_exec::dispatch_table()
@@ -36,6 +39,7 @@ pub struct AppCompleter {
     root: PathBuf,
     commands: CommandList,
     lsp_languages: LspLanguageList,
+    roots: RootsList,
 }
 
 impl AppCompleter {
@@ -44,11 +48,35 @@ impl AppCompleter {
             root,
             commands,
             lsp_languages: Arc::new(Mutex::new(Vec::new())),
+            roots: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
     pub fn set_lsp_languages(&mut self, langs: LspLanguageList) {
         self.lsp_languages = langs;
+    }
+
+    pub fn set_roots(&mut self, roots: RootsList) {
+        self.roots = roots;
+    }
+
+    fn complete_roots(
+        &self,
+        partial: &str,
+        visitor: &mut CompletionVisitor<'_>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let roots = self.roots.lock().unwrap_or_else(|e| e.into_inner());
+        for r in roots.iter().filter(|r| r.contains(partial)) {
+            let e = Entry {
+                text: format!("remove-root {r}"),
+                display: r.clone(),
+                kind: "path",
+            };
+            if !visitor(&e)? {
+                break;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -61,10 +89,16 @@ impl Completer for AppCompleter {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let trimmed = input.trim();
         if let Some(path_part) = trimmed.strip_prefix("edit ") {
-            return path::complete_path(path_part, &self.root, visitor);
+            return path::complete_fs(path_part, &self.root, "edit", &path::accept_all, visitor);
         }
         if let Some(path_part) = trimmed.strip_prefix("e ") {
-            return path::complete_path(path_part, &self.root, visitor);
+            return path::complete_fs(path_part, &self.root, "e", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("add-root ") {
+            return path::complete_fs(path_part, &self.root, "add-root", &path::accept_dirs, visitor);
+        }
+        if let Some(partial) = trimmed.strip_prefix("remove-root ") {
+            return self.complete_roots(partial, visitor);
         }
         if let Some(sub) = trimmed.strip_prefix("theme ") {
             return complete_theme(sub, visitor);

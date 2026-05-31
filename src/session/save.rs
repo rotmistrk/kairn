@@ -16,6 +16,7 @@ pub(super) fn collect_state(
     desktop: &mut TiledWorkspace,
     root_dir: &Path,
     kiro_registry: &KiroTabRegistry,
+    roots: &[&Path],
 ) -> SessionState {
     let layout = match desktop.layout_mode() {
         LayoutMode::Auto => "auto",
@@ -27,6 +28,12 @@ pub(super) fn collect_state(
     let unfolded_dirs = collect_unfolded_dirs(desktop, root_dir);
     let kiro_sessions = kiro_registry.to_state();
     let ws_state = desktop.save_state();
+    // Save additional roots (skip primary which is root_dir itself).
+    let saved_roots: Vec<String> = roots
+        .iter()
+        .filter(|r| **r != root_dir)
+        .map(|r| r.to_string_lossy().to_string())
+        .collect();
 
     SessionState {
         version: SESSION_VERSION,
@@ -39,6 +46,7 @@ pub(super) fn collect_state(
         unfolded_dirs,
         kiro_sessions,
         split,
+        roots: saved_roots,
     }
 }
 
@@ -91,7 +99,7 @@ fn child_active_index(child: Option<&mut Box<dyn View>>) -> usize {
         .map_or(0, |tp| tp.active_index())
 }
 
-fn collect_tabs_from_child(child: Option<&mut Box<dyn View>>, root_dir: &Path) -> Vec<EditorTabState> {
+fn collect_tabs_from_child(child: Option<&mut Box<dyn View>>, _root_dir: &Path) -> Vec<EditorTabState> {
     use txv_widgets::tab_panel::TabPanel;
     let Some(child) = child else {
         return Vec::new();
@@ -114,14 +122,9 @@ fn collect_tabs_from_child(child: Option<&mut Box<dyn View>>, root_dir: &Path) -
         if path_str.starts_with('[') {
             continue;
         }
-        let rel = editor
-            .path()
-            .strip_prefix(root_dir)
-            .unwrap_or(editor.path())
-            .to_string_lossy()
-            .to_string();
+        // Store absolute path
         tabs.push(EditorTabState {
-            path: rel,
+            path: path_str,
             line: editor.editor.cursor_line as u32,
             col: editor.editor.cursor_col as u32,
         });

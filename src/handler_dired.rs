@@ -8,7 +8,7 @@ use txv_core::program::CommandContext;
 use txv_widgets::CM_STATUS_MESSAGE;
 
 use crate::app_state::AppState;
-use crate::commands::CM_SAVE;
+use crate::commands::CM_FS_CHANGED;
 
 fn msg(ctx: &mut CommandContext, text: String) {
     ctx.sink
@@ -21,7 +21,7 @@ fn err(ctx: &mut CommandContext, text: String) {
 }
 
 fn refresh_tree(ctx: &mut CommandContext) {
-    ctx.sink.push_command(CM_SAVE, None);
+    ctx.sink.push_broadcast(CM_FS_CHANGED, None);
 }
 
 pub(crate) fn cmd_new_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {

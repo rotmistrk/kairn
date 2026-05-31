@@ -59,13 +59,16 @@ fn dispatch_mcp_action(
         McpAction::SaveFile { name } => mcp_save_file(desktop, name),
         McpAction::GetDiagnostics { name } => mcp_get_diagnostics(desktop, name),
         McpAction::GetBuildErrors => mcp_get_build_errors(state),
-        McpAction::SearchProject { pattern } => mcp_search_project(state, pattern),
+        McpAction::SearchProject { pattern, all_roots } => mcp_search_project(state, pattern, *all_roots),
         McpAction::RunBuild { command } => mcp_run_build(state, sink, command),
         McpAction::DiffRevert { name } => mcp_diff_revert(desktop, name),
         McpAction::SendTerminalInput { name, input } => mcp_send_terminal_input(desktop, name, input),
         McpAction::Undo { name } => mcp_undo_redo(desktop, name, true),
         McpAction::Redo { name } => mcp_undo_redo(desktop, name, false),
         McpAction::EvalTcl { script } => mcp_eval_tcl(state, script),
+        McpAction::ListRoots => mcp_list_roots(state),
+        McpAction::AddRoot { path } => mcp_add_root(state, sink, path),
+        McpAction::RemoveRoot { path } => mcp_remove_root(state, sink, path),
         _ => dispatch_mcp_split_git_lsp(action, desktop, state, sink),
     }
 }

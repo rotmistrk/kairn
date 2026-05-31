@@ -290,12 +290,16 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 
 # ─── Grep ────────────────────────────────────────────────────────────────────
 # grep <pattern>               ;# search project files, open results tab
+# grep -a <pattern>            ;# search all workspace roots
 
 # ─── System Commands ─────────────────────────────────────────────────────────
 # system exec <cmd>            ;# run shell command, return output
 # system env <var>             ;# get environment variable
 # system set-env <var> <val>   ;# set environment variable
 # system root-dir              ;# project root directory
+# system roots                 ;# all workspace roots (newline-separated)
+# system add-root <path>       ;# add workspace root directory
+# system remove-root <path>    ;# remove workspace root
 # system home-dir              ;# user home directory
 # system platform              ;# os name
 # system clipboard-get         ;# read system clipboard

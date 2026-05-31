@@ -135,3 +135,36 @@ pub(crate) fn save_all_dirty(desktop: &mut TiledWorkspace) {
         }
     }
 }
+
+/// Handle CM_FILE_CLOSED: unregister from broker, release buffer, show Welcome if empty.
+pub(crate) fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState) {
+    use crate::handler_evict::complete_pending_insert;
+    use crate::slots::insert_tab;
+    use crate::views::welcome::WelcomeView;
+
+    if let Some(boxed) = ctx.data.as_ref() {
+        if let Some(path) = boxed.downcast_ref::<String>() {
+            state.broker.close(path);
+            state.kiro_registry.remove(path);
+            state.tab_titles_dirty = true;
+            let full = state.root_dir.join(path);
+            if let Some(id) = state.buffers.find_by_path(&full.canonicalize().unwrap_or(full)) {
+                state.buffers.release(id);
+            }
+        }
+    }
+    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        complete_pending_insert(desktop, state);
+        let empty = desktop
+            .panel(SlotId::Center as usize)
+            .is_none_or(|p| p.tab_count() == 0);
+        if empty {
+            insert_tab(
+                desktop,
+                SlotId::Center,
+                "Welcome",
+                Box::new(WelcomeView::new(state.root_dir.clone())),
+            );
+        }
+    }
+}

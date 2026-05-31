@@ -81,3 +81,20 @@ pub fn tool_eval_tcl(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Val
         script: script.to_string(),
     })
 }
+
+pub fn tool_workspace_roots(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let action = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
+    match action {
+        "list" => queue.send(McpAction::ListRoots),
+        "add" => {
+            let path = args.get("path").and_then(Value::as_str).ok_or("Missing 'path'")?;
+            queue.send(McpAction::AddRoot { path: path.to_string() })
+        }
+        "remove" => {
+            let path = args.get("path").and_then(Value::as_str).ok_or("Missing 'path'")?;
+            queue.send(McpAction::RemoveRoot { path: path.to_string() })
+        }
+        _ => Err(format!("Unknown workspace_roots action: {action}")),
+    }
+}

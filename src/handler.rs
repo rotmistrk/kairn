@@ -8,19 +8,21 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub use crate::app_state::AppState;
 use crate::commands::*;
-use crate::handler_badges::{auto_close_exited_terminals, sync_dirty_badges, sync_pty_badges};
+use crate::handler_badges::{
+    auto_close_exited_terminals, sync_dirty_badges, sync_pty_badges, sync_root_badges, sync_tab_titles,
+};
 use crate::handler_build::{
     handle_build, handle_next_error, handle_prev_error, handle_run, handle_test, handle_test_at_cursor,
     handle_test_file,
 };
 use crate::handler_clipboard::{handle_clipboard_commands, update_problems_view};
-use crate::handler_close::{handle_app_quit, handle_save_all, handle_tab_close};
+use crate::handler_close::{handle_app_quit, handle_file_closed, handle_save_all, handle_tab_close};
 use crate::handler_confirm::{handle_confirm_response, handle_set_confirm_context};
 use crate::handler_context::{broadcast_context, handle_cursor_moved, update_window_title};
 use crate::handler_drain::{
     drain_build, drain_grep, handle_todo_action, open_todo_note, refresh_plugins, save_todo_note, update_todo_note,
 };
-use crate::handler_evict::{complete_pending_insert, try_insert_tab};
+use crate::handler_evict::try_insert_tab;
 use crate::handler_exec::handle_execute_command;
 use crate::handler_git::{
     handle_git_commit, handle_git_commit_prompt, handle_git_stage, handle_git_unstage, handle_git_untrack,
@@ -37,12 +39,11 @@ use crate::handler_split_nav::{handle_diff_split, handle_open_in_split};
 use crate::handler_theme::{handle_set_glyphs, handle_set_syntax_theme, handle_toggle_theme};
 use crate::lsp::handler::{handle_lsp_command, poll_lsp};
 use crate::mcp::collect::{collect_messages, collect_snapshot, collect_terminal_content};
-use crate::slots::{focus_tab_by_title, insert_tab, next_tab_name, SlotId};
+use crate::slots::{focus_tab_by_title, next_tab_name, SlotId};
 use crate::suspend::{peek_screen, suspend_to_shell};
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
 use crate::views::terminal::new_shell_terminal;
-use crate::views::welcome::WelcomeView;
 
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
@@ -80,6 +81,8 @@ fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
     auto_close_exited_terminals(ctx, state);
     sync_dirty_badges(ctx);
     sync_pty_badges(ctx, state);
+    sync_tab_titles(ctx, state);
+    sync_root_badges(ctx, state);
 }
 
 fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
@@ -217,33 +220,6 @@ fn handle_new_shell(ctx: &mut CommandContext, state: &mut AppState) {
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("shell", format!("Started: {name}")))),
         );
-    }
-}
-
-fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(boxed) = ctx.data.as_ref() {
-        if let Some(path) = boxed.downcast_ref::<String>() {
-            state.broker.close(path);
-            state.kiro_registry.remove(path);
-            let full = state.root_dir.join(path);
-            if let Some(id) = state.buffers.find_by_path(&full.canonicalize().unwrap_or(full)) {
-                state.buffers.release(id);
-            }
-        }
-    }
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        complete_pending_insert(desktop, state);
-        let empty = desktop
-            .panel(SlotId::Center as usize)
-            .is_none_or(|p| p.tab_count() == 0);
-        if empty {
-            insert_tab(
-                desktop,
-                SlotId::Center,
-                "Welcome",
-                Box::new(WelcomeView::new(state.root_dir.clone())),
-            );
-        }
     }
 }
 

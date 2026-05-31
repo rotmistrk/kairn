@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 pub fn extra_tool_definitions() -> Vec<Value> {
     let mut tools = terminal_and_git_definitions();
     tools.extend(lsp_and_eval_definitions());
+    tools.push(workspace_roots_definition());
     tools
 }
 
@@ -86,4 +87,19 @@ fn undo_and_eval_definitions() -> Vec<Value> {
             }
         }),
     ]
+}
+
+fn workspace_roots_definition() -> Value {
+    json!({
+        "name": "workspace_roots",
+        "description": "Manage workspace roots: list, add, or remove project directories",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["list", "add", "remove"]},
+                "path": {"type": "string", "description": "Directory path (for add/remove)"}
+            },
+            "required": ["action"]
+        }
+    })
 }

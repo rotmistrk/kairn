@@ -35,6 +35,7 @@ fn inject_completion(h: &mut TestHarness, labels: &[&str]) {
         .map(|l| CompletionItem::new(l.to_string(), None, None, CompletionKind::Other))
         .collect();
     h.backend.inject(Event::Command {
+        broadcast: false,
         id: CM_LSP_COMPLETION,
         data: Some(Box::new(items)),
     });

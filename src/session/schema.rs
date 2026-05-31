@@ -28,6 +28,9 @@ pub struct SessionState {
     pub(crate) kiro_sessions: Vec<KiroSessionState>,
     #[serde(default)]
     pub(crate) split: Option<SplitState>,
+    /// Additional workspace root directories (absolute paths).
+    #[serde(default)]
+    pub(crate) roots: Vec<String>,
 }
 
 impl SessionState {
@@ -62,6 +65,10 @@ impl SessionState {
         self.split.as_ref()
     }
 
+    pub fn roots(&self) -> &[String] {
+        &self.roots
+    }
+
     pub fn builder() -> SessionStateBuilder {
         SessionStateBuilder::default()
     }
@@ -80,6 +87,7 @@ impl Default for SessionState {
             unfolded_dirs: Vec::new(),
             kiro_sessions: Vec::new(),
             split: None,
+            roots: Vec::new(),
         }
     }
 }
