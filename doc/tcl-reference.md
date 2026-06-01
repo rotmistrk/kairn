@@ -137,6 +137,10 @@ Paths are dot-separated indices (e.g., `0.2.1` = first item → third child → 
 | Command | Description |
 |---------|-------------|
 | `grep <pattern>` | Search project files, open results tab |
+| `grep -a <pattern>` | Search all workspace roots |
+| `grep -i <pattern>` | Case-insensitive search |
+| `grep -w <pattern>` | Word-boundary match |
+| `grep -F <pattern>` | Fixed string (no regex) |
 
 ### keymap
 
@@ -169,6 +173,9 @@ Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `s
 | `system env <var>` | Get environment variable |
 | `system set-env <var> <val>` | Set environment variable |
 | `system root-dir` | Returns project root directory |
+| `system roots` | Returns all workspace roots (newline-separated) |
+| `system add-root <path>` | Add workspace root directory |
+| `system remove-root <path>` | Remove workspace root |
 | `system home-dir` | Returns user home directory |
 | `system platform` | Returns OS name |
 | `system clipboard-get` | Read system clipboard |
