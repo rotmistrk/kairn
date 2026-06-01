@@ -1,7 +1,5 @@
 //! Hook registry — stores event hooks with optional compiled filters.
 
-use regex::Regex;
-
 /// Events that can trigger hooks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum HookEvent {
@@ -64,7 +62,7 @@ impl HookEvent {
 
 /// A compiled filter for hook matching.
 pub enum CompiledFilter {
-    Regex(Regex),
+    Pattern(String),
     Millis(u64),
 }
 

@@ -1,7 +1,5 @@
 //! Registry of all hooks, fired in declaration order.
 
-use regex::Regex;
-
 use super::hooks::{CompiledFilter, Hook, HookEvent};
 
 /// Registry of all hooks, fired in declaration order.
@@ -15,7 +13,7 @@ impl HookRegistry {
         Self { hooks: Vec::new() }
     }
 
-    /// Add a hook. Filter is compiled as regex for char/word events, millis for idle.
+    /// Add a hook. Filter is a glob pattern (or millis for idle events).
     pub fn add(&mut self, event: HookEvent, filter: Option<&str>, body: String) -> Result<(), String> {
         let compiled = match filter {
             None => None,
@@ -24,10 +22,7 @@ impl HookRegistry {
                     let ms = f.parse::<u64>().map_err(|e| format!("invalid idle ms: {e}"))?;
                     Some(CompiledFilter::Millis(ms))
                 }
-                _ => {
-                    let re = Regex::new(f).map_err(|e| format!("invalid filter regex: {e}"))?;
-                    Some(CompiledFilter::Regex(re))
-                }
+                _ => Some(CompiledFilter::Pattern(f.to_string())),
             },
         };
         self.hooks.push(Hook {
@@ -66,7 +61,45 @@ impl HookRegistry {
 fn matches_filter(filter: &Option<CompiledFilter>, context: &str) -> bool {
     match filter {
         None => true,
-        Some(CompiledFilter::Regex(re)) => re.is_match(context),
+        Some(CompiledFilter::Pattern(pat)) => glob_match(pat, context),
         Some(CompiledFilter::Millis(_)) => true, // Caller checks timing
     }
+}
+
+/// Simple glob match: `*` matches any sequence, `?` matches one char, rest is literal.
+fn glob_match(pattern: &str, text: &str) -> bool {
+    if pattern == "*" {
+        return true;
+    }
+    if !pattern.contains('*') && !pattern.contains('?') {
+        return pattern == text;
+    }
+    let pat: Vec<_> = pattern.chars().collect();
+    let txt: Vec<_> = text.chars().collect();
+    glob_match_inner(&pat, &txt)
+}
+
+fn glob_match_inner(pattern: &[char], text: &[char]) -> bool {
+    let (mut pi, mut ti) = (0, 0);
+    let (mut star_pi, mut star_ti) = (usize::MAX, 0);
+    while ti < text.len() {
+        if pi < pattern.len() && (pattern[pi] == '?' || pattern[pi] == text[ti]) {
+            pi += 1;
+            ti += 1;
+        } else if pi < pattern.len() && pattern[pi] == '*' {
+            star_pi = pi;
+            star_ti = ti;
+            pi += 1;
+        } else if star_pi != usize::MAX {
+            pi = star_pi + 1;
+            star_ti += 1;
+            ti = star_ti;
+        } else {
+            return false;
+        }
+    }
+    while pi < pattern.len() && pattern[pi] == '*' {
+        pi += 1;
+    }
+    pi == pattern.len()
 }
