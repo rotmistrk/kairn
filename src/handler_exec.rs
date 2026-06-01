@@ -32,7 +32,8 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
     };
     log::debug!("execute_command: {:?}", text);
 
-    let parts: Vec<&str> = text.trim().splitn(2, ' ').collect();
+    let trimmed = text.trim().strip_prefix(':').unwrap_or(text.trim());
+    let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
     let cmd = parts.first().copied().unwrap_or("");
     let arg = parts.get(1).copied().unwrap_or("");
 
@@ -46,7 +47,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
         }
     }
 
-    execute_as_tcl(ctx, state, text);
+    execute_as_tcl(ctx, state, trimmed);
 }
 
 fn execute_as_tcl(ctx: &mut CommandContext, state: &mut AppState, text: &str) {

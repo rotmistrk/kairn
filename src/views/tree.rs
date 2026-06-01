@@ -110,10 +110,14 @@ fn status_color(status: FileStatus) -> Color {
 }
 
 impl View for FileTreeView {
-    delegate_view!(inner, override { title, handle, unselect });
+    delegate_view!(inner, override { title, handle, unselect, can_close });
 
     fn title(&self) -> &str {
         "Files"
+    }
+
+    fn can_close(&self) -> CloseResult {
+        CloseResult::Denied("permanent tab".to_string())
     }
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {

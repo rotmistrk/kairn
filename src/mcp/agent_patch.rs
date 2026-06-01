@@ -36,7 +36,7 @@ pub fn ensure_agent_patched(root: &Path, agent_name: &str) -> Result<String, Str
 
     if needs_patch(&patched_path, best_source) {
         let base = load_source(best_source, &patched_path, agent_name)?;
-        let patched = patch_agent(base)?;
+        let patched = patch_agent(base, &patched_name)?;
         write_patched(root, &patched_path, &patched)?;
     }
     Ok(patched_name)
@@ -119,8 +119,9 @@ fn load_source(source: Option<&Path>, local: &Path, agent_name: &str) -> Result<
 }
 
 /// Patch the agent JSON to include kairn MCP server and allowedTools.
-fn patch_agent(mut val: Value) -> Result<Value, String> {
+fn patch_agent(mut val: Value, patched_name: &str) -> Result<Value, String> {
     let obj = val.as_object_mut().ok_or("agent JSON is not an object")?;
+    obj.insert("name".to_string(), Value::String(patched_name.to_string()));
     let servers = obj.entry("mcpServers").or_insert_with(|| Value::Object(Map::new()));
     let servers_obj = servers.as_object_mut().ok_or("mcpServers is not an object")?;
     servers_obj.insert("kairn".to_string(), kairn_mcp_server_def());
@@ -164,7 +165,7 @@ mod tests {
     #[test]
     fn patch_agent_adds_kairn_mcp_to_empty_agent() {
         let input: Value = serde_json::json!({"name": "test", "tools": ["*"]});
-        let result = patch_agent(input).unwrap();
+        let result = patch_agent(input, "kairn-test").unwrap();
         assert!(result["mcpServers"]["kairn"].is_object());
         assert_eq!(result["mcpServers"]["kairn"]["args"][0], "--mcp-connect");
         assert!(result["allowedTools"]
@@ -181,7 +182,7 @@ mod tests {
             "mcpServers": {"other": {"command": "foo"}},
             "allowedTools": ["@other"]
         });
-        let result = patch_agent(input).unwrap();
+        let result = patch_agent(input, "kairn-test").unwrap();
         assert!(result["mcpServers"]["other"].is_object());
         assert!(result["mcpServers"]["kairn"].is_object());
         let allowed = result["allowedTools"].as_array().unwrap();
@@ -192,8 +193,8 @@ mod tests {
     #[test]
     fn patch_agent_idempotent() {
         let input: Value = serde_json::json!({"name": "test"});
-        let first = patch_agent(input).unwrap();
-        let second = patch_agent(first.clone()).unwrap();
+        let first = patch_agent(input, "kairn-test").unwrap();
+        let second = patch_agent(first.clone(), "kairn-test").unwrap();
         let allowed = second["allowedTools"].as_array().unwrap();
         let kairn_count = allowed.iter().filter(|v| v.as_str() == Some("@kairn")).count();
         assert_eq!(kairn_count, 1);
@@ -212,13 +213,13 @@ mod tests {
         let local = root.join(".kiro/agents/myagent.json");
 
         let base = load_source(Some(&source), &local, "myagent").unwrap();
-        let patched = patch_agent(base).unwrap();
+        let patched = patch_agent(base, "kairn-test").unwrap();
         write_patched(&root, &local, &patched).unwrap();
 
         assert!(local.exists());
         let content: Value = serde_json::from_str(&fs::read_to_string(&local).unwrap()).unwrap();
         assert!(content["mcpServers"]["kairn"].is_object());
-        assert_eq!(content["name"], "myagent");
+        assert_eq!(content["name"], "kairn-test");
     }
 
     #[test]
