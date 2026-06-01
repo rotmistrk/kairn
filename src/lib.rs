@@ -20,6 +20,7 @@ pub mod command_store;
 pub mod commands;
 pub mod completer;
 pub mod completer_entry;
+mod completer_kiro;
 pub mod config;
 pub mod config_colors;
 pub mod config_keys;

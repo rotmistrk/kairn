@@ -106,6 +106,9 @@ impl Completer for AppCompleter {
         if let Some(sub) = trimmed.strip_prefix("lsp ") {
             return complete_lsp(sub, &self.lsp_languages, visitor);
         }
+        if let Some(sub) = trimmed.strip_prefix("kiro ") {
+            return crate::completer_kiro::complete_kiro(sub, &self.root, visitor);
+        }
         let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
         for cmd in cmds.iter().filter(|c| c.starts_with(trimmed)) {
             let e = Entry {
