@@ -244,3 +244,64 @@ fn loe_cycles_fibonacci() {
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
     assert!(content.contains("\"effort\": 5"));
 }
+
+#[test]
+fn filter_esc_cancels_filter() {
+    let dir = temp_project(&[("x.txt", "")]);
+    let todo = todo_json(&format!("{},{}", item("Alpha"), item("Beta")));
+    std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
+
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
+    focus_todo(&mut h);
+
+    // Both items visible
+    assert!(h.content_contains("Alpha"));
+    assert!(h.content_contains("Beta"));
+
+    // Press / to start filter, type "Alp"
+    h.inject_key(KeyCode::Char('/'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("Alp");
+    h.run_cycles(2);
+
+    // Only Alpha should be visible
+    assert!(h.content_contains("Alpha"));
+
+    // Press Esc to cancel filter
+    h.inject_key(KeyCode::Esc, KeyMod::default());
+    h.run_cycles(2);
+
+    // Both items should be visible again
+    assert!(h.content_contains("Alpha"), "Alpha should be visible after Esc");
+    assert!(h.content_contains("Beta"), "Beta should be visible after Esc");
+}
+
+#[test]
+fn filter_esc_clears_committed_filter() {
+    let dir = temp_project(&[("x.txt", "")]);
+    let todo = todo_json(&format!("{},{}", item("Alpha"), item("Beta")));
+    std::fs::write(dir.path().join(".kairn.todo"), &todo).unwrap();
+
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
+    focus_todo(&mut h);
+
+    // Press / to start filter, type "Alp", then Enter to commit
+    h.inject_key(KeyCode::Char('/'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("Alp");
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(2);
+
+    // Filter committed — only Alpha visible
+    assert!(h.content_contains("Alpha"));
+    assert!(!h.content_contains("Beta"), "Beta should be filtered out after commit");
+
+    // Press Esc to clear committed filter
+    h.inject_key(KeyCode::Esc, KeyMod::default());
+    h.run_cycles(2);
+
+    // Both items should be visible again
+    assert!(h.content_contains("Alpha"), "Alpha should be visible after Esc");
+    assert!(h.content_contains("Beta"), "Beta should be visible after Esc clears committed filter");
+}

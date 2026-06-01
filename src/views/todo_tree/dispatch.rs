@@ -10,6 +10,13 @@ use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 
 impl TodoTreeView {
     pub(super) fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
+        if key.code == KeyCode::Esc && !self.inner.data.filter_text.is_empty() {
+            self.inner.data.filter_text.clear();
+            self.inner.data.rebuild_flat();
+            self.inner.set_cursor(0);
+            self.group.mark_dirty();
+            return HandleResult::Consumed;
+        }
         if key.code == KeyCode::Char('n') && self.inner.data.visible_count() == 0 {
             self.inner.data.add_first_item();
             return HandleResult::Consumed;

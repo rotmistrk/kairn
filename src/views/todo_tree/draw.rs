@@ -20,10 +20,10 @@ impl TodoTreeView {
             return;
         }
         let has_filter = self.filter_active || !self.inner.data.filter_text.is_empty();
-        let filter_offset: u16 = u16::from(has_filter);
-        let draw_h = h.saturating_sub(filter_offset);
+        let filter_row = if has_filter { h.saturating_sub(1) } else { 0 };
+        let draw_h = if has_filter { h.saturating_sub(1) } else { h };
         // Set bounds on inner TreeTableView and draw it
-        let inner_bounds = Rect::new(0, filter_offset, w, draw_h);
+        let inner_bounds = Rect::new(0, 0, w, draw_h);
         self.inner.state.set_bounds(inner_bounds);
         if self.group.is_focused() {
             self.inner.state.set_focused(true);
@@ -33,37 +33,37 @@ impl TodoTreeView {
         self.inner.draw();
         // Blit inner buffer onto group buffer
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        unsafe { (*buf_ptr).blit(self.inner.state.buffer(), 0, filter_offset) };
-        self.draw_filter_status(w, filter_offset);
-        self.position_and_blit_child(w, draw_h as usize, filter_offset);
+        unsafe { (*buf_ptr).blit(self.inner.state.buffer(), 0, 0) };
+        self.draw_filter_status(w, filter_row);
+        self.position_and_blit_child(w, draw_h as usize, filter_row);
     }
 
-    fn draw_filter_status(&mut self, w: u16, filter_offset: u16) {
-        if filter_offset == 0 {
+    fn draw_filter_status(&mut self, w: u16, filter_row: u16) {
+        if filter_row == 0 {
             return;
         }
         let style = palette().style(StyleId::StatusBar);
-        self.group.buffer_mut().hline(0, 0, w, ' ', style);
-        self.group.buffer_mut().print(0, 0, "/", style);
+        self.group.buffer_mut().hline(0, filter_row, w, ' ', style);
+        self.group.buffer_mut().print(0, filter_row, "/", style);
         if !self.filter_active {
             let ft = self.inner.data.filter_text.clone();
-            self.group.buffer_mut().print(1, 0, &ft, style);
+            self.group.buffer_mut().print(1, filter_row, &ft, style);
         }
     }
 
     /// Position the InputLine child and blit it onto the group buffer.
-    fn position_and_blit_child(&mut self, w: u16, draw_h: usize, filter_offset: u16) {
+    fn position_and_blit_child(&mut self, w: u16, draw_h: usize, filter_row: u16) {
         if self.group.child_count() == 0 {
             return;
         }
         let (x, y, cw) = if self.filter_active {
-            (1u16, 0u16, w.saturating_sub(1))
+            (1u16, filter_row, w.saturating_sub(1))
         } else if let Some(row) = self.editing_row {
             let scroll_offset = self.inner.scroll.offset;
             if row < scroll_offset || (row - scroll_offset) >= draw_h {
                 return;
             }
-            let screen_y = filter_offset + (row - scroll_offset) as u16;
+            let screen_y = (row - scroll_offset) as u16;
             let id = self.inner.data.visible_id(row);
             let depth = self.inner.data.depth(id);
             let indent = (depth * 2 + 2) as u16;

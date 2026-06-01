@@ -19,6 +19,10 @@ pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
         "nolist" | "noli" => defaults.list = false,
         "number" | "nu" => defaults.number = true,
         "nonumber" | "nonu" => defaults.number = false,
+        "rainbow" => defaults.rainbow = true,
+        "norainbow" => defaults.rainbow = false,
+        "guides" => defaults.guides = true,
+        "noguides" => defaults.guides = false,
         _ => {}
     }
 }

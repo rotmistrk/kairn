@@ -100,6 +100,16 @@ fn extract_editor_settings(interp: &Interpreter, settings: &mut AppSettings) {
             settings.editor_defaults.cursor_command = s;
         }
     }
+    if let Some(val) = interp.get_var("editor.rainbow") {
+        if let Ok(b) = val.as_bool() {
+            settings.editor_defaults.rainbow = b;
+        }
+    }
+    if let Some(val) = interp.get_var("editor.guides") {
+        if let Ok(b) = val.as_bool() {
+            settings.editor_defaults.guides = b;
+        }
+    }
 }
 
 fn extract_app_settings(interp: &Interpreter, settings: &mut AppSettings) {

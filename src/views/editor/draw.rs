@@ -3,7 +3,7 @@
 use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
-use super::draw_style::{draw_indent_guides, rainbow_brackets};
+use super::draw_style::{bracket_depth_at_line, draw_indent_guides, rainbow_brackets_with_depth};
 use super::EditorView;
 use crate::app_palette::app_palette;
 use crate::editor::motions::match_bracket;
@@ -27,7 +27,8 @@ pub(super) struct DrawParams {
     pub(super) tab_width: usize,
     pub(super) matchparen_pos: Option<(usize, usize)>,
     pub(super) matchparen_style: Style,
-    pub(super) rainbow_map: Vec<(usize, Color)>,
+    /// Per-viewport-line rainbow maps: index is (line_idx - scroll).
+    pub(super) rainbow_maps: Vec<Vec<(usize, Color)>>,
 }
 
 impl EditorView {
@@ -76,8 +77,19 @@ impl EditorView {
         } else {
             None
         };
-        let rainbow_map = if self.editor.options.rainbow {
-            rainbow_brackets(&self.editor.buf().line(self.editor.cursor_line).unwrap_or_default())
+        let total_lines = self.editor.buf().line_count();
+        let scroll = self.editor.viewport_scroll;
+        let viewport_end = (scroll + h as usize).min(total_lines);
+        let rainbow_maps = if self.editor.options.rainbow {
+            let mut depth = bracket_depth_at_line(&self.editor.buf(), scroll);
+            let mut maps = Vec::with_capacity(viewport_end - scroll);
+            for i in scroll..viewport_end {
+                let line = self.editor.buf().line(i).unwrap_or_default();
+                let (map, new_depth) = rainbow_brackets_with_depth(&line, depth);
+                maps.push(map);
+                depth = new_depth;
+            }
+            maps
         } else {
             Vec::new()
         };
@@ -94,7 +106,7 @@ impl EditorView {
             } else {
                 pal.style(StyleId::CursorUnfocused).bg
             },
-            scroll: self.editor.viewport_scroll,
+            scroll,
             avail: w.saturating_sub(gutter_w) as usize,
             wrap,
             h_off: if wrap {
@@ -105,7 +117,7 @@ impl EditorView {
             tab_width: self.editor.options.tab_width,
             matchparen_pos,
             matchparen_style: app.editor().matchparen(),
-            rainbow_map,
+            rainbow_maps,
         }
     }
 

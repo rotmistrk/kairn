@@ -202,14 +202,19 @@ impl EditorView {
         let app = app_palette();
         let (display_ch, display_style) = self.resolve_display_char(ch, style, &app);
         let vy = st.visual_row as u16;
+        let empty_map: Vec<(usize, Color)> = Vec::new();
+        let rainbow_map = if line_idx >= p.scroll {
+            p.rainbow_maps.get(line_idx - p.scroll).unwrap_or(&empty_map)
+        } else {
+            &empty_map
+        };
         let display_style = bracket_highlight(
             display_style,
             line_idx,
             st.char_idx,
-            self.editor.cursor_line,
             p.matchparen_pos,
             &p.matchparen_style,
-            &p.rainbow_map,
+            rainbow_map,
         );
         self.state.buffer_mut().put(x, vy, display_ch, display_style);
         st.col_offset += display_char_width(ch) as usize;

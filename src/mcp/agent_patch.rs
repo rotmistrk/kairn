@@ -133,6 +133,15 @@ fn patch_agent(mut val: Value, patched_name: &str) -> Result<Value, String> {
             arr.push(tag);
         }
     }
+
+    let tools = obj.entry("tools").or_insert_with(|| Value::Array(Vec::new()));
+    if let Some(arr) = tools.as_array_mut() {
+        let tag = Value::String("@kairn".to_string());
+        if !arr.contains(&tag) {
+            arr.push(tag);
+        }
+    }
+
     obj.insert("includeMcpJson".to_string(), Value::Bool(true));
     Ok(val)
 }
@@ -173,6 +182,10 @@ mod tests {
             .as_array()
             .unwrap()
             .contains(&Value::String("@kairn".into())));
+        assert!(result["tools"]
+            .as_array()
+            .unwrap()
+            .contains(&Value::String("@kairn".into())));
         assert_eq!(result["includeMcpJson"], true);
     }
 
@@ -181,7 +194,8 @@ mod tests {
         let input: Value = serde_json::json!({
             "name": "test",
             "mcpServers": {"other": {"command": "foo"}},
-            "allowedTools": ["@other"]
+            "allowedTools": ["@other"],
+            "tools": ["@other"]
         });
         let result = patch_agent(input, "kairn-test").unwrap();
         assert!(result["mcpServers"]["other"].is_object());
@@ -189,6 +203,9 @@ mod tests {
         let allowed = result["allowedTools"].as_array().unwrap();
         assert!(allowed.contains(&Value::String("@other".into())));
         assert!(allowed.contains(&Value::String("@kairn".into())));
+        let tools = result["tools"].as_array().unwrap();
+        assert!(tools.contains(&Value::String("@other".into())));
+        assert!(tools.contains(&Value::String("@kairn".into())));
     }
 
     #[test]

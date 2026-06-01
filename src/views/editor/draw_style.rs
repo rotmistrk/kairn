@@ -34,7 +34,6 @@ pub(super) fn bracket_highlight(
     base: Style,
     line_idx: usize,
     char_idx: usize,
-    cursor_line: usize,
     matchparen_pos: Option<(usize, usize)>,
     matchparen_style: &Style,
     rainbow_map: &[(usize, Color)],
@@ -53,12 +52,8 @@ pub(super) fn bracket_highlight(
             },
             attrs: matchparen_style.attrs,
         }
-    } else if line_idx == cursor_line {
-        if let Some(&(_, color)) = rainbow_map.iter().find(|(col, _)| *col == char_idx) {
-            Style { fg: color, ..base }
-        } else {
-            base
-        }
+    } else if let Some(&(_, color)) = rainbow_map.iter().find(|(col, _)| *col == char_idx) {
+        Style { fg: color, ..base }
     } else {
         base
     }
@@ -98,22 +93,43 @@ const RAINBOW_COLORS: [Color; 4] = [
 /// Compute rainbow bracket colors for a line. Returns a vec of (char_index, color)
 /// for each bracket character.
 pub(super) fn rainbow_brackets(line: &str) -> Vec<(usize, Color)> {
+    rainbow_brackets_with_depth(line, 0).0
+}
+
+/// Compute rainbow bracket colors for a line starting at a given depth.
+/// Returns (vec of (char_index, color), ending depth).
+pub(super) fn rainbow_brackets_with_depth(line: &str, mut depth: usize) -> (Vec<(usize, Color)>, usize) {
     let mut result = Vec::new();
-    let mut depth: usize = 0;
     for (idx, ch) in line.chars().enumerate() {
         match ch {
-            '(' | '[' | '{' | '<' => {
+            '(' | '[' | '{' => {
                 result.push((idx, RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]));
                 depth += 1;
             }
-            ')' | ']' | '}' | '>' => {
+            ')' | ']' | '}' => {
                 depth = depth.saturating_sub(1);
                 result.push((idx, RAINBOW_COLORS[depth % RAINBOW_COLORS.len()]));
             }
             _ => {}
         }
     }
-    result
+    (result, depth)
+}
+
+/// Compute the bracket depth at a given line by scanning all lines before it.
+pub(super) fn bracket_depth_at_line(buf: &crate::buffer::piece_table::PieceTable, line: usize) -> usize {
+    let mut depth: usize = 0;
+    for i in 0..line {
+        let text = buf.line(i).unwrap_or_default();
+        for ch in text.chars() {
+            match ch {
+                '(' | '[' | '{' => depth += 1,
+                ')' | ']' | '}' => depth = depth.saturating_sub(1),
+                _ => {}
+            }
+        }
+    }
+    depth
 }
 
 impl super::EditorView {
@@ -242,6 +258,38 @@ mod tests {
         assert_eq!(result[1].0, 3); // second '('
         assert_ne!(result[0].1, result[1].1); // different colors
         assert_eq!(result[0].1, result[3].1); // matching depth = same color
+    }
+
+    #[test]
+    fn rainbow_brackets_depth_carries_across_lines() {
+        // Line 1 opens a bracket, line 2 should start at depth 1
+        let (map1, depth) = rainbow_brackets_with_depth("fn main() {", 0);
+        assert!(depth > 0); // '{' opened
+        let (map2, _) = rainbow_brackets_with_depth("    println!()", depth);
+        // The '(' on line 2 should be at depth > 0 (different color than depth-0)
+        assert!(!map2.is_empty());
+        let inner_color = map2[0].1;
+        // First bracket on line 1 at depth 0
+        let outer_color = map1[0].1; // '(' in main()
+        // Inner bracket should differ from outer (different depth)
+        assert_ne!(inner_color, outer_color);
+    }
+
+    #[test]
+    fn rainbow_brackets_colored_on_non_cursor_line() {
+        // Two lines: cursor on line 0, brackets on line 1 should still be colored
+        let mut view = EditorView::from_text("hello\nfoo(bar)");
+        view.editor.options.number = false;
+        view.editor.options.rainbow = true;
+        view.editor.cursor_line = 0; // cursor on line 0
+        view.set_bounds(Rect::new(0, 0, 20, 2));
+        view.draw();
+        let buf = view.buffer();
+        // '(' is at col 3 on line 1 (row 1)
+        let cell = buf.cell(3, 1);
+        assert_eq!(cell.ch, '(');
+        // Should have a non-default fg color (rainbow)
+        assert_ne!(cell.style.fg, Color::Reset);
     }
 
     #[test]
