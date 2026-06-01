@@ -24,4 +24,5 @@ mod send;
 mod send_sync;
 pub mod server_config;
 pub mod signature_help;
+pub mod uri;
 pub mod workspace_edit;

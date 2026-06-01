@@ -2,6 +2,8 @@
 
 use serde_json::Value;
 
+use super::uri;
+
 /// Handle a resource operation (rename, create, delete). Returns true on success.
 pub fn apply_resource_op(kind: &str, op: &Value) -> bool {
     match kind {
@@ -102,8 +104,8 @@ fn delete_file(path: &str) -> bool {
     true
 }
 
-fn uri_to_path(uri: &str) -> String {
-    uri.strip_prefix("file://").unwrap_or(uri).to_string()
+fn uri_to_path(u: &str) -> String {
+    uri::uri_to_path(u)
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ use crate::views::results::ResultEntry;
 
 use super::pending::{JdtRequest, PendingKind};
 use super::requests;
+use super::uri;
 
 pub(super) fn handle_response(kind: PendingKind, result: &serde_json::Value, sink: &EventSink) {
     match kind {
@@ -156,7 +157,7 @@ fn handle_jdt(result: &serde_json::Value, sink: &EventSink, line: u32, character
 }
 
 pub(super) fn uri_to_path(uri: &str) -> String {
-    uri.strip_prefix("file://").unwrap_or(uri).to_string()
+    uri::uri_to_path(uri)
 }
 
 /// Read a single line from a file (0-indexed). Returns trimmed content or empty string.

@@ -2,6 +2,8 @@
 
 use serde_json::Value;
 
+use super::uri;
+
 /// Apply a workspace edit from a rename response. Returns number of files changed.
 pub fn apply_workspace_edit(result: &Value) -> usize {
     let mut files_changed = 0;
@@ -36,8 +38,8 @@ fn apply_doc_change(doc_change: &Value) -> bool {
     apply_text_edits(&path, edits)
 }
 
-fn uri_to_path(uri: &str) -> String {
-    uri.strip_prefix("file://").unwrap_or(uri).to_string()
+fn uri_to_path(u: &str) -> String {
+    uri::uri_to_path(u)
 }
 
 /// Apply text edits to a single file. Returns true on success.
