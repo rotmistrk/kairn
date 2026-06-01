@@ -198,16 +198,10 @@ impl EditorView {
             p.hl_match_style,
             p.hl_other_bg,
         );
-
         let app = app_palette();
         let (display_ch, display_style) = self.resolve_display_char(ch, style, &app);
         let vy = st.visual_row as u16;
-        let empty_map: Vec<(usize, Color)> = Vec::new();
-        let rainbow_map = if line_idx >= p.scroll {
-            p.rainbow_maps.get(line_idx - p.scroll).unwrap_or(&empty_map)
-        } else {
-            &empty_map
-        };
+        let rainbow_map = self.rainbow_map_for_line(line_idx, p);
         let display_style = bracket_highlight(
             display_style,
             line_idx,
@@ -220,6 +214,17 @@ impl EditorView {
         st.col_offset += display_char_width(ch) as usize;
         st.char_idx += 1;
         st.byte_pos += ch.len_utf8();
+    }
+
+    fn rainbow_map_for_line<'a>(&self, line_idx: usize, p: &'a DrawParams) -> &'a [(usize, Color)] {
+        if line_idx >= p.scroll {
+            p.rainbow_maps
+                .get(line_idx - p.scroll)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[])
+        } else {
+            &[]
+        }
     }
 
     pub(super) fn resolve_display_char(&self, ch: char, style: Style, app: &AppPalette) -> (char, Style) {

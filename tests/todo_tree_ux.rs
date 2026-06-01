@@ -303,5 +303,8 @@ fn filter_esc_clears_committed_filter() {
 
     // Both items should be visible again
     assert!(h.content_contains("Alpha"), "Alpha should be visible after Esc");
-    assert!(h.content_contains("Beta"), "Beta should be visible after Esc clears committed filter");
+    assert!(
+        h.content_contains("Beta"),
+        "Beta should be visible after Esc clears committed filter"
+    );
 }

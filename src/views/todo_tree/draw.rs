@@ -20,8 +20,16 @@ impl TodoTreeView {
             return;
         }
         let has_filter = self.filter_active || !self.inner.data.filter_text.is_empty();
-        let filter_row = if has_filter { h.saturating_sub(1) } else { 0 };
-        let draw_h = if has_filter { h.saturating_sub(1) } else { h };
+        let filter_row = if has_filter {
+            h.saturating_sub(1)
+        } else {
+            0
+        };
+        let draw_h = if has_filter {
+            h.saturating_sub(1)
+        } else {
+            h
+        };
         // Set bounds on inner TreeTableView and draw it
         let inner_bounds = Rect::new(0, 0, w, draw_h);
         self.inner.state.set_bounds(inner_bounds);

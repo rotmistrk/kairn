@@ -65,49 +65,38 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
 }
 
 fn extract_editor_settings(interp: &Interpreter, settings: &mut AppSettings) {
-    if let Some(val) = interp.get_var("editor.wrap") {
-        if let Ok(b) = val.as_bool() {
-            settings.editor_defaults.wrap = b;
-        }
-    }
-    if let Some(val) = interp.get_var("editor.list") {
-        if let Ok(b) = val.as_bool() {
-            settings.editor_defaults.list = b;
-        }
-    }
+    let d = &mut settings.editor_defaults;
+    extract_bool(interp, "editor.wrap", &mut d.wrap);
+    extract_bool(interp, "editor.list", &mut d.list);
+    extract_bool(interp, "editor.number", &mut d.number);
+    extract_bool(interp, "editor.rainbow", &mut d.rainbow);
+    extract_bool(interp, "editor.guides", &mut d.guides);
     if let Some(val) = interp.get_var("editor.tabstop") {
         if let Ok(n) = val.as_int() {
-            settings.editor_defaults.tabstop = n as u16;
-        }
-    }
-    if let Some(val) = interp.get_var("editor.number") {
-        if let Ok(b) = val.as_bool() {
-            settings.editor_defaults.number = b;
+            d.tabstop = n as u16;
         }
     }
     if let Some(val) = interp.get_var("editor.cursor_insert") {
         if let Some(s) = parse_cursor_style(&val.to_string()) {
-            settings.editor_defaults.cursor_insert = s;
+            d.cursor_insert = s;
         }
     }
     if let Some(val) = interp.get_var("editor.cursor_normal") {
         if let Some(s) = parse_cursor_style(&val.to_string()) {
-            settings.editor_defaults.cursor_normal = s;
+            d.cursor_normal = s;
         }
     }
     if let Some(val) = interp.get_var("editor.cursor_command") {
         if let Some(s) = parse_cursor_style(&val.to_string()) {
-            settings.editor_defaults.cursor_command = s;
+            d.cursor_command = s;
         }
     }
-    if let Some(val) = interp.get_var("editor.rainbow") {
+}
+
+fn extract_bool(interp: &Interpreter, var: &str, target: &mut bool) {
+    if let Some(val) = interp.get_var(var) {
         if let Ok(b) = val.as_bool() {
-            settings.editor_defaults.rainbow = b;
-        }
-    }
-    if let Some(val) = interp.get_var("editor.guides") {
-        if let Ok(b) = val.as_bool() {
-            settings.editor_defaults.guides = b;
+            *target = b;
         }
     }
 }

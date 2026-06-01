@@ -107,7 +107,11 @@ fn add_hidden_resize(bar: &mut StatusBar) {
 
 fn add_hidden_misc(bar: &mut StatusBar) {
     use txv_widgets::tiled_workspace::commands::{CM_TW_LAYOUT_CYCLE, CM_TW_TAB_CLOSE};
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(alt('w'), CM_TW_TAB_CLOSE, ""))));
+    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
+        alt('w'),
+        CM_TW_TAB_CLOSE,
+        "",
+    ))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('z'), CM_SUSPEND, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('o'), CM_PEEK, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('d'), CM_DIFF, ""))));

@@ -3,6 +3,9 @@
 Kairn embeds a Tcl interpreter for configuration, automation, and extensibility.
 Any M-x command that isn't a built-in is evaluated as Tcl.
 
+The M-x command line (Alt-x) supports Tab completion and Up/Down history.
+The editor `:` command line also has Tab completion and Up/Down history.
+
 ## Configuration
 
 Scripts are loaded in order (later overrides earlier):

@@ -94,6 +94,19 @@ set keys.subpanel_move "Ctrl-Alt-w"
 set keys.subpanel_grow "Ctrl-Alt-="
 set keys.subpanel_shrink "Ctrl-Alt--"
 
+# ─── Fixed Workspace Keys (not configurable) ─────────────────────────────────
+# Alt-w             Close active tab
+# Alt-,             Toggle tree panel
+# Alt-.             Toggle tools panel
+# Alt-/             Zoom toggle
+# Alt-\             Cycle layout (auto/wide/tall)
+# Alt-;             Next tab
+# Alt-'             Previous tab
+# Alt-0             Tab dropdown
+# Alt-1..9          Select tab by number
+# Alt-Shift-Arrows  Resize panels
+# M-x (Alt-x)      Command line (with Tab completion and Up/Down history)
+
 # ─── Colors ──────────────────────────────────────────────────────────────────
 # Colors use ANSI 256 numbers (0-255) or "reset" for terminal default.
 # Format: set color.<role> <ansi-number>

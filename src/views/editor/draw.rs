@@ -67,6 +67,21 @@ impl EditorView {
         self.draw_footer(row, params.gutter_style);
     }
 
+    fn compute_rainbow_maps(&self, scroll: usize, viewport_end: usize) -> Vec<Vec<(usize, Color)>> {
+        if !self.editor.options.rainbow {
+            return Vec::new();
+        }
+        let mut depth = bracket_depth_at_line(&self.editor.buf(), scroll);
+        let mut maps = Vec::with_capacity(viewport_end - scroll);
+        for i in scroll..viewport_end {
+            let line = self.editor.buf().line(i).unwrap_or_default();
+            let (map, new_depth) = rainbow_brackets_with_depth(&line, depth);
+            maps.push(map);
+            depth = new_depth;
+        }
+        maps
+    }
+
     fn build_draw_params(&self, w: u16, h: u16) -> DrawParams {
         let pal = palette();
         let app = app_palette();
@@ -77,22 +92,9 @@ impl EditorView {
         } else {
             None
         };
-        let total_lines = self.editor.buf().line_count();
         let scroll = self.editor.viewport_scroll;
+        let total_lines = self.editor.buf().line_count();
         let viewport_end = (scroll + h as usize).min(total_lines);
-        let rainbow_maps = if self.editor.options.rainbow {
-            let mut depth = bracket_depth_at_line(&self.editor.buf(), scroll);
-            let mut maps = Vec::with_capacity(viewport_end - scroll);
-            for i in scroll..viewport_end {
-                let line = self.editor.buf().line(i).unwrap_or_default();
-                let (map, new_depth) = rainbow_brackets_with_depth(&line, depth);
-                maps.push(map);
-                depth = new_depth;
-            }
-            maps
-        } else {
-            Vec::new()
-        };
         DrawParams {
             w,
             h,
@@ -117,7 +119,7 @@ impl EditorView {
             tab_width: self.editor.options.tab_width,
             matchparen_pos,
             matchparen_style: app.editor().matchparen(),
-            rainbow_maps,
+            rainbow_maps: self.compute_rainbow_maps(scroll, viewport_end),
         }
     }
 
