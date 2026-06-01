@@ -20,7 +20,7 @@ pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn Vie
     let defaults = state.settings.editor_defaults.clone();
     let mut ed = EditorView::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
-    ed.set_root_dir(state.root_dir.clone());
+    ed.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     ed.buffer_id = Some(state.buffers.register(Some(canon)));
     Box::new(ed)
@@ -54,7 +54,7 @@ pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileReque
     let defaults = state.settings.editor_defaults.clone();
     let mut editor = EditorView::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
-    editor.set_root_dir(state.root_dir.clone());
+    editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     if let (Some(line), Some(col)) = (req.line, req.col) {
         editor.goto(line, col);
     }

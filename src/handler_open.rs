@@ -136,7 +136,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
                 let defaults = state.settings.editor_defaults.clone();
                 let mut editor = EditorView::open_with_theme(&path, &defaults, &syntax_theme)
                     .unwrap_or_else(|_| EditorView::new_file(&path, &defaults));
-                editor.set_root_dir(state.root_dir.clone());
+                editor.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
                 let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
                 let buf_id = state.buffers.register(Some(canon));
                 editor.buffer_id = Some(buf_id);

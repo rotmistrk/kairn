@@ -35,7 +35,7 @@ pub(crate) fn mcp_open_file(
             let theme = state.current_syntax_theme();
             let view: Box<dyn View> = match EditorView::open_with_theme(&path, defaults, theme) {
                 Ok(mut ed) => {
-                    ed.set_root_dir(state.root_dir.clone());
+                    ed.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
                     Box::new(ed)
                 }
                 Err(_) => Box::new(EditorView::new_file(&path, defaults)),

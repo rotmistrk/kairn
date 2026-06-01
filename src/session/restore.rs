@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use git2::Repository;
 use txv_widgets::tab_panel::TabPanel;
 use txv_widgets::tiled_workspace::types::WorkspaceState;
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -137,7 +138,7 @@ fn open_second_panel_tabs(
         let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
         let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
             .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
-        editor.set_root_dir(root_dir.to_path_buf());
+        editor.set_root_dir(discover_root_for(&path, root_dir));
         editor.goto(tab.line, tab.col);
         insert_into_second_panel(desktop, editor, title);
     }
@@ -222,9 +223,17 @@ fn open_tab_in_panel(
     let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
     let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
-    editor.set_root_dir(root_dir.to_path_buf());
+    editor.set_root_dir(discover_root_for(&path, root_dir));
     editor.goto(tab.line, tab.col);
     insert_tab(desktop, SlotId::Center, title, Box::new(editor));
+}
+
+/// Find the git root for a path, falling back to the given default root.
+fn discover_root_for(path: &Path, fallback: &Path) -> PathBuf {
+    Repository::discover(path.parent().unwrap_or(fallback))
+        .ok()
+        .and_then(|repo| repo.workdir().map(|w| w.to_path_buf()))
+        .unwrap_or_else(|| fallback.to_path_buf())
 }
 
 /// Restore kiro tabs from saved session state.
