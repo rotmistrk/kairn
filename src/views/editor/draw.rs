@@ -154,7 +154,8 @@ impl EditorView {
             (line_start_off, row),
         );
         self.editor.highlight = highlight;
-        self.draw_line_tail(line_idx, &line, col_offset, visual_row, p, text_x);
+        self.draw_line_tail(&line, col_offset, visual_row, p, text_x);
+        self.draw_line_cursor(line_idx, row, p, text_x);
         visual_row
     }
 
@@ -194,15 +195,7 @@ impl EditorView {
         }
     }
 
-    fn draw_line_tail(
-        &mut self,
-        line_idx: usize,
-        line: &str,
-        mut col_offset: usize,
-        visual_row: usize,
-        p: &DrawParams,
-        text_x: u16,
-    ) {
+    fn draw_line_tail(&mut self, line: &str, mut col_offset: usize, visual_row: usize, p: &DrawParams, text_x: u16) {
         let normal = Style::default();
         let app = app_palette();
         if self.editor.options.list
@@ -233,8 +226,6 @@ impl EditorView {
                 );
             }
         }
-
-        self.draw_line_cursor(line_idx, visual_row, p, text_x);
     }
 
     fn draw_line_cursor(&mut self, line_idx: usize, visual_row: usize, p: &DrawParams, text_x: u16) {
