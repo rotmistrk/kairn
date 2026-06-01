@@ -54,8 +54,7 @@ impl ProblemsView {
         let mut uris: Vec<_> = self.store.keys().cloned().collect();
         uris.sort();
         for uri in &uris {
-            let path_str = uri.strip_prefix("file://").unwrap_or(uri);
-            let path = PathBuf::from(path_str);
+            let path = PathBuf::from(uri);
             if let Some(diags) = self.store.get(uri) {
                 for d in diags {
                     self.entries.push(Entry {

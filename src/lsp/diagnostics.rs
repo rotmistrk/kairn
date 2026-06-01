@@ -37,7 +37,8 @@ pub use super::diagnostic_store::DiagnosticStore;
 
 /// Parse a `textDocument/publishDiagnostics` notification params.
 pub fn parse_publish_diagnostics(params: &Value) -> Option<(String, Vec<Diagnostic>)> {
-    let uri = params.get("uri")?.as_str()?.to_string();
+    let raw_uri = params.get("uri")?.as_str()?;
+    let uri = super::uri::uri_to_path(raw_uri);
     let diags_val = params.get("diagnostics")?.as_array()?;
     let diagnostics = diags_val.iter().filter_map(parse_one_diagnostic).collect();
     Some((uri, diagnostics))
@@ -86,7 +87,7 @@ mod tests {
             }]
         });
         let (uri, diags) = parse_publish_diagnostics(&params).unwrap();
-        assert_eq!(uri, "file:///src/main.rs");
+        assert_eq!(uri, "/src/main.rs");
         assert_eq!(diags.len(), 1);
         assert_eq!(diags[0].line, 5);
         assert_eq!(diags[0].col_start, 10);
