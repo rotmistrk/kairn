@@ -97,6 +97,24 @@ impl ProblemsView {
     pub fn error_count(&self) -> usize {
         self.entries.iter().filter(|e| e.severity == Severity::Error).count()
     }
+
+    /// Format all diagnostics as text for MCP access.
+    pub fn format_for_mcp(&self) -> String {
+        self.entries
+            .iter()
+            .map(|e| {
+                let sev = match e.severity {
+                    Severity::Error => "error",
+                    Severity::Warning => "warning",
+                    Severity::Info => "info",
+                    Severity::Hint => "hint",
+                };
+                let rel = e.path.strip_prefix(&self.root).unwrap_or(&e.path);
+                format!("{}:{}:{}: {}", rel.display(), e.line + 1, sev, e.message)
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
 
 impl View for ProblemsView {

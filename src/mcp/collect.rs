@@ -9,6 +9,7 @@ use crate::desktop::{slot_from, SlotId};
 use crate::mcp::snapshot::{CursorPos, McpSnapshot, SelectionRange, TabInfo, TerminalInfo};
 use crate::message_ring::MsgLevel;
 use crate::views::editor::EditorView;
+use crate::views::problems::ProblemsView;
 use crate::views::results::ResultsView;
 
 /// Collect current state from the desktop into a snapshot.
@@ -169,6 +170,8 @@ fn classify_tab(slot: SlotId, title: &str) -> &'static str {
         SlotId::Tools => {
             if title.starts_with("Kiro") {
                 "kiro"
+            } else if title == "Problems" || title == "Messages" {
+                "view"
             } else {
                 "shell"
             }
@@ -183,29 +186,36 @@ fn classify_tab(slot: SlotId, title: &str) -> &'static str {
     }
 }
 
-/// Collect content from all center-panel tabs for the snapshot.
+/// Collect content from all panel tabs for the snapshot.
 fn collect_center_contents(desktop: &mut TiledWorkspace) -> HashMap<String, String> {
     let mut contents = HashMap::new();
-    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
-        return HashMap::new();
-    };
-    for i in 0..panel.tab_count() {
-        let title = panel.tab_title(i).unwrap_or_default().to_string();
-        let Some(view) = panel.view_at_mut(i) else {
+    for slot in [SlotId::Center, SlotId::Tools, SlotId::Left] {
+        let Some(panel) = desktop.panel_mut(slot as usize) else {
             continue;
         };
-        let Some(any) = view.as_any_mut() else {
-            continue;
-        };
-        if let Some(editor) = any.downcast_ref::<EditorView>() {
-            contents.insert(title, editor.editor.buf().content());
-        } else if let Some(results) = any.downcast_ref::<ResultsView>() {
-            let lines: Vec<String> = results
-                .entries()
-                .iter()
-                .map(|e| format!("{}:{}:{}: {}", e.path.display(), e.line + 1, e.col + 1, e.text))
-                .collect();
-            contents.insert(title, lines.join("\n"));
+        for i in 0..panel.tab_count() {
+            let title = panel.tab_title(i).unwrap_or_default().to_string();
+            if contents.contains_key(&title) {
+                continue;
+            }
+            let Some(view) = panel.view_at_mut(i) else {
+                continue;
+            };
+            let Some(any) = view.as_any_mut() else {
+                continue;
+            };
+            if let Some(editor) = any.downcast_ref::<EditorView>() {
+                contents.insert(title, editor.editor.buf().content());
+            } else if let Some(results) = any.downcast_ref::<ResultsView>() {
+                let lines: Vec<String> = results
+                    .entries()
+                    .iter()
+                    .map(|e| format!("{}:{}:{}: {}", e.path.display(), e.line + 1, e.col + 1, e.text))
+                    .collect();
+                contents.insert(title, lines.join("\n"));
+            } else if let Some(problems) = any.downcast_ref::<ProblemsView>() {
+                contents.insert(title, problems.format_for_mcp());
+            }
         }
     }
     contents
