@@ -184,4 +184,7 @@ pub enum ScriptCommand {
     RemoveRoot {
         path: String,
     },
+    LspServerConfig {
+        args: Vec<String>,
+    },
 }

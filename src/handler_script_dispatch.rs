@@ -48,7 +48,8 @@ pub(crate) fn dispatch_extended(cmd: ScriptCommand, ctx: &mut CommandContext, st
         | ScriptCommand::LspStop { .. }
         | ScriptCommand::LspTimeout { .. }
         | ScriptCommand::LspArgs { .. }
-        | ScriptCommand::LspEnv { .. } => dispatch_lsp_control(cmd, ctx, state),
+        | ScriptCommand::LspEnv { .. }
+        | ScriptCommand::LspServerConfig { .. } => dispatch_lsp_control(cmd, ctx, state),
         ScriptCommand::AddRoot { .. } | ScriptCommand::RemoveRoot { .. } => dispatch_root(cmd, ctx, state),
         _ => false,
     }
@@ -124,6 +125,15 @@ fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mu
             for lang in state.lsp.matching_languages(&pattern) {
                 state.lsp.set_env(&lang, key.clone(), value.clone());
             }
+        }
+        ScriptCommand::LspServerConfig { args } => {
+            if args.len() >= 2 {
+                let lang = &args[0];
+                let cmd = &args[1];
+                let extra: Vec<String> = args[2..].to_vec();
+                state.lsp.set_config(lang, cmd, &extra);
+            }
+            // Single arg (e.g. "lsp clangd") is ambiguous — ignore silently
         }
         _ => return false,
     }

@@ -28,7 +28,14 @@ fn handle_lsp_cmd(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, args: &[TclValue], sub:
         "format" => push(cmds, ScriptCommand::LspFormat),
         "start" | "restart" | "stop" => handle_lifecycle(cmds, args, sub)?,
         "timeout" | "args" | "env" => handle_config(cmds, args, sub)?,
-        other => return Err(TclError::new(format!("lsp: unknown subcommand '{other}'"))),
+        other => {
+            // Treat unknown subcommand as "lsp-server <lang> <cmd> [args...]"
+            // e.g. "lsp clangd" → configure current filetype with clangd
+            // e.g. "lsp cpp clangd --flag" → configure cpp with clangd
+            let mut cmd_args = vec![other.to_string()];
+            cmd_args.extend(args.iter().skip(1).map(|a| a.as_str().to_string()));
+            push(cmds, ScriptCommand::LspServerConfig { args: cmd_args });
+        }
     }
     Ok(TclValue::Str(String::new()))
 }
