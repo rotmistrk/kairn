@@ -104,6 +104,20 @@ mod tests {
     }
 
     #[test]
+    fn parse_diagnostics_decodes_percent_encoded_uri() {
+        let params = json!({
+            "uri": "file:///home/user/kairn%2B%2B/src/main.cpp",
+            "diagnostics": [{
+                "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 1}},
+                "severity": 1,
+                "message": "err"
+            }]
+        });
+        let (uri, _) = parse_publish_diagnostics(&params).unwrap();
+        assert_eq!(uri, "/home/user/kairn++/src/main.cpp");
+    }
+
+    #[test]
     fn store_set_and_get() {
         let mut store = DiagnosticStore::new();
         let d = Diagnostic {
