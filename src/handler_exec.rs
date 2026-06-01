@@ -162,4 +162,34 @@ mod tests {
             "Dispatch table entry '{name}' produced 'Unknown command'. Bug in lookup logic."
         );
     }
+
+    #[test]
+    fn colon_prefix_stripped_from_command() {
+        let dir = std::env::temp_dir();
+        let (mut program, sink, mut state) = setup_test_program(&dir);
+
+        // ":help" should dispatch the same as "help" (no "Unknown command")
+        let text: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(":help".to_string()));
+        let mut ctx = txv_core::program::CommandContext {
+            command: CM_EXECUTE_COMMAND,
+            data: &text,
+            sink: &sink,
+            desktop: program.desktop_mut(),
+        };
+        handle_execute_command(&mut ctx, &mut state);
+
+        let events = sink.drain();
+        let produced_unknown = events.iter().any(|ev| {
+            if let txv_core::event::Event::Command { data, .. } = ev {
+                if let Some(msg) = data
+                    .as_ref()
+                    .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
+                {
+                    return msg.text.contains("Unknown command");
+                }
+            }
+            false
+        });
+        assert!(!produced_unknown, "':help' should be recognized after stripping colon");
+    }
 }

@@ -166,6 +166,7 @@ mod tests {
     fn patch_agent_adds_kairn_mcp_to_empty_agent() {
         let input: Value = serde_json::json!({"name": "test", "tools": ["*"]});
         let result = patch_agent(input, "kairn-test").unwrap();
+        assert_eq!(result["name"], "kairn-test");
         assert!(result["mcpServers"]["kairn"].is_object());
         assert_eq!(result["mcpServers"]["kairn"]["args"][0], "--mcp-connect");
         assert!(result["allowedTools"]
