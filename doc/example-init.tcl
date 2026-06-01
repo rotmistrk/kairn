@@ -17,6 +17,8 @@ set editor.wrap false
 set editor.list false
 set editor.number true
 set editor.tabstop 4
+# set editor.rainbow true       ;# colored bracket pairs (default: true)
+# set editor.guides true        ;# indent guide lines (default: true)
 
 # Cursor shapes per mode: bar, block, underline, software, none
 set editor.cursor_insert bar
