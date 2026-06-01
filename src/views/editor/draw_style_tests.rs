@@ -71,5 +71,5 @@ fn indent_guides_drawn_at_tab_stops() {
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
-    assert_eq!(buf.cell(4, 0).ch, '\u{2502}');
+    assert_eq!(buf.cell(4, 0).ch, '\u{250A}');
 }

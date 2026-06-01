@@ -77,7 +77,7 @@ pub(super) fn draw_indent_guides(
     };
     let mut g = tab_width;
     while g < indent_visual && g < avail {
-        buf.put(text_x + g as u16, vy, '\u{2502}', style);
+        buf.put(text_x + g as u16, vy, '\u{250A}', style);
         g += tab_width;
     }
 }
