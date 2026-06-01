@@ -45,7 +45,14 @@ pub(crate) fn handle_tab_close(ctx: &mut CommandContext, state: &mut AppState) {
                 CM_CONFIRM,
                 Some(Box::new("Save changes? [y]es [n]o [Esc]cancel".to_string())),
             );
+            return;
         }
+        // Left panel tabs (tree/git/todo) are never closeable
+        if focused == SlotId::Left as usize {
+            return;
+        }
+        // Terminal/kiro tabs: force close
+        close_active_tab(ctx, focused);
         return;
     }
     // Save autosave-pending buffer before closing (race: tick may not have fired)
