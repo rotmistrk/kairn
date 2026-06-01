@@ -109,6 +109,33 @@ impl Completer for AppCompleter {
         if let Some(sub) = trimmed.strip_prefix("kiro ") {
             return crate::completer_kiro::complete_kiro(sub, &self.root, visitor);
         }
+        if let Some(sub) = trimmed.strip_prefix("split ") {
+            return complete_split(sub, &self.root, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("new-file ") {
+            return path::complete_fs(path_part, &self.root, "new-file", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("new-dir ") {
+            return path::complete_fs(path_part, &self.root, "new-dir", &path::accept_dirs, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("delete-file ") {
+            return path::complete_fs(path_part, &self.root, "delete-file", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("rename-file ") {
+            return path::complete_fs(path_part, &self.root, "rename-file", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("copy-file ") {
+            return path::complete_fs(path_part, &self.root, "copy-file", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("git-stage ") {
+            return path::complete_fs(path_part, &self.root, "git-stage", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("git-unstage ") {
+            return path::complete_fs(path_part, &self.root, "git-unstage", &path::accept_all, visitor);
+        }
+        if let Some(path_part) = trimmed.strip_prefix("git-untrack ") {
+            return path::complete_fs(path_part, &self.root, "git-untrack", &path::accept_all, visitor);
+        }
         let cmds = self.commands.lock().unwrap_or_else(|e| e.into_inner());
         for cmd in cmds.iter().filter(|c| c.starts_with(trimmed)) {
             let e = Entry {
@@ -176,6 +203,26 @@ fn complete_options(
         }
     }
     Ok(())
+}
+
+/// Split sub-argument completions.
+fn complete_split(
+    sub: &str,
+    root: &std::path::Path,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    const SPLIT_SUBS: &[&str] = &["close", "focus", "hsplit", "linked", "open", "vsplit"];
+
+    if let Some(path_part) = sub.strip_prefix("open ") {
+        return path::complete_fs(path_part, root, "split open", &path::accept_all, visitor);
+    }
+    if let Some(path_part) = sub.strip_prefix("vsplit ") {
+        return path::complete_fs(path_part, root, "split vsplit", &path::accept_all, visitor);
+    }
+    if let Some(path_part) = sub.strip_prefix("hsplit ") {
+        return path::complete_fs(path_part, root, "split hsplit", &path::accept_all, visitor);
+    }
+    complete_options(SPLIT_SUBS, "split", sub, "command", visitor)
 }
 
 /// LSP sub-argument completions.
