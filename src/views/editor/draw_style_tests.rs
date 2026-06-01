@@ -73,3 +73,23 @@ fn indent_guides_drawn_at_tab_stops() {
     let buf = view.buffer();
     assert_eq!(buf.cell(4, 0).ch, '\u{250A}');
 }
+
+#[test]
+fn wrap_preserves_all_text_after_resize() {
+    let line = "pub(crate) fn complete_theme(sub: &str, visitor: &mut CompletionVisitor<'_>) \
+                -> Result<(), Box<dyn std::error::Error>> {";
+    let mut view = EditorView::from_text(line);
+    view.editor.options.number = true;
+    view.editor.options.wrap = true;
+    view.set_bounds(Rect::new(0, 0, 130, 5));
+    view.draw();
+    // Shrink and verify continuation text is correct
+    view.set_bounds(Rect::new(0, 0, 80, 5));
+    view.draw();
+    let buf = view.buffer();
+    let row2: String = (0..80u16).map(|x| buf.cell(x, 1).ch).collect();
+    assert!(
+        row2.contains("Error>>"),
+        "continuation row should contain 'Error>>', got: {row2}"
+    );
+}
