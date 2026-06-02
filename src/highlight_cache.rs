@@ -89,18 +89,13 @@ impl HighlightCache {
 
     fn find_start_state(&self, syntax: &SyntaxReference, target_line: usize) -> (ParseState, ScopeStack, usize) {
         let snapshot_idx = target_line / LINES_PER_SNAPSHOT;
-        // Find the latest cached snapshot at or before target.
-        let use_idx = snapshot_idx.min(self.snapshots.len());
-        if use_idx > 0 {
-            let snap = &self.snapshots[use_idx - 1];
-            (
-                snap.parse.clone(),
-                snap.scope.clone(),
-                (use_idx - 1) * LINES_PER_SNAPSHOT + LINES_PER_SNAPSHOT,
-            )
-        } else if !self.snapshots.is_empty() {
-            let snap = &self.snapshots[0];
-            (snap.parse.clone(), snap.scope.clone(), 0)
+        // Use the latest snapshot at or before the target chunk.
+        let available = self.snapshots.len();
+        if available > 0 {
+            let use_idx = snapshot_idx.min(available - 1);
+            let snap = &self.snapshots[use_idx];
+            let resume_line = use_idx * LINES_PER_SNAPSHOT;
+            (snap.parse.clone(), snap.scope.clone(), resume_line)
         } else {
             (ParseState::new(syntax), ScopeStack::new(), 0)
         }
