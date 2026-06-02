@@ -23,6 +23,8 @@ impl VimKeymap {
             KeyCode::Right => Command::MoveRight,
             KeyCode::Down => Command::MoveDown,
             KeyCode::Up => Command::MoveUp,
+            KeyCode::PageDown => Command::PageDown,
+            KeyCode::PageUp => Command::PageUp,
             KeyCode::Tab => Command::InsertChar('\t'),
             _ => Command::Noop,
         }
@@ -53,6 +55,8 @@ impl VimKeymap {
             KeyCode::Char('^') => Command::MoveFirstNonBlank,
             KeyCode::Char('G') => Command::MoveFileEnd,
             KeyCode::Char('g') => Command::MoveFileStart,
+            KeyCode::PageDown => Command::PageDown,
+            KeyCode::PageUp => Command::PageUp,
             KeyCode::Char('d') | KeyCode::Char('x') => Command::VisualDelete,
             KeyCode::Char('y') => Command::VisualYank,
             KeyCode::Char('c') => Command::VisualChange,
