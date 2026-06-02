@@ -238,6 +238,50 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_lookup_highlights_multiline_string_continuation() {
+        let syntax_set = SyntaxSet::load_defaults_newlines();
+        let themes = syntect::highlighting::ThemeSet::load_defaults();
+        let theme = &themes.themes["base16-eighties.dark"];
+
+        // Build 110 lines: normal code, then a multiline string starting at line 45
+        // that spans past line 60 (into snapshot[1] territory).
+        let mut lines: Vec<String> = Vec::with_capacity(110);
+        for i in 0..45 {
+            lines.push(format!("let x{i} = {i};"));
+        }
+        // Line 45: start a multiline string (raw string in Rust)
+        lines.push("let s = r#\"".to_string());
+        for i in 46..70 {
+            lines.push(format!("  string content line {i}"));
+        }
+        lines.push("\"#;".to_string()); // line 70: close the string
+        for i in 71..110 {
+            lines.push(format!("let y{i} = {i};"));
+        }
+
+        let mut cache = HighlightCache::new("rs");
+        // First pass: build all snapshots by highlighting 0..110
+        cache.highlight_viewport(0, 110, 110, |i| lines[i].clone(), &syntax_set, theme);
+        assert!(cache.snapshots.len() >= 2, "should have at least 2 snapshots");
+
+        // Now request only viewport starting at line 60 (inside the multiline string).
+        // This must use the correct snapshot (snapshot[1] at line 50) which has the
+        // string parse state, not snapshot[0] (line 0) which would lose the context.
+        let result = cache.highlight_viewport(60, 65, 110, |i| lines[i].clone(), &syntax_set, theme);
+        assert_eq!(result.len(), 5);
+
+        // Line 60 is inside the raw string — it should have string color (not default).
+        let line60_spans = &result[0];
+        let default_style = Style::default();
+        let has_string_color = line60_spans.iter().any(|s| s.style.fg != default_style.fg);
+        assert!(
+            has_string_color,
+            "line 60 (inside multiline string) should have non-default color, got: {:?}",
+            line60_spans.iter().map(|s| (&s.text, s.style.fg)).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn invalidate_from_truncates_snapshots() {
         let mut cache = HighlightCache::new("rs");
         let syntax_set = SyntaxSet::load_defaults_newlines();
