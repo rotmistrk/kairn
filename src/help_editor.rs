@@ -89,6 +89,7 @@ fn help_ex_commands() -> &'static str {
   :y              Yank line(s)
   :set wrap/nowrap/number/nonumber/list/nolist
   :set rainbow/norainbow/guides/noguides
+  :set gutter-signs/nogutter-signs
   :e <path>       Open file
   :diff            Diff vs HEAD (unified, 3 context lines)
   :diff -U5        Diff with 5 context lines

@@ -96,6 +96,8 @@ fn help_global_tree_git() -> &'static str {
   Enter / Right   Open file / expand directory
   h / Left        Collapse directory
   Ctrl-.          Toggle hidden (dot) files
+  /               Filter (fuzzy search)
+  Icons: set tree.icons true (requires Nerd Font)
 
 ─── Git Panel (left slot, \"Git\" tab) ─────────────────
   j / Down        Move cursor down

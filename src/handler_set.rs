@@ -23,6 +23,8 @@ pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
         "norainbow" => defaults.rainbow = false,
         "guides" => defaults.guides = true,
         "noguides" => defaults.guides = false,
+        "gutter-signs" => defaults.gutter_signs = true,
+        "nogutter-signs" => defaults.gutter_signs = false,
         _ => {}
     }
 }

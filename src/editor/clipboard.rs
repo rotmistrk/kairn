@@ -147,6 +147,8 @@ impl Editor {
             "norainbow" => self.options.rainbow = false,
             "guides" => self.options.guides = true,
             "noguides" => self.options.guides = false,
+            "gutter-signs" => self.options.gutter_signs = true,
+            "nogutter-signs" => self.options.gutter_signs = false,
             _ => {
                 if let Some(style) = self.parse_cursor_set(opt) {
                     style
