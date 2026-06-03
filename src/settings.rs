@@ -26,6 +26,7 @@ pub struct AppSettings {
     pub(crate) terminal_auto_close: bool,
     pub(crate) layout_wide_threshold: u16,
     pub(crate) layout_tall_threshold: u16,
+    pub(crate) tree_icons: bool,
     pub(crate) kiro: KiroLaunchSettings,
 }
 
@@ -50,6 +51,7 @@ impl Default for AppSettings {
             terminal_auto_close: true,
             layout_wide_threshold: 300,
             layout_tall_threshold: 200,
+            tree_icons: false,
             kiro: KiroLaunchSettings::default(),
         }
     }
@@ -67,6 +69,9 @@ impl AppSettings {
     }
     pub fn layout_wide_threshold(&self) -> u16 {
         self.layout_wide_threshold
+    }
+    pub fn tree_icons(&self) -> bool {
+        self.tree_icons
     }
     pub fn editor_defaults(&self) -> &EditorSettings {
         &self.editor_defaults

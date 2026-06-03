@@ -44,6 +44,10 @@ impl FileTreeView {
         view
     }
 
+    pub fn set_show_icons(&mut self, on: bool) {
+        self.inner.data.show_icons = on;
+    }
+
     /// Create a multi-root file tree view.
     pub fn with_roots(roots: Vec<PathBuf>, watcher: Option<WatchHandle>) -> Self {
         let primary = roots.first().cloned().unwrap_or_default();

@@ -25,6 +25,7 @@ use kairn::mcp::socket_path::socket_path;
 use kairn::session;
 use kairn::startup;
 use kairn::status::build_status_bar;
+use kairn::views::tree::FileTreeView;
 use txv_widgets::sidekick_manager::SidekickManager;
 
 #[derive(Parser)]
@@ -81,6 +82,16 @@ fn main() -> anyhow::Result<()> {
 
     let mut desktop = build_workspace(&root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
+    // Apply tree icon setting
+    if app_state.settings().tree_icons() {
+        if let Some(panel) = desktop.panel_mut(0) {
+            if let Some(view) = panel.view_at_mut(0) {
+                if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
+                    tree.set_show_icons(true);
+                }
+            }
+        }
+    }
     if let Some(ref sess) = saved_session {
         startup::restore_saved_session(&mut desktop, sess, &root_dir, &mut app_state);
     }
