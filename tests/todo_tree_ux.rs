@@ -39,7 +39,7 @@ fn todo_tree_renders_open_checkbox() {
     focus_todo(&mut h);
 
     assert!(h.content_contains("Buy milk"));
-    assert!(h.content_contains("○"));
+    assert!(h.content_contains("☐"));
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn todo_tree_renders_done_checkbox() {
     focus_todo(&mut h);
 
     assert!(h.content_contains("Done task"));
-    assert!(h.content_contains("✓"));
+    assert!(h.content_contains("☑"));
 }
 
 #[test]
@@ -222,7 +222,7 @@ fn toggle_in_progress() {
 
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
     assert!(content.contains("\"work_status\": \"InProgress\""));
-    assert!(h.content_contains("▶"));
+    assert!(h.content_contains("▸"));
 }
 
 #[test]

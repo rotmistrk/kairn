@@ -96,7 +96,7 @@ impl TodoTreeData {
         // We store precomputed badges in self.badges indexed by visible row.
         // But since cell() gives us row and we convert to id, we need badges by node id.
         // Actually, let's use the badges vec indexed by node index.
-        self.badges.get(id).map(|s| s.as_str()).unwrap_or("○  ")
+        self.badges.get(id).map(|s| s.as_str()).unwrap_or("☐  ")
     }
 
     /// Rebuild badge strings for all nodes.
@@ -128,7 +128,7 @@ impl TodoTreeData {
 
     fn compute_badge(&self, id: usize) -> String {
         let Some(item) = self.item_at(id) else {
-            return "○  ".to_string();
+            return "☐  ".to_string();
         };
         let collapsed = self.is_expandable_node(id) && !self.is_expanded_node(id);
         let status = Self::status_char(item, collapsed);
@@ -153,19 +153,19 @@ impl TodoTreeData {
 
     fn status_char(item: &model::TodoItem, collapsed: bool) -> char {
         if item.completed == Completion::Done {
-            return '✓';
+            return '☑';
         }
         if collapsed && model::effective_in_progress(item) {
-            return '▶';
+            return '▸';
         }
         if collapsed && model::effective_paused(item) {
             return '‖';
         }
         match item.work_status {
-            WorkStatus::InProgress => '▶',
-            WorkStatus::Paused => '‖',
-            _ if item.completed == Completion::Partial => '◐',
-            _ => '○',
+            WorkStatus::InProgress => '▸',
+            WorkStatus::Paused => '⏸',
+            _ if item.completed == Completion::Partial => '◪',
+            _ => '☐',
         }
     }
 

@@ -173,10 +173,10 @@ fn hotkeys_work_after_edit_commit() {
     h.inject_key(KeyCode::Char('i'), KeyMod::default());
     h.run_cycles(2);
 
-    // Verify the status changed (▶ = in progress)
+    // Verify the status changed (▸ = in progress)
     assert!(
-        h.content_contains("▶"),
-        "hotkey 'i' should toggle in-progress after edit: screen has no ▶"
+        h.content_contains("▸"),
+        "hotkey 'i' should toggle in-progress after edit: screen has no ▸"
     );
 }
 
