@@ -11,6 +11,7 @@ mod draw_chars;
 mod draw_diagnostics;
 mod draw_diff;
 mod draw_diff_helpers;
+mod draw_gutter;
 mod draw_sbs_diff;
 mod draw_style;
 mod draw_viewport;
@@ -67,6 +68,8 @@ pub struct EditorView {
     pub(crate) highlight_word: Option<(usize, usize, usize)>,
     /// Last known mtime of the file on disk (for external change detection).
     disk_mtime: Option<std::time::SystemTime>,
+    /// Git gutter signs (line_idx → sign). Computed on open/save/idle.
+    pub(crate) gutter_signs: Vec<(usize, crate::gutter_signs::GutterSign)>,
 }
 
 impl View for EditorView {

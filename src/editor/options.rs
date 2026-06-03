@@ -13,6 +13,7 @@ pub struct EditorOptions {
     pub(crate) matchparen: bool,
     pub(crate) rainbow: bool,
     pub(crate) guides: bool,
+    pub(crate) gutter_signs: bool,
     pub(crate) cursor_insert: CursorStyle,
     pub(crate) cursor_normal: CursorStyle,
     pub(crate) cursor_command: CursorStyle,
@@ -55,6 +56,9 @@ impl EditorOptions {
     pub fn guides(&self) -> bool {
         self.guides
     }
+    pub fn gutter_signs(&self) -> bool {
+        self.gutter_signs
+    }
     pub fn cursor_insert(&self) -> CursorStyle {
         self.cursor_insert
     }
@@ -77,6 +81,7 @@ impl Default for EditorOptions {
             matchparen: true,
             rainbow: false,
             guides: false,
+            gutter_signs: true,
             cursor_insert: CursorStyle::Bar,
             cursor_normal: CursorStyle::Software,
             cursor_command: CursorStyle::Software,

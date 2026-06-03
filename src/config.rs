@@ -71,6 +71,7 @@ fn extract_editor_settings(interp: &Interpreter, settings: &mut AppSettings) {
     extract_bool(interp, "editor.number", &mut d.number);
     extract_bool(interp, "editor.rainbow", &mut d.rainbow);
     extract_bool(interp, "editor.guides", &mut d.guides);
+    extract_bool(interp, "editor.gutter-signs", &mut d.gutter_signs);
     if let Some(val) = interp.get_var("editor.tabstop") {
         if let Ok(n) = val.as_int() {
             d.tabstop = n as u16;

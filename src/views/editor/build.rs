@@ -64,6 +64,7 @@ impl EditorView {
             buffer_id: None,
             highlight_word: None,
             disk_mtime: None,
+            gutter_signs: Vec::new(),
             store: Box::new(FileStore::new(PathBuf::from("[cmd output]"))),
         }
     }
@@ -98,6 +99,7 @@ impl EditorView {
             buffer_id: None,
             highlight_word: None,
             disk_mtime: metadata(&path).and_then(|m| m.modified()).ok(),
+            gutter_signs: Vec::new(),
             store: Box::new(FileStore::new(path.clone())),
         };
         view.apply_settings();
@@ -133,6 +135,7 @@ impl EditorView {
             buffer_id: None,
             highlight_word: None,
             disk_mtime: metadata(path).and_then(|m| m.modified()).ok(),
+            gutter_signs: Vec::new(),
             store: Box::new(FileStore::new(path.to_path_buf())),
         }
     }
@@ -166,12 +169,14 @@ impl EditorView {
             buffer_id: None,
             highlight_word: None,
             disk_mtime: metadata(path).and_then(|m| m.modified()).ok(),
+            gutter_signs: Vec::new(),
             store: Box::new(FileStore::new(path.to_path_buf())),
         }
     }
 
     pub fn set_root_dir(&mut self, root: PathBuf) {
         self.root_dir = root;
+        self.refresh_gutter_signs();
     }
 
     pub fn path(&self) -> &Path {

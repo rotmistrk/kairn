@@ -56,6 +56,7 @@ impl EditorView {
         if self.store.save(&content).is_ok() {
             self.editor.buf().mark_saved();
             self.disk_mtime = metadata(&self.path).and_then(|m| m.modified()).ok();
+            self.refresh_gutter_signs();
             true
         } else {
             false

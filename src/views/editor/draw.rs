@@ -8,7 +8,6 @@ use super::EditorView;
 use crate::app_palette::app_palette;
 use crate::editor::motions::match_bracket;
 use crate::highlight::HlSpan;
-use crate::views::editor::draw_diagnostics::diag_marker_style;
 
 /// Parameters collected for draw_editor rendering.
 pub(super) struct DrawParams {
@@ -181,17 +180,6 @@ impl EditorView {
             Some((start, end))
         } else {
             self.editor.visual_range()
-        }
-    }
-
-    fn draw_gutter(&mut self, line_idx: usize, y: u16, p: &DrawParams) {
-        if p.gutter_w > 0 {
-            let num = format!("{:>width$} ", line_idx + 1, width = (p.gutter_w - 1) as usize);
-            self.state.buffer_mut().print(0, y, &num, p.gutter_style);
-            if let Some(sev) = self.diagnostic_severity_at(line_idx) {
-                let marker_style = diag_marker_style(sev);
-                self.state.buffer_mut().put(p.gutter_w - 1, y, '●', marker_style);
-            }
         }
     }
 

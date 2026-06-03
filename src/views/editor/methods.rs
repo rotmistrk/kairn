@@ -2,8 +2,25 @@
 
 use super::EditorView;
 use crate::blame::blame_async;
+use crate::gutter_signs::compute_gutter_signs;
 
 impl EditorView {
+    /// Recompute git gutter signs (diff vs HEAD).
+    pub fn refresh_gutter_signs(&mut self) {
+        if !self.editor.options.gutter_signs {
+            self.gutter_signs.clear();
+            return;
+        }
+        let rel = self
+            .path
+            .strip_prefix(&self.root_dir)
+            .unwrap_or(&self.path)
+            .to_string_lossy()
+            .to_string();
+        let content = self.editor.buf().content();
+        self.gutter_signs = compute_gutter_signs(&self.root_dir, &rel, &content);
+    }
+
     /// Save the buffer to disk immediately. Returns true on success.
     pub fn save_now(&mut self) -> bool {
         self.save_buffer()
@@ -20,6 +37,7 @@ impl EditorView {
         self.editor.options.number = self.settings.number;
         self.editor.options.rainbow = self.settings.rainbow;
         self.editor.options.guides = self.settings.guides;
+        self.editor.options.gutter_signs = self.settings.gutter_signs;
         self.editor.options.cursor_insert = self.settings.cursor_insert;
         self.editor.options.cursor_normal = self.settings.cursor_normal;
         self.editor.options.cursor_command = self.settings.cursor_command;
@@ -90,12 +108,17 @@ impl EditorView {
         } else {
             (lines as f64).log10() as u16 + 1
         };
+        let sign_w: u16 = if self.editor.options.gutter_signs {
+            1
+        } else {
+            0
+        };
         let blame_w = if self.blame_state.is_some() {
             24
         } else {
             0
         };
-        digits + 1 + blame_w
+        sign_w + digits + 1 + blame_w
     }
 
     /// Toggle blame mode on/off.
