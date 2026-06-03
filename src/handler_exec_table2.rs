@@ -204,7 +204,6 @@ fn cmd_add_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     refresh_completer_roots(state);
     emit_roots_changed(ctx, state);
 }
-
 fn cmd_remove_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     use std::path::PathBuf;
     let path = PathBuf::from(arg);
@@ -228,20 +227,17 @@ fn cmd_remove_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     refresh_completer_roots(state);
     emit_roots_changed(ctx, state);
 }
-
 pub(crate) fn refresh_completer_roots(state: &AppState) {
     let paths: Vec<String> = state.roots().paths().iter().map(|p| p.display().to_string()).collect();
     if let Ok(mut guard) = state.completer_roots.lock() {
         *guard = paths;
     }
 }
-
 fn emit_roots_changed(ctx: &mut CommandContext, state: &AppState) {
     use crate::commands::RootsChangedData;
     let data = RootsChangedData::from_roots(state.roots());
     ctx.sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
 }
-
 fn push_msg(state: &AppState, msg: Message) {
     if let Ok(mut ring) = state.messages().lock() {
         ring.push(msg);

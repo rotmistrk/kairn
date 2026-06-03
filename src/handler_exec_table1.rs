@@ -153,4 +153,9 @@ pub static TABLE_PART1: &[ExecEntry] = &[
         requires_arg: false,
         handler: crate::handler_exec_edit::cmd_problems,
     },
+    ExecEntry {
+        names: &["set", "setglobal"],
+        requires_arg: true,
+        handler: crate::handler_exec_edit::cmd_set,
+    },
 ];

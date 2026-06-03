@@ -15,7 +15,7 @@ pub(crate) use crate::completer_entry::Entry;
 use sub::{complete_lsp, complete_set_options, complete_split, complete_theme};
 
 /// Built-in commands (always available).
-pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only", "set"];
+pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
 
 /// Shared command list that can be updated at runtime (e.g. from plugins).
 pub type CommandList = Arc<Mutex<Vec<String>>>;

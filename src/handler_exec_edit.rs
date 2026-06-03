@@ -258,3 +258,7 @@ fn push_status(ctx: &mut CommandContext, msg: Message) {
     ctx.sink
         .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }
+
+pub(crate) fn cmd_set(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
+    ctx.sink.push_command(CM_SET_GLOBAL, Some(Box::new(arg.to_string())));
+}
