@@ -119,30 +119,37 @@ pub(crate) fn complete_lsp(
     Ok(())
 }
 
-/// :set option completions.
+/// :set option completions — derived from handler_set::SET_OPTIONS (single source of truth).
 pub(crate) fn complete_set_options(
     sub: &str,
     visitor: &mut CompletionVisitor<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    const SET_OPTS: &[&str] = &[
-        "wrap",
-        "nowrap",
-        "list",
-        "nolist",
-        "number",
-        "nonumber",
-        "rainbow",
-        "norainbow",
-        "guides",
-        "noguides",
-        "gutter-signs",
-        "nogutter-signs",
-        "incsearch",
-        "noincsearch",
-        "matchparen",
-        "nomatchparen",
-        "tree.icons",
-        "notree.icons",
-    ];
-    complete_options(SET_OPTS, "set", sub, "option", visitor)
+    use crate::handler_set::SET_OPTIONS;
+
+    for entry in SET_OPTIONS {
+        if entry.name.starts_with(sub) && !offer_option(entry.name, "set", visitor)? {
+            return Ok(());
+        }
+        if !entry.is_toggle {
+            continue;
+        }
+        let no_form = format!("no{}", entry.name);
+        if no_form.starts_with(sub) && !offer_option(&no_form, "set", visitor)? {
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+fn offer_option(
+    name: &str,
+    prefix: &str,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let e = Entry {
+        text: format!("{prefix} {name}"),
+        display: name.to_string(),
+        kind: "option",
+    };
+    visitor(&e)
 }
