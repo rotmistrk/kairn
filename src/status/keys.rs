@@ -65,7 +65,7 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.help, CM_SHOW_HELP, "F1:Help"))).priority(6));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.zoom, CM_TW_ZOOM, "F5:Zoom"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.messages, CM_SHOW_MESSAGES, "F6:Msg"))).priority(5));
-    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "^Q:Quit"))).priority(9));
+    bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "C-q:Quit"))).priority(9));
     bar.add(StatusSlot::new(Box::new(
         KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "").with_data(0),
     )));
