@@ -15,7 +15,7 @@ pub(crate) use crate::completer_entry::Entry;
 use sub::{complete_lsp, complete_set_options, complete_split, complete_theme};
 
 /// Built-in commands (always available).
-pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
+pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only", "set"];
 
 /// Shared command list that can be updated at runtime (e.g. from plugins).
 pub type CommandList = Arc<Mutex<Vec<String>>>;
@@ -148,7 +148,7 @@ impl Completer for AppCompleter {
         _cursor: usize,
         visitor: &mut CompletionVisitor<'_>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let trimmed = input.trim();
+        let trimmed = input.trim_start();
         if let Some(partial) = trimmed.strip_prefix("remove-root ") {
             return self.complete_roots(partial, visitor);
         }
@@ -206,6 +206,10 @@ mod tests {
         assert!(cmds.contains(&"build".to_string()), "should contain builtin 'build'");
         assert!(cmds.contains(&"quit".to_string()), "should contain builtin 'quit'");
         assert!(
+            cmds.contains(&"set".to_string()),
+            "should contain 'set' for :set options"
+        );
+        assert!(
             cmds.contains(&"editor".to_string()),
             "should contain Tcl bridge 'editor'"
         );
@@ -215,5 +219,23 @@ mod tests {
             c
         };
         assert_eq!(*cmds, sorted, "commands should be sorted");
+    }
+
+    #[test]
+    fn set_subcommand_completes_options() {
+        let completer = AppCompleter::new(std::path::PathBuf::from("/tmp"), new_command_list());
+        let mut results = Vec::new();
+        completer
+            .complete("set ", 4, &mut |entry: &dyn txv_core::complete::Completion| {
+                results.push(entry.text().to_string());
+                Ok(true)
+            })
+            .unwrap();
+        assert!(!results.is_empty(), "set should have completions, got: {:?}", results);
+        assert!(
+            results.iter().any(|r| r == "set wrap"),
+            "should have 'set wrap', got: {:?}",
+            results
+        );
     }
 }
