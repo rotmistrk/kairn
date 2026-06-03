@@ -50,41 +50,46 @@ pub(super) fn draw_label(state: &mut ViewState, label: &str) {
     };
     state.buffer_mut().fill(' ', style);
     if !label.is_empty() {
-        let mut x: u16 = 1;
-        let mut bold = false;
-        let mut chars = label.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if ch == '~' {
-                if chars.peek() == Some(&'~') {
-                    chars.next();
-                    state.buffer_mut().put(
-                        x,
-                        0,
-                        '~',
-                        if bold {
-                            bold_style
-                        } else {
-                            style
-                        },
-                    );
-                    x += 1;
-                } else {
-                    bold = !bold;
-                }
-            } else {
-                state.buffer_mut().put(
+        render_styled_text(state.buffer_mut(), label, style, bold_style);
+    }
+    state.mark_redrawn();
+}
+
+/// Render text with ~ as style toggle into buffer starting at (1, 0).
+fn render_styled_text(buf: &mut Buffer, text: &str, normal: Style, bold: Style) {
+    let mut x: u16 = 1;
+    let mut in_bold = false;
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '~' {
+            if chars.peek() == Some(&'~') {
+                chars.next();
+                buf.put(
                     x,
                     0,
-                    ch,
-                    if bold {
-                        bold_style
+                    '~',
+                    if in_bold {
+                        bold
                     } else {
-                        style
+                        normal
                     },
                 );
                 x += 1;
+            } else {
+                in_bold = !in_bold;
             }
+        } else {
+            buf.put(
+                x,
+                0,
+                ch,
+                if in_bold {
+                    bold
+                } else {
+                    normal
+                },
+            );
+            x += 1;
         }
     }
-    state.mark_redrawn();
 }

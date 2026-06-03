@@ -125,10 +125,22 @@ pub(crate) fn complete_set_options(
     visitor: &mut CompletionVisitor<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     const SET_OPTS: &[&str] = &[
-        "wrap", "nowrap", "list", "nolist", "number", "nonumber",
-        "rainbow", "norainbow", "guides", "noguides",
-        "gutter-signs", "nogutter-signs",
-        "incsearch", "noincsearch", "matchparen", "nomatchparen",
+        "wrap",
+        "nowrap",
+        "list",
+        "nolist",
+        "number",
+        "nonumber",
+        "rainbow",
+        "norainbow",
+        "guides",
+        "noguides",
+        "gutter-signs",
+        "nogutter-signs",
+        "incsearch",
+        "noincsearch",
+        "matchparen",
+        "nomatchparen",
     ];
     complete_options(SET_OPTS, "set", sub, "option", visitor)
 }

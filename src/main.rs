@@ -82,16 +82,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut desktop = build_workspace(&root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
-    // Apply tree icon setting
-    if app_state.settings().tree_icons() {
-        if let Some(panel) = desktop.panel_mut(0) {
-            if let Some(view) = panel.view_at_mut(0) {
-                if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
-                    tree.set_show_icons(true);
-                }
-            }
-        }
-    }
+    apply_tree_icons(&mut desktop, &app_state);
     if let Some(ref sess) = saved_session {
         startup::restore_saved_session(&mut desktop, sess, &root_dir, &mut app_state);
     }
@@ -220,5 +211,20 @@ fn push_initial_open(
                 .sink()
                 .push_command(CM_OPEN_FILE, Some(Box::new(OpenFileRequest::new(path))));
         }
+    }
+}
+
+fn apply_tree_icons(desktop: &mut TiledWorkspace, state: &AppState) {
+    if !state.settings().tree_icons() {
+        return;
+    }
+    let Some(panel) = desktop.panel_mut(0) else {
+        return;
+    };
+    let Some(view) = panel.view_at_mut(0) else {
+        return;
+    };
+    if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
+        tree.set_show_icons(true);
     }
 }

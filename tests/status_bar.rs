@@ -9,7 +9,7 @@ fn status_bar_shows_key_hints() {
     h.run_cycles(1);
     let last_row = h.row(23);
     assert!(last_row.contains("F1:Help"));
-    assert!(last_row.contains("^Q:Quit"));
+    assert!(last_row.contains("C-q:Quit"));
 }
 
 #[test]

@@ -29,6 +29,6 @@ fn status_items_persist_after_pane_navigation() {
 
     let status_row = h.row(39);
     assert!(status_row.contains("F1:Help"), "after nav: {status_row}");
-    assert!(status_row.contains("^Q:Quit"), "after nav: {status_row}");
+    assert!(status_row.contains("C-q:Quit"), "after nav: {status_row}");
     assert!(status_row.contains("M-x"), "after nav: {status_row}");
 }
