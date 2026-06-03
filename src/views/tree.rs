@@ -14,9 +14,13 @@ use txv_widgets::{FileTreeData, TreeView};
 use crate::app_palette::app_palette;
 use crate::commands::{RootsChangedData, CM_COMMAND_PREFILL, CM_FS_CHANGED, CM_OPEN_FILES_CHANGED, CM_ROOTS_CHANGED};
 use std::collections::HashSet;
+use txv_widgets::{CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 
 use crate::git_status::{collect_git_status, FileStatus};
 use crate::git_watcher::WatchHandle;
+
+/// Group ID for the dired (file ops) status bar section.
+pub const DIRED_STATUS_GROUP: u16 = 2;
 
 pub struct FileTreeView {
     pub(super) inner: TreeView<FileTreeData>,
@@ -114,7 +118,7 @@ fn status_color(status: FileStatus) -> Color {
 }
 
 impl View for FileTreeView {
-    delegate_view!(inner, override { title, handle, unselect, can_close });
+    delegate_view!(inner, override { title, handle, select, unselect, can_close });
 
     fn title(&self) -> &str {
         "Files"
@@ -138,6 +142,16 @@ impl View for FileTreeView {
     fn unselect(&mut self) {
         self.clear_filter();
         self.inner.unselect();
+        self.inner
+            .state
+            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(DIRED_STATUS_GROUP)));
+    }
+
+    fn select(&mut self) {
+        self.inner.select();
+        self.inner
+            .state
+            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(DIRED_STATUS_GROUP)));
     }
 
     fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {

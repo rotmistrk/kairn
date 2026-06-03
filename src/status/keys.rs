@@ -4,10 +4,11 @@ use txv_core::prelude::*;
 use txv_core::status_bar::{StatusBar, StatusSlot};
 use txv_widgets::tiled_workspace::commands::CM_TW_ACTIVATE_TAB;
 use txv_widgets::tiled_workspace::TiledWorkspace;
-use txv_widgets::{KeyLabelView, ModalKey};
+use txv_widgets::{FocusGatedGroup, KeyLabelView, ModalKey};
 
 use crate::commands::*;
 use crate::settings::StatusKeys;
+use crate::views::tree::DIRED_STATUS_GROUP;
 
 use super::helpers::{alt, ctrl, key};
 
@@ -34,7 +35,9 @@ pub fn add_dired_prefix(bar: &mut StatusBar) {
         .add_child(b('u', CM_TREE_UNMARK_ALL, "unmark"))
         .add_child(b('M', CM_TREE_MOVE_MARKED, "Move"))
         .add_child(b('C', CM_TREE_COPY_MARKED, "Copy"));
-    bar.add(StatusSlot::new(Box::new(prefix)).priority(5));
+    let mut group = FocusGatedGroup::new(DIRED_STATUS_GROUP);
+    group.add_child(Box::new(prefix));
+    bar.add(StatusSlot::new(Box::new(group)).priority(5));
 }
 
 /// Ctrl-W prefix key sequence for subpanel management.
