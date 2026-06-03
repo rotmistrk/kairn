@@ -20,6 +20,10 @@ set editor.tabstop 4
 # set editor.rainbow true       ;# colored bracket pairs (default: true)
 # set editor.guides true        ;# indent guide lines (default: true)
 
+# ─── File Tree ───────────────────────────────────────────────────────────────
+# File/dir icons require a Nerd Font (https://www.nerdfonts.com/).
+# set tree.icons true            ;# show Nerd Font icons in file tree (default: false)
+
 # Cursor shapes per mode: bar, block, underline, software, none
 set editor.cursor_insert bar
 set editor.cursor_normal software
