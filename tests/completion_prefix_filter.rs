@@ -60,7 +60,10 @@ fn completion_filters_by_typed_prefix() {
     assert!(h.content_contains("println"), "matching item 'println' should appear");
     assert!(h.content_contains("print"), "matching item 'print' should appear");
     // "format" does NOT match prefix "prin" — should be filtered out
-    assert!(!h.content_contains("format"), "non-matching item 'format' should be filtered out");
+    assert!(
+        !h.content_contains("format"),
+        "non-matching item 'format' should be filtered out"
+    );
 }
 
 /// Empty prefix shows all items.

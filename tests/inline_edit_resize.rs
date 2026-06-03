@@ -43,7 +43,13 @@ fn todo_inline_edit_committed_on_resize() {
     h.run_cycles(2);
 
     // Select all and type new text
-    h.inject_key(KeyCode::Char('a'), KeyMod { ctrl: true, ..Default::default() });
+    h.inject_key(
+        KeyCode::Char('a'),
+        KeyMod {
+            ctrl: true,
+            ..Default::default()
+        },
+    );
     h.run_cycles(1);
     h.inject_str("Updated");
     h.run_cycles(2);
@@ -79,7 +85,13 @@ fn struct_view_inline_edit_cancelled_on_resize() {
     h.run_cycles(2);
 
     // Select all and type new value
-    h.inject_key(KeyCode::Char('a'), KeyMod { ctrl: true, ..Default::default() });
+    h.inject_key(
+        KeyCode::Char('a'),
+        KeyMod {
+            ctrl: true,
+            ..Default::default()
+        },
+    );
     h.run_cycles(1);
     h.inject_str("new_value");
     h.run_cycles(2);
@@ -89,5 +101,8 @@ fn struct_view_inline_edit_cancelled_on_resize() {
     h.run_cycles(3);
 
     // The original value should be preserved (edit discarded)
-    assert!(h.content_contains("old_value"), "struct view should preserve original value after resize cancels edit");
+    assert!(
+        h.content_contains("old_value"),
+        "struct view should preserve original value after resize cancels edit"
+    );
 }

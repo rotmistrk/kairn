@@ -60,10 +60,7 @@ fn split_with_file_opens_in_other_pane_when_already_split() {
 /// When already split and NO file arg, should toggle orientation (no crash).
 #[test]
 fn split_no_file_toggles_orientation_when_already_split() {
-    let dir = temp_project(&[
-        ("main.rs", "fn main() {}\n"),
-        ("lib.rs", "pub fn lib_fn() {}\n"),
-    ]);
+    let dir = temp_project(&[("main.rs", "fn main() {}\n"), ("lib.rs", "pub fn lib_fn() {}\n")]);
     let mut h = TestHarness::with_size(dir.path(), 120, 24);
     h.run_cycles(2);
     open_and_focus(&mut h, dir.path(), "main.rs");

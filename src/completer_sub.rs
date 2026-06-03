@@ -141,6 +141,8 @@ pub(crate) fn complete_set_options(
         "noincsearch",
         "matchparen",
         "nomatchparen",
+        "tree.icons",
+        "notree.icons",
     ];
     complete_options(SET_OPTS, "set", sub, "option", visitor)
 }

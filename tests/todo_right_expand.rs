@@ -69,5 +69,8 @@ fn right_arrow_on_leaf_opens_notes() {
     h.run_cycles(2);
 
     // Notes tab should appear (title "Notes" in screen)
-    assert!(h.contains("Notes") || h.contains("note"), "Right on leaf should open notes");
+    assert!(
+        h.contains("Notes") || h.contains("note"),
+        "Right on leaf should open notes"
+    );
 }
