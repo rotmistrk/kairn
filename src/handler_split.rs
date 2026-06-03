@@ -60,10 +60,8 @@ fn handle_split_existing(
 ) {
     if let Some(ref filename) = file {
         open_in_other_subpanel(desktop, state, filename);
-    } else {
-        if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
-            sp.set_direction(direction);
-        }
+    } else if let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) {
+        sp.set_direction(direction);
     }
 }
 

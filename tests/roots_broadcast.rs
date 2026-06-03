@@ -88,8 +88,7 @@ fn root_badges_have_distinct_colors_on_tabs() {
     h.run_cycles(1);
 
     // Add second root
-    let cmd = format!("add-root {}", root_b.display());
-    h.dispatch_command(kairn::commands::CM_EXECUTE_COMMAND, Some(Box::new(cmd)));
+    h.state.roots_mut().add(root_b.clone());
     h.run_cycles(2);
 
     // Open files from both roots
