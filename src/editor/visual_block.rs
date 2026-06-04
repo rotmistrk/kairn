@@ -67,10 +67,10 @@ impl Editor {
 
     /// Paste block before cursor column. Pads short lines with spaces.
     pub(super) fn block_paste_before(&mut self) {
-        if !self.register_block || self.register.is_empty() {
+        let reg = self.register();
+        if !self.register_block() || reg.is_empty() {
             return;
         }
-        let reg = self.register.clone();
         let block_lines: Vec<&str> = reg.lines().collect();
         let col = self.cursor_col;
         let start_line = self.cursor_line;
@@ -87,10 +87,10 @@ impl Editor {
 
     /// Paste block after cursor column. Pads short lines with spaces.
     pub(super) fn block_paste_after(&mut self) {
-        if !self.register_block || self.register.is_empty() {
+        let reg = self.register();
+        if !self.register_block() || reg.is_empty() {
             return;
         }
-        let reg = self.register.clone();
         let block_lines: Vec<&str> = reg.lines().collect();
         let col = self.cursor_col + 1;
         let start_line = self.cursor_line;

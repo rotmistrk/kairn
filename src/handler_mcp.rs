@@ -19,7 +19,7 @@ use crate::views::todo_tree::TodoTreeView;
 
 /// Drain MCP write commands and execute them on the live app state.
 pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(ref queue) = state.mcp_commands else {
+    let Some(ref queue) = state.mcp.commands else {
         return;
     };
     let requests = queue.drain();

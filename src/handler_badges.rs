@@ -83,7 +83,7 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_secs = state.settings.terminal_idle_timeout;
     let now = Instant::now();
     let idle_dur = Duration::from_secs(idle_secs);
-    let frame = (state.mcp_tick / 16) as usize % SPINNER.len();
+    let frame = (state.mcp.tick / 16) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop) else {
         return;

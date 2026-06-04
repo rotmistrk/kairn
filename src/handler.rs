@@ -86,13 +86,13 @@ fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
-    state.mcp_tick = state.mcp_tick.wrapping_add(1);
-    if state.mcp_snapshot.is_some() && state.mcp_tick.is_multiple_of(20) {
+    state.mcp.tick = state.mcp.tick.wrapping_add(1);
+    if state.mcp.snapshot.is_some() && state.mcp.tick.is_multiple_of(20) {
         if let Some(desktop) = downcast_desktop(ctx.desktop) {
             let mut snap = collect_snapshot(desktop);
             snap.terminals = collect_terminal_content(desktop);
             snap.messages = collect_messages(&state.messages);
-            let Some(ref arc) = state.mcp_snapshot else {
+            let Some(ref arc) = state.mcp.snapshot else {
                 return;
             };
             match arc.lock() {
@@ -101,7 +101,7 @@ fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
     }
-    if state.mcp_tick.is_multiple_of(100) {
+    if state.mcp.tick.is_multiple_of(100) {
         refresh_plugins(ctx, state);
     }
 }

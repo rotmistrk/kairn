@@ -42,7 +42,7 @@ impl Editor {
     }
 
     fn do_paste(&mut self, before: bool) {
-        if self.register_block {
+        if self.register_block() {
             if before {
                 self.block_paste_before();
             } else {

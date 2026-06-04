@@ -25,11 +25,13 @@ use crate::lsp::progress::LspStatusTracker;
 use crate::lsp::registry::LspRegistry;
 use crate::mcp::commands::McpCommandQueue;
 use crate::mcp::snapshot::McpSnapshot;
+use crate::mcp_state::McpState;
 use crate::message_ring::MessageRing;
 use crate::scripting::hooks::HookTrigger;
 use crate::scripting::plugins::PluginManager;
 use crate::scripting::ScriptEngine;
 use crate::settings::AppSettings;
+use crate::shared_register::RegisterHandle;
 use crate::task_output::TaskOutput;
 use crate::theme_state::ThemeState;
 use crate::workspace_roots::WorkspaceRoots;
@@ -55,11 +57,8 @@ pub struct AppState {
     /// LSP document version counters (keyed by file path string).
     pub(crate) doc_versions: HashMap<String, i64>,
     pub(crate) lsp_opened_files: HashSet<String>,
-    /// MCP snapshot (updated periodically for MCP server reads).
-    pub(crate) mcp_snapshot: Option<Arc<Mutex<McpSnapshot>>>,
-    /// MCP command queue for write operations from MCP tools.
-    pub(crate) mcp_commands: Option<McpCommandQueue>,
-    pub(crate) mcp_tick: u16,
+    /// MCP state (snapshot, command queue, tick counter).
+    pub(crate) mcp: McpState,
     pub(crate) waker: Option<Waker>,
     pub(crate) theme_state: Option<RefCell<ThemeState>>,
     pub(crate) grep_pending: Option<(String, Arc<GrepState>, PathBuf)>,
@@ -87,6 +86,8 @@ pub struct AppState {
     pub(crate) todo_note_path: Option<Vec<usize>>,
     /// Whether the center panel's split has linked scrolling enabled.
     pub(crate) linked_scroll: bool,
+    /// Shared yank register for cross-editor paste.
+    pub(crate) shared_register: RegisterHandle,
     /// Last output timestamp per terminal tab index (for activity badges).
     pub(crate) pty_last_output: HashMap<usize, Instant>,
     /// Last emitted window title (to avoid redundant OSC 2 writes).
@@ -135,16 +136,16 @@ impl AppState {
         self.lsp.shutdown_all();
     }
     pub fn set_mcp_snapshot(&mut self, snap: Arc<Mutex<McpSnapshot>>) {
-        self.mcp_snapshot = Some(snap);
+        self.mcp.snapshot = Some(snap);
     }
     pub fn mcp_snapshot(&self) -> &Option<Arc<Mutex<McpSnapshot>>> {
-        &self.mcp_snapshot
+        &self.mcp.snapshot
     }
     pub fn mcp_commands(&self) -> &Option<McpCommandQueue> {
-        &self.mcp_commands
+        &self.mcp.commands
     }
     pub fn set_mcp_commands(&mut self, q: McpCommandQueue) {
-        self.mcp_commands = Some(q);
+        self.mcp.commands = Some(q);
     }
     pub fn messages(&self) -> &Arc<Mutex<MessageRing>> {
         &self.messages
@@ -235,9 +236,7 @@ impl AppState {
             kiro_registry: KiroTabRegistry::default(),
             doc_versions: HashMap::new(),
             lsp_opened_files: HashSet::new(),
-            mcp_snapshot: None,
-            mcp_commands: None,
-            mcp_tick: 0,
+            mcp: McpState::default(),
             waker: None,
             theme_state: None,
             grep_pending: None,
@@ -254,6 +253,7 @@ impl AppState {
             lsp_status: LspStatusTracker::new(),
             todo_note_path: None,
             linked_scroll: false,
+            shared_register: Arc::default(),
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: open_tty_for_title(),

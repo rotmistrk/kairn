@@ -29,6 +29,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
+use crate::shared_register::{new_register, RegisterHandle};
 
 use self::command::Command;
 use self::highlight_state::HighlightState;
@@ -77,9 +78,7 @@ pub struct Editor {
     pub(crate) desired_col: Option<usize>,
     pub(crate) mode: EditorMode,
     pub(crate) keymap: VimKeymap,
-    pub(crate) register: String,
-    pub(crate) register_linewise: bool,
-    pub(crate) register_block: bool,
+    pub(crate) shared_register: RegisterHandle,
     pub(crate) viewport_scroll: usize,
     pub(crate) viewport_height: usize,
     pub(crate) h_scroll: usize,
@@ -119,8 +118,27 @@ impl Editor {
     pub fn set_mode(&mut self, v: EditorMode) {
         self.mode = v;
     }
-    pub fn register(&self) -> &str {
-        &self.register
+    pub fn register(&self) -> String {
+        self.shared_register
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .text
+            .clone()
+    }
+    pub fn register_linewise(&self) -> bool {
+        self.shared_register.lock().unwrap_or_else(|p| p.into_inner()).linewise
+    }
+    pub fn register_block(&self) -> bool {
+        self.shared_register.lock().unwrap_or_else(|p| p.into_inner()).block
+    }
+    pub fn set_register(&mut self, text: String, linewise: bool, block: bool) {
+        let mut reg = self.shared_register.lock().unwrap_or_else(|p| p.into_inner());
+        reg.text = text;
+        reg.linewise = linewise;
+        reg.block = block;
+    }
+    pub(crate) fn set_shared_register(&mut self, handle: RegisterHandle) {
+        self.shared_register = handle;
     }
     pub fn search_pattern(&self) -> &str {
         &self.search_pattern
@@ -165,9 +183,7 @@ impl Editor {
             desired_col: None,
             mode: EditorMode::Normal,
             keymap: VimKeymap::new(),
-            register: String::new(),
-            register_linewise: false,
-            register_block: false,
+            shared_register: new_register(),
             viewport_scroll: 0,
             viewport_height: 24,
             h_scroll: 0,

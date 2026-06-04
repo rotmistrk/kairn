@@ -10,9 +10,7 @@ use super::Editor;
 impl Editor {
     /// Set the yank register and copy to system clipboard via OSC 52.
     pub fn yank(&mut self, text: String) {
-        self.register_linewise = false;
-        self.register_block = false;
-        self.register = text.clone();
+        self.set_register(text.clone(), false, false);
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
         }
@@ -20,9 +18,7 @@ impl Editor {
 
     /// Set the yank register as linewise (for dd, yy, V-yank).
     pub fn yank_linewise(&mut self, text: String) {
-        self.register_linewise = true;
-        self.register_block = false;
-        self.register = text.clone();
+        self.set_register(text.clone(), true, false);
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
         }
@@ -30,27 +26,27 @@ impl Editor {
 
     /// Set the yank register as block (newline-separated column slices).
     pub fn yank_block(&mut self, text: String) {
-        self.register_linewise = false;
-        self.register_block = true;
-        self.register = text.clone();
+        self.set_register(text.clone(), false, true);
         if let Err(e) = copy_to_clipboard(&text) {
             self.status = format!("clipboard: {e}");
         }
     }
 
     pub(super) fn paste_after(&mut self) {
-        if self.register.is_empty() {
+        let reg = self.register();
+        let linewise = self.register_linewise();
+        if reg.is_empty() {
             return;
         }
-        if self.register_linewise {
+        if linewise {
             // Paste below current line
             let line_len = self.buf().line_len(self.cursor_line);
             let offset = self.buf().line_col_to_offset(self.cursor_line, line_len);
             if let Some(offset) = offset {
-                let text = if self.register.ends_with('\n') {
-                    format!("\n{}", &self.register[..self.register.len() - 1])
+                let text = if reg.ends_with('\n') {
+                    format!("\n{}", &reg[..reg.len() - 1])
                 } else {
-                    format!("\n{}", self.register)
+                    format!("\n{reg}")
                 };
                 self.buf().insert(offset, &text);
                 self.cursor_line += 1;
@@ -62,10 +58,8 @@ impl Editor {
             if let Some(offset) = offset {
                 let content = self.buf().content();
                 let after = offset + content[offset..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
-                self.buf().insert(after, &self.register);
-                let (l, c) = self
-                    .buf()
-                    .offset_to_line_col(after + self.register.len().saturating_sub(1));
+                self.buf().insert(after, &reg);
+                let (l, c) = self.buf().offset_to_line_col(after + reg.len().saturating_sub(1));
                 self.cursor_line = l;
                 self.cursor_col = c;
             }
@@ -73,17 +67,19 @@ impl Editor {
     }
 
     pub(super) fn paste_before(&mut self) {
-        if self.register.is_empty() {
+        let reg = self.register();
+        let linewise = self.register_linewise();
+        if reg.is_empty() {
             return;
         }
-        if self.register_linewise {
+        if linewise {
             // Paste above current line
             let offset = self.buf().line_col_to_offset(self.cursor_line, 0);
             if let Some(offset) = offset {
-                let text = if self.register.ends_with('\n') {
-                    self.register.clone()
+                let text = if reg.ends_with('\n') {
+                    reg
                 } else {
-                    format!("{}\n", self.register)
+                    format!("{reg}\n")
                 };
                 self.buf().insert(offset, &text);
                 self.cursor_col = 0;
@@ -92,10 +88,8 @@ impl Editor {
             // Paste before cursor
             let offset = self.buf().line_col_to_offset(self.cursor_line, self.cursor_col);
             if let Some(offset) = offset {
-                self.buf().insert(offset, &self.register);
-                let (l, c) = self
-                    .buf()
-                    .offset_to_line_col(offset + self.register.len().saturating_sub(1));
+                self.buf().insert(offset, &reg);
+                let (l, c) = self.buf().offset_to_line_col(offset + reg.len().saturating_sub(1));
                 self.cursor_line = l;
                 self.cursor_col = c;
             }
