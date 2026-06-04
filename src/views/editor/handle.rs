@@ -53,6 +53,10 @@ impl EditorView {
         self.editor.command_buf.clear();
         if is_search {
             self.editor.highlight = None;
+            if let Some((l, c)) = self.editor.incsearch_origin.take() {
+                self.editor.cursor_line = l;
+                self.editor.cursor_col = c;
+            }
         }
     }
 
@@ -169,14 +173,27 @@ impl EditorView {
         let pattern = &self.editor.command_buf;
         if pattern.is_empty() {
             self.editor.highlight = None;
+            if let Some((l, c)) = self.editor.incsearch_origin {
+                self.editor.cursor_line = l;
+                self.editor.cursor_col = c;
+            }
             return;
         }
         let content = self.editor.buf().content();
-        let cursor_off = self
+        let origin_off = self
             .editor
-            .buf()
-            .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+            .incsearch_origin
+            .and_then(|(l, c)| self.editor.buf().line_col_to_offset(l, c))
             .unwrap_or(0);
-        self.editor.highlight = HighlightState::build(pattern, &content, cursor_off);
+        self.editor.highlight = HighlightState::build(pattern, &content, origin_off);
+        // Jump cursor to current match
+        if let Some(hl) = &self.editor.highlight {
+            if let Some(&(start, _)) = hl.matches.get(hl.current) {
+                let (l, c) = self.editor.buf().offset_to_line_col(start);
+                self.editor.cursor_line = l;
+                self.editor.cursor_col = c;
+            }
+        }
+        self.ensure_cursor_visible();
     }
 }

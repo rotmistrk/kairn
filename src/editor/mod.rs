@@ -90,6 +90,8 @@ pub struct Editor {
     pub(crate) last_visual_lines: Option<(usize, usize)>,
     pub(crate) search_pattern: String,
     pub(crate) search_direction_forward: bool,
+    /// Cursor position before incremental search started (for elastic backspace).
+    pub(crate) incsearch_origin: Option<(usize, usize)>,
     pub(crate) command_buf: String,
     pub(crate) command_history: Vec<String>,
     pub(crate) history_index: Option<usize>,
@@ -197,6 +199,7 @@ impl Editor {
             last_visual_lines: None,
             search_pattern: String::new(),
             search_direction_forward: true,
+            incsearch_origin: None,
             command_buf: String::new(),
             command_history: Vec::new(),
             history_index: None,

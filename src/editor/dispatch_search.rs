@@ -8,6 +8,7 @@ impl Editor {
     pub(super) fn dispatch_search_and_command(&mut self, cmd: Command) -> EditorAction {
         match cmd {
             Command::EnterSearchMode => {
+                self.incsearch_origin = Some((self.cursor_line, self.cursor_col));
                 self.mode = EditorMode::Search;
                 self.command_buf.clear();
                 EditorAction::ModeChanged
