@@ -47,3 +47,25 @@ fn range_bang_sort_sorts_lines() {
     // date should remain unchanged
     assert!(h.contains("date"));
 }
+
+#[test]
+fn visual_select_bang_sort() {
+    let dir = temp_project(&[("t.txt", "cherry\napple\nbanana\ndate")]);
+    let mut h = TestHarness::new(dir.path());
+    open_file_and_focus(&mut h);
+    h.run_cycles(1);
+    // Select lines 1-3 with V then j j, then :!sort
+    h.inject_key(KeyCode::Char('V'), KeyMod::default());
+    h.inject_key(KeyCode::Char('j'), KeyMod::default());
+    h.inject_key(KeyCode::Char('j'), KeyMod::default());
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    h.run_cycles(1);
+    h.inject_str("!sort\n");
+    h.run_cycles(1);
+    let screen = h.screen_text();
+    let apple_pos = screen.find("apple").expect("apple");
+    let banana_pos = screen.find("banana").expect("banana");
+    let cherry_pos = screen.find("cherry").expect("cherry");
+    assert!(apple_pos < banana_pos, "apple before banana");
+    assert!(banana_pos < cherry_pos, "banana before cherry");
+}
