@@ -23,7 +23,7 @@ pub fn collect_git_status(root: &Path) -> HashMap<String, FileStatus> {
 
     let mut opts = git2::StatusOptions::new();
     opts.include_untracked(true)
-        .recurse_untracked_dirs(true)
+        .recurse_untracked_dirs(false)
         .include_ignored(false);
 
     let statuses = match repo.statuses(Some(&mut opts)) {

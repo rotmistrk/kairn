@@ -23,6 +23,7 @@ fn initial_title(path: &Path) -> String {
 pub(crate) use crate::handler_open_view::open_as_csv;
 use crate::handler_open_view::{open_editor, open_editor_view, try_open_structured};
 use crate::views::editor::EditorView;
+use crate::views::struct_view::StructuredView;
 
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
@@ -195,8 +196,11 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
         .panel_mut(SlotId::Center as usize)
         .and_then(|p| p.active_view_mut())
         .and_then(|v| v.as_any_mut())
-        .and_then(|a| a.downcast_ref::<EditorView>())
-        .map(|ev| ev.path().to_path_buf());
+        .and_then(|a| {
+            a.downcast_ref::<EditorView>()
+                .map(|ev| ev.path().to_path_buf())
+                .or_else(|| a.downcast_ref::<StructuredView>().map(|sv| sv.path.clone()))
+        });
     let Some(path) = abs_path else {
         return;
     };
