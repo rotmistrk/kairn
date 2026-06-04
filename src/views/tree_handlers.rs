@@ -11,17 +11,19 @@ impl FileTreeView {
         self.notify_save();
         self.inner.data.refresh();
         self.inner.mark_dirty();
-        self.update_colors();
+        self.request_colors();
         HandleResult::Ignored
     }
 
     pub(super) fn handle_tick(&mut self) -> HandleResult {
         if self.filter_active {
+            self.apply_pending_colors();
             return HandleResult::Ignored;
         }
+        self.apply_pending_colors();
         self.refresh_counter += 1;
         if self.watcher.as_mut().is_some_and(|w| w.has_changes()) {
-            self.update_colors();
+            self.request_colors();
             self.inner.data.refresh();
             self.inner.mark_dirty();
             self.refresh_counter = 0;
@@ -30,7 +32,7 @@ impl FileTreeView {
             self.refresh_counter = 0;
             self.inner.data.refresh();
             self.inner.mark_dirty();
-            self.update_colors();
+            self.request_colors();
         }
         HandleResult::Ignored
     }

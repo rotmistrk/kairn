@@ -4,7 +4,10 @@
 mod tree_dired;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 use txv_core::cell::Color;
 use txv_core::cursor::{CursorRequest, CursorShape};
@@ -13,7 +16,6 @@ use txv_widgets::{FileTreeData, TreeView};
 
 use crate::app_palette::app_palette;
 use crate::commands::{RootsChangedData, CM_COMMAND_PREFILL, CM_FS_CHANGED, CM_OPEN_FILES_CHANGED, CM_ROOTS_CHANGED};
-use std::collections::HashSet;
 use txv_widgets::{CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 
 use crate::git_status::{collect_git_status, FileStatus};
@@ -30,12 +32,13 @@ pub struct FileTreeView {
     pub(super) refresh_counter: u16,
     pub(super) filter_active: bool,
     pub(super) marked: HashSet<PathBuf>,
+    pending_colors: Arc<Mutex<Option<HashMap<String, Color>>>>,
 }
 
 impl FileTreeView {
     pub fn new(root: PathBuf, watcher: Option<WatchHandle>) -> Self {
         let data = FileTreeData::new(root.clone());
-        let mut view = Self {
+        let view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
             watcher,
@@ -43,8 +46,9 @@ impl FileTreeView {
             refresh_counter: 0,
             filter_active: false,
             marked: HashSet::new(),
+            pending_colors: Arc::new(Mutex::new(None)),
         };
-        view.update_colors();
+        view.request_colors();
         view
     }
 
@@ -56,7 +60,7 @@ impl FileTreeView {
     pub fn with_roots(roots: Vec<PathBuf>, watcher: Option<WatchHandle>) -> Self {
         let primary = roots.first().cloned().unwrap_or_default();
         let data = FileTreeData::with_roots(roots);
-        let mut view = Self {
+        let view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
             watcher,
@@ -64,19 +68,44 @@ impl FileTreeView {
             refresh_counter: 0,
             filter_active: false,
             marked: HashSet::new(),
+            pending_colors: Arc::new(Mutex::new(None)),
         };
-        view.update_colors();
+        view.request_colors();
         view
     }
 
-    pub(super) fn update_colors(&mut self) {
-        let mut colors: HashMap<String, Color> = HashMap::new();
-        for root in self.inner.data.all_roots() {
-            for (path, status) in collect_git_status(root) {
-                colors.insert(path, status_color(status));
+    /// Spawn background thread to compute git status colors.
+    pub(super) fn request_colors(&self) {
+        let roots: Vec<PathBuf> = self.inner.data.all_roots().iter().map(|p| p.to_path_buf()).collect();
+        let slot = Arc::clone(&self.pending_colors);
+        thread::spawn(move || {
+            let mut colors: HashMap<String, Color> = HashMap::new();
+            for root in &roots {
+                for (path, status) in collect_git_status(root) {
+                    colors.insert(path, status_color(status));
+                }
             }
+            if let Ok(mut guard) = slot.lock() {
+                *guard = Some(colors);
+            }
+        });
+    }
+
+    /// Apply pending colors if background computation finished.
+    pub(super) fn apply_pending_colors(&mut self) -> bool {
+        let colors = {
+            let Ok(mut guard) = self.pending_colors.lock() else {
+                return false;
+            };
+            guard.take()
+        };
+        if let Some(c) = colors {
+            self.inner.data.set_colors(c);
+            self.inner.mark_dirty();
+            true
+        } else {
+            false
         }
-        self.inner.data.set_colors(colors);
     }
 
     /// Signal that a save occurred (immediate refresh trigger).
@@ -205,7 +234,7 @@ impl FileTreeView {
                 self.inner.data.set_root_labels(&rcd.labels);
                 self.inner.data.set_root_badge_colors(rcd.colors.clone());
                 self.inner.mark_dirty();
-                self.update_colors();
+                self.request_colors();
             }
             return HandleResult::Ignored;
         }
