@@ -19,6 +19,7 @@ pub(super) struct DrawParams {
     pub(super) hl_match_style: Style,
     pub(super) hl_other_bg: Color,
     pub(super) visual_bg: Color,
+    pub(super) ephemeral_bg: Color,
     pub(super) scroll: usize,
     pub(super) avail: usize,
     pub(super) wrap: bool,
@@ -107,6 +108,7 @@ impl EditorView {
             } else {
                 pal.style(StyleId::CursorUnfocused).bg
             },
+            ephemeral_bg: app.editor().highlight_other().bg,
             scroll,
             avail: w.saturating_sub(gutter_w) as usize,
             wrap,
@@ -153,9 +155,21 @@ impl EditorView {
             (line_start_off, row),
         );
         self.editor.highlight = highlight;
-        self.draw_line_tail(&line, col_offset, visual_row, p, text_x);
+        let fill = self.ephemeral_fill(line_idx, p);
+        self.draw_line_tail(&line, col_offset, visual_row, p, text_x, fill);
         self.draw_line_cursor(line_idx, row, p, text_x);
         visual_row
+    }
+
+    fn ephemeral_fill(&self, line_idx: usize, p: &DrawParams) -> Style {
+        if self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
+            Style {
+                bg: p.ephemeral_bg,
+                ..Style::default()
+            }
+        } else {
+            Style::default()
+        }
     }
 
     /// Compute visual byte range for a line, handling block mode per-line.
@@ -183,36 +197,43 @@ impl EditorView {
         }
     }
 
-    fn draw_line_tail(&mut self, line: &str, mut col_offset: usize, visual_row: usize, p: &DrawParams, text_x: u16) {
-        let normal = Style::default();
-        let app = app_palette();
+    fn draw_line_tail(
+        &mut self,
+        line: &str,
+        mut col_offset: usize,
+        visual_row: usize,
+        p: &DrawParams,
+        text_x: u16,
+        fill: Style,
+    ) {
         if self.editor.options.list
             && col_offset >= p.h_off
-            && col_offset - p.h_off < p.avail
+            && (col_offset - p.h_off) < p.avail
             && visual_row < p.h as usize
         {
-            let list_style = app.editor().list_chars();
             let x = text_x + (col_offset - p.h_off) as u16;
-            self.state.buffer_mut().put(x, visual_row as u16, '$', list_style);
+            self.state
+                .buffer_mut()
+                .put(x, visual_row as u16, '$', app_palette().editor().list_chars());
             col_offset += 1;
         }
-
-        if visual_row < p.h as usize {
-            let vy = visual_row as u16;
-            for pad_col in col_offset..p.avail {
-                self.state.buffer_mut().put(text_x + pad_col as u16, vy, ' ', normal);
-            }
-            if self.editor.options.guides {
-                draw_indent_guides(
-                    self.state.buffer_mut(),
-                    line,
-                    text_x,
-                    vy,
-                    p.tab_width,
-                    p.avail,
-                    p.gutter_style,
-                );
-            }
+        if visual_row >= p.h as usize {
+            return;
+        }
+        let vy = visual_row as u16;
+        for pad_col in col_offset..p.avail {
+            self.state.buffer_mut().put(text_x + pad_col as u16, vy, ' ', fill);
+        }
+        if self.editor.options.guides {
+            draw_indent_guides(
+                self.state.buffer_mut(),
+                line,
+                text_x,
+                vy,
+                p.tab_width,
+                p.avail,
+                p.gutter_style,
+            );
         }
     }
 

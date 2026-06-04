@@ -7,6 +7,8 @@ mod dispatch_search;
 mod dispatch_visual;
 mod dispatch_yank;
 mod editing;
+pub mod ephemeral;
+pub mod ephemeral_range;
 pub mod ex;
 pub mod ex_commands;
 mod ex_execute;
@@ -32,6 +34,7 @@ use crate::buffer::PieceTable;
 use crate::shared_register::{new_register, RegisterHandle};
 
 use self::command::Command;
+use self::ephemeral::EphemeralHighlights;
 use self::highlight_state::HighlightState;
 use self::keymap::EditorMode;
 use self::keymap_vim::VimKeymap;
@@ -96,6 +99,7 @@ pub struct Editor {
     pub(crate) status: String,
     pub(crate) options: EditorOptions,
     pub(crate) highlight: Option<HighlightState>,
+    pub(crate) ephemeral: EphemeralHighlights,
 }
 
 impl Editor {
@@ -202,6 +206,7 @@ impl Editor {
             status: String::new(),
             options: EditorOptions::default(),
             highlight: None,
+            ephemeral: EphemeralHighlights::new(),
         }
     }
 }

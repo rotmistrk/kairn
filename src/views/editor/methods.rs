@@ -74,9 +74,15 @@ impl EditorView {
     }
 
     pub fn goto(&mut self, line: u32, col: u32) {
+        use crate::editor::ephemeral::HighlightOwner;
+        use crate::editor::ephemeral_range::EphemeralRange;
         let max_line = self.editor.buf().line_count().saturating_sub(1);
-        self.editor.cursor_line = (line as usize).min(max_line);
+        let target_line = (line as usize).min(max_line);
+        self.editor.cursor_line = target_line;
         self.editor.cursor_col = col as usize;
+        self.editor
+            .ephemeral
+            .set(vec![EphemeralRange::full_line(target_line)], HighlightOwner::Transient);
         self.ensure_cursor_visible();
         if self.state.bounds().h == 0 {
             self.editor.viewport_scroll = self.editor.cursor_line;

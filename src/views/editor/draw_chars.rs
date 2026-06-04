@@ -210,6 +210,7 @@ impl EditorView {
             &p.matchparen_style,
             rainbow_map,
         );
+        let display_style = self.apply_ephemeral_bg(display_style, line_idx, p);
         self.state.buffer_mut().put(x, vy, display_ch, display_style);
         st.col_offset += display_char_width(ch) as usize;
         st.char_idx += 1;
@@ -239,6 +240,17 @@ impl EditorView {
             }
         } else {
             (ch, style)
+        }
+    }
+
+    fn apply_ephemeral_bg(&self, style: Style, line_idx: usize, p: &DrawParams) -> Style {
+        if style.bg == Color::Reset && self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
+            Style {
+                bg: p.ephemeral_bg,
+                ..style
+            }
+        } else {
+            style
         }
     }
 }

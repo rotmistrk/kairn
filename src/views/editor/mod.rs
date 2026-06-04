@@ -206,6 +206,7 @@ impl EditorView {
     }
 
     fn handle_normal_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
+        self.editor.ephemeral.clear_transient();
         let old_mode = self.editor.mode;
         let old_line = self.editor.cursor_line;
         let old_col = self.editor.cursor_col;
