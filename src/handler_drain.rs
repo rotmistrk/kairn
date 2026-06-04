@@ -129,6 +129,9 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     } else {
         // Create new Notes tab
         let mut nv = NotesView::new(note);
+        nv.editor
+            .editor_mut()
+            .set_shared_register(state.shared_register.clone());
         let store = CommandStore::new(CM_TODO_NOTE_SAVE, ctx.sink.clone());
         nv.set_store(Box::new(store));
         let view: Box<dyn View> = Box::new(nv);
