@@ -126,6 +126,11 @@ impl Editor {
     }
 
     pub(super) fn visual_ex_command(&mut self) {
+        // Save visual line range before exiting (for '<,'> marks)
+        let (al, _) = self.visual_anchor.unwrap_or((self.cursor_line, 0));
+        let start = al.min(self.cursor_line);
+        let end = al.max(self.cursor_line);
+        self.last_visual_lines = Some((start, end));
         self.exit_visual();
         self.mode = EditorMode::Command;
         self.command_buf = "'<,'>".to_string();

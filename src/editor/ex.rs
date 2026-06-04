@@ -42,14 +42,18 @@ pub enum ExCommand {
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
-pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option<ExCommand> {
+pub fn parse_ex_full(
+    cmd: &str,
+    cursor_row: usize,
+    total_lines: usize,
+    visual_lines: Option<(usize, usize)>,
+) -> Option<ExCommand> {
     use super::ex_commands::{lookup_command, split_cmd_word};
 
     let cmd = cmd.trim();
     if cmd.is_empty() {
         return None;
     }
-
     if let Ok(n) = cmd.parse::<usize>() {
         return Some(ExCommand::GotoLine(n));
     }
@@ -62,7 +66,7 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
     let cmd_part = &cmd[cmd_start..];
 
     if let Some(rest) = cmd_part.strip_prefix('!') {
-        let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+        let (start, end) = parse_range(range_str, cursor_row, total_lines, visual_lines)?;
         return Some(ExCommand::Shell {
             start,
             end,
@@ -78,7 +82,7 @@ pub fn parse_ex_full(cmd: &str, cursor_row: usize, total_lines: usize) -> Option
         (lookup_command(cmd_word)?, rest)
     };
 
-    dispatch_ex_cmd_id(cmd_id, rest, range_str, cursor_row, total_lines)
+    dispatch_ex_cmd_id(cmd_id, rest, range_str, cursor_row, total_lines, visual_lines)
 }
 
 fn dispatch_ex_cmd_id(
@@ -87,6 +91,7 @@ fn dispatch_ex_cmd_id(
     range_str: &str,
     cursor_row: usize,
     total_lines: usize,
+    visual_lines: Option<(usize, usize)>,
 ) -> Option<ExCommand> {
     use super::ex_commands::ExCmdId;
     match cmd_id {
@@ -106,7 +111,7 @@ fn dispatch_ex_cmd_id(
         ExCmdId::Only => Some(ExCommand::Only),
         ExCmdId::Revert => Some(ExCommand::Revert),
         ExCmdId::Delete | ExCmdId::Yank | ExCmdId::Substitute => {
-            dispatch_ex_range_cmd(cmd_id, rest, range_str, cursor_row, total_lines)
+            dispatch_ex_range_cmd(cmd_id, rest, range_str, cursor_row, total_lines, visual_lines)
         }
     }
 }
@@ -117,9 +122,10 @@ fn dispatch_ex_range_cmd(
     range_str: &str,
     cursor_row: usize,
     total_lines: usize,
+    visual_lines: Option<(usize, usize)>,
 ) -> Option<ExCommand> {
     use super::ex_commands::ExCmdId;
-    let (start, end) = parse_range(range_str, cursor_row, total_lines)?;
+    let (start, end) = parse_range(range_str, cursor_row, total_lines, visual_lines)?;
     match cmd_id {
         ExCmdId::Delete => Some(ExCommand::Delete { start, end }),
         ExCmdId::Yank => Some(ExCommand::Yank { start, end }),
@@ -137,7 +143,7 @@ fn dispatch_ex_range_cmd(
     }
 }
 
-fn parse_range(range: &str, cursor: usize, total: usize) -> Option<(usize, usize)> {
+fn parse_range(range: &str, cursor: usize, total: usize, visual: Option<(usize, usize)>) -> Option<(usize, usize)> {
     if range.is_empty() {
         return Some((cursor, cursor));
     }
@@ -147,22 +153,24 @@ fn parse_range(range: &str, cursor: usize, total: usize) -> Option<(usize, usize
     let parts: Vec<&str> = range.splitn(2, ',').collect();
     match parts.len() {
         1 => {
-            let addr = parse_address(parts[0].trim(), cursor, total)?;
+            let addr = parse_address(parts[0].trim(), cursor, total, visual)?;
             Some((addr, addr))
         }
         2 => {
-            let s = parse_address(parts[0].trim(), cursor, total)?;
-            let e = parse_address(parts[1].trim(), cursor, total)?;
+            let s = parse_address(parts[0].trim(), cursor, total, visual)?;
+            let e = parse_address(parts[1].trim(), cursor, total, visual)?;
             Some((s, e))
         }
         _ => None,
     }
 }
 
-fn parse_address(addr: &str, cursor: usize, total: usize) -> Option<usize> {
+fn parse_address(addr: &str, cursor: usize, total: usize, visual: Option<(usize, usize)>) -> Option<usize> {
     match addr {
         "" | "." => Some(cursor),
         "$" => Some(total.saturating_sub(1)),
+        "'<" => visual.map(|(s, _)| s),
+        "'>" => visual.map(|(_, e)| e),
         _ => {
             // Check relative offsets BEFORE plain number ("+2".parse::<usize>() succeeds in Rust!)
             if let Some(rest) = addr.strip_prefix(".+") {

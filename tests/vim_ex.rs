@@ -25,14 +25,14 @@ fn colon_w_saves_file() {
 #[test]
 fn colon_q_closes_buffer() {
     use kairn::editor::ex::{parse_ex_full, ExCommand};
-    assert_eq!(parse_ex_full("q", 0, 10), Some(ExCommand::Quit));
-    assert_eq!(parse_ex_full("w", 0, 10), Some(ExCommand::Save));
+    assert_eq!(parse_ex_full("q", 0, 10, None), Some(ExCommand::Quit));
+    assert_eq!(parse_ex_full("w", 0, 10, None), Some(ExCommand::Save));
 }
 
 #[test]
 fn colon_wq_saves_and_closes() {
     use kairn::editor::ex::{parse_ex_full, ExCommand};
-    assert_eq!(parse_ex_full("wq", 0, 10), Some(ExCommand::SaveQuit));
+    assert_eq!(parse_ex_full("wq", 0, 10, None), Some(ExCommand::SaveQuit));
 }
 
 #[test]

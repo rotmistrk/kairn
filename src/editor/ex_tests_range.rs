@@ -4,69 +4,69 @@ use super::*;
 
 #[test]
 fn range_percent() {
-    assert_eq!(parse_ex_full("%d", 0, 10), Some(ExCommand::Delete { start: 0, end: 9 }));
-    assert_eq!(parse_ex_full("%y", 0, 5), Some(ExCommand::Yank { start: 0, end: 4 }));
+    assert_eq!(parse_ex_full("%d", 0, 10, None), Some(ExCommand::Delete { start: 0, end: 9 }));
+    assert_eq!(parse_ex_full("%y", 0, 5, None), Some(ExCommand::Yank { start: 0, end: 4 }));
 }
 
 // --- Range: dot ---
 
 #[test]
 fn range_dot() {
-    assert_eq!(parse_ex_full(".d", 4, 10), Some(ExCommand::Delete { start: 4, end: 4 }));
+    assert_eq!(parse_ex_full(".d", 4, 10, None), Some(ExCommand::Delete { start: 4, end: 4 }));
 }
 
 // --- Range: $ ---
 
 #[test]
 fn range_dollar() {
-    assert_eq!(parse_ex_full("$d", 0, 10), Some(ExCommand::Delete { start: 9, end: 9 }));
+    assert_eq!(parse_ex_full("$d", 0, 10, None), Some(ExCommand::Delete { start: 9, end: 9 }));
 }
 
 // --- Range: line number ---
 
 #[test]
 fn range_line_number() {
-    assert_eq!(parse_ex_full("3d", 0, 10), Some(ExCommand::Delete { start: 2, end: 2 }));
+    assert_eq!(parse_ex_full("3d", 0, 10, None), Some(ExCommand::Delete { start: 2, end: 2 }));
 }
 
 // --- Range: N,M ---
 
 #[test]
 fn range_n_comma_m() {
-    assert_eq!(parse_ex_full("1,3d", 0, 10), Some(ExCommand::Delete { start: 0, end: 2 }));
-    assert_eq!(parse_ex_full("2,4d", 0, 10), Some(ExCommand::Delete { start: 1, end: 3 }));
+    assert_eq!(parse_ex_full("1,3d", 0, 10, None), Some(ExCommand::Delete { start: 0, end: 2 }));
+    assert_eq!(parse_ex_full("2,4d", 0, 10, None), Some(ExCommand::Delete { start: 1, end: 3 }));
 }
 
 // --- Range: .,+N and .,-N ---
 
 #[test]
 fn range_dot_plus_n() {
-    assert_eq!(parse_ex_full(".,+2d", 1, 5), Some(ExCommand::Delete { start: 1, end: 3 }));
-    assert_eq!(parse_ex_full(".,+2y", 1, 5), Some(ExCommand::Yank { start: 1, end: 3 }));
+    assert_eq!(parse_ex_full(".,+2d", 1, 5, None), Some(ExCommand::Delete { start: 1, end: 3 }));
+    assert_eq!(parse_ex_full(".,+2y", 1, 5, None), Some(ExCommand::Yank { start: 1, end: 3 }));
 }
 
 #[test]
 fn range_dot_minus_n() {
-    assert_eq!(parse_ex_full(".-2,.d", 4, 10), Some(ExCommand::Delete { start: 2, end: 4 }));
+    assert_eq!(parse_ex_full(".-2,.d", 4, 10, None), Some(ExCommand::Delete { start: 2, end: 4 }));
 }
 
 // --- Range: +N / -N (relative to cursor) ---
 
 #[test]
 fn range_plus_n() {
-    assert_eq!(parse_ex_full("+3d", 2, 10), Some(ExCommand::Delete { start: 5, end: 5 }));
+    assert_eq!(parse_ex_full("+3d", 2, 10, None), Some(ExCommand::Delete { start: 5, end: 5 }));
 }
 
 #[test]
 fn range_minus_n() {
-    assert_eq!(parse_ex_full("-2d", 5, 10), Some(ExCommand::Delete { start: 3, end: 3 }));
+    assert_eq!(parse_ex_full("-2d", 5, 10, None), Some(ExCommand::Delete { start: 3, end: 3 }));
 }
 
 // --- Range: empty = current line ---
 
 #[test]
 fn range_empty_is_current_line() {
-    assert_eq!(parse_ex_full("d", 7, 10), Some(ExCommand::Delete { start: 7, end: 7 }));
+    assert_eq!(parse_ex_full("d", 7, 10, None), Some(ExCommand::Delete { start: 7, end: 7 }));
 }
 
 // --- Range: comma with empty parts ---
@@ -74,7 +74,7 @@ fn range_empty_is_current_line() {
 #[test]
 fn range_comma_empty_parts() {
     assert_eq!(
-        parse_ex_full(",s/ pub//", 3, 10),
+        parse_ex_full(",s/ pub//", 3, 10, None),
         Some(ExCommand::Substitute {
             start: 3,
             end: 3,
@@ -89,12 +89,12 @@ fn range_comma_empty_parts() {
 
 #[test]
 fn range_plus_clamps_to_last_line() {
-    assert_eq!(parse_ex_full("+99d", 0, 5), Some(ExCommand::Delete { start: 4, end: 4 }));
+    assert_eq!(parse_ex_full("+99d", 0, 5, None), Some(ExCommand::Delete { start: 4, end: 4 }));
 }
 
 #[test]
 fn range_minus_clamps_to_zero() {
-    assert_eq!(parse_ex_full("-99d", 2, 10), Some(ExCommand::Delete { start: 0, end: 0 }));
+    assert_eq!(parse_ex_full("-99d", 2, 10, None), Some(ExCommand::Delete { start: 0, end: 0 }));
 }
 
 // --- Substitute variations ---
@@ -102,7 +102,7 @@ fn range_minus_clamps_to_zero() {
 #[test]
 fn substitute_basic() {
     assert_eq!(
-        parse_ex_full("%s/foo/bar/g", 0, 10),
+        parse_ex_full("%s/foo/bar/g", 0, 10, None),
         Some(ExCommand::Substitute {
             start: 0,
             end: 9,
@@ -116,7 +116,7 @@ fn substitute_basic() {
 #[test]
 fn substitute_no_global_flag() {
     assert_eq!(
-        parse_ex_full("%s/foo/bar/", 0, 10),
+        parse_ex_full("%s/foo/bar/", 0, 10, None),
         Some(ExCommand::Substitute {
             start: 0,
             end: 9,
@@ -130,7 +130,7 @@ fn substitute_no_global_flag() {
 #[test]
 fn substitute_empty_replacement() {
     assert_eq!(
-        parse_ex_full("%s/pub//", 0, 10),
+        parse_ex_full("%s/pub//", 0, 10, None),
         Some(ExCommand::Substitute {
             start: 0,
             end: 9,
@@ -144,7 +144,7 @@ fn substitute_empty_replacement() {
 #[test]
 fn substitute_space_in_pattern() {
     assert_eq!(
-        parse_ex_full("%s/ pub//", 0, 10),
+        parse_ex_full("%s/ pub//", 0, 10, None),
         Some(ExCommand::Substitute {
             start: 0,
             end: 9,
@@ -158,7 +158,7 @@ fn substitute_space_in_pattern() {
 #[test]
 fn substitute_different_delimiter() {
     assert_eq!(
-        parse_ex_full("%s#foo#bar#g", 0, 10),
+        parse_ex_full("%s#foo#bar#g", 0, 10, None),
         Some(ExCommand::Substitute {
             start: 0,
             end: 9,
@@ -172,7 +172,7 @@ fn substitute_different_delimiter() {
 #[test]
 fn substitute_current_line_no_range() {
     assert_eq!(
-        parse_ex_full("s/a/b/", 3, 10),
+        parse_ex_full("s/a/b/", 3, 10, None),
         Some(ExCommand::Substitute {
             start: 3,
             end: 3,
@@ -188,7 +188,7 @@ fn substitute_current_line_no_range() {
 #[test]
 fn shell_filter_percent_range() {
     assert_eq!(
-        parse_ex_full("%!sort", 0, 10),
+        parse_ex_full("%!sort", 0, 10, None),
         Some(ExCommand::Shell {
             start: 0,
             end: 9,
@@ -200,7 +200,7 @@ fn shell_filter_percent_range() {
 #[test]
 fn shell_filter_line_range() {
     assert_eq!(
-        parse_ex_full("1,5!fmt", 0, 10),
+        parse_ex_full("1,5!fmt", 0, 10, None),
         Some(ExCommand::Shell {
             start: 0,
             end: 4,
@@ -213,7 +213,7 @@ fn shell_filter_line_range() {
 fn substitute_comma_range_empty_parts() {
     // ",s/ pub//" — comma alone means current line to current line
     assert_eq!(
-        parse_ex_full(",s/ pub//", 3, 10),
+        parse_ex_full(",s/ pub//", 3, 10, None),
         Some(ExCommand::Substitute {
             start: 3,
             end: 3,

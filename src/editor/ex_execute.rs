@@ -20,7 +20,7 @@ impl Editor {
         }
 
         let total = self.buf().line_count();
-        let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total) else {
+        let Some(ex_cmd) = ex::parse_ex_full(trimmed, self.cursor_line, total, self.last_visual_lines) else {
             return EditorAction::AppCommand(trimmed.to_string());
         };
 

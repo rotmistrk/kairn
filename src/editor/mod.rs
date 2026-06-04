@@ -83,6 +83,8 @@ pub struct Editor {
     pub(crate) viewport_height: usize,
     pub(crate) h_scroll: usize,
     pub(crate) visual_anchor: Option<(usize, usize)>,
+    /// Last visual selection line range (for '< '> marks in ex commands).
+    pub(crate) last_visual_lines: Option<(usize, usize)>,
     pub(crate) search_pattern: String,
     pub(crate) search_direction_forward: bool,
     pub(crate) command_buf: String,
@@ -188,6 +190,7 @@ impl Editor {
             viewport_height: 24,
             h_scroll: 0,
             visual_anchor: None,
+            last_visual_lines: None,
             search_pattern: String::new(),
             search_direction_forward: true,
             command_buf: String::new(),
