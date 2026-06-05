@@ -24,12 +24,13 @@ use crate::handler_drain::{
 };
 use crate::handler_evict::try_insert_tab;
 use crate::handler_exec::handle_execute_command;
+use crate::handler_exec_nav::handle_file_finder_open;
 use crate::handler_git::{
     handle_git_commit, handle_git_commit_prompt, handle_git_stage, handle_git_unstage, handle_git_untrack,
 };
 use crate::handler_log::open_git_log;
 use crate::handler_mcp::drain_mcp;
-use crate::handler_open::{handle_file_finder_open, handle_open_file, handle_shell_output, handle_show_results};
+use crate::handler_open::{handle_open_file, handle_shell_output, handle_show_results};
 use crate::handler_script::handle_script_command;
 use crate::handler_set::handle_set_global;
 use crate::handler_split::{

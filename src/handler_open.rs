@@ -27,27 +27,6 @@ use crate::views::editor::EditorView;
 use crate::views::struct_view::StructuredView;
 
 /// Handle Ctrl+P file finder submit — convert relative path to OpenFileRequest.
-pub(crate) fn handle_file_finder_open(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(text) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    let primary = state
-        .roots()
-        .paths()
-        .into_iter()
-        .next()
-        .unwrap_or(Path::new("."))
-        .to_path_buf();
-    let path = primary.join(text.trim());
-    if path.is_file() {
-        let req = OpenFileRequest::new(path);
-        ctx.sink.push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
-    }
-}
-
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
     let Some(boxed) = ctx.data.as_ref() else {
         log::warn!("CM_OPEN_FILE with no data");

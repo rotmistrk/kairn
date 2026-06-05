@@ -51,6 +51,7 @@ fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
 
 fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
     use crate::completer_file_finder::FileFinderCompleter;
+    use crate::completer_symbol::SymbolFinderCompleter;
 
     let ctrl_p = KeyEvent {
         code: KeyCode::Char('p'),
@@ -61,13 +62,27 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
     };
     let input = InputLine::new()
         .with_command(CM_FILE_FINDER_OPEN)
-        .with_completer(Box::new(FileFinderCompleter::new(root)));
+        .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
     let finder = ModalKey::new("", "file: ")
         .trigger_key(ctrl_p)
         .add_child(Box::new(input));
     bar.add(StatusSlot::new(Box::new(finder)).priority(10));
-}
 
+    let ctrl_t = KeyEvent {
+        code: KeyCode::Char('t'),
+        modifiers: KeyMod {
+            ctrl: true,
+            ..KeyMod::default()
+        },
+    };
+    let sym_input = InputLine::new()
+        .with_command(CM_FILE_FINDER_OPEN)
+        .with_completer(Box::new(SymbolFinderCompleter::new(root)));
+    let sym_finder = ModalKey::new("", "sym: ")
+        .trigger_key(ctrl_t)
+        .add_child(Box::new(sym_input));
+    bar.add(StatusSlot::new(Box::new(sym_finder)).priority(10));
+}
 fn add_todo_group(bar: &mut StatusBar) {
     use txv_widgets::KeyLabelView;
 

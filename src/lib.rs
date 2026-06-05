@@ -23,6 +23,7 @@ pub mod completer;
 pub mod completer_entry;
 pub mod completer_file_finder;
 mod completer_kiro;
+pub mod completer_symbol;
 pub mod config;
 pub mod config_colors;
 pub mod config_keys;

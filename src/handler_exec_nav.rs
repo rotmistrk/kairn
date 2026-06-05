@@ -102,3 +102,39 @@ pub(crate) fn cmd_tab_rename(ctx: &mut CommandContext, state: &mut AppState, arg
         state.kiro_registry.rename(&old, &new);
     }
 }
+
+/// Handle Ctrl+P / Ctrl+T submit — parse "path" or "path:line text" and open.
+pub(crate) fn handle_file_finder_open(ctx: &mut CommandContext, state: &mut AppState) {
+    use crate::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
+    use std::path::Path;
+
+    let Some(boxed) = ctx.data.as_ref() else {
+        return;
+    };
+    let Some(text) = boxed.downcast_ref::<String>() else {
+        return;
+    };
+    let primary = state
+        .roots()
+        .paths()
+        .into_iter()
+        .next()
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
+    let trimmed = text.trim();
+    let (rel_path, line) = if let Some((p, rest)) = trimmed.split_once(':') {
+        let ln = rest.split_once(' ').map(|(n, _)| n).unwrap_or(rest);
+        (p, ln.parse::<u32>().ok())
+    } else {
+        (trimmed, None)
+    };
+    let path = primary.join(rel_path);
+    if path.is_file() {
+        let req = if let Some(ln) = line {
+            OpenFileRequest::at(path, ln.saturating_sub(1), 0)
+        } else {
+            OpenFileRequest::new(path)
+        };
+        ctx.sink.push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+    }
+}
