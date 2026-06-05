@@ -22,6 +22,7 @@ fn initial_title(path: &Path) -> String {
 }
 pub(crate) use crate::handler_open_view::open_as_csv;
 use crate::handler_open_view::{open_editor, open_editor_view, try_open_structured};
+use crate::views::csv_view::CsvView;
 use crate::views::editor::EditorView;
 use crate::views::struct_view::StructuredView;
 
@@ -222,6 +223,7 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
             a.downcast_ref::<EditorView>()
                 .map(|ev| ev.path().to_path_buf())
                 .or_else(|| a.downcast_ref::<StructuredView>().map(|sv| sv.path.clone()))
+                .or_else(|| a.downcast_ref::<CsvView>().map(|cv| cv.path().to_path_buf()))
         });
     let Some(path) = abs_path else {
         return;
