@@ -350,3 +350,16 @@ set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd
 #     }
 #     return ""
 # }
+
+# ─── Navigation ──────────────────────────────────────────────────────────────
+# Ctrl+P           Fuzzy file finder (type path fragments, Enter opens)
+# /                Incremental search (cursor jumps to match as you type)
+#                  Backspace returns cursor toward start, Esc cancels
+#
+# Incremental search is enabled by default. To disable:
+# set editor.incsearch false
+#
+# ─── CSV/Table View ──────────────────────────────────────────────────────────
+# Left/Right arrows  Horizontal scroll (columns)
+# :text              Switch back to text editor
+# :tab               Open current file as CSV table

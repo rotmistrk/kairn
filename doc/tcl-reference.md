@@ -188,6 +188,32 @@ Events: `file-save`, `file-open`, `file-close`, `build-done`, `tab-switched`, `s
 | `system short-pwd [max]` | Project root with ~ substitution, smart-truncated to max chars |
 | `system busy` | Returns `*` if kiro sessions active, empty otherwise |
 
+## Navigation & Search
+
+### Fuzzy File Finder (Ctrl+P)
+
+Press `Ctrl+P` to open the fuzzy file finder. Type path fragments to filter
+project files (respects `.gitignore`). Enter opens the selected file.
+Esc cancels. Results ranked by path length (shorter = tighter match).
+
+### Incremental Search
+
+`/` enters search mode. With `incsearch` enabled (default), the cursor jumps
+to the first match as you type. Backspace is "elastic" — deleting characters
+moves the cursor back toward where you started.
+
+- Enter: finalize search, `n`/`N` navigate matches
+- Esc: cancel search, cursor returns to original position
+- Backspace to empty: cursor returns to origin
+
+Control: `set editor.incsearch true` (default) / `set noincsearch` in editor.
+
+### Ephemeral Highlights
+
+When navigating via Problems panel, grep results, `gd`, `gr`, etc., the target
+line receives a transient background highlight. It disappears on the first
+keypress in the editor. This provides visual orientation after a jump.
+
 ## Build/Test/Run Overrides
 
 Define Tcl procs to replace the auto-detected build commands. If the proc returns
