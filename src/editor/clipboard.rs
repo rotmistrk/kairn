@@ -144,7 +144,9 @@ impl Editor {
             "gutter-signs" => self.options.gutter_signs = true,
             "nogutter-signs" => self.options.gutter_signs = false,
             _ => {
-                if let Some(style) = self.parse_cursor_set(opt) {
+                if let Some(n) = opt.strip_prefix("scrolloff=").and_then(|s| s.parse().ok()) {
+                    self.options.scrolloff = n;
+                } else if let Some(style) = self.parse_cursor_set(opt) {
                     style
                 } else {
                     self.status = format!("Unknown option: {opt}");

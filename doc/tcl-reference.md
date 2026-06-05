@@ -208,6 +208,17 @@ moves the cursor back toward where you started.
 
 Control: `set editor.incsearch true` (default) / `set noincsearch` in editor.
 
+### Scrolloff
+
+The cursor stays at least N lines from the viewport edge when scrolling or
+jumping. Default: 3 lines. Configurable:
+
+```tcl
+set editor.scrolloff 5
+```
+
+Or per-buffer: `:set scrolloff=5`
+
 ### Ephemeral Highlights
 
 When navigating via Problems panel, grep results, `gd`, `gr`, etc., the target

@@ -359,6 +359,9 @@ set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd
 # Incremental search is enabled by default. To disable:
 # set editor.incsearch false
 #
+# Scrolloff — keep cursor N lines from viewport edge (default: 3):
+# set editor.scrolloff 5
+#
 # ─── CSV/Table View ──────────────────────────────────────────────────────────
 # Left/Right arrows  Horizontal scroll (columns)
 # :text              Switch back to text editor

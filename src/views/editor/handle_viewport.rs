@@ -11,21 +11,22 @@ impl EditorView {
             return;
         }
         self.editor.viewport_height = h;
+        let off = self.editor.options.scrolloff.min(h / 2);
 
-        if self.editor.cursor_line < self.editor.viewport_scroll {
-            self.editor.viewport_scroll = self.editor.cursor_line;
+        if self.editor.cursor_line < self.editor.viewport_scroll + off {
+            self.editor.viewport_scroll = self.editor.cursor_line.saturating_sub(off);
         }
 
         if !self.editor.options.wrap {
-            self.ensure_cursor_visible_nowrap(h);
+            self.ensure_cursor_visible_nowrap(h, off);
             return;
         }
         self.ensure_cursor_visible_wrap(h);
     }
 
-    fn ensure_cursor_visible_nowrap(&mut self, h: usize) {
-        if self.editor.cursor_line >= self.editor.viewport_scroll + h {
-            self.editor.viewport_scroll = self.editor.cursor_line - h + 1;
+    fn ensure_cursor_visible_nowrap(&mut self, h: usize, off: usize) {
+        if self.editor.cursor_line + off >= self.editor.viewport_scroll + h {
+            self.editor.viewport_scroll = (self.editor.cursor_line + off).saturating_sub(h) + 1;
         }
         let avail = self.text_avail_width();
         if avail > 0 {

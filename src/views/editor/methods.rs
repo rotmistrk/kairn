@@ -38,6 +38,7 @@ impl EditorView {
         self.editor.options.rainbow = self.settings.rainbow;
         self.editor.options.guides = self.settings.guides;
         self.editor.options.gutter_signs = self.settings.gutter_signs;
+        self.editor.options.scrolloff = self.settings.scrolloff;
         self.editor.options.cursor_insert = self.settings.cursor_insert;
         self.editor.options.cursor_normal = self.settings.cursor_normal;
         self.editor.options.cursor_command = self.settings.cursor_command;
