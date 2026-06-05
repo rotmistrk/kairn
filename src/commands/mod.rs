@@ -161,3 +161,5 @@ pub const CM_ROOTS_CHANGED: CommandId = CM_APP_BASE + 190;
 pub const CM_FS_CHANGED: CommandId = CM_APP_BASE + 191;
 /// Set of open editor files changed — broadcast to update tree badges.
 pub const CM_OPEN_FILES_CHANGED: CommandId = CM_APP_BASE + 192;
+/// File finder (Ctrl+P) submit — data is the relative path string.
+pub const CM_FILE_FINDER_OPEN: CommandId = CM_APP_BASE + 193;

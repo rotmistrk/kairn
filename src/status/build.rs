@@ -30,6 +30,7 @@ pub fn build_status_bar(
     keys::add_dired_prefix(&mut bar);
     keys::add_tab_digit_bindings(&mut bar);
     add_command_items(&mut bar, completer);
+    add_file_finder(&mut bar, root_dir.clone());
     add_todo_group(&mut bar);
     add_right_side(&mut bar, root_dir, clock_interval);
     bar
@@ -46,6 +47,25 @@ fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
         .prefill_command(CM_COMMAND_PREFILL)
         .add_child(Box::new(input));
     bar.add(StatusSlot::new(Box::new(command_line)).priority(10).stretch(1));
+}
+
+fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
+    use crate::completer_file_finder::FileFinderCompleter;
+
+    let ctrl_p = KeyEvent {
+        code: KeyCode::Char('p'),
+        modifiers: KeyMod {
+            ctrl: true,
+            ..KeyMod::default()
+        },
+    };
+    let input = InputLine::new()
+        .with_command(CM_FILE_FINDER_OPEN)
+        .with_completer(Box::new(FileFinderCompleter::new(root)));
+    let finder = ModalKey::new("", "file: ")
+        .trigger_key(ctrl_p)
+        .add_child(Box::new(input));
+    bar.add(StatusSlot::new(Box::new(finder)).priority(10));
 }
 
 fn add_todo_group(bar: &mut StatusBar) {

@@ -29,7 +29,7 @@ use crate::handler_git::{
 };
 use crate::handler_log::open_git_log;
 use crate::handler_mcp::drain_mcp;
-use crate::handler_open::{handle_open_file, handle_shell_output, handle_show_results};
+use crate::handler_open::{handle_file_finder_open, handle_open_file, handle_shell_output, handle_show_results};
 use crate::handler_script::handle_script_command;
 use crate::handler_set::handle_set_global;
 use crate::handler_split::{
@@ -121,6 +121,7 @@ fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
         CM_OPEN_FILE => handle_open_file(ctx, state, false),
         CM_OPEN_FILE_FOCUS => handle_open_file(ctx, state, true),
         CM_EXECUTE_COMMAND => handle_execute_command(ctx, state),
+        CM_FILE_FINDER_OPEN => handle_file_finder_open(ctx, state),
         CM_SHOW_HELP => handle_show_help(ctx, state),
         CM_SHOW_MESSAGES => handle_show_messages(ctx, state),
         CM_NEW_SHELL => handle_new_shell(ctx, state),

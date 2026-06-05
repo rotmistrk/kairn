@@ -21,6 +21,7 @@ pub mod command_store;
 pub mod commands;
 pub mod completer;
 pub mod completer_entry;
+pub mod completer_file_finder;
 mod completer_kiro;
 pub mod config;
 pub mod config_colors;
