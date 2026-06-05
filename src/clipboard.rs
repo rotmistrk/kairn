@@ -1,13 +1,17 @@
-//! System clipboard integration via platform commands or OSC 52 fallback.
+//! System clipboard integration via platform commands with in-process fallback.
 
 #[cfg(not(target_os = "macos"))]
 use base64::Engine;
 use std::io;
 use std::io::Write;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 
 #[cfg(not(target_os = "macos"))]
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+
+/// In-process clipboard fallback (always works, even without xclip).
+static INTERNAL_CLIPBOARD: Mutex<String> = Mutex::new(String::new());
 
 /// Copy text to system clipboard.
 /// On macOS, uses pbcopy for reliable single-copy behavior.
@@ -20,7 +24,13 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
     } else {
         trimmed
     };
-    copy_raw(&cleaned)
+    // Always store in internal clipboard
+    if let Ok(mut buf) = INTERNAL_CLIPBOARD.lock() {
+        buf.clone_from(&cleaned);
+    }
+    // Try system clipboard (best-effort)
+    let _ = copy_raw(&cleaned);
+    Ok(())
 }
 
 fn copy_raw(text: &str) -> Result<(), String> {
@@ -68,6 +78,16 @@ fn copy_via_command(cmd: &str, args: &[&str], text: &str) -> Result<(), String> 
 /// Paste from system clipboard using platform-specific command.
 /// Returns Err with reason on failure.
 pub fn paste_from_clipboard() -> Result<String, String> {
+    // Try system clipboard first
+    if let Ok(text) = paste_from_system() {
+        return Ok(text);
+    }
+    // Fall back to internal clipboard
+    let buf = INTERNAL_CLIPBOARD.lock().map_err(|e| e.to_string())?;
+    Ok(buf.clone())
+}
+
+fn paste_from_system() -> Result<String, String> {
     #[cfg(target_os = "macos")]
     let result = Command::new("pbpaste").output();
 

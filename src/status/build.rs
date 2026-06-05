@@ -45,6 +45,7 @@ fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
         .trigger_key(ALT_X)
         .trigger_key(APPROX)
         .prefill_command(CM_COMMAND_PREFILL)
+        .terminal_command(CM_EXECUTE_COMMAND)
         .add_child(Box::new(input));
     bar.add(StatusSlot::new(Box::new(command_line)).priority(10).stretch(1));
 }
@@ -65,6 +66,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
         .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
     let finder = ModalKey::new("", "file: ")
         .trigger_key(ctrl_p)
+        .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(input));
     bar.add(StatusSlot::new(Box::new(finder)).priority(10));
 
@@ -80,6 +82,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
         .with_completer(Box::new(SymbolFinderCompleter::new(root)));
     let sym_finder = ModalKey::new("", "sym: ")
         .trigger_key(ctrl_t)
+        .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(sym_input));
     bar.add(StatusSlot::new(Box::new(sym_finder)).priority(10));
 }
