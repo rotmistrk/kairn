@@ -1,4 +1,5 @@
 //! Test harness — uses Program (same code path as real app).
+//! Test harness — uses the SAME initialization path as main().
 
 use std::path::Path;
 
@@ -7,14 +8,9 @@ use txv_core::event::{KeyCode, KeyMod};
 use txv_core::program::Program;
 use txv_core::run::MockBackend;
 
-use kairn::build_desktop::build_workspace;
-use kairn::completer::AppCompleter;
 use kairn::handler::{handle_command, AppState};
-use kairn::settings::{GitKeys, StatusKeys};
-use kairn::status::build_status_bar;
-use txv_widgets::sidekick_manager::SidekickManager;
 
-/// Test harness that mirrors the real app exactly.
+/// Test harness that uses the exact same app setup as main().
 pub struct TestHarness {
     pub program: Program,
     pub backend: MockBackend,
@@ -24,52 +20,21 @@ pub struct TestHarness {
 /// Initialize logger for tests (safe to call multiple times).
 fn init_test_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
-    // Ensure nerd glyphs are set (matches kairn's default)
     txv_core::glyphs::set_glyphs(txv_core::glyphs::GlyphSet::nerd());
-    // Prevent spawning real PTY shells in tests
     std::env::set_var("KAIRN_TEST", "1");
 }
 
 impl TestHarness {
-    /// Create a new test harness for the given project directory.
-    /// Same setup as main.rs: StatusBar + Desktop + AppState.
+    /// Create a new test harness — same init as main().
     pub fn new(root_dir: &Path) -> Self {
-        init_test_logger();
-        let desktop = build_workspace(root_dir, GitKeys::default());
-        let state = AppState::new(root_dir.to_path_buf());
-        let status = build_status_bar(
-            &desktop,
-            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list().clone())),
-            0,
-            root_dir.to_path_buf(),
-            &StatusKeys::default(),
-        );
-        let mut program = Program::new(Box::new(status), Box::new(desktop));
-        program.insert_named("sidekick", Box::new(SidekickManager::new()));
-        let backend = MockBackend::new(80, 24);
-        Self {
-            program,
-            backend,
-            state,
-        }
+        Self::with_size(root_dir, 80, 24)
     }
 
-    /// Create with custom dimensions.
+    /// Create with custom dimensions — same init as main().
     pub fn with_size(root_dir: &Path, width: u16, height: u16) -> Self {
         init_test_logger();
-        let desktop = build_workspace(root_dir, GitKeys::default());
-        let state = AppState::new(root_dir.to_path_buf());
-        let status = build_status_bar(
-            &desktop,
-            Box::new(AppCompleter::new(root_dir.to_path_buf(), state.command_list().clone())),
-            0,
-            root_dir.to_path_buf(),
-            &StatusKeys::default(),
-        );
-        let mut program = Program::new(Box::new(status), Box::new(desktop));
-        program.insert_named("sidekick", Box::new(SidekickManager::new()));
+        let (program, state) = kairn::app_init::build_app(root_dir);
         let backend = MockBackend::new(width, height);
-        let state = AppState::new(root_dir.to_path_buf());
         Self {
             program,
             backend,
