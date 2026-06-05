@@ -78,39 +78,33 @@ fn update_todo_definition() -> Vec<Value> {
     vec![json!({
         "name": "update_todo",
         "description": "Modify the todo tree: toggle, add, remove, move, promote, demote, \
-            get/set notes. Identify items by 'id' (stable UUID) or 'path' (ordinal index array).",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": [
-                        "toggle", "add", "remove", "move_up",
-                        "move_down", "promote", "demote", "get_note", "set_note"
-                    ],
-                    "description": "Action to perform"
-                },
-                "id": {
-                    "type": "string",
-                    "description": "Stable UUID of the item (preferred over path)"
-                },
-                "path": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Index path to the item (fallback if id not provided)"
-                },
-                "title": {
-                    "type": "string",
-                    "description": "Title for new item (required for 'add' action)"
-                },
-                "note": {
-                    "type": "string",
-                    "description": "Note content (required for 'set_note' action)"
-                }
-            },
-            "required": ["action"]
-        }
+            get/set notes, set_priority, set_completed. Identify items by 'id' (stable UUID) \
+            or 'path' (ordinal index array).",
+        "inputSchema": update_todo_schema()
     })]
+}
+
+fn update_todo_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote",
+                         "demote", "get_note", "set_note", "set_priority", "set_completed"],
+                "description": "Action to perform"
+            },
+            "id": {"type": "string", "description": "Stable UUID of the item (preferred over path)"},
+            "path": {"type": "array", "items": {"type": "integer"},
+                     "description": "Index path to the item (fallback if id not provided)"},
+            "title": {"type": "string", "description": "Title for new item (required for 'add')"},
+            "note": {"type": "string", "description": "Note content (required for 'set_note')"},
+            "priority": {"type": "integer", "description": "Priority 0-5 (for 'set_priority'; 0=none, 5=highest)"},
+            "state": {"type": "string", "enum": ["open", "done", "partial"],
+                      "description": "Completion state (for 'set_completed')"}
+        },
+        "required": ["action"]
+    })
 }
 
 fn add_subtree_definition() -> Vec<Value> {

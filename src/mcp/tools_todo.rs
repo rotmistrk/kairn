@@ -33,6 +33,11 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
             if item.important {
                 obj["important"] = json!(true);
             }
+            if let Some(p) = item.priority {
+                if p > 0 {
+                    obj["priority"] = json!(p);
+                }
+            }
             if !item.note.is_empty() {
                 obj["note"] = json!(item.note);
             }
@@ -88,6 +93,14 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
         "set_note" => {
             let note = args.get("note").and_then(Value::as_str).unwrap_or("").to_string();
             McpAction::TodoSetNote { path, note }
+        }
+        "set_priority" => {
+            let priority = args.get("priority").and_then(Value::as_u64).unwrap_or(0) as u8;
+            McpAction::TodoSetPriority { path, priority }
+        }
+        "set_completed" => {
+            let state = args.get("state").and_then(Value::as_str).unwrap_or("open").to_string();
+            McpAction::TodoSetCompleted { path, state }
         }
         _ => return Err(format!("Unknown action: {action_str}")),
     };

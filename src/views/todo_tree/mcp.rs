@@ -61,6 +61,22 @@ impl TodoTreeView {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
                 item.important = !item.important;
             }
+            McpAction::TodoSetPriority { path, priority } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.priority = if *priority == 0 {
+                    None
+                } else {
+                    Some(*priority)
+                };
+            }
+            McpAction::TodoSetCompleted { path, state } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.completed = match state.as_str() {
+                    "done" => Completion::Done,
+                    "partial" => Completion::Partial,
+                    _ => Completion::Open,
+                };
+            }
             McpAction::TodoEdit { path, title } => {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
                 item.title.clone_from(title);

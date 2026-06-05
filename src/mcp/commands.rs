@@ -53,6 +53,14 @@ pub enum McpAction {
     TodoToggleImportant {
         path: Vec<usize>,
     },
+    TodoSetPriority {
+        path: Vec<usize>,
+        priority: u8,
+    },
+    TodoSetCompleted {
+        path: Vec<usize>,
+        state: String,
+    },
     TodoEdit {
         path: Vec<usize>,
         title: String,
