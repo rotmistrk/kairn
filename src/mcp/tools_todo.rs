@@ -38,6 +38,11 @@ fn serialize_todo_items(items: &[duir_core::TodoItem]) -> Vec<Value> {
                     obj["priority"] = json!(p);
                 }
             }
+            if let Some(e) = item.effort {
+                if e > 0 {
+                    obj["effort"] = json!(e);
+                }
+            }
             if !item.note.is_empty() {
                 obj["note"] = json!(item.note);
             }
@@ -71,7 +76,14 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
     let queue = cmd_queue.ok_or("Write operations disabled")?;
     let action_str = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
     let path = resolve_path(args)?;
+    if action_str == "get_note" {
+        return tool_get_note(&path);
+    }
+    let action = parse_todo_action(action_str, args, path)?;
+    queue.send(action)
+}
 
+fn parse_todo_action(action_str: &str, args: &Map<String, Value>, path: Vec<usize>) -> Result<McpAction, String> {
     let action = match action_str {
         "toggle" => McpAction::TodoToggle { path },
         "add" => {
@@ -87,9 +99,6 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
         "move_down" => McpAction::TodoMoveDown { path },
         "promote" => McpAction::TodoPromote { path },
         "demote" => McpAction::TodoDemote { path },
-        "get_note" => {
-            return tool_get_note(&path);
-        }
         "set_note" => {
             let note = args.get("note").and_then(Value::as_str).unwrap_or("").to_string();
             McpAction::TodoSetNote { path, note }
@@ -102,10 +111,13 @@ pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, 
             let state = args.get("state").and_then(Value::as_str).unwrap_or("open").to_string();
             McpAction::TodoSetCompleted { path, state }
         }
+        "set_loe" => {
+            let effort = args.get("effort").and_then(Value::as_u64).unwrap_or(0) as u8;
+            McpAction::TodoSetLoe { path, effort }
+        }
         _ => return Err(format!("Unknown action: {action_str}")),
     };
-
-    queue.send(action)
+    Ok(action)
 }
 
 fn tool_get_note(path: &[usize]) -> Result<Value, String> {

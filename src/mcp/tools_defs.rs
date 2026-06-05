@@ -91,7 +91,7 @@ fn update_todo_schema() -> Value {
             "action": {
                 "type": "string",
                 "enum": ["toggle", "add", "remove", "move_up", "move_down", "promote",
-                         "demote", "get_note", "set_note", "set_priority", "set_completed"],
+                         "demote", "get_note", "set_note", "set_priority", "set_completed", "set_loe"],
                 "description": "Action to perform"
             },
             "id": {"type": "string", "description": "Stable UUID of the item (preferred over path)"},
@@ -101,7 +101,9 @@ fn update_todo_schema() -> Value {
             "note": {"type": "string", "description": "Note content (required for 'set_note')"},
             "priority": {"type": "integer", "description": "Priority 0-5 (for 'set_priority'; 0=none, 5=highest)"},
             "state": {"type": "string", "enum": ["open", "done", "partial"],
-                      "description": "Completion state (for 'set_completed')"}
+                      "description": "Completion state (for 'set_completed')"},
+            "effort": {"type": "integer",
+                       "description": "LOE Fibonacci (0,1,2,3,5,8,13,21) for 'set_loe'"}
         },
         "required": ["action"]
     })

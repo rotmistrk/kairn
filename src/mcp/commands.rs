@@ -61,6 +61,10 @@ pub enum McpAction {
         path: Vec<usize>,
         state: String,
     },
+    TodoSetLoe {
+        path: Vec<usize>,
+        effort: u8,
+    },
     TodoEdit {
         path: Vec<usize>,
         title: String,

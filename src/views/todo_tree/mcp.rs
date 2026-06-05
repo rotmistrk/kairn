@@ -46,6 +46,14 @@ impl TodoTreeView {
             McpAction::TodoDemote { path } => {
                 model::demote(&mut self.inner.data.file, path).ok_or("Cannot demote")?;
             }
+            McpAction::TodoSetLoe { path, effort } => {
+                let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
+                item.effort = if *effort == 0 {
+                    None
+                } else {
+                    Some(*effort)
+                };
+            }
             _ => self.dispatch_mcp_edit_action(action)?,
         }
         Ok(())
@@ -77,6 +85,7 @@ impl TodoTreeView {
                     _ => Completion::Open,
                 };
             }
+
             McpAction::TodoEdit { path, title } => {
                 let item = model::get_item_mut(&mut self.inner.data.file, path).ok_or("Item not found")?;
                 item.title.clone_from(title);
