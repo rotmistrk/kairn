@@ -3,6 +3,7 @@
 use txv_widgets::tree_view::TreeData;
 
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT, CM_TODO_NOTE_OPEN};
+use txv_widgets::input_line::{CM_COPY_TO_CLIPBOARD, CM_PASTE_REQUEST};
 
 use super::handle::HandleAction;
 use super::{CryptoPending, TodoTreeView};
@@ -37,6 +38,12 @@ impl TodoTreeView {
             HandleAction::OpenNoteFocus(path, note) => {
                 self.group
                     .put_command(CM_TODO_NOTE_OPEN, Some(Box::new((path, note, true))));
+            }
+            HandleAction::CopyToClipboard(text) => {
+                self.group.put_command(CM_COPY_TO_CLIPBOARD, Some(Box::new(text)));
+            }
+            HandleAction::PasteFromClipboard => {
+                self.group.put_command(CM_PASTE_REQUEST, None);
             }
         }
         self.group.mark_dirty();

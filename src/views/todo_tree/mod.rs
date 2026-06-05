@@ -254,6 +254,12 @@ impl View for TodoTreeView {
             return HandleResult::Ignored;
         }
         if let Event::Command { id, .. } = event {
+            if self.editing_row.is_some() {
+                self.group.dispatch(event);
+                self.drain_edit_commands();
+                self.group.mark_dirty();
+                return HandleResult::Consumed;
+            }
             return self.handle_status_command(*id);
         }
         let Event::Key(key) = event else {

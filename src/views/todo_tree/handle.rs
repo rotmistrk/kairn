@@ -14,6 +14,8 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
         KeyCode::Down if key.modifiers.shift => handle_shift_move(data, id, model::swap_down),
         KeyCode::Left if key.modifiers.shift => handle_shift_move(data, id, model::promote),
         KeyCode::Right if key.modifiers.shift => handle_shift_move(data, id, model::demote),
+        KeyCode::Char('c') if key.modifiers.ctrl => handle_copy(data, id),
+        KeyCode::Char('v') if key.modifiers.ctrl => handle_paste(data, id, cursor),
         KeyCode::Char(' ') => handle_toggle_complete(data, id),
         KeyCode::Char('!') => handle_set_priority_5(data, id),
         KeyCode::Char('n') => handle_new_sibling(data, id, cursor),
@@ -30,6 +32,8 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
         KeyCode::Enter => handle_open_note(data, id),
         KeyCode::Right if !key.modifiers.shift => handle_right_expand_or_note(data, id),
         KeyCode::Char('N') => handle_open_note_focus(data, id),
+        KeyCode::Char('y') => handle_copy(data, id),
+        KeyCode::Char('p') => handle_paste(data, id, cursor),
         _ => None,
     }
 }
@@ -213,4 +217,19 @@ pub enum HandleAction {
     OpenNote(model::TreePath, String),
     /// Open the note editor for the item at path and focus it.
     OpenNoteFocus(model::TreePath, String),
+    /// Copy text to system clipboard.
+    CopyToClipboard(String),
+    /// Paste from clipboard as new sibling.
+    PasteFromClipboard,
+}
+
+fn handle_copy(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
+    let path = data.path_at(id)?;
+    let item = model::get_item(&data.file, path)?;
+    Some(HandleAction::CopyToClipboard(item.title.clone()))
+}
+
+fn handle_paste(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option<HandleAction> {
+    let _ = (data, id, cursor);
+    Some(HandleAction::PasteFromClipboard)
 }

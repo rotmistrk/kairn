@@ -69,7 +69,9 @@ impl TodoTreeView {
                         self.cancel_edit();
                         return;
                     }
-                    _ => {}
+                    _ => {
+                        self.group.put_command(id, data);
+                    }
                 }
             }
         }
