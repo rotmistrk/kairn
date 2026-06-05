@@ -14,6 +14,28 @@ pub fn tool_open_file(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Va
     Ok(json!({"opened": path}))
 }
 
+pub fn tool_highlight_code(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let path = args.get("path").and_then(Value::as_str).ok_or("Missing 'path'")?;
+    let ranges_arr = args.get("ranges").and_then(Value::as_array).ok_or("Missing 'ranges'")?;
+    let ranges: Vec<(u32, u32)> = ranges_arr
+        .iter()
+        .filter_map(|r| {
+            let start = r.get("start_line").and_then(Value::as_u64)? as u32;
+            let end = r.get("end_line").and_then(Value::as_u64).unwrap_or(start as u64) as u32;
+            Some((start, end))
+        })
+        .collect();
+    if ranges.is_empty() {
+        return Err("No valid ranges provided".to_string());
+    }
+    queue.send(McpAction::HighlightCode {
+        path: path.to_string(),
+        ranges,
+    })?;
+    Ok(json!({"highlighted": path}))
+}
+
 pub fn tool_create_file(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
     let queue = cmd_queue.ok_or("MCP command queue not available")?;
     let path = args

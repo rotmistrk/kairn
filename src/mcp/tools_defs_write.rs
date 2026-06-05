@@ -28,6 +28,7 @@ fn file_open_close_definitions() -> Vec<Value> {
                 "required": ["path"]
             }
         }),
+        highlight_code_definition(),
         json!({
             "name": "create_file",
             "description": "Create a new file on disk and open it in the editor",
@@ -52,6 +53,26 @@ fn file_open_close_definitions() -> Vec<Value> {
             }
         }),
     ]
+}
+
+fn highlight_code_definition() -> Value {
+    json!({
+        "name": "highlight_code",
+        "description": "Open a file, highlight line ranges, and scroll to first. \
+            Highlights disappear on first keypress.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Relative path from project root"},
+                "ranges": {"type": "array", "description": "Line ranges to highlight",
+                    "items": {"type": "object", "properties": {
+                        "start_line": {"type": "integer", "description": "Start line (1-indexed)"},
+                        "end_line": {"type": "integer", "description": "End line (1-indexed, default: start_line)"}
+                    }, "required": ["start_line"]}}
+            },
+            "required": ["path", "ranges"]
+        }
+    })
 }
 
 fn file_save_definitions() -> Vec<Value> {

@@ -12,8 +12,8 @@ use super::tools_extra::{
 use super::tools_todo::{tool_add_subtree, tool_get_todo_tree, tool_update_todo};
 use super::tools_write::{
     tool_close_tab, tool_create_file, tool_diff_revert, tool_edit_buffer, tool_get_build_errors, tool_get_diagnostics,
-    tool_insert_text, tool_lsp_control, tool_open_file, tool_run_build, tool_save_file, tool_search_project,
-    tool_set_cursor,
+    tool_highlight_code, tool_insert_text, tool_lsp_control, tool_open_file, tool_run_build, tool_save_file,
+    tool_search_project, tool_set_cursor,
 };
 
 pub use super::tools_defs::tool_definitions;
@@ -35,6 +35,7 @@ pub fn handle_tool_call(
         "update_todo" => tool_update_todo(cmd_queue, args),
         "add_subtree" => tool_add_subtree(cmd_queue, args),
         "open_file" => tool_open_file(cmd_queue, args),
+        "highlight_code" => tool_highlight_code(cmd_queue, args),
         "create_file" => tool_create_file(cmd_queue, args),
         "close_tab" => tool_close_tab(cmd_queue, args),
         "edit_buffer" => tool_edit_buffer(cmd_queue, args),

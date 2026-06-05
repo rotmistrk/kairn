@@ -47,6 +47,31 @@ pub(crate) fn mcp_open_file(
     Ok(serde_json::json!({"opened": rel_path}))
 }
 
+pub(crate) fn mcp_highlight_code(
+    desktop: &mut TiledWorkspace,
+    state: &mut AppState,
+    sink: &EventSink,
+    rel_path: &str,
+    ranges: &[(u32, u32)],
+) -> Result<serde_json::Value, String> {
+    use crate::editor::ephemeral::HighlightOwner;
+    use crate::editor::ephemeral_range::EphemeralRange;
+    mcp_open_file(desktop, state, sink, rel_path)?;
+    let panel = desktop.panel_mut(SlotId::Center as usize).ok_or("No center panel")?;
+    let view = panel.active_view_mut().ok_or("No active view")?;
+    if let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
+        let eph: Vec<EphemeralRange> = ranges
+            .iter()
+            .map(|&(s, e)| EphemeralRange::line_range(s.saturating_sub(1) as usize, e.saturating_sub(1) as usize))
+            .collect();
+        ev.editor_mut().ephemeral.set(eph, HighlightOwner::Transient);
+        if let Some(&(start, _)) = ranges.first() {
+            ev.goto(start.saturating_sub(1), 0);
+        }
+    }
+    Ok(serde_json::json!({"highlighted": rel_path, "ranges": ranges.len()}))
+}
+
 pub(crate) fn mcp_create_file(
     desktop: &mut TiledWorkspace,
     state: &mut AppState,

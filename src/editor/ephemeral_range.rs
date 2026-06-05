@@ -20,6 +20,16 @@ impl EphemeralRange {
         }
     }
 
+    /// Create a range spanning multiple lines (inclusive).
+    pub fn line_range(start: usize, end: usize) -> Self {
+        Self {
+            start_line: start,
+            start_col: 0,
+            end_line: end,
+            end_col: usize::MAX,
+        }
+    }
+
     /// Create a range at a specific position (single char width for cursor indicator).
     pub fn point(line: usize, col: usize) -> Self {
         Self {

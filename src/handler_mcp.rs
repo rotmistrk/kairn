@@ -46,6 +46,7 @@ fn dispatch_mcp_action(
 ) -> Result<serde_json::Value, String> {
     match action {
         McpAction::OpenFile { path } => mcp_open_file(desktop, state, sink, path),
+        McpAction::HighlightCode { path, ranges } => mcp_highlight_code(desktop, state, sink, path, ranges),
         McpAction::CreateFile { path, content } => mcp_create_file(desktop, state, sink, path, content),
         McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
         McpAction::EditBuffer {

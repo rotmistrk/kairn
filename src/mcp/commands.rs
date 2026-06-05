@@ -74,6 +74,11 @@ pub enum McpAction {
     OpenFile {
         path: String,
     },
+    /// Open file and highlight specified line ranges (ephemeral).
+    HighlightCode {
+        path: String,
+        ranges: Vec<(u32, u32)>,
+    },
     /// Create a new file on disk and open it.
     CreateFile {
         path: String,
