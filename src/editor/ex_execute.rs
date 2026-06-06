@@ -41,14 +41,7 @@ impl Editor {
     fn dispatch_ex_cmd(&mut self, ex_cmd: ExCommand) -> EditorAction {
         match ex_cmd {
             ExCommand::Save => EditorAction::SaveRequested,
-            ExCommand::Quit => {
-                if self.buf().is_dirty() {
-                    self.status = "No write since last change (use :q! to override)".to_string();
-                    EditorAction::None
-                } else {
-                    EditorAction::CloseRequested
-                }
-            }
+            ExCommand::Quit => self.handle_quit(),
             ExCommand::QuitForce => EditorAction::ForceCloseRequested,
             ExCommand::SaveQuit => EditorAction::SaveRequested,
             ExCommand::GotoLine(n) => {
@@ -118,6 +111,15 @@ impl Editor {
                 EditorAction::ContentChanged
             }
             _ => EditorAction::None,
+        }
+    }
+
+    fn handle_quit(&mut self) -> EditorAction {
+        if self.buf().is_dirty() {
+            self.status = "No write since last change (use :q! to override)".to_string();
+            EditorAction::None
+        } else {
+            EditorAction::CloseRequested
         }
     }
 }

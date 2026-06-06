@@ -3,6 +3,7 @@
 mod node;
 mod node_lines;
 mod ops;
+pub(crate) mod paste;
 mod serialize;
 
 use jsonc_parse::CommentKind;
@@ -254,5 +255,11 @@ impl StructuredDoc for JsonDoc {
         let new_doc = JsonDoc::parse(snapshot)?;
         self.nodes = new_doc.nodes;
         Ok(())
+    }
+    fn serialize_node(&self, id: NodeId) -> String {
+        serialize::serialize_subtree(self, id)
+    }
+    fn paste_after(&mut self, id: NodeId, json: &str) -> Result<NodeId, String> {
+        ops::paste_after(self, id, json)
     }
 }

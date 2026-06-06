@@ -1,12 +1,15 @@
 //! CsvView — tabular view for CSV/TSV files.
 
 mod draw;
-mod handle;
+mod format;
+pub(crate) mod handle;
+pub(crate) mod row_ops;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use txv_core::clipboard_ring::ClipboardHandle;
 use txv_core::prelude::*;
 use txv_widgets::input_line::InputLine;
 
@@ -35,6 +38,12 @@ pub struct CsvView {
     pub(crate) dirty: bool,
     pub(crate) display_title: String,
     pub(crate) child_sink: EventSink,
+    /// Visual selection anchor (visible row index). None = not in visual mode.
+    pub(crate) visual_anchor: Option<usize>,
+    /// Yanked rows (internal buffer for copy/paste).
+    pub(crate) yanked_rows: Vec<Vec<String>>,
+    /// Clipboard handle (shared with app).
+    pub(crate) clipboard: Option<ClipboardHandle>,
 }
 
 impl CsvView {
@@ -50,15 +59,11 @@ impl CsvView {
             .map_or_else(|| rows.first().map_or(0, |r| r.len()), |h| h.len());
         let col_widths = compute_col_widths(&headers, &rows, ncols);
         let visible_rows: Vec<usize> = (0..rows.len()).collect();
-        let filters = vec![String::new(); ncols];
-        let display_title = path
-            .file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .unwrap_or_else(|| "csv".into());
 
         Self {
             group: GroupState::default(),
             path: path.to_path_buf(),
+            display_title: file_title(path),
             delimiter,
             headers,
             rows,
@@ -70,18 +75,24 @@ impl CsvView {
             scroll_col: 0,
             sort_col: None,
             sort_asc: true,
-            filters,
+            filters: vec![String::new(); ncols],
             visible_rows,
             editing_row: None,
             editing_filter: false,
             dirty: false,
-            display_title,
             child_sink: EventSink::new(),
+            visual_anchor: None,
+            yanked_rows: Vec::new(),
+            clipboard: None,
         }
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn set_clipboard(&mut self, clipboard: ClipboardHandle) {
+        self.clipboard = Some(clipboard);
     }
 
     pub(crate) fn ncols(&self) -> usize {
@@ -109,6 +120,14 @@ impl CsvView {
 
     pub(crate) fn is_editing(&self) -> bool {
         self.editing_row.is_some()
+    }
+
+    /// Returns (start, end) inclusive range of selected visible rows.
+    pub(crate) fn visual_range(&self) -> Option<(usize, usize)> {
+        let anchor = self.visual_anchor?;
+        let a = anchor.min(self.cursor_row);
+        let b = anchor.max(self.cursor_row);
+        Some((a, b))
     }
 
     pub(crate) fn start_edit(&mut self) {
@@ -173,6 +192,10 @@ impl View for CsvView {
         &self.display_title
     }
 
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
+
     fn set_bounds(&mut self, r: Rect) {
         if self.group.bounds() != r {
             self.cancel_edit();
@@ -210,6 +233,12 @@ impl View for CsvView {
         }
         handle::handle_csv_event(self, event)
     }
+}
+
+fn file_title(path: &Path) -> String {
+    path.file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| "csv".into())
 }
 
 fn compute_col_widths(headers: &Option<Vec<String>>, rows: &[Vec<String>], ncols: usize) -> Vec<u16> {

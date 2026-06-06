@@ -186,20 +186,8 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
 /// Data: (PathBuf, Option<(u32, u32)>, u32) = (path, optional range, tab_size)
 /// If no data provided, uses current file info.
 pub(super) fn send_format(ctx: &mut CommandContext, state: &mut AppState) {
-    let (path, range, tab_size) = if let Some(boxed) = ctx.data.as_ref() {
-        if let Some((p, r, t)) = boxed.downcast_ref::<(PathBuf, Option<(u32, u32)>, u32)>() {
-            (p.clone(), *r, *t)
-        } else {
-            return;
-        }
-    } else {
-        // Fallback: use current file (from Tcl/script dispatch)
-        let (_, lang_str) = current_file_info(state);
-        if lang_str.is_empty() {
-            return;
-        }
-        let path = state.broker.last_opened().map(PathBuf::from).unwrap_or_default();
-        (path, None, 4)
+    let Some((path, range, tab_size)) = extract_format_params(ctx, state) else {
+        return;
     };
 
     let lang = protocol::language_id(&path);
@@ -228,6 +216,23 @@ pub(super) fn send_format(ctx: &mut CommandContext, state: &mut AppState) {
         requests::formatting(client, &uri, tab_size)
     };
     state.lsp_pending.insert_with_lang(id, PendingKind::Format, lang);
+}
+
+type FormatParams = (PathBuf, Option<(u32, u32)>, u32);
+
+fn extract_format_params(ctx: &mut CommandContext, state: &mut AppState) -> Option<FormatParams> {
+    if let Some(boxed) = ctx.data.as_ref() {
+        boxed
+            .downcast_ref::<FormatParams>()
+            .map(|(p, r, t)| (p.clone(), *r, *t))
+    } else {
+        let (_, lang_str) = current_file_info(state);
+        if lang_str.is_empty() {
+            return None;
+        }
+        let path = state.broker.last_opened().map(PathBuf::from).unwrap_or_default();
+        Some((path, None, 4))
+    }
 }
 
 pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {

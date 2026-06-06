@@ -167,3 +167,19 @@ fn write_meta_comment(doc: &JsonDoc, id: NodeId, out: &mut String, indent: usize
         out.push('\n');
     }
 }
+
+/// Serialize a subtree rooted at `id` (without the key, just the value).
+pub(crate) fn serialize_subtree(doc: &JsonDoc, id: NodeId) -> String {
+    let mut out = String::new();
+    // If the node has a key (dict member), wrap as {"key": value}
+    if let Some(k) = doc.node(id).key.as_deref() {
+        out.push_str("{\"");
+        out.push_str(&escape_json_string(k));
+        out.push_str("\": ");
+        write_node(doc, id, &mut out, 0);
+        out.push('}');
+    } else {
+        write_node(doc, id, &mut out, 0);
+    }
+    out
+}

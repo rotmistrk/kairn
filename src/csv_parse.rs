@@ -4,7 +4,12 @@
 #[derive(Debug, Clone)]
 pub enum ColType {
     Text,
-    Numeric { max_before_dot: u16, max_after_dot: u16 },
+    Numeric {
+        max_before_dot: u16,
+        max_after_dot: u16,
+        /// Maximum width of the exponent part (e.g. "e+07" = 4). 0 if no scientific values.
+        max_exp_width: u16,
+    },
 }
 
 /// Parsed CSV data.
@@ -212,6 +217,7 @@ fn classify_column(rows: &[Vec<String>], col: usize, data_start: usize) -> ColTy
     let mut total_count = 0usize;
     let mut max_before = 0u16;
     let mut max_after = 0u16;
+    let mut max_exp = 0u16;
 
     for row in rows.iter().skip(data_start) {
         let val = row.get(col).map(|s| s.as_str()).unwrap_or("");
@@ -219,15 +225,19 @@ fn classify_column(rows: &[Vec<String>], col: usize, data_start: usize) -> ColTy
             continue;
         }
         total_count += 1;
-        if val.trim().parse::<f64>().is_ok() {
+        let trimmed = val.trim();
+        if trimmed.parse::<f64>().is_ok() {
             numeric_count += 1;
-            if let Some(dot) = val.find('.') {
+            // Split off scientific exponent part (e/E)
+            let (mantissa, exp_part) = split_scientific(trimmed);
+            max_exp = max_exp.max(exp_part.len() as u16);
+            if let Some(dot) = mantissa.find('.') {
                 let before = dot as u16;
-                let after = (val.len() - dot - 1) as u16;
+                let after = (mantissa.len() - dot - 1) as u16;
                 max_before = max_before.max(before);
                 max_after = max_after.max(after);
             } else {
-                max_before = max_before.max(val.trim().len() as u16);
+                max_before = max_before.max(mantissa.len() as u16);
             }
         }
     }
@@ -236,8 +246,21 @@ fn classify_column(rows: &[Vec<String>], col: usize, data_start: usize) -> ColTy
         ColType::Numeric {
             max_before_dot: max_before,
             max_after_dot: max_after,
+            max_exp_width: max_exp,
         }
     } else {
         ColType::Text
     }
+}
+
+/// Split a numeric string into (mantissa, exponent_suffix).
+/// E.g. "1.23e+07" → ("1.23", "e+07"), "42" → ("42", ""), "-3.14" → ("-3.14", "")
+fn split_scientific(s: &str) -> (&str, &str) {
+    // Find 'e' or 'E' that's part of scientific notation (not at start)
+    for (i, ch) in s.char_indices() {
+        if i > 0 && (ch == 'e' || ch == 'E') {
+            return (&s[..i], &s[i..]);
+        }
+    }
+    (s, "")
 }

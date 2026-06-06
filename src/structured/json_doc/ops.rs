@@ -255,3 +255,8 @@ fn resolve_path(doc: &JsonDoc, id: NodeId, segments: &[&str]) -> Option<String> 
     }
     Some(doc.nodes[current.0].value.clone())
 }
+
+pub(crate) fn paste_after(doc: &mut JsonDoc, id: NodeId, json: &str) -> Result<NodeId, String> {
+    use super::paste;
+    paste::paste_after(doc, id, json)
+}

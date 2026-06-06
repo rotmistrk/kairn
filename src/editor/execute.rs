@@ -45,18 +45,7 @@ impl Editor {
                 self.marks.insert(ch, (self.cursor_line, self.cursor_col));
                 EditorAction::None
             }
-            Command::JumpToMark(ch) => {
-                if let Some(&(line, col)) = self.marks.get(&ch) {
-                    let max_line = self.buf().line_count().saturating_sub(1);
-                    self.cursor_line = line.min(max_line);
-                    self.cursor_col = col;
-                    self.clamp_cursor();
-                    EditorAction::CursorMoved
-                } else {
-                    self.status = format!("Mark '{ch}' not set");
-                    EditorAction::None
-                }
-            }
+            Command::JumpToMark(ch) => self.jump_to_mark(ch),
             other => self.dispatch_edit(other).unwrap_or(EditorAction::None),
         }
     }
@@ -66,6 +55,19 @@ impl Editor {
         self.mode = EditorMode::Command;
         self.command_buf = format!("lsp-rename {word}");
         EditorAction::ModeChanged
+    }
+
+    fn jump_to_mark(&mut self, ch: char) -> EditorAction {
+        if let Some(&(line, col)) = self.marks.get(&ch) {
+            let max_line = self.buf().line_count().saturating_sub(1);
+            self.cursor_line = line.min(max_line);
+            self.cursor_col = col;
+            self.clamp_cursor();
+            EditorAction::CursorMoved
+        } else {
+            self.status = format!("Mark '{ch}' not set");
+            EditorAction::None
+        }
     }
 
     fn dispatch_motion(&mut self, cmd: Command) -> EditorAction {

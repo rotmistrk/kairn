@@ -2,15 +2,7 @@
 
 use serde_json::Value;
 
-/// A single text edit from additional edits (e.g. auto-import).
-#[derive(Debug, Clone)]
-pub struct TextEdit {
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-    pub new_text: String,
-}
+use super::text_edit::TextEdit;
 
 /// A completion item from the server.
 #[derive(Debug, Clone)]

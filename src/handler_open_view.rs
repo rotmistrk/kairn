@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+use txv_core::clipboard_ring::ClipboardHandle;
 use txv_core::prelude::*;
 
 use crate::commands::*;
@@ -28,8 +29,16 @@ pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn Vie
     Box::new(ed)
 }
 
+/// Maximum file size (in bytes) for structured/table view. Larger files open as text.
+const STRUCTURED_VIEW_MAX_SIZE: u64 = 10 * 1024 * 1024; // 10 MB
+
 /// Try to open as structured view (JSON/JSONC/JSONL/CSV/TSV).
-pub(crate) fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
+/// Returns None (falls back to text editor) if file exceeds size limit.
+pub(crate) fn try_open_structured(path: &Path, clipboard: Option<ClipboardHandle>) -> Option<Box<dyn View>> {
+    let meta = fs::metadata(path).ok()?;
+    if meta.len() > STRUCTURED_VIEW_MAX_SIZE {
+        return None; // too large — fall back to text editor
+    }
     let ext = path.extension()?.to_str()?;
     let content = fs::read_to_string(path).ok()?;
     match ext {
@@ -45,7 +54,13 @@ pub(crate) fn try_open_structured(path: &Path) -> Option<Box<dyn View>> {
             let doc = JsonlDoc::parse(&content).ok()?;
             Some(Box::new(StructuredView::new(path, Box::new(doc))))
         }
-        "csv" | "tsv" | "tab" | "psv" => Some(Box::new(CsvView::new(path, &content))),
+        "csv" | "tsv" | "tab" | "psv" => {
+            let mut csv = CsvView::new(path, &content);
+            if let Some(clip) = clipboard {
+                csv.set_clipboard(clip);
+            }
+            Some(Box::new(csv))
+        }
         _ => None,
     }
 }
@@ -105,6 +120,8 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut 
     }
     state.broker.close(&abs_key);
     let _ = state.broker.open(&abs_key, SlotId::Center, 0);
-    let view: Box<dyn View> = Box::new(CsvView::new(&path, &content));
+    let mut csv = CsvView::new(&path, &content);
+    csv.set_clipboard(state.clipboard.clone());
+    let view: Box<dyn View> = Box::new(csv);
     try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

@@ -25,5 +25,6 @@ mod send_helpers;
 mod send_sync;
 pub mod server_config;
 pub mod signature_help;
+pub(crate) mod text_edit;
 pub mod uri;
 pub mod workspace_edit;

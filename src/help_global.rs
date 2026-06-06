@@ -7,6 +7,7 @@ pub fn help_global() -> String {
     let mut s = String::new();
     s.push_str(&help_navigation());
     s.push_str(&help_panels());
+    s.push_str(&help_views());
     s.push_str(&help_commands());
     s.push_str(&help_global_extra::help_scripting());
     s.push_str(help_global_extra::help_hooks());
@@ -130,6 +131,41 @@ fn help_todo_terminal() -> &'static str {
 ─── Terminal (right slot) ────────────────────────────
   PgUp / PgDn    Scroll back / forward
   (all other keys pass through to the shell/kiro)
+"
+}
+
+fn help_views() -> String {
+    let mut s = String::new();
+    s.push_str(help_csv_view());
+    s.push_str(help_structured_view());
+    s
+}
+
+fn help_csv_view() -> &'static str {
+    "\
+─── CSV/TSV Table View ──────────────────────────
+  j/k ↓/↑  Move row  | h/l ←/→  Move column
+  g/G  First/last row | 0/$  First/last column
+  Enter  Edit cell | s  Sort column (asc/desc toggle)
+  f  Filter column | F  Clear filter | Ctrl-F  Clear all
+  a  Add row | d  Delete (confirm) | v  Visual select
+  Shift+↓/↑  Extend visual | y  Yank | p  Paste
+  Esc  Cancel visual | :  Command mode
+
+"
+}
+
+fn help_structured_view() -> &'static str {
+    "\
+─── Structured View (JSON/JSONC/JSONL) ──────────────────
+  j/k ↓/↑  Navigate | g/G  First/last | Tab  Key↔Value
+  Space/l/→  Expand | h/←  Collapse/parent | Enter  Edit
+  n  New sibling | b  New child | d  Delete | c  Clone
+  y  Yank JSON | p  Paste after | t  Cycle type | T  Dict↔Array
+  J/K  Swap down/up | H/L  Promote/demote | !  Inline toggle
+  s  Sort | S  Sort by path | f  Filter | F  Clear filter
+  u  Undo | Ctrl-R  Redo | :  Command mode
+
 "
 }
 

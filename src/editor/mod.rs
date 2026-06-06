@@ -28,6 +28,7 @@ mod search;
 mod visual;
 mod visual_block;
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -112,7 +113,7 @@ pub struct Editor {
     pub(crate) highlight: Option<HighlightState>,
     pub(crate) ephemeral: EphemeralHighlights,
     /// Vim-style local marks (a-z): char → (line, col).
-    pub(crate) marks: std::collections::HashMap<char, (usize, usize)>,
+    pub(crate) marks: HashMap<char, (usize, usize)>,
 }
 
 impl Editor {
@@ -201,7 +202,7 @@ impl Editor {
             options: EditorOptions::default(),
             highlight: None,
             ephemeral: EphemeralHighlights::new(),
-            marks: std::collections::HashMap::new(),
+            marks: HashMap::new(),
         }
     }
 }

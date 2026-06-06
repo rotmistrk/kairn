@@ -8,4 +8,5 @@ pub enum ConfirmContext {
     Quit,
     TodoDelete,
     TodoCrypto,
+    CsvDeleteRow,
 }

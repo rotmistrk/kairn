@@ -86,7 +86,7 @@ impl CompletionPopup {
     }
 
     /// Get the selected item's additional text edits (e.g. auto-imports).
-    pub fn selected_additional_edits(&self) -> &[super::response_parse::TextEdit] {
+    pub fn selected_additional_edits(&self) -> &[super::text_edit::TextEdit] {
         self.items
             .get(self.selected)
             .map(|i| i.additional_edits.as_slice())

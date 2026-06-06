@@ -68,6 +68,8 @@ fn handle_struct_ops(view: &mut StructuredView, key: &KeyEvent) -> HandleResult 
         KeyCode::Char('b') => ops::handle_new_child(view),
         KeyCode::Char('d') => ops::handle_delete(view),
         KeyCode::Char('c') => ops::handle_clone(view),
+        KeyCode::Char('y') => handle_yank(view),
+        KeyCode::Char('p') => handle_paste(view),
         KeyCode::Char('t') => ops::handle_cycle_type(view),
         KeyCode::Char('T') => ops::handle_convert_container(view),
         KeyCode::Char('J') => ops::handle_swap_down(view),
@@ -220,5 +222,31 @@ fn handle_enter(view: &mut StructuredView) {
         ColFocus::Meta => {
             view.start_edit(EditTarget::Meta);
         }
+    }
+}
+
+fn handle_yank(view: &mut StructuredView) {
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+        return;
+    };
+    view.yanked = Some(view.tree.data.doc.serialize_node(node_id));
+}
+
+fn handle_paste(view: &mut StructuredView) {
+    let Some(json) = view.yanked.clone() else {
+        return;
+    };
+    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+        return;
+    };
+    view.save_undo_point();
+    if let Ok(new_id) = view.tree.data_mut().doc.paste_after(node_id, &json) {
+        view.dirty = true;
+        view.sync_title();
+        view.rebuild_visible();
+        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == new_id) {
+            view.tree.set_cursor(pos);
+        }
+        view.tree.state.mark_dirty();
     }
 }

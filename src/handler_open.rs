@@ -53,39 +53,49 @@ fn handle_already_open(
     abs_key: &str,
     focus_center: bool,
 ) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        if !focus_editor_by_path(desktop, abs_key) {
-            state.broker.close(abs_key);
-            let path = &req.path;
-            let title = initial_title(path);
-            let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
-            try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title, view);
-            if focus_center {
-                desktop.focus_panel(SlotId::Center as usize);
-            }
-            ctx.sink.push_command(
-                txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(Message::info("editor", format!("Opened: {abs_key}")))),
-            );
-            return;
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    if !focus_editor_by_path(desktop, abs_key) {
+        state.broker.close(abs_key);
+        let path = &req.path;
+        let title = initial_title(path);
+        let view: Box<dyn View> =
+            try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
+        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title, view);
+        if focus_center {
+            desktop.focus_panel(SlotId::Center as usize);
         }
-        if let Some(line) = req.line {
-            let col = req.col.unwrap_or(0);
-            let ed = desktop
-                .panel_mut(SlotId::Center as usize)
-                .and_then(|p| p.active_view_mut())
-                .and_then(|v| v.as_any_mut())
-                .and_then(|a| a.downcast_mut::<EditorView>());
-            if let Some(ed) = ed {
-                ed.goto(line, col);
-            }
-        }
+        ctx.sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("editor", format!("Opened: {abs_key}")))),
+        );
+    } else {
+        goto_in_active_editor(desktop, req);
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
         }
     }
     if req.diff {
         ctx.sink.push_command(CM_DIFF, Some(Box::new(String::new())));
+    }
+}
+
+fn goto_in_active_editor(desktop: &mut dyn View, req: &OpenFileRequest) {
+    let Some(line) = req.line else {
+        return;
+    };
+    let col = req.col.unwrap_or(0);
+    let Some(d) = downcast_desktop(desktop) else {
+        return;
+    };
+    let ed = d
+        .panel_mut(SlotId::Center as usize)
+        .and_then(|p| p.active_view_mut())
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<EditorView>());
+    if let Some(ed) = ed {
+        ed.goto(line, col);
     }
 }
 
@@ -100,7 +110,8 @@ fn handle_fresh_open(
         close_tab_by_title(desktop, SlotId::Center, "Welcome");
         let path = &req.path;
         let title = initial_title(path);
-        let view: Box<dyn View> = try_open_structured(path).unwrap_or_else(|| open_editor(path, state, req));
+        let view: Box<dyn View> =
+            try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
         try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
         state.tab_titles_dirty = true;
         if focus_center {
@@ -129,7 +140,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
             }
         }
         OpenResult::Opened => {
-            let view: Box<dyn View> = try_open_structured(&path).unwrap_or_else(|| {
+            let view: Box<dyn View> = try_open_structured(&path, Some(state.clipboard.clone())).unwrap_or_else(|| {
                 let syntax_theme = state.current_syntax_theme().to_string();
                 let defaults = state.settings.editor_defaults.clone();
                 let mut editor = EditorView::open_with_theme(&path, &defaults, &syntax_theme)
@@ -217,7 +228,7 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
     state.broker.close(&abs_key);
     let _ = state.broker.open(&abs_key, SlotId::Center, 0);
     let view: Box<dyn View> = if to_structured {
-        try_open_structured(&path).unwrap_or_else(|| open_editor_view(&path, state))
+        try_open_structured(&path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor_view(&path, state))
     } else {
         open_editor_view(&path, state)
     };

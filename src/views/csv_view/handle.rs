@@ -1,9 +1,10 @@
-//! Key handling for CsvView — navigation, sort, filter, edit.
+//! Key handling for CsvView — navigation, sort, filter, edit, row ops.
 
 use std::cmp::Ordering;
 
 use txv_core::prelude::*;
 
+use super::row_ops;
 use super::CsvView;
 use crate::commands::CM_COMMAND_MODE;
 use crate::csv_parse::ColType;
@@ -12,6 +13,11 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
         return HandleResult::Ignored;
     };
+    if key.modifiers.shift {
+        if let Some(r) = handle_shift_motion(view, key.code) {
+            return r;
+        }
+    }
     match key.code {
         KeyCode::Down | KeyCode::Char('j') => handle_nav_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_nav_up(view),
@@ -26,10 +32,42 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
         KeyCode::Char('f') if key.modifiers.ctrl => handle_clear_all_filters(view),
         KeyCode::Char('f') => view.start_filter_edit(),
         KeyCode::Char('F') => handle_clear_col_filter(view),
+        KeyCode::Char('a') => row_ops::handle_add_row(view),
+        KeyCode::Char('d') => row_ops::handle_delete_row(view),
+        KeyCode::Char('v') => row_ops::handle_toggle_visual(view),
+        KeyCode::Char('y') => row_ops::handle_yank(view),
+        KeyCode::Char('p') => row_ops::handle_paste(view),
+        KeyCode::Esc => return handle_esc(view),
         KeyCode::Char(':') => view.group.put_command(CM_COMMAND_MODE, None),
         _ => return HandleResult::Ignored,
     }
     HandleResult::Consumed
+}
+
+fn handle_shift_motion(view: &mut CsvView, code: KeyCode) -> Option<HandleResult> {
+    match code {
+        KeyCode::Down | KeyCode::Char('J') => {
+            row_ops::start_visual_if_needed(view);
+            handle_nav_down(view);
+            Some(HandleResult::Consumed)
+        }
+        KeyCode::Up | KeyCode::Char('K') => {
+            row_ops::start_visual_if_needed(view);
+            handle_nav_up(view);
+            Some(HandleResult::Consumed)
+        }
+        _ => None,
+    }
+}
+
+fn handle_esc(view: &mut CsvView) -> HandleResult {
+    if view.visual_anchor.is_some() {
+        view.visual_anchor = None;
+        view.group.mark_dirty();
+        HandleResult::Consumed
+    } else {
+        HandleResult::Ignored
+    }
 }
 
 pub fn drain_csv_commands(view: &mut CsvView) {
@@ -177,7 +215,7 @@ fn handle_sort(view: &mut CsvView) {
     view.cursor_row = 0;
 }
 
-fn ensure_visible(view: &mut CsvView) {
+pub(super) fn ensure_visible(view: &mut CsvView) {
     let h = view.group.bounds().h as usize;
     let data_h = h.saturating_sub(if view.headers.is_some() {
         1

@@ -149,8 +149,9 @@ impl EditorView {
     }
 
     fn action_lsp_format(&mut self, range: Option<(u32, u32)>) {
+        use std::path::PathBuf;
         let tab_size = self.editor.options.tab_width as u32;
-        let data: (std::path::PathBuf, Option<(u32, u32)>, u32) = (self.path.clone(), range, tab_size);
+        let data: (PathBuf, Option<(u32, u32)>, u32) = (self.path.clone(), range, tab_size);
         self.state.put_command(CM_LSP_FORMAT, Some(Box::new(data)));
     }
 
@@ -179,32 +180,35 @@ impl EditorView {
         };
 
         match result {
-            Ok(formatted) => {
-                if formatted.trim() == content.trim() {
-                    let msg = Message::info("fmt", "Already formatted".to_string());
-                    self.state
-                        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-                    return;
-                }
-                // Replace buffer content
-                let len = self.editor.buf().len();
-                self.editor.buf().begin_group();
-                self.editor.buf().delete(0, len);
-                self.editor.buf().insert(0, &formatted);
-                self.editor.buf().end_group();
-                self.editor.clamp_cursor();
-                self.invalidate_highlight();
-                self.state.mark_dirty();
-                let msg = Message::info("fmt", "Formatted".to_string());
-                self.state
-                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-            }
+            Ok(formatted) => self.apply_formatted_content(&formatted),
             Err(e) => {
                 let msg = Message::error("fmt", format!("Parse error: {e}"));
                 self.state
                     .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
         }
+    }
+
+    fn apply_formatted_content(&mut self, formatted: &str) {
+        use txv_core::message::Message;
+        let content = self.editor.buf().content();
+        if formatted.trim() == content.trim() {
+            let msg = Message::info("fmt", "Already formatted".to_string());
+            self.state
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            return;
+        }
+        let len = self.editor.buf().len();
+        self.editor.buf().begin_group();
+        self.editor.buf().delete(0, len);
+        self.editor.buf().insert(0, formatted);
+        self.editor.buf().end_group();
+        self.editor.clamp_cursor();
+        self.invalidate_highlight();
+        self.state.mark_dirty();
+        let msg = Message::info("fmt", "Formatted".to_string());
+        self.state
+            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
 
     fn action_split(&mut self, arg: String, vertical: bool) {

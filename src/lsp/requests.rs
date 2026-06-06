@@ -7,8 +7,8 @@ use super::client::LspClient;
 // Re-export parse functions and types from response_parse module.
 pub use super::response_parse::{
     parse_code_actions, parse_completion, parse_hover, parse_locations, CompletionItem, CompletionKind, Location,
-    TextEdit,
 };
+pub use super::text_edit::TextEdit;
 
 /// Send `textDocument/definition` request. Returns request id.
 pub fn goto_definition(client: &mut LspClient, uri: &str, line: u32, character: u32) -> u64 {

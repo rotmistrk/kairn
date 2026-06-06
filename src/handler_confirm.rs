@@ -13,6 +13,7 @@ use crate::editor::save::save_file;
 use crate::handler::downcast_desktop;
 use crate::handler_close::save_all_dirty;
 use crate::handler_evict::complete_pending_insert;
+use crate::views::csv_view::CsvView;
 use crate::views::editor::EditorView;
 use crate::views::todo_tree::TodoTreeView;
 
@@ -40,6 +41,7 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
         }
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
         ConfirmContext::TodoCrypto => handle_todo_crypto(ctx, state, ch),
+        ConfirmContext::CsvDeleteRow => handle_csv_delete(ctx, ch),
     }
 }
 
@@ -204,6 +206,26 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
         .and_then(|a| a.downcast_mut::<TodoTreeView>());
     if let Some(todo) = todo {
         todo.crypto_passphrase_response(&passphrase);
+    }
+}
+
+fn handle_csv_delete(ctx: &mut CommandContext, ch: char) {
+    use crate::views::csv_view::row_ops;
+    if ch != 'y' {
+        return;
+    }
+    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        return;
+    };
+    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
+        return;
+    };
+    let csv = panel
+        .active_view_mut()
+        .and_then(|v| v.as_any_mut())
+        .and_then(|a| a.downcast_mut::<CsvView>());
+    if let Some(csv) = csv {
+        row_ops::execute_delete(csv);
     }
 }
 

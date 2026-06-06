@@ -54,8 +54,6 @@ pub fn parse_ex_full(
     total_lines: usize,
     visual_lines: Option<(usize, usize)>,
 ) -> Option<ExCommand> {
-    use super::ex_commands::{lookup_command, split_cmd_word};
-
     let cmd = cmd.trim();
     if cmd.is_empty() {
         return None;
@@ -63,6 +61,16 @@ pub fn parse_ex_full(
     if let Ok(n) = cmd.parse::<usize>() {
         return Some(ExCommand::GotoLine(n));
     }
+    parse_ex_body(cmd, cursor_row, total_lines, visual_lines)
+}
+
+fn parse_ex_body(
+    cmd: &str,
+    cursor_row: usize,
+    total_lines: usize,
+    visual_lines: Option<(usize, usize)>,
+) -> Option<ExCommand> {
+    use super::ex_commands::{lookup_command, split_cmd_word};
 
     let cmd_start = cmd
         .find(|c: char| c.is_ascii_alphabetic() || c == '!' || c == 's')

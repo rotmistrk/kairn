@@ -164,29 +164,12 @@ impl EditorView {
             return HandleResult::Ignored;
         };
 
-        // Parse text edits: Vec<(start_line, start_col, end_line, end_col, new_text)>
-        let mut parsed: Vec<(usize, usize, usize, usize, String)> = edits
-            .iter()
-            .filter_map(|e| {
-                let range = e.get("range")?;
-                let start = range.get("start")?;
-                let end = range.get("end")?;
-                let sl = start.get("line")?.as_u64()? as usize;
-                let sc = start.get("character")?.as_u64()? as usize;
-                let el = end.get("line")?.as_u64()? as usize;
-                let ec = end.get("character")?.as_u64()? as usize;
-                let new_text = e.get("newText")?.as_str()?.to_string();
-                Some((sl, sc, el, ec, new_text))
-            })
-            .collect();
-
+        let mut parsed = parse_format_edits(edits);
         if parsed.is_empty() {
             return HandleResult::Consumed;
         }
 
-        // Apply edits in reverse order (bottom to top) so offsets stay valid
         parsed.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
-
         self.editor.buf().begin_group();
         for (sl, sc, el, ec, new_text) in &parsed {
             let start = self.editor.buf().line_col_to_offset(*sl, *sc).unwrap_or(0);
@@ -208,4 +191,21 @@ impl EditorView {
             .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         HandleResult::Consumed
     }
+}
+
+fn parse_format_edits(edits: &[serde_json::Value]) -> Vec<(usize, usize, usize, usize, String)> {
+    edits
+        .iter()
+        .filter_map(|e| {
+            let range = e.get("range")?;
+            let start = range.get("start")?;
+            let end = range.get("end")?;
+            let sl = start.get("line")?.as_u64()? as usize;
+            let sc = start.get("character")?.as_u64()? as usize;
+            let el = end.get("line")?.as_u64()? as usize;
+            let ec = end.get("character")?.as_u64()? as usize;
+            let new_text = e.get("newText")?.as_str()?.to_string();
+            Some((sl, sc, el, ec, new_text))
+        })
+        .collect()
 }

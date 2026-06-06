@@ -62,6 +62,8 @@ pub struct StructuredView {
     /// InputLine child for inline editing (owned directly, not via GroupState).
     pub(crate) input_line: Option<Box<dyn View>>,
     pub(crate) child_sink: EventSink,
+    /// Yanked node JSON (for y/p).
+    pub(crate) yanked: Option<String>,
 }
 
 impl StructuredView {
@@ -87,6 +89,7 @@ impl StructuredView {
             sort_path_target: None,
             input_line: None,
             child_sink: EventSink::new(),
+            yanked: None,
         };
         view.tree.set_focused_col(Some(0));
         view

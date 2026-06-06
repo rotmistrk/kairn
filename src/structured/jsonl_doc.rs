@@ -135,6 +135,14 @@ impl StructuredDoc for JsonlDoc {
         self.inner = new_doc.inner;
         Ok(())
     }
+
+    fn serialize_node(&self, id: NodeId) -> String {
+        self.inner.serialize_node(id)
+    }
+
+    fn paste_after(&mut self, id: NodeId, json: &str) -> Result<NodeId, String> {
+        self.inner.paste_after(id, json)
+    }
 }
 
 /// Serialize a single node as compact JSON (used for JSONL line output).

@@ -61,4 +61,8 @@ pub trait StructuredDoc: Send {
     fn snapshot(&self) -> String;
     /// Restore document state from a snapshot string.
     fn restore(&mut self, snapshot: &str) -> Result<(), String>;
+    /// Serialize a single node (subtree) as a JSON fragment.
+    fn serialize_node(&self, id: NodeId) -> String;
+    /// Insert a JSON fragment as a sibling after the given node. Returns new node id.
+    fn paste_after(&mut self, id: NodeId, json: &str) -> Result<NodeId, String>;
 }

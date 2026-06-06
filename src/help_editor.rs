@@ -41,8 +41,7 @@ fn help_normal_mode() -> &'static str {
   J               Join lines
   ~               Toggle case
   >> / <<         Indent / unindent
-  m<a-z>          Set mark at cursor position
-  '<a-z>          Jump to mark
+  m<a-z>          Set mark | '<a-z>  Jump to mark
   v / V           Visual / visual-line mode
 
 ─── Editor — LSP (Normal Mode) ───────────────────────
