@@ -115,13 +115,8 @@ fn handle_fresh_open(
 
 pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
     let path = state.root_dir.join(arg);
-    if path.is_dir() {
-        let msg = Message::warn("edit", format!("Cannot open directory: {arg}"));
-        sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        return;
-    }
-    if path.exists() && File::open(&path).is_err() {
-        let msg = Message::warn("edit", format!("Cannot read file: {arg}"));
+    if path.is_dir() || (path.exists() && File::open(&path).is_err()) {
+        let msg = Message::warn("edit", format!("Cannot open: {arg}"));
         sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         return;
     }
@@ -150,6 +145,7 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
             });
             if let Some(d) = downcast_desktop(desktop) {
                 try_insert_tab(d, state, sink, SlotId::Center, title, view);
+                d.focus_panel(SlotId::Center as usize);
                 state.tab_titles_dirty = true;
             }
         }
