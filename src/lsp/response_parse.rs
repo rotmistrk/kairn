@@ -2,6 +2,16 @@
 
 use serde_json::Value;
 
+/// A single text edit from additional edits (e.g. auto-import).
+#[derive(Debug, Clone)]
+pub struct TextEdit {
+    pub start_line: u32,
+    pub start_col: u32,
+    pub end_line: u32,
+    pub end_col: u32,
+    pub new_text: String,
+}
+
 /// A completion item from the server.
 #[derive(Debug, Clone)]
 pub struct CompletionItem {
@@ -9,6 +19,7 @@ pub struct CompletionItem {
     pub(crate) detail: Option<String>,
     pub(crate) insert_text: Option<String>,
     pub(crate) kind: CompletionKind,
+    pub(crate) additional_edits: Vec<TextEdit>,
 }
 
 impl CompletionItem {
@@ -23,6 +34,7 @@ impl CompletionItem {
             detail,
             insert_text,
             kind,
+            additional_edits: Vec::new(),
         }
     }
     pub fn label(&self) -> &str {
@@ -36,6 +48,9 @@ impl CompletionItem {
     }
     pub fn kind(&self) -> CompletionKind {
         self.kind
+    }
+    pub fn additional_edits(&self) -> &[TextEdit] {
+        &self.additional_edits
     }
 }
 
@@ -70,11 +85,32 @@ fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
         Some(3) => CompletionKind::Function,
         _ => CompletionKind::Other,
     };
+    let additional_edits = val
+        .get("additionalTextEdits")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|e| {
+                    let range = e.get("range")?;
+                    let start = range.get("start")?;
+                    let end = range.get("end")?;
+                    Some(TextEdit {
+                        start_line: start.get("line")?.as_u64()? as u32,
+                        start_col: start.get("character")?.as_u64()? as u32,
+                        end_line: end.get("line")?.as_u64()? as u32,
+                        end_col: end.get("character")?.as_u64()? as u32,
+                        new_text: e.get("newText")?.as_str()?.to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     Some(CompletionItem {
         label,
         detail,
         insert_text,
         kind,
+        additional_edits,
     })
 }
 

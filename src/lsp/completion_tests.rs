@@ -12,6 +12,7 @@ fn items(labels: &[&str]) -> Vec<CompletionItem> {
             detail: None,
             insert_text: None,
             kind: CompletionKind::Other,
+            additional_edits: Vec::new(),
         })
         .collect()
 }

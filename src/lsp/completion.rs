@@ -85,6 +85,14 @@ impl CompletionPopup {
         Some(item.insert_text.as_deref().unwrap_or(&item.label))
     }
 
+    /// Get the selected item's additional text edits (e.g. auto-imports).
+    pub fn selected_additional_edits(&self) -> &[super::response_parse::TextEdit] {
+        self.items
+            .get(self.selected)
+            .map(|i| i.additional_edits.as_slice())
+            .unwrap_or(&[])
+    }
+
     /// Draw the popup on the buffer.
     pub fn draw(&self, buf: &mut Buffer) {
         if !self.visible || self.items.is_empty() {

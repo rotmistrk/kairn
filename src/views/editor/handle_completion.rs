@@ -73,6 +73,7 @@ impl EditorView {
                 detail: None,
                 insert_text: None,
                 kind: CompletionKind::Other,
+                additional_edits: Vec::new(),
             })
             .collect();
         self.show_completion_items(&items);
@@ -80,11 +81,16 @@ impl EditorView {
 
     /// Accept the currently selected completion item.
     /// Replaces the entire word under/before cursor with the completion text.
+    /// Also applies additionalTextEdits (e.g. auto-imports) maintaining sort order.
     pub(super) fn accept_completion(&mut self) {
         let text = self.completion_popup.selected_text().map(|s| s.to_string());
+        let additional = self.completion_popup.selected_additional_edits().to_vec();
         self.completion_popup.hide();
         if let Some(text) = text {
             self.replace_word_with_completion(&text);
+            if !additional.is_empty() {
+                self.apply_additional_edits(&additional);
+            }
         }
         self.clear_diagnostics();
         self.state.mark_dirty();
@@ -124,6 +130,93 @@ impl EditorView {
         self.editor.buf().insert(start_offset, text);
         self.editor.cursor_col = word_start + text.len();
         self.last_edit_tick = self.tick_counter;
+    }
+
+    /// Apply additional text edits from a completion (e.g. auto-imports).
+    /// For import insertions, finds the sorted position in the import block.
+    fn apply_additional_edits(&mut self, edits: &[crate::lsp::requests::TextEdit]) {
+        use crate::lsp::requests::TextEdit;
+
+        let mut sorted: Vec<&TextEdit> = edits.iter().collect();
+        sorted.sort_by(|a, b| (b.start_line, b.start_col).cmp(&(a.start_line, a.start_col)));
+
+        for edit in sorted {
+            let sl = edit.start_line as usize;
+            let sc = edit.start_col as usize;
+            let el = edit.end_line as usize;
+            let ec = edit.end_col as usize;
+
+            // For pure insertions of import lines, find sorted position
+            let (insert_line, insert_col, text) =
+                if sl == el && sc == ec && Self::is_import_line(&edit.new_text) {
+                    self.find_sorted_import_position(sl, &edit.new_text)
+                        .unwrap_or((sl, sc, edit.new_text.clone()))
+                } else {
+                    (sl, sc, edit.new_text.clone())
+                };
+
+            let start = self.editor.buf().line_col_to_offset(insert_line, insert_col).unwrap_or(0);
+            let end = self.editor.buf().line_col_to_offset(el, ec).unwrap_or(start);
+            if end > start {
+                self.editor.buf().delete(start, end - start);
+            }
+            if !text.is_empty() {
+                self.editor.buf().insert(start, &text);
+            }
+        }
+    }
+
+    /// Check if text looks like an import statement.
+    fn is_import_line(text: &str) -> bool {
+        let t = text.trim();
+        t.starts_with("use ")
+            || t.starts_with("import ")
+            || t.starts_with("from ")
+            || t.starts_with("#include")
+            || t.starts_with("require")
+    }
+
+    /// Find the sorted position for an import line in the import block.
+    /// Returns (line, col, text) for where to insert, or None to use the original position.
+    fn find_sorted_import_position(&self, insert_at: usize, new_text: &str) -> Option<(usize, usize, String)> {
+        // Extract the actual import line content
+        let import_trimmed = new_text.trim().trim_end_matches('\n');
+
+        // Find the import block boundaries around the insertion point
+        let total_lines = self.editor.buf().line_count();
+        let mut block_start = insert_at;
+        while block_start > 0 {
+            let prev = self.editor.buf().line(block_start - 1).unwrap_or_default();
+            if Self::is_import_line(&prev) {
+                block_start -= 1;
+            } else {
+                break;
+            }
+        }
+        let mut block_end = insert_at;
+        while block_end < total_lines {
+            let line = self.editor.buf().line(block_end).unwrap_or_default();
+            if Self::is_import_line(&line) {
+                block_end += 1;
+            } else {
+                break;
+            }
+        }
+
+        if block_start == block_end {
+            return None; // No existing import block, use LSP's position
+        }
+
+        // Find sorted position
+        for line_idx in block_start..block_end {
+            let existing = self.editor.buf().line(line_idx).unwrap_or_default();
+            if import_trimmed < existing.trim() {
+                // Insert before this line
+                return Some((line_idx, 0, format!("{}\n", import_trimmed)));
+            }
+        }
+        // Insert after the last import in the block
+        Some((block_end, 0, format!("{}\n", import_trimmed)))
     }
 
     /// Get the word prefix before the cursor as a string.

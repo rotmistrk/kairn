@@ -7,6 +7,7 @@ use super::client::LspClient;
 // Re-export parse functions and types from response_parse module.
 pub use super::response_parse::{
     parse_code_actions, parse_completion, parse_hover, parse_locations, CompletionItem, CompletionKind, Location,
+    TextEdit,
 };
 
 /// Send `textDocument/definition` request. Returns request id.
