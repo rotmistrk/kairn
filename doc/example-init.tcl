@@ -366,3 +366,15 @@ set window.title-expr {kairn:[system user]@[system hostname 1]:[system short-pwd
 # Left/Right arrows  Horizontal scroll (columns)
 # :text              Switch back to text editor
 # :tab               Open current file as CSV table
+
+# ─── Clipboard ───────────────────────────────────────────────────────────────
+# :clipboard       Open clipboard viewer (tool panel, shows ring entries)
+# Ctrl+C           Copy selection (in any InputLine or editor visual mode)
+# Ctrl+V / Ctrl+Y  Paste from clipboard ring
+# "ayy             Yank to named register 'a'
+# "ap              Paste from named register 'a'
+#
+# Tcl: system clipboard-get / system clipboard-set <text>
+# MCP: clipboard_copy, clipboard_paste, clipboard_list
+#
+# set clipboard.max_entries 100   ;# default: 50
