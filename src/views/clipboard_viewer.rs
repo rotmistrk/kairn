@@ -69,6 +69,10 @@ impl View for ClipboardViewer {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
+        if matches!(event, Event::Tick) {
+            self.state.mark_dirty();
+            return HandleResult::Ignored;
+        }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };

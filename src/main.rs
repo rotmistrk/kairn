@@ -12,11 +12,9 @@ use txv_core::run::Backend;
 use txv_render::backend::CrosstermBackend;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
-use kairn::build_desktop::build_workspace;
+use kairn::app_init::build_app;
 use kairn::commands::{OpenFileRequest, RootsChangedData, CM_OPEN_FILE, CM_OPEN_FILE_FOCUS, CM_ROOTS_CHANGED};
-use kairn::completer::AppCompleter;
-use kairn::config::load_config;
-use kairn::handler::{handle_command, AppState};
+use kairn::handler::{downcast_desktop, handle_command, AppState};
 use kairn::init;
 use kairn::mcp::bridge::run_mcp_bridge;
 use kairn::mcp::commands::McpCommandQueue;
@@ -24,9 +22,6 @@ use kairn::mcp::listener::SharedCommandQueue;
 use kairn::mcp::socket_path::socket_path;
 use kairn::session;
 use kairn::startup;
-use kairn::status::build_status_bar;
-use kairn::views::tree::FileTreeView;
-use txv_widgets::sidekick_manager::SidekickManager;
 
 #[derive(Parser)]
 #[command(name = "kairn", about = "TUI IDE")]
@@ -72,25 +67,22 @@ fn main() -> anyhow::Result<()> {
     let (mcp_snapshot, mcp_cmd_queue, mcp_socket) = startup::start_mcp(&root_dir, &sock_path);
     startup::init_logging(&cli.log_file, &cli.log_level)?;
 
-    let settings = load_config(&root_dir);
     let saved_session = session::load_session(&root_dir);
-    let git_keys = settings.git_keys().clone();
-    let mut app_state = AppState::with_settings(root_dir.to_path_buf(), settings);
+    let (mut program, mut app_state) = build_app(&root_dir);
     app_state.set_mcp_snapshot(Arc::clone(&mcp_snapshot));
     let _ = startup::PANIC_MESSAGES.set(app_state.messages().clone());
-    startup::configure_app_state(&mut app_state, &root_dir);
 
-    let mut desktop = build_workspace(&root_dir, git_keys);
-    desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
-    apply_tree_icons(&mut desktop, &app_state);
     if let Some(ref sess) = saved_session {
-        startup::restore_saved_session(&mut desktop, sess, &root_dir, &mut app_state);
+        let desktop = program.desktop_mut();
+        if let Some(d) = downcast_desktop(desktop) {
+            startup::restore_saved_session(d, sess, &root_dir, &mut app_state);
+        }
     }
 
     run_app(
         &root_dir,
         &mut app_state,
-        desktop,
+        &mut program,
         &open_file,
         &saved_session,
         mcp_cmd_queue,
@@ -119,27 +111,14 @@ fn handle_early_exit(cli: &Cli) -> Option<anyhow::Result<()>> {
 fn run_app(
     root_dir: &std::path::Path,
     app_state: &mut AppState,
-    desktop: TiledWorkspace,
+    program: &mut Program,
     open_file: &Option<PathBuf>,
     saved_session: &Option<session::schema::SessionState>,
     mcp_cmd_queue: SharedCommandQueue,
 ) -> anyhow::Result<()> {
-    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
-    completer.set_lsp_languages(app_state.lsp_languages().clone());
-    completer.set_roots(app_state.completer_roots().clone());
-    let status = build_status_bar(
-        &desktop,
-        Box::new(completer),
-        app_state.settings().clock_interval(),
-        root_dir.to_path_buf(),
-        app_state.settings().status_keys(),
-        app_state.clipboard_ref().clone(),
-    );
-    let mut program = Program::new(Box::new(status), Box::new(desktop));
-    program.insert_named("sidekick", Box::new(SidekickManager::new()));
     let mut backend = init_backend(app_state, &mcp_cmd_queue);
 
-    push_initial_open(&program, open_file, saved_session, root_dir);
+    push_initial_open(program, open_file, saved_session, root_dir);
 
     // Notify tree of restored roots
     if app_state.roots().paths().len() > 1 {
@@ -152,7 +131,7 @@ fn run_app(
     });
 
     app_state.lsp_shutdown_all();
-    save_session_on_exit(&mut program, app_state, root_dir);
+    save_session_on_exit(program, app_state, root_dir);
     Ok(())
 }
 
@@ -212,20 +191,5 @@ fn push_initial_open(
                 .sink()
                 .push_command(CM_OPEN_FILE, Some(Box::new(OpenFileRequest::new(path))));
         }
-    }
-}
-
-fn apply_tree_icons(desktop: &mut TiledWorkspace, state: &AppState) {
-    if !state.settings().tree_icons() {
-        return;
-    }
-    let Some(panel) = desktop.panel_mut(0) else {
-        return;
-    };
-    let Some(view) = panel.view_at_mut(0) else {
-        return;
-    };
-    if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
-        tree.set_show_icons(true);
     }
 }
