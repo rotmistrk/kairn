@@ -197,6 +197,7 @@ impl EditorView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_line_tail(
         &mut self,
         line: &str,

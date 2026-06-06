@@ -83,13 +83,7 @@ pub fn formatting(client: &mut LspClient, uri: &str, tab_size: u32) -> u64 {
 }
 
 /// Send `textDocument/rangeFormatting` request. Returns request id.
-pub fn range_formatting(
-    client: &mut LspClient,
-    uri: &str,
-    start_line: u32,
-    end_line: u32,
-    tab_size: u32,
-) -> u64 {
+pub fn range_formatting(client: &mut LspClient, uri: &str, start_line: u32, end_line: u32, tab_size: u32) -> u64 {
     let params = json!({
         "textDocument": { "uri": uri },
         "range": {

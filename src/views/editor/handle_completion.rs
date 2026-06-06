@@ -147,15 +147,18 @@ impl EditorView {
             let ec = edit.end_col as usize;
 
             // For pure insertions of import lines, find sorted position
-            let (insert_line, insert_col, text) =
-                if sl == el && sc == ec && Self::is_import_line(&edit.new_text) {
-                    self.find_sorted_import_position(sl, &edit.new_text)
-                        .unwrap_or((sl, sc, edit.new_text.clone()))
-                } else {
-                    (sl, sc, edit.new_text.clone())
-                };
+            let (insert_line, insert_col, text) = if sl == el && sc == ec && Self::is_import_line(&edit.new_text) {
+                self.find_sorted_import_position(sl, &edit.new_text)
+                    .unwrap_or((sl, sc, edit.new_text.clone()))
+            } else {
+                (sl, sc, edit.new_text.clone())
+            };
 
-            let start = self.editor.buf().line_col_to_offset(insert_line, insert_col).unwrap_or(0);
+            let start = self
+                .editor
+                .buf()
+                .line_col_to_offset(insert_line, insert_col)
+                .unwrap_or(0);
             let end = self.editor.buf().line_col_to_offset(el, ec).unwrap_or(start);
             if end > start {
                 self.editor.buf().delete(start, end - start);

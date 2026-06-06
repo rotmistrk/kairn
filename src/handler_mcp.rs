@@ -6,8 +6,7 @@ use txv_core::program::CommandContext;
 
 use crate::commands::{
     OpenFileRequest, CM_CODE_ACTION, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE, CM_LSP_FIND_REFS, CM_LSP_FORMAT,
-    CM_LSP_GOTO_DEF, CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS,
-    CM_SPLIT_LINKED,
+    CM_LSP_GOTO_DEF, CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS, CM_SPLIT_LINKED,
 };
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};

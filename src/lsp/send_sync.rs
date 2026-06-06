@@ -8,7 +8,7 @@ use crate::commands::{ContentChanged, OpenFileRequest};
 use crate::handler::AppState;
 
 use super::protocol;
-use super::send::start_lsp;
+use super::send_helpers::start_lsp;
 
 pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data.as_ref() else {

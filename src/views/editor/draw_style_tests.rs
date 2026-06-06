@@ -89,7 +89,10 @@ fn indent_guides_on_wrapped_line_appear_on_first_row() {
     assert_eq!(buf.cell(4, 0).ch, '\u{250A}', "indent guide should be on first row");
     // Continuation row (row 1) should NOT have the indent guide overwriting text
     let cont_ch = buf.cell(4, 1).ch;
-    assert_ne!(cont_ch, '\u{250A}', "indent guide should NOT appear on continuation row, got char at (4,1): {cont_ch}");
+    assert_ne!(
+        cont_ch, '\u{250A}',
+        "indent guide should NOT appear on continuation row, got char at (4,1): {cont_ch}"
+    );
 }
 
 #[test]

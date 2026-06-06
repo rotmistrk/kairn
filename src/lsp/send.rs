@@ -1,17 +1,14 @@
 //! LSP request senders — dispatch commands to language servers.
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 use txv_core::program::CommandContext;
 
 use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_FORMAT, CM_LSP_GOTO_DEF};
-use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::handler::AppState;
-use crate::handler_script_util::fire_lsp_start_hook;
 
 use super::pending::{JdtRequest, PendingKind};
-use super::{protocol, requests};
+use super::{protocol, requests, send_helpers};
 
 pub(super) use super::send_sync::{send_did_change, send_did_open};
 
@@ -258,48 +255,18 @@ fn defer(
     lang: &str,
     data: Box<dyn std::any::Any + Send>,
 ) {
-    use txv_core::message::{Message, MsgLevel};
-    ctx.sink.push_command(
-        txv_widgets::CM_STATUS_MESSAGE,
-        Some(Box::new(Message::new(
-            MsgLevel::Info,
-            "lsp",
-            format!("Waiting for LSP ({lang})..."),
-        ))),
-    );
-    state.deferred_lsp.push(DeferredLspRequest {
-        command,
-        data,
-        language: lang.to_string(),
-        created: Instant::now(),
-    });
+    send_helpers::defer(ctx, state, command, lang, data);
 }
 
 fn emit_last_error(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(err) = state.lsp.last_error.take() {
-        use txv_core::message::{Message, MsgLevel};
-        ctx.sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
-        );
-    }
+    send_helpers::emit_last_error(ctx, state);
 }
 
 fn current_file_info(state: &AppState) -> (String, String) {
-    if let Some(path) = state.broker.last_opened() {
-        let p = Path::new(path);
-        let uri = protocol::path_to_uri(p);
-        let lang = protocol::language_id(p).to_string();
-        (uri, lang)
-    } else {
-        (String::new(), String::new())
-    }
+    send_helpers::current_file_info(state)
 }
 
 /// Fire lsp-start hook (once per language) then call ensure_started.
 pub(super) fn start_lsp(state: &mut AppState, lang: &str, root: &Path) {
-    if state.lsp.take_start_hook(lang) {
-        fire_lsp_start_hook(state, lang);
-    }
-    state.lsp.ensure_started(lang, root);
+    send_helpers::start_lsp(state, lang, root);
 }

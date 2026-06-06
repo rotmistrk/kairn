@@ -40,7 +40,10 @@ pub enum ExCommand {
     Only,
     Revert,
     Format,
-    FormatRange { start: usize, end: usize },
+    FormatRange {
+        start: usize,
+        end: usize,
+    },
     FormatBuiltin(String),
 }
 

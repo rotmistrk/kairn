@@ -21,6 +21,7 @@ pub mod resource_ops;
 mod response;
 pub mod response_parse;
 mod send;
+mod send_helpers;
 mod send_sync;
 pub mod server_config;
 pub mod signature_help;

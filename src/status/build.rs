@@ -71,11 +71,11 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
-    let finder = ModalKey::new("", "file: ")
+    let finder = ModalKey::new("~C-p~:File", "file: ")
         .trigger_key(ctrl_p)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(input));
-    bar.add(StatusSlot::new(Box::new(finder)).priority(10));
+    bar.add(StatusSlot::new(Box::new(finder)).priority(5));
 
     let ctrl_t = KeyEvent {
         code: KeyCode::Char('t'),
@@ -88,11 +88,11 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(SymbolFinderCompleter::new(root)));
-    let sym_finder = ModalKey::new("", "sym: ")
+    let sym_finder = ModalKey::new("~C-t~:Sym", "sym: ")
         .trigger_key(ctrl_t)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(sym_input));
-    bar.add(StatusSlot::new(Box::new(sym_finder)).priority(10));
+    bar.add(StatusSlot::new(Box::new(sym_finder)).priority(5));
 }
 fn add_todo_group(bar: &mut StatusBar) {
     use txv_widgets::KeyLabelView;
