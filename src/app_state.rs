@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use txv_core::clipboard_ring::{new_clipboard, ClipboardHandle};
 
 use txv_core::palette::ThemeMode;
 use txv_core::run::Waker;
@@ -12,7 +13,6 @@ use txv_core::run::Waker;
 use crate::broker::FileBroker;
 use crate::buffer_registry::BufferRegistry;
 use crate::build::ErrorLocation;
-use crate::clipboard_ring::{new_clipboard, ClipboardHandle};
 use crate::commands::ConfirmContext;
 use crate::completer::{new_command_list, CommandList, LspLanguageList, RootsList};
 use crate::deferred_lsp_request::DeferredLspRequest;
@@ -125,6 +125,9 @@ impl AppState {
     pub fn roots_mut(&mut self) -> &mut WorkspaceRoots {
         &mut self.roots
     }
+    pub fn clipboard_ref(&self) -> &ClipboardHandle {
+        &self.clipboard
+    }
     pub fn settings(&self) -> &AppSettings {
         &self.settings
     }
@@ -204,10 +207,6 @@ impl AppState {
 
     pub fn refresh_plugins(&mut self) -> Vec<String> {
         self.plugins.refresh(&mut self.script)
-    }
-
-    pub fn new(root_dir: PathBuf) -> Self {
-        Self::with_settings(root_dir, AppSettings::default())
     }
 
     pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {

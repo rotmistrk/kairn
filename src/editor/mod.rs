@@ -32,8 +32,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
-use crate::clipboard_ring::ClipboardHandle;
 use crate::shared_register::RegisterHandle;
+use txv_core::clipboard_ring::ClipboardHandle;
 
 use self::command::Command;
 use self::ephemeral::EphemeralHighlights;

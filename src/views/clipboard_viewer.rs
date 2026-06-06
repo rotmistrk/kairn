@@ -3,7 +3,7 @@
 use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
-use crate::clipboard_ring::ClipboardHandle;
+use txv_core::clipboard_ring::ClipboardHandle;
 
 pub struct ClipboardViewer {
     state: ViewState,

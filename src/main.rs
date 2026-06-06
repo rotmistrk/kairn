@@ -133,6 +133,7 @@ fn run_app(
         app_state.settings().clock_interval(),
         root_dir.to_path_buf(),
         app_state.settings().status_keys(),
+        app_state.clipboard_ref().clone(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));

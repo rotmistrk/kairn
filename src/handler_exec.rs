@@ -106,7 +106,7 @@ mod tests {
         dir: &std::path::Path,
     ) -> (txv_core::program::Program, txv_core::prelude::EventSink, AppState) {
         let desktop = crate::build_desktop::build_workspace(dir, crate::settings::GitKeys::default());
-        let state = crate::handler::AppState::new(dir.to_path_buf());
+        let state = crate::handler::AppState::with_settings(dir.to_path_buf(), crate::settings::AppSettings::default());
         let status = crate::status::build_status_bar(
             &desktop,
             Box::new(crate::completer::AppCompleter::new(
@@ -116,6 +116,7 @@ mod tests {
             0,
             dir.to_path_buf(),
             &crate::settings::StatusKeys::default(),
+            txv_core::clipboard_ring::new_clipboard(50),
         );
         let mut program = txv_core::program::Program::new(Box::new(status), Box::new(desktop));
         let sink = program.sink().clone();

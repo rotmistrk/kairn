@@ -22,6 +22,7 @@ pub fn build_status_bar(
     clock_interval: u16,
     root_dir: PathBuf,
     status_keys: &StatusKeys,
+    clipboard: txv_core::clipboard_ring::ClipboardHandle,
 ) -> StatusBar {
     let mut bar = StatusBar::new();
     keys::add_workspace_bindings(&mut bar, desktop);
@@ -29,16 +30,21 @@ pub fn build_status_bar(
     keys::add_prefix_bindings(&mut bar);
     keys::add_dired_prefix(&mut bar);
     keys::add_tab_digit_bindings(&mut bar);
-    add_command_items(&mut bar, completer);
-    add_file_finder(&mut bar, root_dir.clone());
+    add_command_items(&mut bar, completer, clipboard.clone());
+    add_file_finder(&mut bar, root_dir.clone(), clipboard);
     add_todo_group(&mut bar);
     add_right_side(&mut bar, root_dir, clock_interval);
     bar
 }
 
-fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
+fn add_command_items(
+    bar: &mut StatusBar,
+    completer: Box<dyn Completer>,
+    clipboard: txv_core::clipboard_ring::ClipboardHandle,
+) {
     bar.add(StatusSlot::new(Box::new(ConfirmView::new(CM_CONFIRM, CM_CONFIRM_RESPONSE))).priority(10));
     let input = InputLine::new()
+        .with_clipboard(clipboard.clone())
         .with_command(CM_EXECUTE_COMMAND)
         .with_completer(completer);
     let command_line = ModalKey::new("M-x", ":")
@@ -50,7 +56,7 @@ fn add_command_items(bar: &mut StatusBar, completer: Box<dyn Completer>) {
     bar.add(StatusSlot::new(Box::new(command_line)).priority(10).stretch(1));
 }
 
-fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
+fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clipboard_ring::ClipboardHandle) {
     use crate::completer_file_finder::FileFinderCompleter;
     use crate::completer_symbol::SymbolFinderCompleter;
 
@@ -62,6 +68,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
         },
     };
     let input = InputLine::new()
+        .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
     let finder = ModalKey::new("", "file: ")
@@ -78,6 +85,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf) {
         },
     };
     let sym_input = InputLine::new()
+        .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(SymbolFinderCompleter::new(root)));
     let sym_finder = ModalKey::new("", "sym: ")

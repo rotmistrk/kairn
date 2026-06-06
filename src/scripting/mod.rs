@@ -173,7 +173,7 @@ impl ScriptEngine {
         }
     }
 
-    pub fn set_clipboard(&self, handle: crate::clipboard_ring::ClipboardHandle) {
+    pub fn set_clipboard(&self, handle: txv_core::clipboard_ring::ClipboardHandle) {
         if let Ok(mut snap) = self.snapshot.lock() {
             snap.clipboard = Some(handle);
         }

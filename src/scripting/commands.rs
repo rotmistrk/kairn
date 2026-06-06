@@ -13,7 +13,7 @@ pub struct StateSnapshot {
     pub(crate) split_direction: String,
     pub(crate) split_linked: bool,
     pub(crate) busy_count: usize,
-    pub(crate) clipboard: Option<crate::clipboard_ring::ClipboardHandle>,
+    pub(crate) clipboard: Option<txv_core::clipboard_ring::ClipboardHandle>,
 }
 
 /// Commands produced by Tcl scripts, drained by the handler.

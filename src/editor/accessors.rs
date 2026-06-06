@@ -2,8 +2,8 @@
 
 use super::options::EditorOptions;
 use super::Editor;
-use crate::clipboard_ring::ClipboardHandle;
 use crate::shared_register::RegisterHandle;
+use txv_core::clipboard_ring::ClipboardHandle;
 
 impl Editor {
     pub(crate) fn set_shared_state(&mut self, register: RegisterHandle, clipboard: ClipboardHandle) {

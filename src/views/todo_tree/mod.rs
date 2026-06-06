@@ -37,7 +37,7 @@ pub struct TodoTreeView {
     /// Pending crypto path for passphrase prompt.
     crypto_pending: Option<CryptoPending>,
     /// Shared clipboard ring.
-    pub(crate) clipboard: Option<crate::clipboard_ring::ClipboardHandle>,
+    pub(crate) clipboard: Option<txv_core::clipboard_ring::ClipboardHandle>,
 }
 
 enum CryptoPending {

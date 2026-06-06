@@ -35,6 +35,7 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
         app_state.settings().clock_interval(),
         root_dir.to_path_buf(),
         app_state.settings().status_keys(),
+        app_state.clipboard.clone(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));
@@ -57,6 +58,7 @@ pub fn build_app_with(root_dir: &Path, git_keys: GitKeys, app_state: &mut AppSta
         app_state.settings().clock_interval(),
         root_dir.to_path_buf(),
         app_state.settings().status_keys(),
+        app_state.clipboard.clone(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));
