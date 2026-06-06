@@ -111,6 +111,8 @@ pub struct Editor {
     pub(crate) options: EditorOptions,
     pub(crate) highlight: Option<HighlightState>,
     pub(crate) ephemeral: EphemeralHighlights,
+    /// Vim-style local marks (a-z): char → (line, col).
+    pub(crate) marks: std::collections::HashMap<char, (usize, usize)>,
 }
 
 impl Editor {
@@ -199,6 +201,7 @@ impl Editor {
             options: EditorOptions::default(),
             highlight: None,
             ephemeral: EphemeralHighlights::new(),
+            marks: std::collections::HashMap::new(),
         }
     }
 }

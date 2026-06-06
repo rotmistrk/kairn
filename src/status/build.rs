@@ -71,7 +71,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
-    let finder = ModalKey::new("~C-p~:File", "file: ")
+    let finder = ModalKey::new("", "file: ")
         .trigger_key(ctrl_p)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(input));
@@ -88,7 +88,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
         .with_completer(Box::new(SymbolFinderCompleter::new(root)));
-    let sym_finder = ModalKey::new("~C-t~:Sym", "sym: ")
+    let sym_finder = ModalKey::new("", "sym: ")
         .trigger_key(ctrl_t)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(sym_input));

@@ -120,6 +120,11 @@ pub enum Command {
     // Repeat
     DotRepeat,
 
+    /// Set a named mark at current position.
+    SetMark(char),
+    /// Jump to a named mark.
+    JumpToMark(char),
+
     /// Repeat a command N times (count prefix).
     Repeat(usize, Box<Command>),
 

@@ -41,6 +41,22 @@ impl Editor {
                 }
             }
             Command::Repeat(n, cmd) => self.dispatch_repeat(n, *cmd),
+            Command::SetMark(ch) => {
+                self.marks.insert(ch, (self.cursor_line, self.cursor_col));
+                EditorAction::None
+            }
+            Command::JumpToMark(ch) => {
+                if let Some(&(line, col)) = self.marks.get(&ch) {
+                    let max_line = self.buf().line_count().saturating_sub(1);
+                    self.cursor_line = line.min(max_line);
+                    self.cursor_col = col;
+                    self.clamp_cursor();
+                    EditorAction::CursorMoved
+                } else {
+                    self.status = format!("Mark '{ch}' not set");
+                    EditorAction::None
+                }
+            }
             other => self.dispatch_edit(other).unwrap_or(EditorAction::None),
         }
     }

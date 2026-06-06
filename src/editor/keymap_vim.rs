@@ -154,6 +154,8 @@ impl VimKeymap {
             | KeyCode::Char('t')
             | KeyCode::Char('T')
             | KeyCode::Char('g')
+            | KeyCode::Char('m')
+            | KeyCode::Char('\'')
             | KeyCode::Char('"') => {
                 if let KeyCode::Char(ch) = &key.code {
                     self.pending = Some(*ch);
@@ -206,6 +208,8 @@ impl VimKeymap {
             ('F', _) => Command::FindCharBack(ch),
             ('t', _) => Command::TillChar(ch),
             ('T', _) => Command::TillCharBack(ch),
+            ('m', _) if ch.is_ascii_alphabetic() => Command::SetMark(ch),
+            ('\'', _) if ch.is_ascii_alphabetic() => Command::JumpToMark(ch),
             ('d', 'e') | ('d', '^') => Command::OperatorDelete,
             ('c', 'e') | ('c', 'b') | ('c', '0') | ('c', '^') => Command::OperatorChange,
             ('y', 'e') | ('y', 'b') | ('y', '0') | ('y', '^') => Command::OperatorYank,
