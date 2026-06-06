@@ -173,6 +173,12 @@ impl ScriptEngine {
         }
     }
 
+    pub fn set_clipboard(&self, handle: crate::clipboard_ring::ClipboardHandle) {
+        if let Ok(mut snap) = self.snapshot.lock() {
+            snap.clipboard = Some(handle);
+        }
+    }
+
     pub fn set_roots(&self, roots: &[&str]) {
         if let Ok(mut snap) = self.snapshot.lock() {
             snap.roots = roots.iter().map(|s| s.to_string()).collect();

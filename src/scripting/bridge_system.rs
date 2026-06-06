@@ -9,8 +9,6 @@ use rusticle::error::TclError;
 use rusticle::interpreter::Interpreter;
 use rusticle::value::TclValue;
 
-use crate::clipboard::{copy_to_clipboard, paste_from_clipboard};
-
 use super::StateSnapshot;
 
 use super::ScriptCommand;
@@ -57,16 +55,29 @@ fn handle_system_cmd(
         "add-root" | "remove-root" => handle_root_cmd(cmds, args, sub),
         "home-dir" => Ok(TclValue::Str(env::var("HOME").unwrap_or_default())),
         "platform" => Ok(TclValue::Str(platform_name().into())),
+        "clipboard-get" | "clipboard-set" => handle_clipboard_cmd(snap, args, sub),
+        _ => handle_title_cmds(snap, args, sub),
+    }
+}
+
+fn handle_clipboard_cmd(snap: &Arc<Mutex<StateSnapshot>>, args: &[TclValue], sub: &str) -> Result<TclValue, TclError> {
+    let s = snap.lock().map_err(|e| TclError::new(e.to_string()))?;
+    let Some(ref clip) = s.clipboard else {
+        return Err(TclError::new("clipboard not available"));
+    };
+    match sub {
         "clipboard-get" => {
-            let text = paste_from_clipboard().map_err(TclError::new)?;
+            let text = clip.lock().ok().and_then(|mut r| r.paste()).unwrap_or_default();
             Ok(TclValue::Str(text))
         }
         "clipboard-set" => {
             let text = super::arg_str(args, 1)?;
-            copy_to_clipboard(&text).map_err(TclError::new)?;
+            if let Ok(mut ring) = clip.lock() {
+                ring.push(&text, "tcl");
+            }
             Ok(TclValue::Str(String::new()))
         }
-        _ => handle_title_cmds(snap, args, sub),
+        _ => Ok(TclValue::Str(String::new())),
     }
 }
 

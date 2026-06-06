@@ -222,6 +222,7 @@ impl AppState {
             ..Self::empty()
         };
         s.clipboard = new_clipboard(clip_max);
+        s.script.set_clipboard(s.clipboard.clone());
         s
     }
 
