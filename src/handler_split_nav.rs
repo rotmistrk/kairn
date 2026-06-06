@@ -180,7 +180,8 @@ pub(crate) fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line
     *ev = new_ev;
     ev.set_bounds(bounds);
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    ev.editor_mut().set_shared_register(state.shared_register.clone());
+    ev.editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     ev.goto(line, col);
 }
 
@@ -190,7 +191,8 @@ fn open_new_pane(state: &mut AppState, path: &std::path::Path, line: u32, col: u
     let mut ev = EditorView::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    ev.editor_mut().set_shared_register(state.shared_register.clone());
+    ev.editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     ev.goto(line, col);
     Box::new(ev)
 }

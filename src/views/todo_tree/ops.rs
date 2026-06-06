@@ -10,6 +10,7 @@ use crate::commands::{
     CM_TODO_TOGGLE_PAUSE, CM_TODO_TOGGLE_PROGRESS,
 };
 use model::WorkStatus;
+use txv_widgets::input_line::CM_CLIPBOARD_PASTE;
 
 impl TodoTreeView {
     pub(super) fn emit_note_update_if_cursor_changed(&mut self, prev_cursor: usize) {
@@ -165,5 +166,29 @@ impl TodoTreeView {
         if !self.inner.data.show_loe {
             self.inner.data.show_loe = true;
         }
+    }
+    pub(super) fn clipboard_paste(&self) -> Option<String> {
+        self.clipboard.as_ref()?.lock().ok()?.paste()
+    }
+
+    /// Intercept Ctrl+V in edit mode: paste from ring directly into InputLine.
+    pub(super) fn handle_edit_paste(&mut self, event: &Event) -> bool {
+        let Event::Key(k) = event else {
+            return false;
+        };
+        if !k.modifiers.ctrl || k.code != KeyCode::Char('v') {
+            return false;
+        }
+        let Some(text) = self.clipboard_paste() else {
+            return false;
+        };
+        let paste_ev = Event::Command {
+            id: CM_CLIPBOARD_PASTE,
+            data: Some(Box::new(text)),
+            broadcast: false,
+        };
+        self.group.dispatch(&paste_ev);
+        self.group.mark_dirty();
+        true
     }
 }

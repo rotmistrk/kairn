@@ -36,6 +36,8 @@ pub struct TodoTreeView {
     filter_active: bool,
     /// Pending crypto path for passphrase prompt.
     crypto_pending: Option<CryptoPending>,
+    /// Shared clipboard ring.
+    pub(crate) clipboard: Option<crate::clipboard_ring::ClipboardHandle>,
 }
 
 enum CryptoPending {
@@ -54,6 +56,7 @@ impl TodoTreeView {
             editing_row: None,
             filter_active: false,
             crypto_pending: None,
+            clipboard: None,
         }
     }
 
@@ -269,6 +272,9 @@ impl View for TodoTreeView {
             return self.handle_filter_key(key, event);
         }
         if self.editing_row.is_some() {
+            if self.handle_edit_paste(event) {
+                return HandleResult::Consumed;
+            }
             let _result = self.group.dispatch(event);
             self.drain_edit_commands();
             self.group.mark_dirty();

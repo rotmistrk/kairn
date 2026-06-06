@@ -4,7 +4,6 @@ use txv_core::message::Message;
 use txv_core::program::CommandContext;
 use txv_core::run::Waker;
 
-use crate::clipboard::paste_from_clipboard;
 use crate::commands::*;
 use crate::desktop::{focus_tab_by_title, next_tab_name, SlotId};
 use crate::grep::{grep_async, grep_async_roots};
@@ -138,10 +137,11 @@ pub(crate) fn cmd_noblame(ctx: &mut CommandContext, _state: &mut AppState, _arg:
     ctx.sink.push_command(CM_NOBLAME, None);
 }
 
-pub(crate) fn cmd_paste(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
-    match paste_from_clipboard() {
-        Ok(text) => ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
-        Err(e) => push_status(ctx, Message::error("clipboard", e)),
+pub(crate) fn cmd_paste(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
+    if let Ok(mut ring) = state.clipboard.lock() {
+        if let Some(text) = ring.paste() {
+            ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+        }
     }
 }
 

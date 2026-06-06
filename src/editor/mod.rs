@@ -1,5 +1,6 @@
 //! Editor — cursor, mode, command execution over a PieceTable buffer.
 
+mod accessors;
 mod clipboard;
 pub mod command;
 mod dispatch_edit;
@@ -31,7 +32,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::buffer::PieceTable;
-use crate::shared_register::{new_register, RegisterHandle};
+use crate::clipboard_ring::ClipboardHandle;
+use crate::shared_register::RegisterHandle;
 
 use self::command::Command;
 use self::ephemeral::EphemeralHighlights;
@@ -82,6 +84,7 @@ pub struct Editor {
     pub(crate) mode: EditorMode,
     pub(crate) keymap: VimKeymap,
     pub(crate) shared_register: RegisterHandle,
+    pub(crate) clipboard: Option<ClipboardHandle>,
     pub(crate) viewport_scroll: usize,
     pub(crate) viewport_height: usize,
     pub(crate) h_scroll: usize,
@@ -145,27 +148,6 @@ impl Editor {
         reg.linewise = linewise;
         reg.block = block;
     }
-    pub(crate) fn set_shared_register(&mut self, handle: RegisterHandle) {
-        self.shared_register = handle;
-    }
-    pub fn search_pattern(&self) -> &str {
-        &self.search_pattern
-    }
-    pub fn set_search_pattern(&mut self, pat: impl Into<String>) {
-        self.search_pattern = pat.into();
-    }
-    pub fn visual_anchor(&self) -> Option<(usize, usize)> {
-        self.visual_anchor
-    }
-    pub fn options(&self) -> &EditorOptions {
-        &self.options
-    }
-    pub fn options_mut(&mut self) -> &mut EditorOptions {
-        &mut self.options
-    }
-    pub fn command_buf(&self) -> &str {
-        &self.command_buf
-    }
     pub fn status(&self) -> &str {
         &self.status
     }
@@ -191,7 +173,8 @@ impl Editor {
             desired_col: None,
             mode: EditorMode::Normal,
             keymap: VimKeymap::new(),
-            shared_register: new_register(),
+            shared_register: Arc::default(),
+            clipboard: None,
             viewport_scroll: 0,
             viewport_height: 24,
             h_scroll: 0,

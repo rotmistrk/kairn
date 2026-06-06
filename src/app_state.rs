@@ -12,6 +12,7 @@ use txv_core::run::Waker;
 use crate::broker::FileBroker;
 use crate::buffer_registry::BufferRegistry;
 use crate::build::ErrorLocation;
+use crate::clipboard_ring::{new_clipboard, ClipboardHandle};
 use crate::commands::ConfirmContext;
 use crate::completer::{new_command_list, CommandList, LspLanguageList, RootsList};
 use crate::deferred_lsp_request::DeferredLspRequest;
@@ -88,6 +89,7 @@ pub struct AppState {
     pub(crate) linked_scroll: bool,
     /// Shared yank register for cross-editor paste.
     pub(crate) shared_register: RegisterHandle,
+    pub(crate) clipboard: ClipboardHandle,
     /// Last output timestamp per terminal tab index (for activity badges).
     pub(crate) pty_last_output: HashMap<usize, Instant>,
     /// Last emitted window title (to avoid redundant OSC 2 writes).
@@ -254,6 +256,7 @@ impl AppState {
             todo_note_path: None,
             linked_scroll: false,
             shared_register: Arc::default(),
+            clipboard: new_clipboard(50),
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: open_tty_for_title(),

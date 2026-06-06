@@ -158,7 +158,8 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
     let ev_path = ev.path().to_path_buf();
     let mut ed = EditorView::from_arc_buffer(shared_buf, file_path, &defaults, &syntax_theme);
     ed.set_root_dir(state.roots().root_for(&ev_path).path().to_path_buf());
-    ed.editor_mut().set_shared_register(state.shared_register.clone());
+    ed.editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     ed.buffer_id = buf_id;
     ed.editor.cursor_line = cursor_line;
     ed.editor.cursor_col = cursor_col;
@@ -173,7 +174,8 @@ fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
     let mut ed = EditorView::open_with_theme(&path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(&path, &defaults));
     ed.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
-    ed.editor_mut().set_shared_register(state.shared_register.clone());
+    ed.editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     let canon = path.canonicalize().unwrap_or(path);
     ed.buffer_id = Some(state.buffers.register(Some(canon)));
     Box::new(ed)

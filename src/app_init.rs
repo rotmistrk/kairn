@@ -25,7 +25,7 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
     let mut desktop = build_workspace(root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
     apply_tree_icons(&mut desktop, &app_state);
-
+    apply_todo_clipboard(&mut desktop, &app_state);
     let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
     completer.set_lsp_languages(app_state.lsp_languages().clone());
     completer.set_roots(app_state.completer_roots().clone());
@@ -75,5 +75,20 @@ fn apply_tree_icons(desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace, 
     };
     if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
         tree.set_show_icons(true);
+    }
+}
+
+fn apply_todo_clipboard(desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace, state: &AppState) {
+    use crate::views::todo_tree::TodoTreeView;
+    let Some(panel) = desktop.panel_mut(0) else {
+        return;
+    };
+    for i in 0..panel.tab_count() {
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        if let Some(todo) = view.as_any_mut().and_then(|a| a.downcast_mut::<TodoTreeView>()) {
+            todo.clipboard = Some(state.clipboard.clone());
+        }
     }
 }

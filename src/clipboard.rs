@@ -2,6 +2,7 @@
 
 #[cfg(not(target_os = "macos"))]
 use base64::Engine;
+use std::env;
 use std::io;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -34,6 +35,9 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
 }
 
 fn copy_raw(text: &str) -> Result<(), String> {
+    if env::var("KAIRN_TEST").is_ok() {
+        return Ok(());
+    }
     #[cfg(target_os = "macos")]
     {
         copy_via_command("pbcopy", &[], text)

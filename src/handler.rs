@@ -196,7 +196,7 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         CM_TODO_NOTE_UPDATE => update_todo_note(ctx, state),
         CM_TODO_ACTION => handle_todo_action(ctx, state),
         CM_DIAGNOSTIC => update_problems_view(ctx),
-        _ => handle_clipboard_commands(ctx),
+        _ => handle_clipboard_commands(ctx, state),
     }
 }
 

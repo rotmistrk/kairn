@@ -1,37 +1,30 @@
 //! Clipboard and diagnostics command handlers.
 
-use txv_core::message::Message;
 use txv_core::program::CommandContext;
 use txv_widgets::input_line::{CM_CLIPBOARD_PASTE, CM_COPY_TO_CLIPBOARD, CM_PASTE_REQUEST};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
-use crate::clipboard::{copy_to_clipboard, paste_from_clipboard};
-use crate::handler::downcast_desktop;
+use crate::handler::{downcast_desktop, AppState};
 use crate::lsp::diagnostics::Diagnostic;
 use crate::slots::SlotId;
 use crate::views::problems::ProblemsView;
 
-pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext) {
+pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext, state: &mut AppState) {
     match ctx.command {
         CM_COPY_TO_CLIPBOARD => {
             if let Some(text) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
-                if let Err(e) = copy_to_clipboard(text) {
-                    ctx.sink.push_command(
-                        txv_widgets::CM_STATUS_MESSAGE,
-                        Some(Box::new(Message::error("clipboard", format!("copy: {e}")))),
-                    );
+                if let Ok(mut ring) = state.clipboard.lock() {
+                    ring.push(text, "input");
                 }
             }
         }
-        CM_PASTE_REQUEST => match paste_from_clipboard() {
-            Ok(text) => ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
-            Err(e) => {
-                ctx.sink.push_command(
-                    txv_widgets::CM_STATUS_MESSAGE,
-                    Some(Box::new(Message::error("clipboard", format!("paste: {e}")))),
-                );
+        CM_PASTE_REQUEST => {
+            if let Ok(mut ring) = state.clipboard.lock() {
+                if let Some(text) = ring.paste() {
+                    ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+                }
             }
-        },
+        }
         _ => {}
     }
 }

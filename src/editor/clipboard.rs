@@ -1,6 +1,5 @@
 //! Clipboard, yank, and multi-line operations.
 
-use crate::clipboard::copy_to_clipboard;
 use crate::settings::CursorStyle;
 
 use super::keymap::EditorMode;
@@ -8,27 +7,29 @@ use super::motions;
 use super::Editor;
 
 impl Editor {
-    /// Set the yank register and copy to system clipboard via OSC 52.
+    /// Set the yank register and push to clipboard ring.
     pub fn yank(&mut self, text: String) {
         self.set_register(text.clone(), false, false);
-        if let Err(e) = copy_to_clipboard(&text) {
-            self.status = format!("clipboard: {e}");
-        }
+        self.clipboard_push(&text);
     }
 
     /// Set the yank register as linewise (for dd, yy, V-yank).
     pub fn yank_linewise(&mut self, text: String) {
         self.set_register(text.clone(), true, false);
-        if let Err(e) = copy_to_clipboard(&text) {
-            self.status = format!("clipboard: {e}");
-        }
+        self.clipboard_push(&text);
     }
 
     /// Set the yank register as block (newline-separated column slices).
     pub fn yank_block(&mut self, text: String) {
         self.set_register(text.clone(), false, true);
-        if let Err(e) = copy_to_clipboard(&text) {
-            self.status = format!("clipboard: {e}");
+        self.clipboard_push(&text);
+    }
+
+    fn clipboard_push(&mut self, text: &str) {
+        if let Some(ref clip) = self.clipboard {
+            if let Ok(mut ring) = clip.lock() {
+                ring.push(text, "editor");
+            }
         }
     }
 
