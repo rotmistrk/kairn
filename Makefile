@@ -103,7 +103,10 @@ install-local: sync-deps test-fast purge-cargo-bin install-rusticle-tk install-k
 
 # Pull local dependency overrides (txv) if present
 sync-deps:
-	@if [ -d ../txv/.git ]; then echo "  syncing txv..."; git -C ../txv pull --ff-only; fi
+	@if [ -d ../txv/.git ]; then \
+		echo "  syncing txv..."; \
+		git -C ../txv pull --ff-only || true; \
+	fi
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
 purge-cargo-bin:
