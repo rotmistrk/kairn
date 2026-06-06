@@ -91,7 +91,9 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         | ScriptCommand::DeleteLine { .. }
         | ScriptCommand::ReplaceWord { .. }
         | ScriptCommand::Search { .. }
-        | ScriptCommand::ClearHighlight => dispatch_editor_edit(cmd, ctx),
+        | ScriptCommand::ClearHighlight
+        | ScriptCommand::SetMark { .. }
+        | ScriptCommand::JumpMark { .. } => dispatch_editor_edit(cmd, ctx),
         other => {
             dispatch_extended(other, ctx, state);
         }
@@ -112,8 +114,31 @@ fn dispatch_editor_edit(cmd: ScriptCommand, ctx: &mut CommandContext) {
         ScriptCommand::ReplaceWord { text } => ctx.sink.push_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text))),
         ScriptCommand::Search { pattern } => ctx.sink.push_command(CM_EDITOR_SEARCH, Some(Box::new(pattern))),
         ScriptCommand::ClearHighlight => ctx.sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None),
+        ScriptCommand::SetMark { name } => {
+            if let Some(editor) = find_focused_editor(ctx.desktop) {
+                editor.marks.insert(name, (editor.cursor_line, editor.cursor_col));
+            }
+        }
+        ScriptCommand::JumpMark { name } => {
+            if let Some(editor) = find_focused_editor(ctx.desktop) {
+                if let Some(&(line, col)) = editor.marks.get(&name) {
+                    let max_line = editor.buf().line_count().saturating_sub(1);
+                    editor.cursor_line = line.min(max_line);
+                    editor.cursor_col = col;
+                    editor.clamp_cursor();
+                }
+            }
+        }
         _ => {}
     }
+}
+
+fn find_focused_editor(desktop: &mut dyn txv_core::view::View) -> Option<&mut crate::editor::Editor> {
+    let desktop = downcast_desktop(desktop)?;
+    let slot = desktop.focused_panel();
+    let view = desktop.panel_mut(slot)?.active_view_mut()?;
+    let editor_view = view.as_any_mut()?.downcast_mut::<EditorView>()?;
+    Some(&mut editor_view.editor)
 }
 
 fn dispatch_open_file(ctx: &mut CommandContext, state: &mut AppState, path: &str, line: Option<u32>, col: Option<u32>) {

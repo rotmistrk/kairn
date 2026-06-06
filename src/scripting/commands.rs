@@ -139,6 +139,12 @@ pub enum ScriptCommand {
         pattern: Option<String>,
     },
     ClearHighlight,
+    SetMark {
+        name: char,
+    },
+    JumpMark {
+        name: char,
+    },
     SplitVertical {
         file: Option<String>,
     },

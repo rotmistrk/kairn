@@ -21,6 +21,7 @@ pub fn register(
             "goto" | "insert" => handle_cursor_ops(&cmds, args, &sub),
             "undo" | "redo" => handle_undo_ops(&cmds, &sub),
             "search" | "clear-highlight" => handle_search_ops(&cmds, args, &sub),
+            "mark" | "jump-mark" => handle_mark_ops(&cmds, args, &sub),
             "get-selection" | "replace-selection" => handle_selection_ops(&cmds, &snapshot, args, &sub),
             "get-line" | "delete-line" | "replace-word" | "diff-revert" => {
                 handle_line_ops(&cmds, &snapshot, args, &sub)
@@ -155,6 +156,20 @@ fn handle_query_ops(snapshot: &Arc<Mutex<StateSnapshot>>, sub: &str) -> Result<T
         "filetype" => Ok(TclValue::Str(snap.context.language.clone())),
         _ => Ok(TclValue::Str(String::new())),
     }
+}
+
+fn handle_mark_ops(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, args: &[TclValue], sub: &str) -> Result<TclValue, TclError> {
+    let name = super::arg_str(args, 1)?;
+    let ch = name.chars().next().ok_or_else(|| TclError::new("mark name required"))?;
+    if !ch.is_ascii_alphabetic() {
+        return Err(TclError::new("mark name must be a-z or A-Z"));
+    }
+    match sub {
+        "mark" => push(cmds, ScriptCommand::SetMark { name: ch }),
+        "jump-mark" => push(cmds, ScriptCommand::JumpMark { name: ch }),
+        _ => {}
+    }
+    Ok(TclValue::Str(String::new()))
 }
 
 fn push(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, cmd: ScriptCommand) {

@@ -19,6 +19,8 @@ fn help_scripting_core() -> &'static str {
   editor insert <text>           Insert at cursor
   editor search <pattern>        Search in buffer
   editor clear-highlight         Clear search highlight
+  editor mark <a-z>              Set mark at cursor
+  editor jump-mark <a-z>         Jump to mark
   editor diff-revert             Revert diff hunk under cursor
   editor current-file / current-line / current-col
   editor modified? / filetype
