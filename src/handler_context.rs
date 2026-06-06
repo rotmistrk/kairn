@@ -108,6 +108,7 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
     let e = &editor.editor;
     vc.line = e.cursor_line as u32 + 1;
     vc.col = e.cursor_col as u32 + 1;
+    vc.total_lines = e.buf().line_count() as u32;
     vc.mode = e.keymap.mode_label(e.mode).to_string();
     vc.modified = e.buf().is_dirty();
     vc.language = editor.language().to_string();

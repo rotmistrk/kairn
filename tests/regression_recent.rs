@@ -98,11 +98,11 @@ fn position_indicator_updates_on_move() {
     let mut h = TestHarness::with_size(dir.path(), 120, 24);
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(2);
-    assert!(h.contains("Ln 1"), "initial position should show Ln 1");
+    assert!(h.contains("1,"), "initial position should show line 1");
     // Move down
     h.inject_key(KeyCode::Char('j'), KeyMod::default());
     h.run_cycles(1);
-    assert!(h.contains("Ln 2"), "position should update to Ln 2 after j");
+    assert!(h.contains("2,"), "position should update to line 2 after j");
 }
 
 // ─── TEST 6: Clock appears in status bar ───────────────────────────────────

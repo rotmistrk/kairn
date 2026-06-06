@@ -8,6 +8,7 @@ pub struct ViewContext {
     pub(crate) file: Option<String>,
     pub(crate) line: u32,
     pub(crate) col: u32,
+    pub(crate) total_lines: u32,
     pub(crate) mode: String,
     pub(crate) modified: bool,
     pub(crate) language: String,

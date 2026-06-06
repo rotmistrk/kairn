@@ -15,7 +15,7 @@ fn page_down_moves_cursor_in_insert_mode() {
     h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(OpenFileRequest::new(path))));
     h.run_cycles(2);
     // Verify starting at line 1
-    assert!(h.contains("Ln 1"), "should start at Ln 1");
+    assert!(h.contains("1,"), "should start at line 1");
     // Enter insert mode
     h.inject_key(KeyCode::Char('i'), KeyMod::default());
     h.run_cycles(1);
@@ -24,7 +24,7 @@ fn page_down_moves_cursor_in_insert_mode() {
     h.run_cycles(2);
     // With editor area ~14 lines, cursor should move to around line 14
     assert!(
-        h.contains("Ln 14") || h.contains("Ln 13") || h.contains("Ln 15"),
+        h.contains("14,") || h.contains("13,") || h.contains("15,"),
         "cursor should move down by a page in insert mode"
     );
 }
@@ -41,7 +41,7 @@ fn page_up_moves_cursor_in_insert_mode() {
     h.inject_key(KeyCode::Char(':'), KeyMod::default());
     h.inject_str("30\n");
     h.run_cycles(2);
-    assert!(h.contains("Ln 30"), "should be at Ln 30");
+    assert!(h.contains("30,"), "should be at line 30");
     // Enter insert mode
     h.inject_key(KeyCode::Char('i'), KeyMod::default());
     h.run_cycles(1);
@@ -50,7 +50,7 @@ fn page_up_moves_cursor_in_insert_mode() {
     h.run_cycles(2);
     // Cursor should have moved up significantly from line 30
     assert!(
-        h.contains("Ln 1") || h.contains("Ln 16") || h.contains("Ln 17"),
+        h.contains("16,") || h.contains("17,") || h.contains("18,"),
         "cursor should move up by a page in insert mode"
     );
 }
