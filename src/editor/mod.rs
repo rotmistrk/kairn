@@ -76,6 +76,8 @@ pub enum EditorAction {
     LspFormat,
     /// :fmt with visual range — format selection via LSP
     LspFormatRange(usize, usize),
+    /// :fmt! — format using built-in formatter (bypass LSP)
+    BuiltinFormat(String),
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.

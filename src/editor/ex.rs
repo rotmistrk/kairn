@@ -41,6 +41,7 @@ pub enum ExCommand {
     Revert,
     Format,
     FormatRange { start: usize, end: usize },
+    FormatBuiltin(String),
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
@@ -80,6 +81,8 @@ pub fn parse_ex_full(
 
     let (cmd_id, rest) = if cmd_word == "q" && rest.starts_with('!') {
         (lookup_command("q!")?, &rest[1..])
+    } else if cmd_word == "fmt" && rest.starts_with('!') {
+        return Some(ExCommand::FormatBuiltin(rest[1..].trim().to_string()));
     } else {
         (lookup_command(cmd_word)?, rest)
     };

@@ -45,6 +45,7 @@ impl EditorView {
             EditorAction::LspFormatRange(start, end) => {
                 self.action_lsp_format(Some((start as u32, end as u32)));
             }
+            EditorAction::BuiltinFormat(args) => self.action_builtin_format(&args),
             _ => {}
         }
     }
@@ -151,6 +152,59 @@ impl EditorView {
         let tab_size = self.editor.options.tab_width as u32;
         let data: (std::path::PathBuf, Option<(u32, u32)>, u32) = (self.path.clone(), range, tab_size);
         self.state.put_command(CM_LSP_FORMAT, Some(Box::new(data)));
+    }
+
+    fn action_builtin_format(&mut self, _args: &str) {
+        use crate::structured::json_doc::JsonDoc;
+        use crate::structured::StructuredDoc;
+        use txv_core::message::Message;
+
+        let content = self.editor.buf().content();
+        let ext = self.path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        let result = match ext {
+            "json" | "jsonc" | "json5" => {
+                if ext == "json" {
+                    JsonDoc::parse(&content).map(|doc| doc.serialize())
+                } else {
+                    JsonDoc::parse_jsonc(&content).map(|doc| doc.serialize())
+                }
+            }
+            _ => {
+                let msg = Message::info("fmt", format!("No built-in formatter for .{ext}"));
+                self.state
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                return;
+            }
+        };
+
+        match result {
+            Ok(formatted) => {
+                if formatted.trim() == content.trim() {
+                    let msg = Message::info("fmt", "Already formatted".to_string());
+                    self.state
+                        .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                    return;
+                }
+                // Replace buffer content
+                let len = self.editor.buf().len();
+                self.editor.buf().begin_group();
+                self.editor.buf().delete(0, len);
+                self.editor.buf().insert(0, &formatted);
+                self.editor.buf().end_group();
+                self.editor.clamp_cursor();
+                self.invalidate_highlight();
+                self.state.mark_dirty();
+                let msg = Message::info("fmt", "Formatted".to_string());
+                self.state
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            }
+            Err(e) => {
+                let msg = Message::error("fmt", format!("Parse error: {e}"));
+                self.state
+                    .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            }
+        }
     }
 
     fn action_split(&mut self, arg: String, vertical: bool) {
