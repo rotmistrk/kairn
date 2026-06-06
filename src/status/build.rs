@@ -50,6 +50,7 @@ fn add_command_items(
     let command_line = ModalKey::new("M-x", ":")
         .trigger_key(ALT_X)
         .trigger_key(APPROX)
+        .trigger_command(CM_COMMAND_MODE)
         .prefill_command(CM_COMMAND_PREFILL)
         .terminal_command(CM_EXECUTE_COMMAND)
         .add_child(Box::new(input));

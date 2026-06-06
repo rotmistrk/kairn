@@ -1,0 +1,11 @@
+id,name,department,salary,start_date,active,rating
+1,Alice Chen,Engineering,125000.50,2019-03-15,true,4.8
+2,Bob Martinez,Marketing,89500.00,2020-07-22,true,3.9
+3,Carol White,Engineering,142000.75,2017-11-01,true,4.5
+4,David Kim,Sales,76200.00,2021-01-10,false,3.2
+5,Eva Johansson,Engineering,138900.25,2018-06-30,true,4.7
+6,Frank O'Brien,Marketing,92100.00,2020-09-14,true,4.1
+7,Grace Patel,Sales,81500.50,2022-03-01,true,3.6
+8,Henry Wu,Engineering,155000.00,2016-08-20,true,4.9
+9,Irene Davis,Marketing,87000.00,2021-11-05,false,3.4
+10,James Taylor,Sales,95700.25,2019-12-18,true,4.2
