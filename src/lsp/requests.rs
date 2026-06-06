@@ -72,4 +72,32 @@ pub fn code_action(client: &mut LspClient, uri: &str, line: u32, character: u32)
 /// Apply a workspace edit from a rename response. Returns number of files changed.
 pub use super::workspace_edit::apply_workspace_edit;
 
+/// Send `textDocument/formatting` request. Returns request id.
+pub fn formatting(client: &mut LspClient, uri: &str, tab_size: u32) -> u64 {
+    let params = json!({
+        "textDocument": { "uri": uri },
+        "options": { "tabSize": tab_size, "insertSpaces": true }
+    });
+    client.send_request("textDocument/formatting", params)
+}
+
+/// Send `textDocument/rangeFormatting` request. Returns request id.
+pub fn range_formatting(
+    client: &mut LspClient,
+    uri: &str,
+    start_line: u32,
+    end_line: u32,
+    tab_size: u32,
+) -> u64 {
+    let params = json!({
+        "textDocument": { "uri": uri },
+        "range": {
+            "start": { "line": start_line, "character": 0 },
+            "end": { "line": end_line, "character": 0 }
+        },
+        "options": { "tabSize": tab_size, "insertSpaces": true }
+    });
+    client.send_request("textDocument/rangeFormatting", params)
+}
+
 pub use super::signature_help::{parse_signature_help, signature_help, SignatureHelp};

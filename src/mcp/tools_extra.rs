@@ -59,6 +59,7 @@ pub fn tool_lsp_semantic(cmd_queue: Option<&McpCommandQueue>, args: &Map<String,
             })
         }
         "code-action" => queue.send(McpAction::LspCodeAction { name }),
+        "format" => queue.send(McpAction::LspFormat { name }),
         _ => Err(format!("Unknown LSP action: {action}")),
     }
 }

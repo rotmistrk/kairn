@@ -41,6 +41,10 @@ impl EditorView {
             EditorAction::Only => {
                 self.state.put_command(CM_SPLIT_CLOSE, None);
             }
+            EditorAction::LspFormat => self.action_lsp_format(None),
+            EditorAction::LspFormatRange(start, end) => {
+                self.action_lsp_format(Some((start as u32, end as u32)));
+            }
             _ => {}
         }
     }
@@ -141,6 +145,12 @@ impl EditorView {
             word,
         );
         self.state.put_command(CM_LSP_FIND_REFS, Some(Box::new(data)));
+    }
+
+    fn action_lsp_format(&mut self, range: Option<(u32, u32)>) {
+        let tab_size = self.editor.options.tab_width as u32;
+        let data: (std::path::PathBuf, Option<(u32, u32)>, u32) = (self.path.clone(), range, tab_size);
+        self.state.put_command(CM_LSP_FORMAT, Some(Box::new(data)));
     }
 
     fn action_split(&mut self, arg: String, vertical: bool) {

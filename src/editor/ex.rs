@@ -39,6 +39,8 @@ pub enum ExCommand {
     Vsplit(String),
     Only,
     Revert,
+    Format,
+    FormatRange { start: usize, end: usize },
 }
 
 /// Parse a full ex command with range support. Returns ExCommand for complex ops.
@@ -110,6 +112,13 @@ fn dispatch_ex_cmd_id(
         ExCmdId::Vsplit => Some(ExCommand::Vsplit(rest.trim().to_string())),
         ExCmdId::Only => Some(ExCommand::Only),
         ExCmdId::Revert => Some(ExCommand::Revert),
+        ExCmdId::Format => {
+            if let Some((start, end)) = visual_lines {
+                Some(ExCommand::FormatRange { start, end })
+            } else {
+                Some(ExCommand::Format)
+            }
+        }
         ExCmdId::Delete | ExCmdId::Yank | ExCmdId::Substitute => {
             dispatch_ex_range_cmd(cmd_id, rest, range_str, cursor_row, total_lines, visual_lines)
         }

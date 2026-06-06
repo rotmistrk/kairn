@@ -103,6 +103,8 @@ fn help_ex_commands() -> &'static str {
   :vsplit <file>   Vertical split
   :only            Close split
   :revert          Revert hunk under cursor (in diff mode)
+  :fmt             Format file via LSP
+  V:fmt            Format selected range via LSP
 "
 }
 

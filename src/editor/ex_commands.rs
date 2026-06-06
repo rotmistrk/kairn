@@ -10,6 +10,7 @@ pub enum ExCmdId {
     Delete,
     Diff,
     Edit,
+    Format,
     NoBlame,
     NoDiff,
     NoHighlight,
@@ -50,6 +51,11 @@ const CMD_TABLE: &[CmdEntry] = &[
         full: "edit",
         min_abbrev: 1,
         id: ExCmdId::Edit,
+    },
+    CmdEntry {
+        full: "fmt",
+        min_abbrev: 3,
+        id: ExCmdId::Format,
     },
     CmdEntry {
         full: "noblame",
@@ -133,6 +139,7 @@ pub const CMD_TABLE_NAMES: &[&str] = &[
     "delete",
     "diff",
     "edit",
+    "fmt",
     "nodiff",
     "noblame",
     "nohlsearch",

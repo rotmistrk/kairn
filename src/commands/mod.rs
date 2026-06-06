@@ -56,6 +56,8 @@ pub const CM_LSP_COMPLETION: CommandId = CM_APP_BASE + 57;
 pub const CM_LSP_RENAME: CommandId = CM_APP_BASE + 58;
 pub const CM_CODE_ACTION: CommandId = CM_APP_BASE + 59;
 pub const CM_LSP_SIGNATURE_HELP: CommandId = CM_APP_BASE + 60;
+pub const CM_LSP_FORMAT: CommandId = CM_APP_BASE + 61;
+pub const CM_LSP_FORMAT_RESULT: CommandId = CM_APP_BASE + 62;
 
 // Build / clipboard
 pub const CM_CLIPBOARD_PASTE: CommandId = CM_APP_BASE + 70;

@@ -85,7 +85,8 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::LspDefinition => ctx.sink.push_command(CM_LSP_GOTO_DEF, None),
         ScriptCommand::LspReferences => ctx.sink.push_command(CM_LSP_FIND_REFS, None),
         ScriptCommand::LspRename { new_name } => ctx.sink.push_command(CM_LSP_RENAME, Some(Box::new(new_name))),
-        ScriptCommand::LspFormat | ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {}
+        ScriptCommand::LspFormat => ctx.sink.push_command(CM_LSP_FORMAT, None),
+        ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {}
         ScriptCommand::ReplaceSelection { .. }
         | ScriptCommand::DeleteLine { .. }
         | ScriptCommand::ReplaceWord { .. }

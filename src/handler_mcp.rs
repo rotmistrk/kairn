@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use txv_core::program::CommandContext;
 
 use crate::commands::{
-    OpenFileRequest, CM_CODE_ACTION, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE, CM_LSP_FIND_REFS, CM_LSP_GOTO_DEF,
-    CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS, CM_SPLIT_LINKED,
+    OpenFileRequest, CM_CODE_ACTION, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE, CM_LSP_FIND_REFS, CM_LSP_FORMAT,
+    CM_LSP_GOTO_DEF, CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS,
+    CM_SPLIT_LINKED,
 };
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
@@ -102,7 +103,8 @@ fn dispatch_mcp_split_git_lsp(
         | McpAction::LspDefinition { .. }
         | McpAction::LspReferences { .. }
         | McpAction::LspRename { .. }
-        | McpAction::LspCodeAction { .. } => dispatch_mcp_lsp(action, sink),
+        | McpAction::LspCodeAction { .. }
+        | McpAction::LspFormat { .. } => dispatch_mcp_lsp(action, sink),
         _ => dispatch_mcp_todo(action, desktop),
     }
 }
@@ -176,6 +178,10 @@ fn dispatch_mcp_lsp(action: &McpAction, sink: &txv_core::prelude::EventSink) -> 
         McpAction::LspCodeAction { .. } => {
             sink.push_command(CM_CODE_ACTION, None);
             Ok(serde_json::json!({"triggered": "code-action"}))
+        }
+        McpAction::LspFormat { .. } => {
+            sink.push_command(CM_LSP_FORMAT, None);
+            Ok(serde_json::json!({"triggered": "format"}))
         }
         _ => Err("Not an LSP action".to_string()),
     }

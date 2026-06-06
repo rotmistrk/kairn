@@ -44,13 +44,13 @@ fn terminal_and_git_definitions() -> Vec<Value> {
 fn lsp_and_eval_definitions() -> Vec<Value> {
     let mut tools = vec![json!({
         "name": "lsp_semantic",
-        "description": "LSP semantic queries: hover, definition, references, rename, code-action",
+        "description": "LSP semantic queries: hover, definition, references, rename, code-action, format",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["hover", "definition", "references", "rename", "code-action"]
+                    "enum": ["hover", "definition", "references", "rename", "code-action", "format"]
                 },
                 "name": {"type": "string", "description": "Tab name (default: active editor)"},
                 "new_name": {"type": "string", "description": "New name (for rename action)"}

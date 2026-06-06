@@ -23,6 +23,7 @@ pub(super) fn handle_response(kind: PendingKind, result: &serde_json::Value, sin
         PendingKind::SignatureHelp => handle_signature_help(result, sink),
         PendingKind::Rename => handle_rename(result, sink),
         PendingKind::CodeAction => handle_code_action(result, sink),
+        PendingKind::Format => handle_format(result, sink),
         PendingKind::JdtClassContents { line, character } => handle_jdt(result, sink, line, character),
     }
 }
@@ -144,6 +145,31 @@ fn handle_code_action(result: &serde_json::Value, sink: &EventSink) {
         let text = actions.join("\n");
         sink.push_command(CM_SHELL_OUTPUT, Some(Box::new(text)));
     }
+}
+
+fn handle_format(result: &serde_json::Value, sink: &EventSink) {
+    // Result is either null (no edits) or an array of TextEdits
+    if result.is_null() {
+        use txv_core::message::Message;
+        sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("lsp", "Already formatted".to_string()))),
+        );
+        return;
+    }
+    let Some(edits) = result.as_array() else {
+        return;
+    };
+    if edits.is_empty() {
+        use txv_core::message::Message;
+        sink.push_command(
+            txv_widgets::CM_STATUS_MESSAGE,
+            Some(Box::new(Message::info("lsp", "Already formatted".to_string()))),
+        );
+        return;
+    }
+    // Send the raw edits array to the editor for in-buffer application
+    sink.push_command(CM_LSP_FORMAT_RESULT, Some(Box::new(result.clone())));
 }
 
 fn handle_jdt(result: &serde_json::Value, sink: &EventSink, line: u32, character: u32) {

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use txv_core::program::CommandContext;
 
-use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_GOTO_DEF};
+use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_FORMAT, CM_LSP_GOTO_DEF};
 use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::handler::AppState;
 use crate::handler_script_util::fire_lsp_start_hook;
@@ -184,6 +184,53 @@ pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
     let (line, col) = state.cursor_pos;
     let id = requests::code_action(client, &uri, line, col);
     state.lsp_pending.insert_with_lang(id, PendingKind::CodeAction, &lang);
+}
+
+/// Data: (PathBuf, Option<(u32, u32)>, u32) = (path, optional range, tab_size)
+/// If no data provided, uses current file info.
+pub(super) fn send_format(ctx: &mut CommandContext, state: &mut AppState) {
+    let (path, range, tab_size) = if let Some(boxed) = ctx.data.as_ref() {
+        if let Some((p, r, t)) = boxed.downcast_ref::<(PathBuf, Option<(u32, u32)>, u32)>() {
+            (p.clone(), *r, *t)
+        } else {
+            return;
+        }
+    } else {
+        // Fallback: use current file (from Tcl/script dispatch)
+        let (_, lang_str) = current_file_info(state);
+        if lang_str.is_empty() {
+            return;
+        }
+        let path = state.broker.last_opened().map(PathBuf::from).unwrap_or_default();
+        (path, None, 4)
+    };
+
+    let lang = protocol::language_id(&path);
+    let root = state.root_dir.clone();
+    start_lsp(state, lang, &root);
+
+    if state.lsp.is_initializing(lang) {
+        defer(
+            ctx,
+            state,
+            CM_LSP_FORMAT,
+            lang,
+            Box::new((path.clone(), range, tab_size)),
+        );
+        return;
+    }
+
+    let Some(client) = state.lsp.get_client_mut(lang) else {
+        emit_last_error(ctx, state);
+        return;
+    };
+    let uri = protocol::path_to_uri(&path);
+    let id = if let Some((start, end)) = range {
+        requests::range_formatting(client, &uri, start, end, tab_size)
+    } else {
+        requests::formatting(client, &uri, tab_size)
+    };
+    state.lsp_pending.insert_with_lang(id, PendingKind::Format, lang);
 }
 
 pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {

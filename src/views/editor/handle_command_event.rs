@@ -6,7 +6,7 @@ use txv_core::prelude::*;
 use super::EditorView;
 use crate::commands::{
     DiffSplitRequest, CM_BLAME, CM_CLIPBOARD_PASTE, CM_DIAGNOSTIC, CM_DIFF, CM_DIFF_REVERT, CM_DIFF_SPLIT,
-    CM_GOTO_LINE, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP, CM_MODE_CHANGED, CM_NOBLAME,
+    CM_GOTO_LINE, CM_LSP_COMPLETION, CM_LSP_FORMAT_RESULT, CM_LSP_SIGNATURE_HELP, CM_MODE_CHANGED, CM_NOBLAME,
 };
 use crate::lsp::diagnostics::Diagnostic;
 use crate::lsp::protocol::path_to_uri;
@@ -48,6 +48,9 @@ impl EditorView {
         }
         if id == CM_DIAGNOSTIC {
             return self.handle_diagnostic_command(data);
+        }
+        if id == CM_LSP_FORMAT_RESULT {
+            return self.handle_format_result(data);
         }
         HandleResult::Ignored
     }
@@ -148,5 +151,61 @@ impl EditorView {
             }
         }
         HandleResult::Ignored
+    }
+
+    fn handle_format_result(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
+        let Some(boxed) = data.as_ref() else {
+            return HandleResult::Ignored;
+        };
+        let Some(edits_value) = boxed.downcast_ref::<serde_json::Value>() else {
+            return HandleResult::Ignored;
+        };
+        let Some(edits) = edits_value.as_array() else {
+            return HandleResult::Ignored;
+        };
+
+        // Parse text edits: Vec<(start_line, start_col, end_line, end_col, new_text)>
+        let mut parsed: Vec<(usize, usize, usize, usize, String)> = edits
+            .iter()
+            .filter_map(|e| {
+                let range = e.get("range")?;
+                let start = range.get("start")?;
+                let end = range.get("end")?;
+                let sl = start.get("line")?.as_u64()? as usize;
+                let sc = start.get("character")?.as_u64()? as usize;
+                let el = end.get("line")?.as_u64()? as usize;
+                let ec = end.get("character")?.as_u64()? as usize;
+                let new_text = e.get("newText")?.as_str()?.to_string();
+                Some((sl, sc, el, ec, new_text))
+            })
+            .collect();
+
+        if parsed.is_empty() {
+            return HandleResult::Consumed;
+        }
+
+        // Apply edits in reverse order (bottom to top) so offsets stay valid
+        parsed.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
+
+        self.editor.buf().begin_group();
+        for (sl, sc, el, ec, new_text) in &parsed {
+            let start = self.editor.buf().line_col_to_offset(*sl, *sc).unwrap_or(0);
+            let end = self.editor.buf().line_col_to_offset(*el, *ec).unwrap_or(start);
+            if end > start {
+                self.editor.buf().delete(start, end - start);
+            }
+            if !new_text.is_empty() {
+                self.editor.buf().insert(start, new_text);
+            }
+        }
+        self.editor.buf().end_group();
+        self.editor.clamp_cursor();
+        self.invalidate_highlight();
+        self.state.mark_dirty();
+
+        let msg = Message::info("lsp", format!("Formatted ({} edits)", parsed.len()));
+        self.state
+            .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        HandleResult::Consumed
     }
 }

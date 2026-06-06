@@ -206,6 +206,10 @@ pub enum McpAction {
     LspCodeAction {
         name: String,
     },
+    /// LSP format file.
+    LspFormat {
+        name: String,
+    },
     /// Undo in the specified buffer.
     Undo {
         name: String,

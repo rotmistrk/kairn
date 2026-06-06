@@ -41,6 +41,7 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_LSP_SIGNATURE_HELP => send::send_signature_help(ctx, state),
         CM_LSP_RENAME => send::send_rename(ctx, state),
         CM_CODE_ACTION => send::send_code_action(ctx, state),
+        CM_LSP_FORMAT => send::send_format(ctx, state),
         _ => {}
     }
 }

@@ -72,6 +72,10 @@ pub enum EditorAction {
     Vsplit(String),
     /// :only — close split
     Only,
+    /// :fmt — format entire file via LSP
+    LspFormat,
+    /// :fmt with visual range — format selection via LSP
+    LspFormatRange(usize, usize),
 }
 
 /// The editor core — buffer + cursor + mode + registers + search.

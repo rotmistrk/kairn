@@ -39,6 +39,7 @@ pub(crate) enum PendingKind {
     SignatureHelp,
     Rename,
     CodeAction,
+    Format,
     JdtClassContents { line: u32, character: u32 },
 }
 
@@ -91,6 +92,7 @@ fn friendly_kind_label(kind: &PendingKind) -> &'static str {
         PendingKind::SignatureHelp => "Signature help",
         PendingKind::Rename => "Rename",
         PendingKind::CodeAction => "Code action",
+        PendingKind::Format => "Format",
         PendingKind::JdtClassContents { .. } => "Class contents",
     }
 }
