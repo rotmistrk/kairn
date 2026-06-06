@@ -156,7 +156,7 @@ impl EditorView {
         );
         self.editor.highlight = highlight;
         let fill = self.ephemeral_fill(line_idx, p);
-        self.draw_line_tail(&line, col_offset, visual_row, p, text_x, fill);
+        self.draw_line_tail(&line, col_offset, visual_row, row, p, text_x, fill);
         self.draw_line_cursor(line_idx, row, p, text_x);
         visual_row
     }
@@ -202,6 +202,7 @@ impl EditorView {
         line: &str,
         mut col_offset: usize,
         visual_row: usize,
+        start_row: usize,
         p: &DrawParams,
         text_x: u16,
         fill: Style,
@@ -229,7 +230,7 @@ impl EditorView {
                 self.state.buffer_mut(),
                 line,
                 text_x,
-                vy,
+                start_row as u16,
                 p.tab_width,
                 p.avail,
                 p.gutter_style,

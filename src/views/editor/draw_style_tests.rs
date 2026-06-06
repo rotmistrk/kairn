@@ -75,6 +75,24 @@ fn indent_guides_drawn_at_tab_stops() {
 }
 
 #[test]
+fn indent_guides_on_wrapped_line_appear_on_first_row() {
+    // 8 spaces of indent + text long enough to wrap at width 20
+    let line = "        abcdefghijklmnopqrstuvwxyz";
+    let mut view = EditorView::from_text(line);
+    view.editor.options.number = false;
+    view.editor.options.guides = true;
+    view.editor.options.wrap = true;
+    view.set_bounds(Rect::new(0, 0, 20, 3));
+    view.draw();
+    let buf = view.buffer();
+    // Indent guide should appear on the FIRST row (row 0) at tab stop col 4
+    assert_eq!(buf.cell(4, 0).ch, '\u{250A}', "indent guide should be on first row");
+    // Continuation row (row 1) should NOT have the indent guide overwriting text
+    let cont_ch = buf.cell(4, 1).ch;
+    assert_ne!(cont_ch, '\u{250A}', "indent guide should NOT appear on continuation row, got char at (4,1): {cont_ch}");
+}
+
+#[test]
 fn wrap_preserves_all_text_after_resize() {
     let line = "pub(crate) fn complete_theme(sub: &str, visitor: &mut CompletionVisitor<'_>) \
                 -> Result<(), Box<dyn std::error::Error>> {";
