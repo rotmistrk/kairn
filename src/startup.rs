@@ -157,6 +157,7 @@ pub fn restore_saved_session(
             app_state.broker_open(tab.path(), SlotId::Center, 0);
         }
     }
+    patch_editor_clipboard(desktop, app_state);
     let kiro_settings = app_state.settings().kiro().clone();
     session::restore_kiro_tabs(
         desktop,
@@ -165,6 +166,28 @@ pub fn restore_saved_session(
         app_state.kiro_registry_mut(),
         &kiro_settings,
     );
+}
+
+/// Set clipboard + register handles on all editors restored from session.
+fn patch_editor_clipboard(desktop: &mut TiledWorkspace, state: &AppState) {
+    use crate::views::editor::EditorView;
+    for slot in 0..4 {
+        let Some(panel) = desktop.panel_mut(slot) else {
+            continue;
+        };
+        for i in 0..panel.tab_count() {
+            let Some(view) = panel.view_at_mut(i) else {
+                continue;
+            };
+            let Some(any) = view.as_any_mut() else {
+                continue;
+            };
+            if let Some(ev) = any.downcast_mut::<EditorView>() {
+                ev.editor_mut()
+                    .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+            }
+        }
+    }
 }
 
 pub fn start_mcp(

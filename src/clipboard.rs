@@ -3,7 +3,6 @@
 #[cfg(not(target_os = "macos"))]
 use base64::Engine;
 use std::env;
-use std::io;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -54,10 +53,10 @@ fn copy_raw(text: &str) -> Result<(), String> {
         // OSC 52 fallback
         let encoded = BASE64_STANDARD.encode(text);
         let seq = format!("\x1b]52;c;{encoded}\x07");
-        io::stdout()
+        std::io::stdout()
             .write_all(seq.as_bytes())
             .map_err(|e| format!("clipboard: {e}"))?;
-        io::stdout().flush().map_err(|e| format!("clipboard: {e}"))?;
+        std::io::stdout().flush().map_err(|e| format!("clipboard: {e}"))?;
         Ok(())
     }
 }
