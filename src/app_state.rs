@@ -212,14 +212,17 @@ impl AppState {
 
     pub fn with_settings(root_dir: PathBuf, settings: AppSettings) -> Self {
         let lsp_pending = PendingRequests::with_timeout(settings.lsp_timeout);
-        Self {
+        let clip_max = settings.clipboard_max;
+        let mut s = Self {
             roots: WorkspaceRoots::new(root_dir.clone()),
             root_dir,
             settings,
             lsp_pending,
             tab_titles_dirty: true,
             ..Self::empty()
-        }
+        };
+        s.clipboard = new_clipboard(clip_max);
+        s
     }
 
     fn empty() -> Self {

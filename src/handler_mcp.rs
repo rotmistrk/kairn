@@ -12,6 +12,7 @@ use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_lsp_cmd::handle_lsp_command as handle_lsp_cmd;
 use crate::handler_mcp_build::{mcp_get_build_errors, mcp_run_build, mcp_search_project};
+use crate::handler_mcp_clipboard::*;
 use crate::handler_mcp_edit::{mcp_edit_buffer, mcp_get_diagnostics, mcp_insert_text, mcp_save_file, mcp_set_cursor};
 use crate::handler_mcp_helpers::*;
 use crate::mcp::commands::McpAction;
@@ -49,6 +50,9 @@ fn dispatch_mcp_action(
         McpAction::HighlightCode { path, ranges } => mcp_highlight_code(desktop, state, sink, path, ranges),
         McpAction::CreateFile { path, content } => mcp_create_file(desktop, state, sink, path, content),
         McpAction::CloseTab { name } => mcp_close_tab(desktop, state, name),
+        McpAction::ClipboardCopy { text, source } => mcp_clipboard_copy(state, text, source),
+        McpAction::ClipboardPaste => mcp_clipboard_paste(state),
+        McpAction::ClipboardList => mcp_clipboard_list(state),
         McpAction::EditBuffer {
             name,
             start_line,

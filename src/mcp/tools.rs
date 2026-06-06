@@ -55,6 +55,9 @@ pub fn handle_tool_call(
         "undo_redo" => tool_undo_redo(cmd_queue, args),
         "eval_tcl" => tool_eval_tcl(cmd_queue, args),
         "workspace_roots" => tool_workspace_roots(cmd_queue, args),
+        "clipboard_copy" => tool_clipboard_copy(cmd_queue, args),
+        "clipboard_paste" => tool_clipboard_paste(cmd_queue, args),
+        "clipboard_list" => tool_clipboard_list(cmd_queue, args),
         _ => Err(format!("Unknown tool: {name}")),
     }
 }
@@ -180,4 +183,25 @@ fn tool_split(
         other => return Err(format!("Unknown split action: {other}")),
     };
     queue.send(mcp_action)
+}
+
+fn tool_clipboard_copy(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let text = args.get("text").and_then(Value::as_str).ok_or("Missing 'text'")?;
+    let source = args.get("source").and_then(Value::as_str).unwrap_or("mcp");
+    queue.send(McpAction::ClipboardCopy {
+        text: text.to_string(),
+        source: source.to_string(),
+    })?;
+    Ok(json!({"ok": true}))
+}
+
+fn tool_clipboard_paste(cmd_queue: Option<&McpCommandQueue>, _args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    queue.send(McpAction::ClipboardPaste)
+}
+
+fn tool_clipboard_list(cmd_queue: Option<&McpCommandQueue>, _args: &Map<String, Value>) -> Result<Value, String> {
+    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    queue.send(McpAction::ClipboardList)
 }

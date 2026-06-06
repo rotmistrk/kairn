@@ -7,6 +7,7 @@ pub fn extra_tool_definitions() -> Vec<Value> {
     let mut tools = terminal_and_git_definitions();
     tools.extend(lsp_and_eval_definitions());
     tools.push(workspace_roots_definition());
+    tools.extend(clipboard_definitions());
     tools
 }
 
@@ -102,4 +103,31 @@ fn workspace_roots_definition() -> Value {
             "required": ["action"]
         }
     })
+}
+
+fn clipboard_definitions() -> Vec<Value> {
+    vec![
+        json!({
+            "name": "clipboard_copy",
+            "description": "Copy text to the clipboard ring",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to copy"},
+                    "source": {"type": "string", "description": "Source label (default: mcp)"}
+                },
+                "required": ["text"]
+            }
+        }),
+        json!({
+            "name": "clipboard_paste",
+            "description": "Read the top of the clipboard ring (tries system clipboard first)",
+            "inputSchema": {"type": "object", "properties": {}}
+        }),
+        json!({
+            "name": "clipboard_list",
+            "description": "List all clipboard ring entries (first line, line count, source)",
+            "inputSchema": {"type": "object", "properties": {}}
+        }),
+    ]
 }

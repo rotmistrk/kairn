@@ -92,6 +92,15 @@ pub enum McpAction {
     CloseTab {
         name: String,
     },
+    /// Copy text to clipboard ring.
+    ClipboardCopy {
+        text: String,
+        source: String,
+    },
+    /// Paste from clipboard ring.
+    ClipboardPaste,
+    /// List clipboard entries.
+    ClipboardList,
     /// Replace lines in an open buffer.
     EditBuffer {
         name: String,

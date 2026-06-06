@@ -61,6 +61,11 @@ fn extract_settings(interp: &Interpreter) -> AppSettings {
     extract_app_settings(interp, &mut settings);
     extract_key_settings(interp, &mut settings);
     extract_kiro_settings(interp, &mut settings);
+    if let Some(val) = interp.get_var("clipboard.max_entries") {
+        if let Ok(n) = val.as_int() {
+            settings.clipboard_max = n as usize;
+        }
+    }
     settings
 }
 

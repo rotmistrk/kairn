@@ -107,8 +107,25 @@ pub fn new_clipboard(max_entries: usize) -> ClipboardHandle {
 
 // ─── System clipboard ───────────────────
 
-fn write_system_clipboard(_text: &str) -> Result<(), String> {
-    Ok(())
+fn write_system_clipboard(text: &str) -> Result<(), String> {
+    if env::var("KAIRN_TEST").is_ok() {
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return write_via_command("pbcopy", &[], text);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if write_via_command("wl-copy", &[], text).is_ok() {
+            return Ok(());
+        }
+        if write_via_command("xclip", &["-selection", "clipboard"], text).is_ok() {
+            return Ok(());
+        }
+        // No clipboard tool available — ring is the clipboard
+        Ok(())
+    }
 }
 
 fn read_system_clipboard() -> Result<String, String> {
