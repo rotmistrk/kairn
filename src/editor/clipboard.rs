@@ -8,21 +8,42 @@ use super::Editor;
 
 impl Editor {
     /// Set the yank register and push to clipboard ring.
+    /// If a named register was pending ("x prefix), store there instead.
     pub fn yank(&mut self, text: String) {
-        self.set_register(text.clone(), false, false);
-        self.clipboard_push(&text);
+        if let Some(reg) = self.keymap.pending_register.take() {
+            self.store_named_register(reg, &text);
+        } else {
+            self.set_register(text.clone(), false, false);
+            self.clipboard_push(&text);
+        }
     }
 
     /// Set the yank register as linewise (for dd, yy, V-yank).
     pub fn yank_linewise(&mut self, text: String) {
-        self.set_register(text.clone(), true, false);
-        self.clipboard_push(&text);
+        if let Some(reg) = self.keymap.pending_register.take() {
+            self.store_named_register(reg, &text);
+        } else {
+            self.set_register(text.clone(), true, false);
+            self.clipboard_push(&text);
+        }
     }
 
     /// Set the yank register as block (newline-separated column slices).
     pub fn yank_block(&mut self, text: String) {
-        self.set_register(text.clone(), false, true);
-        self.clipboard_push(&text);
+        if let Some(reg) = self.keymap.pending_register.take() {
+            self.store_named_register(reg, &text);
+        } else {
+            self.set_register(text.clone(), false, true);
+            self.clipboard_push(&text);
+        }
+    }
+
+    fn store_named_register(&mut self, reg: char, text: &str) {
+        if let Some(ref clip) = self.clipboard {
+            if let Ok(mut ring) = clip.lock() {
+                ring.set_register(reg, text);
+            }
+        }
     }
 
     fn clipboard_push(&mut self, text: &str) {
@@ -33,9 +54,23 @@ impl Editor {
         }
     }
 
+    /// Resolve paste source: named register if pending, else default register.
+    fn resolve_paste_register(&mut self) -> (String, bool) {
+        if let Some(reg) = self.keymap.pending_register.take() {
+            let text = self
+                .clipboard
+                .as_ref()
+                .and_then(|c| c.lock().ok())
+                .and_then(|r| r.get_register(reg).map(|s| s.to_string()))
+                .unwrap_or_default();
+            (text, false)
+        } else {
+            (self.register(), self.register_linewise())
+        }
+    }
+
     pub(super) fn paste_after(&mut self) {
-        let reg = self.register();
-        let linewise = self.register_linewise();
+        let (reg, linewise) = self.resolve_paste_register();
         if reg.is_empty() {
             return;
         }
@@ -68,8 +103,7 @@ impl Editor {
     }
 
     pub(super) fn paste_before(&mut self) {
-        let reg = self.register();
-        let linewise = self.register_linewise();
+        let (reg, linewise) = self.resolve_paste_register();
         if reg.is_empty() {
             return;
         }

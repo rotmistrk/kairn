@@ -8,6 +8,8 @@ use super::keymap::{EditorMode, Keymap};
 pub struct VimKeymap {
     pub(super) pending: Option<char>,
     pending_count: Option<usize>,
+    /// Pending named register (set by `"x` prefix).
+    pub(super) pending_register: Option<char>,
 }
 
 impl Default for VimKeymap {
@@ -21,6 +23,7 @@ impl VimKeymap {
         Self {
             pending: None,
             pending_count: None,
+            pending_register: None,
         }
     }
 
@@ -29,7 +32,14 @@ impl VimKeymap {
     }
 
     fn normal_key(&mut self, key: &KeyEvent) -> Command {
+        // Handle `"x` register prefix
         if let Some(prefix) = self.pending.take() {
+            if prefix == '"' {
+                if let KeyCode::Char(reg) = key.code {
+                    self.pending_register = Some(reg);
+                }
+                return Command::Noop;
+            }
             return self.two_key(prefix, key);
         }
 
@@ -143,7 +153,8 @@ impl VimKeymap {
             | KeyCode::Char('F')
             | KeyCode::Char('t')
             | KeyCode::Char('T')
-            | KeyCode::Char('g') => {
+            | KeyCode::Char('g')
+            | KeyCode::Char('"') => {
                 if let KeyCode::Char(ch) = &key.code {
                     self.pending = Some(*ch);
                 }
