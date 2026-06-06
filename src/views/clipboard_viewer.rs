@@ -90,7 +90,7 @@ impl View for ClipboardViewer {
             }
             KeyCode::Enter => {
                 if let Ok(mut ring) = self.clipboard.lock() {
-                    ring.select(self.cursor);
+                    let _: Option<&str> = ring.select(self.cursor);
                 }
                 self.state.mark_dirty();
                 HandleResult::Consumed

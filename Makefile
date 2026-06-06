@@ -98,8 +98,12 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: test-fast purge-cargo-bin install-rusticle-tk install-kairn install-rusticle-lsp install-demos
+install-local: sync-deps test-fast purge-cargo-bin install-rusticle-tk install-kairn install-rusticle-lsp install-demos
 	@echo "✅ Installed rusticle, rusticle-tk, rusticle-lsp, kairn, and demos to $(LOCAL_PREFIX)"
+
+# Pull local dependency overrides (txv) if present
+sync-deps:
+	@if [ -d ../txv/.git ]; then echo "  syncing txv..."; git -C ../txv pull --ff-only; fi
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
 purge-cargo-bin:
