@@ -1,5 +1,6 @@
 //! Application views — concrete View implementations for kairn.
 
+pub mod clipboard_viewer;
 pub mod csv_view;
 pub mod editor;
 pub mod git_changes;

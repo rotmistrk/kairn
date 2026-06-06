@@ -122,6 +122,18 @@ pub(crate) fn cmd_messages(ctx: &mut CommandContext, _state: &mut AppState, _arg
     ctx.sink.push_command(CM_SHOW_MESSAGES, None);
 }
 
+pub(crate) fn cmd_clipboard(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
+    use crate::desktop::SlotId;
+    use crate::handler::downcast_desktop;
+    use crate::handler_evict::try_insert_tab;
+    use crate::views::clipboard_viewer::ClipboardViewer;
+    if let Some(d) = downcast_desktop(ctx.desktop) {
+        let view = ClipboardViewer::new(state.clipboard.clone());
+        try_insert_tab(d, state, ctx.sink, SlotId::Tools, "Clipboard".into(), Box::new(view));
+        d.focus_panel(SlotId::Tools as usize);
+    }
+}
+
 pub(crate) fn cmd_problems(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         focus_tab_by_title(desktop, SlotId::Tools, "Problems");
