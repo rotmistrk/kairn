@@ -29,10 +29,10 @@ pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
         editor.editor.buf().delete(start, end);
         editor.editor.buf().insert(start, &text);
         let (l, c) = editor.editor.buf().offset_to_line_col(start + text.len());
-        editor.editor.cursor_line = l;
-        editor.editor.cursor_col = c;
-        editor.editor.mode = EditorMode::Normal;
-        editor.editor.visual_anchor = None;
+        editor.editor.set_cursor_line(l);
+        editor.editor.set_cursor_col(c);
+        editor.editor.set_mode(EditorMode::Normal);
+        editor.editor.set_visual_anchor(None);
     }
 }
 
@@ -56,7 +56,7 @@ pub fn handle_delete_line(ctx: &mut CommandContext, _state: &AppState) {
     };
     let target = line
         .map(|n| n.saturating_sub(1) as usize)
-        .unwrap_or(editor.editor.cursor_line);
+        .unwrap_or(editor.editor.cursor_line());
     let start = editor.editor.buf().line_col_to_offset(target, 0);
     let end = if target + 1 < editor.editor.buf().line_count() {
         editor.editor.buf().line_col_to_offset(target + 1, 0)
@@ -89,20 +89,27 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    let line_content = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
+    let line_content = editor
+        .editor
+        .buf()
+        .line(editor.editor.cursor_line())
+        .unwrap_or_default();
     let chars: Vec<char> = line_content.chars().collect();
-    let col = editor.editor.cursor_col;
+    let col = editor.editor.cursor_col();
     if col >= chars.len() || !chars[col].is_alphanumeric() && chars[col] != '_' {
         return;
     }
     let start = col - (0..col).rev().take_while(|&i| is_word(chars[i])).count();
     let end = col + (col..chars.len()).take_while(|&i| is_word(chars[i])).count();
-    let line_start = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line, start);
-    let line_end = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line, end);
+    let line_start = editor
+        .editor
+        .buf()
+        .line_col_to_offset(editor.editor.cursor_line(), start);
+    let line_end = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line(), end);
     if let (Some(s), Some(e)) = (line_start, line_end) {
         editor.editor.buf().delete(s, e);
         editor.editor.buf().insert(s, &text);
-        editor.editor.cursor_col = start + text.chars().count();
+        editor.editor.set_cursor_col(start + text.chars().count());
     }
 }
 
@@ -122,7 +129,7 @@ pub fn handle_search(ctx: &mut CommandContext, _state: &AppState, pattern: &str)
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    editor.editor.search_pattern = pattern.to_string();
+    editor.editor.set_search_pattern(pattern.to_string());
     editor.editor.update_highlight();
 }
 
@@ -138,5 +145,5 @@ pub fn handle_clear_highlight(ctx: &mut CommandContext, _state: &AppState) {
     let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    editor.editor.highlight = None;
+    editor.editor.set_highlight(None);
 }

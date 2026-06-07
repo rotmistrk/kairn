@@ -113,8 +113,8 @@ fn extract_editor_state(
     };
     let modified = editor.editor.buf().is_dirty();
     let cursor = Some(CursorPos {
-        line: editor.editor.cursor_line,
-        col: editor.editor.cursor_col,
+        line: editor.editor.cursor_line(),
+        col: editor.editor.cursor_col(),
     });
     let selection = editor.editor.visual_range().map(|(start, end)| {
         let (sl, sc) = editor.editor.buf().offset_to_line_col(start);

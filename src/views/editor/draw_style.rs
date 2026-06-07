@@ -137,17 +137,17 @@ impl super::EditorView {
             self.state.buffer_mut().print_line(0, y, "~", w, gutter_style);
             row += 1;
         }
-        if self.editor.mode == crate::editor::keymap::EditorMode::Command
-            || self.editor.mode == crate::editor::keymap::EditorMode::Search
+        if self.editor.mode() == crate::editor::keymap::EditorMode::Command
+            || self.editor.mode() == crate::editor::keymap::EditorMode::Search
         {
             let prompt_y = h.saturating_sub(1);
             let prompt_style = txv_core::palette::palette().style(txv_core::palette::StyleId::StatusBar);
-            let prefix = if self.editor.mode == crate::editor::keymap::EditorMode::Search {
+            let prefix = if self.editor.mode() == crate::editor::keymap::EditorMode::Search {
                 "/"
             } else {
                 ":"
             };
-            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
+            let prompt_text = format!("{}{}", prefix, self.editor.command_buf());
             self.state
                 .buffer_mut()
                 .print_line(0, prompt_y, &prompt_text, w, prompt_style);
@@ -183,7 +183,7 @@ pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: 
 
 impl super::EditorView {
     pub(super) fn ephemeral_fill(&self, line_idx: usize, p: &super::draw::DrawParams) -> Style {
-        if self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
+        if self.editor.ephemeral().ranges().iter().any(|r| r.covers_line(line_idx)) {
             Style::default().with_bg(p.ephemeral_bg)
         } else {
             Style::default()

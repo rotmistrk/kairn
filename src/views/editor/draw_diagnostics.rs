@@ -23,9 +23,9 @@ impl EditorView {
         };
         let w = self.state.buffer_mut().width();
         let gutter_w = self.gutter_width();
-        let scroll = self.editor.viewport_scroll;
+        let scroll = self.editor.viewport_scroll();
         let visible_lines = self.state.buffer_mut().height() as usize;
-        let h_off = self.editor.h_scroll;
+        let h_off = self.editor.h_scroll();
 
         let marks = self.collect_diag_marks(&diagnostics, w, gutter_w, scroll, visible_lines, h_off);
         for ov in marks {
@@ -69,7 +69,7 @@ impl EditorView {
     /// Get the diagnostic message at the current cursor line (for status bar).
     pub fn diagnostic_at_cursor(&self) -> Option<&str> {
         let diags = self.diagnostics.as_ref()?;
-        let line = self.editor.cursor_line;
+        let line = self.editor.cursor_line();
         diags.iter().find(|d| d.line == line).map(|d| d.message.as_str())
     }
 

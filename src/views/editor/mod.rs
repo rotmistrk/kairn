@@ -20,6 +20,7 @@ mod handle_action;
 mod handle_command_event;
 mod handle_completion;
 mod handle_diff;
+mod handle_signature;
 mod handle_tick;
 mod handle_viewport;
 mod methods;
@@ -151,7 +152,7 @@ impl EditorView {
             let offset = self
                 .editor
                 .buf()
-                .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                .line_col_to_offset(self.editor.cursor_line(), self.editor.cursor_col())
                 .unwrap_or(0);
             self.editor.buf().insert(offset, text);
             self.last_edit_tick = self.tick_counter;
@@ -197,8 +198,8 @@ impl EditorView {
         } else if key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
             let pos = (
                 self.path.clone(),
-                self.editor.cursor_line as u32,
-                self.editor.cursor_col as u32,
+                self.editor.cursor_line() as u32,
+                self.editor.cursor_col() as u32,
             );
             self.state.put_command(CM_LSP_COMPLETION, Some(Box::new(pos)));
             return Some(HandleResult::Consumed);
@@ -207,10 +208,10 @@ impl EditorView {
     }
 
     fn handle_normal_key(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
-        self.editor.ephemeral.clear_transient();
-        let old_mode = self.editor.mode;
-        let old_line = self.editor.cursor_line;
-        let old_col = self.editor.cursor_col;
+        self.editor.ephemeral_mut().clear_transient();
+        let old_mode = self.editor.mode();
+        let old_line = self.editor.cursor_line();
+        let old_col = self.editor.cursor_col();
 
         if old_mode == EditorMode::Command || old_mode == EditorMode::Search {
             let result = self.handle_command_input(key);
@@ -218,7 +219,8 @@ impl EditorView {
             return result;
         }
 
-        let cmd = self.editor.keymap.handle_key(key, self.editor.mode);
+        let mode = self.editor.mode();
+        let cmd = self.editor.keymap_mut().handle_key(key, mode);
         if cmd == Command::Noop {
             return HandleResult::Consumed;
         }
@@ -228,7 +230,7 @@ impl EditorView {
         if matches!(action, crate::editor::EditorAction::ContentChanged) {
             self.last_edit_tick = self.tick_counter;
             self.clear_diagnostics();
-            self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line);
+            self.hl_cache.borrow_mut().invalidate_from(self.editor.cursor_line());
             self.emit_hook_triggers(&cmd);
         }
         if !is_search_nav
@@ -237,7 +239,7 @@ impl EditorView {
                 crate::editor::EditorAction::CursorMoved | crate::editor::EditorAction::ContentChanged
             )
         {
-            self.editor.highlight = None;
+            self.editor.set_highlight(None);
         }
         self.handle_action(action);
         self.ensure_cursor_visible();

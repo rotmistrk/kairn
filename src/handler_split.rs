@@ -159,20 +159,20 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
     let defaults = state.settings.editor_defaults.clone();
     let syntax_theme = state.current_syntax_theme().to_string();
     let buf_id = ev.buffer_id;
-    let shared_buf = ev.editor.buffer.clone();
+    let shared_buf = ev.editor.buffer_arc();
     let file_path = ev.editor.buf().file_path().map(|s| s.to_string());
-    let cursor_line = ev.editor.cursor_line;
-    let cursor_col = ev.editor.cursor_col;
-    let scroll = ev.editor.viewport_scroll;
+    let cursor_line = ev.editor.cursor_line();
+    let cursor_col = ev.editor.cursor_col();
+    let scroll = ev.editor.viewport_scroll();
     let ev_path = ev.path().to_path_buf();
     let mut ed = EditorView::from_arc_buffer(shared_buf, file_path, &defaults, &syntax_theme);
     ed.set_root_dir(state.roots().root_for(&ev_path).path().to_path_buf());
     ed.editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     ed.buffer_id = buf_id;
-    ed.editor.cursor_line = cursor_line;
-    ed.editor.cursor_col = cursor_col;
-    ed.editor.viewport_scroll = scroll;
+    ed.editor.set_cursor_line(cursor_line);
+    ed.editor.set_cursor_col(cursor_col);
+    ed.editor.set_viewport_scroll(scroll);
     Box::new(ed)
 }
 

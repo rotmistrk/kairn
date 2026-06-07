@@ -60,7 +60,7 @@ fn set_identical_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content
                 context_lines: 2,
                 ignore_ws: false,
             });
-            ev.editor.status = format!("[no changes vs {}]", base_ref);
+            ev.editor.set_status(format!("[no changes vs {}]", base_ref));
         }
     }
 }
@@ -84,7 +84,7 @@ fn set_sbs_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content: &str
                 cursor: 0,
                 base_ref: base_ref.to_string(),
             });
-            ev.editor.status = format!("[DIFF vs {}]", base_ref);
+            ev.editor.set_status(format!("[DIFF vs {}]", base_ref));
         }
     }
 }

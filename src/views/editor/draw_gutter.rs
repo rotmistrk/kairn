@@ -22,7 +22,7 @@ impl EditorView {
         if p.gutter_w == 0 {
             return;
         }
-        let sign_w: usize = if self.editor.options.gutter_signs {
+        let sign_w: usize = if self.editor.options().gutter_signs() {
             1
         } else {
             0

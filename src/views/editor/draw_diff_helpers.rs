@@ -17,7 +17,7 @@ impl EditorView {
         base_line: Option<usize>,
         buf_line: Option<usize>,
     ) {
-        if !self.editor.options.number {
+        if !self.editor.options().number() {
             return;
         }
         let gs = app_palette().editor().gutter();
@@ -35,7 +35,7 @@ impl EditorView {
 
     pub(super) fn draw_diff_text(&mut self, x: u16, y: u16, avail: usize, text: &str, style: Style) {
         use txv_core::text::display_char_width;
-        let tab_w = self.editor.options.tab_width;
+        let tab_w = self.editor.options().tab_width();
         let mut col = 0usize;
         for ch in text.chars() {
             if col >= avail {

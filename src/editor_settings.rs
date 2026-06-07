@@ -1,13 +1,6 @@
 //! Per-editor-instance settings.
 
-/// Cursor style: software (reverse block) or hardware (bar/block/underline).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CursorStyle {
-    Software,
-    Bar,
-    Block,
-    Underline,
-}
+pub use txv_edit::settings::CursorStyle;
 
 /// Per-editor-instance settings, cloned from AppSettings::editor_defaults on creation.
 #[derive(Debug, Clone)]

@@ -7,7 +7,7 @@ use crate::gutter_signs::compute_gutter_signs;
 impl EditorView {
     /// Recompute git gutter signs (diff vs HEAD).
     pub fn refresh_gutter_signs(&mut self) {
-        if !self.editor.options.gutter_signs {
+        if !self.editor.options().gutter_signs() {
             self.gutter_signs.clear();
             return;
         }
@@ -31,17 +31,18 @@ impl EditorView {
     }
 
     pub(super) fn apply_settings(&mut self) {
-        self.editor.options.wrap = self.settings.wrap;
-        self.editor.options.list = self.settings.list;
-        self.editor.options.tab_width = self.settings.tabstop as usize;
-        self.editor.options.number = self.settings.number;
-        self.editor.options.rainbow = self.settings.rainbow;
-        self.editor.options.guides = self.settings.guides;
-        self.editor.options.gutter_signs = self.settings.gutter_signs;
-        self.editor.options.scrolloff = self.settings.scrolloff;
-        self.editor.options.cursor_insert = self.settings.cursor_insert;
-        self.editor.options.cursor_normal = self.settings.cursor_normal;
-        self.editor.options.cursor_command = self.settings.cursor_command;
+        let opts = self.editor.options_mut();
+        opts.set_wrap(self.settings.wrap);
+        opts.set_list(self.settings.list);
+        opts.set_tab_width(self.settings.tabstop as usize);
+        opts.set_number(self.settings.number);
+        opts.set_rainbow(self.settings.rainbow);
+        opts.set_guides(self.settings.guides);
+        opts.set_gutter_signs(self.settings.gutter_signs);
+        opts.set_scrolloff(self.settings.scrolloff);
+        opts.set_cursor_insert(self.settings.cursor_insert);
+        opts.set_cursor_normal(self.settings.cursor_normal);
+        opts.set_cursor_command(self.settings.cursor_command);
     }
 
     pub fn set_syntax_theme(&mut self, name: &str) {
@@ -79,14 +80,14 @@ impl EditorView {
         use crate::editor::ephemeral_range::EphemeralRange;
         let max_line = self.editor.buf().line_count().saturating_sub(1);
         let target_line = (line as usize).min(max_line);
-        self.editor.cursor_line = target_line;
-        self.editor.cursor_col = col as usize;
+        self.editor.set_cursor_line(target_line);
+        self.editor.set_cursor_col(col as usize);
         self.editor
-            .ephemeral
+            .ephemeral_mut()
             .set(vec![EphemeralRange::full_line(target_line)], HighlightOwner::Transient);
         self.ensure_cursor_visible();
         if self.state.bounds().h() == 0 {
-            self.editor.viewport_scroll = self.editor.cursor_line;
+            self.editor.set_viewport_scroll(self.editor.cursor_line());
         }
         self.state.mark_dirty();
     }
@@ -106,7 +107,7 @@ impl EditorView {
     }
 
     pub fn gutter_width(&self) -> u16 {
-        if !self.editor.options.number {
+        if !self.editor.options().number() {
             return 0;
         }
         let lines = self.editor.buf().line_count();
@@ -115,7 +116,7 @@ impl EditorView {
         } else {
             (lines as f64).log10() as u16 + 1
         };
-        let sign_w: u16 = if self.editor.options.gutter_signs {
+        let sign_w: u16 = if self.editor.options().gutter_signs() {
             1
         } else {
             0

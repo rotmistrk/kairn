@@ -77,7 +77,7 @@ impl EditorView {
     }
 
     fn compute_rainbow_maps(&self, scroll: usize, viewport_end: usize) -> Vec<Vec<(usize, Color)>> {
-        if !self.editor.options.rainbow {
+        if !self.editor.options().rainbow() {
             return Vec::new();
         }
         let mut depth = bracket_depth_at_line(&self.editor.buf(), scroll);
@@ -95,13 +95,13 @@ impl EditorView {
         let pal = palette();
         let app = app_palette();
         let gutter_w = self.gutter_width();
-        let wrap = self.editor.options.wrap;
-        let matchparen_pos = if self.editor.options.matchparen {
-            match_bracket(&self.editor.buf(), self.editor.cursor_line, self.editor.cursor_col)
+        let wrap = self.editor.options().wrap();
+        let matchparen_pos = if self.editor.options().matchparen() {
+            match_bracket(&self.editor.buf(), self.editor.cursor_line(), self.editor.cursor_col())
         } else {
             None
         };
-        let scroll = self.editor.viewport_scroll;
+        let scroll = self.editor.viewport_scroll();
         let total_lines = self.editor.buf().line_count();
         let viewport_end = (scroll + h as usize).min(total_lines);
         DrawParams {
@@ -124,9 +124,9 @@ impl EditorView {
             h_off: if wrap {
                 0
             } else {
-                self.editor.h_scroll
+                self.editor.h_scroll()
             },
-            tab_width: self.editor.options.tab_width,
+            tab_width: self.editor.options().tab_width(),
             matchparen_pos,
             matchparen_style: app.editor().matchparen(),
             rainbow_maps: self.compute_rainbow_maps(scroll, viewport_end),
@@ -155,7 +155,7 @@ impl EditorView {
         };
 
         let visual_range = self.block_visual_range_for_line(line_idx);
-        let highlight = self.editor.highlight.take();
+        let highlight = self.editor.take_highlight();
         let (visual_row, col_offset) = self.draw_line_spans(
             spans,
             line_idx,
@@ -163,7 +163,7 @@ impl EditorView {
             (visual_range, highlight.as_ref()),
             (line_start_off, row),
         );
-        self.editor.highlight = highlight;
+        self.editor.set_highlight(highlight);
         let fill = self.ephemeral_fill(line_idx, p);
         self.draw_line_tail(&line, col_offset, (visual_row, row), p, text_x, fill);
         self.draw_line_cursor(line_idx, row, p, text_x);
@@ -173,7 +173,7 @@ impl EditorView {
     /// Compute visual byte range for a line, handling block mode per-line.
     fn block_visual_range_for_line(&self, line_idx: usize) -> Option<(usize, usize)> {
         use crate::editor::keymap::EditorMode;
-        if self.editor.mode == EditorMode::VisualBlock {
+        if self.editor.mode() == EditorMode::VisualBlock {
             let (sl, el, sc, ec) = self.editor.block_range()?;
             if line_idx < sl || line_idx > el {
                 return None;
@@ -206,7 +206,7 @@ impl EditorView {
         fill: Style,
     ) {
         let (visual_row, start_row) = rows;
-        if self.editor.options.list
+        if self.editor.options().list()
             && col_offset >= p.h_off
             && (col_offset - p.h_off) < p.avail
             && visual_row < p.h as usize
@@ -224,7 +224,7 @@ impl EditorView {
         for pad_col in col_offset..p.avail {
             self.state.buffer_mut().put(text_x + pad_col as u16, vy, ' ', fill);
         }
-        if self.editor.options.guides {
+        if self.editor.options().guides() {
             draw_indent_guides(
                 self.state.buffer_mut(),
                 line,
@@ -238,12 +238,12 @@ impl EditorView {
     }
 
     fn draw_line_cursor(&mut self, line_idx: usize, visual_row: usize, p: &DrawParams, text_x: u16) {
-        if line_idx != self.editor.cursor_line || !self.state.is_focused() || self.uses_hw_cursor() {
+        if line_idx != self.editor.cursor_line() || !self.state.is_focused() || self.uses_hw_cursor() {
             return;
         }
         let (cursor_vrow, cursor_vcol) = self.cursor_visual_pos(
             line_idx,
-            self.editor.cursor_col,
+            self.editor.cursor_col(),
             p.avail + p.h_off,
             p.tab_width,
             visual_row,

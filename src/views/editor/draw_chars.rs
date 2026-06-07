@@ -133,7 +133,7 @@ impl EditorView {
     ) {
         let x = text_x + (draw_st.col_offset - p.h_off) as u16;
         let vy = draw_st.visual_row as u16;
-        if self.editor.options.list {
+        if self.editor.options().list() {
             let ls = Style::new(app.editor().list_chars().fg(), st.bg()).with_attrs(st.attrs());
             let c = if ti == p.tab_width - 1 {
                 '\u{2192}'
@@ -226,7 +226,7 @@ impl EditorView {
     }
 
     pub(super) fn resolve_display_char(&self, ch: char, style: Style, app: &AppPalette) -> (char, Style) {
-        if self.editor.options.list {
+        if self.editor.options().list() {
             let list_style = Style::new(app.editor().list_chars().fg(), style.bg()).with_attrs(style.attrs());
             match ch {
                 ' ' => ('\u{00B7}', list_style),
@@ -238,7 +238,7 @@ impl EditorView {
     }
 
     fn apply_ephemeral_bg(&self, style: Style, line_idx: usize, p: &DrawParams) -> Style {
-        if style.bg() == Color::Reset && self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
+        if style.bg() == Color::Reset && self.editor.ephemeral().ranges().iter().any(|r| r.covers_line(line_idx)) {
             Style::new(style.fg(), p.ephemeral_bg).with_attrs(style.attrs())
         } else {
             style

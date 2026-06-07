@@ -1,7 +1,5 @@
 //! EditorView completion popup helpers.
 
-use txv_core::message::Message;
-
 use crate::lsp::requests::{CompletionItem, CompletionKind};
 
 use super::EditorView;
@@ -38,25 +36,30 @@ impl EditorView {
 
     fn completion_popup_position(&self, prefix: &str) -> (u16, u16) {
         let gutter_w = self.gutter_width();
-        let scroll = self.editor.viewport_scroll;
+        let scroll = self.editor.viewport_scroll();
         let avail = self.text_avail_width();
-        let tab_w = self.editor.options.tab_width;
+        let tab_w = self.editor.options().tab_width();
 
         let mut vis_row: usize = 0;
-        for li in scroll..self.editor.cursor_line {
-            vis_row += if self.editor.options.wrap {
+        for li in scroll..self.editor.cursor_line() {
+            vis_row += if self.editor.options().wrap() {
                 self.wrapped_line_rows(li, avail)
             } else {
                 1
             };
         }
-        let (cursor_vrow, cursor_vcol) =
-            self.cursor_visual_pos(self.editor.cursor_line, self.editor.cursor_col, avail, tab_w, vis_row);
+        let (cursor_vrow, cursor_vcol) = self.cursor_visual_pos(
+            self.editor.cursor_line(),
+            self.editor.cursor_col(),
+            avail,
+            tab_w,
+            vis_row,
+        );
 
-        let h_off = if self.editor.options.wrap {
+        let h_off = if self.editor.options().wrap() {
             0
         } else {
-            self.editor.h_scroll
+            self.editor.h_scroll()
         };
         let screen_col = cursor_vcol.saturating_sub(h_off);
         let x = gutter_w + screen_col.saturating_sub(prefix.len()) as u16;
@@ -97,8 +100,8 @@ impl EditorView {
     }
 
     fn replace_word_with_completion(&mut self, text: &str) {
-        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-        let col = self.editor.cursor_col;
+        let line = self.editor.buf().line(self.editor.cursor_line()).unwrap_or_default();
+        let col = self.editor.cursor_col();
         let chars: Vec<char> = line.chars().collect();
 
         let prefix_len = chars[..col]
@@ -117,18 +120,18 @@ impl EditorView {
         let start_offset = self
             .editor
             .buf()
-            .line_col_to_offset(self.editor.cursor_line, word_start)
+            .line_col_to_offset(self.editor.cursor_line(), word_start)
             .unwrap_or(0);
         let end_offset = self
             .editor
             .buf()
-            .line_col_to_offset(self.editor.cursor_line, word_end)
+            .line_col_to_offset(self.editor.cursor_line(), word_end)
             .unwrap_or(start_offset);
         if end_offset > start_offset {
             self.editor.buf().delete(start_offset, end_offset);
         }
         self.editor.buf().insert(start_offset, text);
-        self.editor.cursor_col = word_start + text.len();
+        self.editor.set_cursor_col(word_start + text.len());
         self.last_edit_tick = self.tick_counter;
     }
 
@@ -224,8 +227,8 @@ impl EditorView {
 
     /// Get the word prefix before the cursor as a string.
     fn word_prefix(&self) -> String {
-        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-        let col = self.editor.cursor_col;
+        let line = self.editor.buf().line(self.editor.cursor_line()).unwrap_or_default();
+        let col = self.editor.cursor_col();
         let before = &line[..col.min(line.len())];
         before
             .chars()
@@ -239,8 +242,8 @@ impl EditorView {
 
     /// Get the length of the word prefix before the cursor (identifier chars).
     fn word_prefix_len(&self) -> usize {
-        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-        let col = self.editor.cursor_col;
+        let line = self.editor.buf().line(self.editor.cursor_line()).unwrap_or_default();
+        let col = self.editor.cursor_col();
         let before = &line[..col.min(line.len())];
         before
             .chars()
@@ -251,8 +254,8 @@ impl EditorView {
 
     /// Check if cursor is inside a function call (unmatched open paren before cursor).
     pub(super) fn is_inside_call(&self) -> bool {
-        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-        let before = &line[..self.editor.cursor_col.min(line.len())];
+        let line = self.editor.buf().line(self.editor.cursor_line()).unwrap_or_default();
+        let before = &line[..self.editor.cursor_col().min(line.len())];
         let mut depth: i32 = 0;
         for ch in before.chars() {
             match ch {
@@ -262,26 +265,5 @@ impl EditorView {
             }
         }
         depth > 0
-    }
-
-    /// Display signature help — show function signature in status bar.
-    pub(super) fn show_signature_help(&mut self, sig: &crate::lsp::requests::SignatureHelp) {
-        let msg = if let Some(active) = sig.active_param {
-            if let Some(&(start, end)) = sig.params.get(active) {
-                let label = &sig.label;
-                let before = &label[..start.min(label.len())];
-                let param = &label[start.min(label.len())..end.min(label.len())];
-                let after = &label[end.min(label.len())..];
-                format!("{before}[{param}]{after}")
-            } else {
-                sig.label.clone()
-            }
-        } else {
-            sig.label.clone()
-        };
-        self.state.put_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("sig", msg))),
-        );
     }
 }

@@ -117,15 +117,17 @@ fn dispatch_editor_edit(cmd: ScriptCommand, ctx: &mut CommandContext) {
         ScriptCommand::ClearHighlight => sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None),
         ScriptCommand::SetMark { name } => {
             if let Some(editor) = find_focused_editor(ctx.desktop_mut()) {
-                editor.marks.insert(name, (editor.cursor_line, editor.cursor_col));
+                let line = editor.cursor_line();
+                let col = editor.cursor_col();
+                editor.marks_mut().insert(name, (line, col));
             }
         }
         ScriptCommand::JumpMark { name } => {
             if let Some(editor) = find_focused_editor(ctx.desktop_mut()) {
-                if let Some(&(line, col)) = editor.marks.get(&name) {
+                if let Some(&(line, col)) = editor.marks().get(&name) {
                     let max_line = editor.buf().line_count().saturating_sub(1);
-                    editor.cursor_line = line.min(max_line);
-                    editor.cursor_col = col;
+                    editor.set_cursor_line(line.min(max_line));
+                    editor.set_cursor_col(col);
                     editor.clamp_cursor();
                 }
             }

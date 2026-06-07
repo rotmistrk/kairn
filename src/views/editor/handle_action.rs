@@ -99,8 +99,8 @@ impl EditorView {
             return;
         }
         self.toggle_diff(args);
-        if !self.editor.status.is_empty() {
-            let msg = Message::info("editor", self.editor.status.clone());
+        if !self.editor.status().is_empty() {
+            let msg = Message::info("editor", self.editor.status().to_string());
             self.state
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
@@ -131,8 +131,8 @@ impl EditorView {
     fn action_lsp_goto(&mut self, cmd_id: u16) {
         let data = (
             self.path.clone(),
-            self.editor.cursor_line as u32,
-            self.editor.cursor_col as u32,
+            self.editor.cursor_line() as u32,
+            self.editor.cursor_col() as u32,
         );
         self.state.put_command(cmd_id, Some(Box::new(data)));
     }
@@ -141,8 +141,8 @@ impl EditorView {
         let word = self.editor.word_under_cursor().unwrap_or_default();
         let data = (
             self.path.clone(),
-            self.editor.cursor_line as u32,
-            self.editor.cursor_col as u32,
+            self.editor.cursor_line() as u32,
+            self.editor.cursor_col() as u32,
             word,
         );
         self.state.put_command(CM_LSP_FIND_REFS, Some(Box::new(data)));
@@ -150,7 +150,7 @@ impl EditorView {
 
     fn action_lsp_format(&mut self, range: Option<(u32, u32)>) {
         use std::path::PathBuf;
-        let tab_size = self.editor.options.tab_width as u32;
+        let tab_size = self.editor.options().tab_width() as u32;
         let data: (PathBuf, Option<(u32, u32)>, u32) = (self.path.clone(), range, tab_size);
         self.state.put_command(CM_LSP_FORMAT, Some(Box::new(data)));
     }

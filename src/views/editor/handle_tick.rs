@@ -25,14 +25,14 @@ impl EditorView {
             self.state.put_command(CM_CONTENT_CHANGED, Some(Box::new(changed)));
         }
         // Completion trigger: 5 ticks after last edit in insert mode
-        if self.editor.mode == EditorMode::Insert
+        if self.editor.mode() == EditorMode::Insert
             && self.last_edit_tick > 0
             && self.tick_counter - self.last_edit_tick == 5
         {
             let pos = (
                 self.path.clone(),
-                self.editor.cursor_line as u32,
-                self.editor.cursor_col as u32,
+                self.editor.cursor_line() as u32,
+                self.editor.cursor_col() as u32,
             );
             self.state.put_command(CM_LSP_COMPLETION, Some(Box::new(pos.clone())));
             if self.is_inside_call() {
@@ -96,7 +96,7 @@ impl EditorView {
     }
 
     pub(super) fn complete_command_buf(&mut self) {
-        let buf = &self.editor.command_buf;
+        let buf = self.editor.command_buf();
         if buf.starts_with("e ") || buf.starts_with("edit ") {
             self.complete_command_path();
             return;
@@ -104,17 +104,17 @@ impl EditorView {
         use crate::editor::ex_commands::CMD_TABLE_NAMES;
         let matches: Vec<&str> = CMD_TABLE_NAMES
             .iter()
-            .filter(|cmd| cmd.starts_with(buf.as_str()))
+            .filter(|cmd| cmd.starts_with(buf))
             .copied()
             .collect();
         if matches.len() == 1 {
-            self.editor.command_buf = matches[0].to_string();
+            self.editor.set_command_buf(matches[0].to_string());
         }
     }
 
     fn complete_command_path(&mut self) {
         use std::path::Path;
-        let buf = &self.editor.command_buf;
+        let buf = self.editor.command_buf();
         let partial = buf
             .strip_prefix("e ")
             .or_else(|| buf.strip_prefix("edit "))
@@ -145,7 +145,7 @@ impl EditorView {
             } else {
                 "e "
             };
-            self.editor.command_buf = format!("{prefix}{}", matches[0]);
+            self.editor.set_command_buf(format!("{prefix}{}", matches[0]));
         }
     }
 }

@@ -10,14 +10,15 @@ impl EditorView {
         if h == 0 {
             return;
         }
-        self.editor.viewport_height = h;
-        let off = self.editor.options.scrolloff.min(h / 2);
+        self.editor.set_viewport_height(h);
+        let off = self.editor.options().scrolloff().min(h / 2);
 
-        if self.editor.cursor_line < self.editor.viewport_scroll + off {
-            self.editor.viewport_scroll = self.editor.cursor_line.saturating_sub(off);
+        if self.editor.cursor_line() < self.editor.viewport_scroll() + off {
+            self.editor
+                .set_viewport_scroll(self.editor.cursor_line().saturating_sub(off));
         }
 
-        if !self.editor.options.wrap {
+        if !self.editor.options().wrap() {
             self.ensure_cursor_visible_nowrap(h, off);
             return;
         }
@@ -25,16 +26,17 @@ impl EditorView {
     }
 
     fn ensure_cursor_visible_nowrap(&mut self, h: usize, off: usize) {
-        if self.editor.cursor_line + off >= self.editor.viewport_scroll + h {
-            self.editor.viewport_scroll = (self.editor.cursor_line + off).saturating_sub(h) + 1;
+        if self.editor.cursor_line() + off >= self.editor.viewport_scroll() + h {
+            self.editor
+                .set_viewport_scroll((self.editor.cursor_line() + off).saturating_sub(h) + 1);
         }
         let avail = self.text_avail_width();
         if avail > 0 {
             let col = self.cursor_visual_col();
-            if col < self.editor.h_scroll {
-                self.editor.h_scroll = col;
-            } else if col >= self.editor.h_scroll + avail {
-                self.editor.h_scroll = col - avail + 1;
+            if col < self.editor.h_scroll() {
+                self.editor.set_h_scroll(col);
+            } else if col >= self.editor.h_scroll() + avail {
+                self.editor.set_h_scroll(col - avail + 1);
             }
         }
     }
@@ -46,7 +48,7 @@ impl EditorView {
         }
         loop {
             let mut rows_used: usize = 0;
-            for line_idx in self.editor.viewport_scroll..=self.editor.cursor_line {
+            for line_idx in self.editor.viewport_scroll()..=self.editor.cursor_line() {
                 rows_used += self.wrapped_line_rows(line_idx, avail);
                 if rows_used > h {
                     break;
@@ -55,7 +57,7 @@ impl EditorView {
             if rows_used <= h {
                 break;
             }
-            self.editor.viewport_scroll += 1;
+            self.editor.set_viewport_scroll(self.editor.viewport_scroll() + 1);
         }
     }
 
@@ -65,7 +67,7 @@ impl EditorView {
         if line.is_empty() {
             return 1;
         }
-        let tab_w = self.editor.options.tab_width;
+        let tab_w = self.editor.options().tab_width();
         let mut col: usize = 0;
         let mut rows: usize = 1;
         for ch in line.chars() {
@@ -92,11 +94,11 @@ impl EditorView {
 
     /// Visual column of cursor (accounts for tabs and wide chars).
     pub(super) fn cursor_visual_col(&self) -> usize {
-        let line = self.editor.buf().line(self.editor.cursor_line).unwrap_or_default();
-        let tab_w = self.editor.options.tab_width;
+        let line = self.editor.buf().line(self.editor.cursor_line()).unwrap_or_default();
+        let tab_w = self.editor.options().tab_width();
         let mut col: usize = 0;
         for (i, ch) in line.chars().enumerate() {
-            if i == self.editor.cursor_col {
+            if i == self.editor.cursor_col() {
                 return col;
             }
             col += if ch == '\t' {
@@ -141,44 +143,47 @@ impl EditorView {
     }
 
     pub(super) fn history_prev(&mut self) {
-        let hist = &self.editor.command_history;
-        if hist.is_empty() {
+        if self.editor.command_history().is_empty() {
             return;
         }
-        let idx = match self.editor.history_index {
+        let idx = match self.editor.history_index() {
             None => {
-                self.editor.history_prefix = self.editor.command_buf.clone();
-                hist.len()
+                let buf = self.editor.command_buf().to_string();
+                self.editor.set_history_prefix(buf);
+                self.editor.command_history().len()
             }
             Some(i) => i,
         };
-        let prefix = &self.editor.history_prefix;
+        let prefix = self.editor.history_prefix().to_string();
+        let hist = self.editor.command_history();
         for i in (0..idx).rev() {
-            if hist[i].starts_with(prefix.as_str()) {
-                self.editor.history_index = Some(i);
-                self.editor.command_buf = hist[i].clone();
+            if hist[i].starts_with(&prefix) {
+                let entry = hist[i].clone();
+                self.editor.set_history_index(Some(i));
+                self.editor.set_command_buf(entry);
                 return;
             }
         }
     }
 
     pub(super) fn history_next(&mut self) {
-        let Some(idx) = self.editor.history_index else {
+        let Some(idx) = self.editor.history_index() else {
             return;
         };
-        let hist = &self.editor.command_history;
-        let prefix = &self.editor.history_prefix;
+        let prefix = self.editor.history_prefix().to_string();
+        let hist = self.editor.command_history();
         let found = hist
             .iter()
             .enumerate()
             .skip(idx + 1)
-            .find(|(_, entry)| entry.starts_with(prefix.as_str()));
+            .find(|(_, entry)| entry.starts_with(&prefix))
+            .map(|(i, entry)| (i, entry.clone()));
         if let Some((i, entry)) = found {
-            self.editor.history_index = Some(i);
-            self.editor.command_buf = entry.clone();
+            self.editor.set_history_index(Some(i));
+            self.editor.set_command_buf(entry);
         } else {
-            self.editor.history_index = None;
-            self.editor.command_buf = self.editor.history_prefix.clone();
+            self.editor.set_history_index(None);
+            self.editor.set_command_buf(prefix);
         }
     }
 }

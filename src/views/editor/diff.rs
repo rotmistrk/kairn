@@ -29,7 +29,7 @@ impl EditorView {
         match git_file_content(&self.root_dir, &rel_path, &opts.base) {
             Ok(content) => Some((content, opts.base)),
             Err(e) => {
-                self.editor.status = format!("diff: {e}");
+                self.editor.set_status(format!("diff: {e}"));
                 self.state.mark_dirty();
                 None
             }
@@ -39,7 +39,7 @@ impl EditorView {
     /// Exit diff mode, restore normal editor.
     pub(super) fn exit_diff(&mut self) {
         self.diff_state = None;
-        self.editor.status = String::new();
+        self.editor.set_status(String::new());
         self.state.mark_dirty();
     }
 
@@ -47,8 +47,8 @@ impl EditorView {
     pub(super) fn exit_diff_at_cursor(&mut self) {
         let buf_line = self.diff_state.as_ref().map(|ds| ds.cursor_buf_line()).unwrap_or(0);
         self.exit_diff();
-        self.editor.cursor_line = buf_line;
-        self.editor.cursor_col = 0;
+        self.editor.set_cursor_line(buf_line);
+        self.editor.set_cursor_col(0);
         self.ensure_cursor_visible();
     }
 
@@ -211,11 +211,12 @@ impl EditorView {
             ignore_ws: opts.ignore_ws,
         });
 
-        self.editor.status = if has_changes {
+        let status_msg = if has_changes {
             format!("[DIFF vs {}]", base_ref)
         } else {
             format!("[no changes vs {}]", base_ref)
         };
+        self.editor.set_status(status_msg);
         self.state.mark_dirty();
     }
 }

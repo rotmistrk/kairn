@@ -67,8 +67,8 @@ impl EditorView {
             return HandleResult::Consumed;
         }
         self.toggle_diff(args);
-        if !self.editor.status.is_empty() {
-            let msg = Message::info("editor", self.editor.status.clone());
+        if !self.editor.status().is_empty() {
+            let msg = Message::info("editor", self.editor.status().to_string());
             self.state
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
@@ -108,7 +108,7 @@ impl EditorView {
                 let offset = self
                     .editor
                     .buf()
-                    .line_col_to_offset(self.editor.cursor_line, self.editor.cursor_col)
+                    .line_col_to_offset(self.editor.cursor_line(), self.editor.cursor_col())
                     .unwrap_or(0);
                 self.editor.buf().insert(offset, text);
                 self.last_edit_tick = self.tick_counter;

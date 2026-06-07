@@ -45,7 +45,7 @@ impl EditorView {
     }
 
     fn sbs_gutter_dims(&self, sbs: &super::sbs_model::SbsDiffState) -> (usize, u16) {
-        let show_numbers = self.editor.options.number;
+        let show_numbers = self.editor.options().number();
         if !show_numbers {
             return (0, 0);
         }
@@ -92,15 +92,15 @@ impl EditorView {
     }
 
     fn draw_sbs_prompt(&mut self, w: u16, h: u16) {
-        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
+        if self.editor.mode() == EditorMode::Command || self.editor.mode() == EditorMode::Search {
             let prompt_y = h.saturating_sub(1);
             let prompt_style = palette().style(StyleId::StatusBar);
-            let prefix = if self.editor.mode == EditorMode::Search {
+            let prefix = if self.editor.mode() == EditorMode::Search {
                 "/"
             } else {
                 ":"
             };
-            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
+            let prompt_text = format!("{}{}", prefix, self.editor.command_buf());
             self.state
                 .buffer_mut()
                 .print_line(0, prompt_y, &prompt_text, w, prompt_style);

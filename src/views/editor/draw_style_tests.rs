@@ -5,7 +5,7 @@ use txv_core::prelude::*;
 #[test]
 fn wide_char_positions_correct() {
     let mut view = EditorView::from_text("A✅B");
-    view.editor.options.number = false;
+    view.editor.options_mut().set_number(false);
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
@@ -17,9 +17,9 @@ fn wide_char_positions_correct() {
 #[test]
 fn matchparen_highlights_matching_bracket() {
     let mut view = EditorView::from_text("foo(bar)");
-    view.editor.options.number = false;
-    view.editor.options.matchparen = true;
-    view.editor.cursor_col = 3;
+    view.editor.options_mut().set_number(false);
+    view.editor.options_mut().set_matchparen(true);
+    view.editor.set_cursor_col(3);
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
@@ -52,9 +52,9 @@ fn rainbow_brackets_depth_carries_across_lines() {
 #[test]
 fn rainbow_brackets_colored_on_non_cursor_line() {
     let mut view = EditorView::from_text("hello\nfoo(bar)");
-    view.editor.options.number = false;
-    view.editor.options.rainbow = true;
-    view.editor.cursor_line = 0;
+    view.editor.options_mut().set_number(false);
+    view.editor.options_mut().set_rainbow(true);
+    view.editor.set_cursor_line(0);
     view.set_bounds(Rect::new(0, 0, 20, 2));
     view.draw();
     let buf = view.buffer();
@@ -66,8 +66,8 @@ fn rainbow_brackets_colored_on_non_cursor_line() {
 #[test]
 fn indent_guides_drawn_at_tab_stops() {
     let mut view = EditorView::from_text("        hello");
-    view.editor.options.number = false;
-    view.editor.options.guides = true;
+    view.editor.options_mut().set_number(false);
+    view.editor.options_mut().set_guides(true);
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
@@ -79,9 +79,9 @@ fn indent_guides_on_wrapped_line_appear_on_first_row() {
     // 8 spaces of indent + text long enough to wrap at width 20
     let line = "        abcdefghijklmnopqrstuvwxyz";
     let mut view = EditorView::from_text(line);
-    view.editor.options.number = false;
-    view.editor.options.guides = true;
-    view.editor.options.wrap = true;
+    view.editor.options_mut().set_number(false);
+    view.editor.options_mut().set_guides(true);
+    view.editor.options_mut().set_wrap(true);
     view.set_bounds(Rect::new(0, 0, 20, 3));
     view.draw();
     let buf = view.buffer();
@@ -100,8 +100,8 @@ fn wrap_preserves_all_text_after_resize() {
     let line = "pub(crate) fn complete_theme(sub: &str, visitor: &mut CompletionVisitor<'_>) \
                 -> Result<(), Box<dyn std::error::Error>> {";
     let mut view = EditorView::from_text(line);
-    view.editor.options.number = true;
-    view.editor.options.wrap = true;
+    view.editor.options_mut().set_number(true);
+    view.editor.options_mut().set_wrap(true);
     view.set_bounds(Rect::new(0, 0, 130, 5));
     view.draw();
     // Shrink and verify continuation text is correct

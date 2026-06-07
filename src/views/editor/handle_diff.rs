@@ -11,13 +11,13 @@ use crate::editor::keymap::EditorMode;
 impl EditorView {
     pub(super) fn handle_diff_key(&mut self, key: &KeyEvent) -> HandleResult {
         if key.code() == KeyCode::Char(':') && !key.modifiers().ctrl() {
-            self.editor.mode = EditorMode::Command;
-            self.editor.command_buf.clear();
+            self.editor.set_mode(EditorMode::Command);
+            self.editor.command_buf_mut().clear();
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
-        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
+        if self.editor.mode() == EditorMode::Command || self.editor.mode() == EditorMode::Search {
             let result = self.handle_command_input(key);
             self.state.mark_dirty();
             return result;
@@ -63,8 +63,8 @@ impl EditorView {
                     .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
             KeyCode::Char('/') => {
-                self.editor.mode = EditorMode::Search;
-                self.editor.command_buf.clear();
+                self.editor.set_mode(EditorMode::Search);
+                self.editor.command_buf_mut().clear();
             }
             _ => {}
         }
@@ -123,13 +123,13 @@ impl EditorView {
 
     pub(super) fn handle_sbs_key(&mut self, key: &KeyEvent) -> HandleResult {
         if key.code() == KeyCode::Char(':') && !key.modifiers().ctrl() {
-            self.editor.mode = EditorMode::Command;
-            self.editor.command_buf.clear();
+            self.editor.set_mode(EditorMode::Command);
+            self.editor.command_buf_mut().clear();
             self.state.mark_dirty();
             return HandleResult::Consumed;
         }
 
-        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
+        if self.editor.mode() == EditorMode::Command || self.editor.mode() == EditorMode::Search {
             let result = self.handle_command_input(key);
             self.state.mark_dirty();
             return result;
@@ -149,8 +149,8 @@ impl EditorView {
                     .put_command(CM_MODE_CHANGED, Some(Box::new("NOR".to_string())));
             }
             KeyCode::Char('/') => {
-                self.editor.mode = EditorMode::Search;
-                self.editor.command_buf.clear();
+                self.editor.set_mode(EditorMode::Search);
+                self.editor.command_buf_mut().clear();
                 self.state.mark_dirty();
             }
             KeyCode::Char('j') | KeyCode::Down => self.sbs_scroll(1),

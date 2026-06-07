@@ -38,7 +38,7 @@ impl EditorView {
         let max_base = self.max_base_line(ds);
         let max_buf = self.editor.buf().line_count();
         let dw = digit_width(max_base.max(max_buf));
-        let gutter_w = if self.editor.options.number {
+        let gutter_w = if self.editor.options().number() {
             (dw * 2 + 2) as u16
         } else {
             0
@@ -144,15 +144,15 @@ impl EditorView {
     }
 
     fn draw_diff_prompt(&mut self, w: u16, h: u16) {
-        if self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search {
+        if self.editor.mode() == EditorMode::Command || self.editor.mode() == EditorMode::Search {
             let prompt_y = h.saturating_sub(1);
             let prompt_style = palette().style(StyleId::StatusBar);
-            let prefix = if self.editor.mode == EditorMode::Search {
+            let prefix = if self.editor.mode() == EditorMode::Search {
                 "/"
             } else {
                 ":"
             };
-            let prompt_text = format!("{}{}", prefix, self.editor.command_buf);
+            let prompt_text = format!("{}{}", prefix, self.editor.command_buf());
             self.state
                 .buffer_mut()
                 .print_line(0, prompt_y, &prompt_text, w, prompt_style);

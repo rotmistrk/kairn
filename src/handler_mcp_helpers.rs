@@ -65,7 +65,7 @@ pub(crate) fn mcp_highlight_code(
             .iter()
             .map(|&(s, e)| EphemeralRange::line_range(s.saturating_sub(1) as usize, e.saturating_sub(1) as usize))
             .collect();
-        ev.editor_mut().ephemeral.set(eph, HighlightOwner::Transient);
+        ev.editor_mut().ephemeral_mut().set(eph, HighlightOwner::Transient);
         if let Some(&(start, _)) = ranges.first() {
             ev.goto(start.saturating_sub(1), 0);
         }

@@ -124,7 +124,7 @@ fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
     let Some(editor) = editor else {
         return String::new();
     };
-    let line = editor.editor.cursor_line;
+    let line = editor.editor.cursor_line();
     for i in (0..=line).rev() {
         let text = editor.editor.buf().line(i).unwrap_or_default();
         if let Some(name) = extract_test_fn_name(&text) {

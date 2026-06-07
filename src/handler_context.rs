@@ -73,7 +73,11 @@ fn collect_editor_context(
         return (selection_text, current_line_text);
     };
     fill_from_editor(editor, state, vc);
-    current_line_text = editor.editor.buf().line(editor.editor.cursor_line).unwrap_or_default();
+    current_line_text = editor
+        .editor
+        .buf()
+        .line(editor.editor.cursor_line())
+        .unwrap_or_default();
     if let Some((start, end)) = editor.editor.visual_range() {
         let content = editor.editor.buf().content();
         if end <= content.len() {
@@ -107,10 +111,10 @@ fn collect_split_state(
 
 fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext) {
     let e = &editor.editor;
-    vc.line = e.cursor_line as u32 + 1;
-    vc.col = e.cursor_col as u32 + 1;
+    vc.line = e.cursor_line() as u32 + 1;
+    vc.col = e.cursor_col() as u32 + 1;
     vc.total_lines = e.buf().line_count() as u32;
-    vc.mode = e.keymap.mode_label(e.mode).to_string();
+    vc.mode = e.keymap().mode_label(e.mode()).to_string();
     vc.modified = e.buf().is_dirty();
     vc.language = editor.language().to_string();
     vc.file = Some(
@@ -122,7 +126,7 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
             .into_owned(),
     );
     if matches!(
-        e.mode,
+        e.mode(),
         crate::editor::keymap::EditorMode::Visual | crate::editor::keymap::EditorMode::VisualLine
     ) {
         if let Some((start, end)) = e.visual_range() {

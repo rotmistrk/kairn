@@ -16,7 +16,7 @@ impl EditorView {
         };
         let style = app_palette().editor().gutter();
         let h = self.state.buffer_mut().height();
-        let scroll = self.editor.viewport_scroll;
+        let scroll = self.editor.viewport_scroll();
         let max_row = self.blame_max_row(h);
 
         let lines_to_draw = Self::collect_blame_lines(&guard, scroll, max_row);
@@ -28,7 +28,7 @@ impl EditorView {
     }
 
     fn blame_max_row(&self, h: u16) -> u16 {
-        let prompt_active = self.editor.mode == EditorMode::Command || self.editor.mode == EditorMode::Search;
+        let prompt_active = self.editor.mode() == EditorMode::Command || self.editor.mode() == EditorMode::Search;
         if prompt_active {
             h.saturating_sub(1)
         } else {
