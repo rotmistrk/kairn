@@ -106,15 +106,21 @@ impl EditorView {
         view
     }
 
-    fn build(editor: Editor, path: &Path, settings: &EditorSettings) -> Self {
-        let mut file_ext = highlight::extension_from_path(path).to_string();
-        if file_ext.is_empty() {
-            if let Some(first_line) = editor.buf().line(0) {
-                if let Some(ext) = highlight::extension_from_shebang(&first_line) {
-                    file_ext = ext.to_string();
-                }
-            }
+    fn detect_extension(editor: &Editor, path: &Path) -> String {
+        let ext = highlight::extension_from_path(path).to_string();
+        if !ext.is_empty() {
+            return ext;
         }
+        editor
+            .buf()
+            .line(0)
+            .and_then(|line| highlight::extension_from_shebang(&line))
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    fn build(editor: Editor, path: &Path, settings: &EditorSettings) -> Self {
+        let file_ext = Self::detect_extension(&editor, path);
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
         let display_title = path
             .file_name()
@@ -148,7 +154,7 @@ impl EditorView {
     }
 
     fn build_with_theme(editor: Editor, path: &Path, settings: &EditorSettings, syntax_theme: &str) -> Self {
-        let file_ext = highlight::extension_from_path(path).to_string();
+        let file_ext = Self::detect_extension(&editor, path);
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
         let display_title = path
             .file_name()
@@ -188,5 +194,71 @@ impl EditorView {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor_settings::EditorSettings;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn shebang_bash_sets_sh_extension() {
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "#!/bin/bash").unwrap();
+        writeln!(f, "echo hello").unwrap();
+        f.flush().unwrap();
+
+        // Rename to extensionless path
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("my-script");
+        std::fs::copy(f.path(), &target).unwrap();
+
+        let settings = EditorSettings::default();
+        let view = EditorView::open(&target, &settings).unwrap();
+        assert_eq!(view.file_ext, "sh", "shebang #!/bin/bash should detect as sh");
+    }
+
+    #[test]
+    fn syntect_finds_sh_syntax() {
+        use syntect::parsing::SyntaxSet;
+        let ss = SyntaxSet::load_defaults_newlines();
+        let by_ext = ss.find_syntax_by_extension("sh");
+        assert!(by_ext.is_some(), "syntect should find 'sh' by extension");
+    }
+
+    #[test]
+    fn shebang_file_produces_highlighted_spans() {
+        use txv_core::prelude::*;
+
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "#!/bin/bash").unwrap();
+        writeln!(f, "echo hello").unwrap();
+        writeln!(f, "if [ -f /tmp/x ]; then").unwrap();
+        writeln!(f, "  rm /tmp/x").unwrap();
+        writeln!(f, "fi").unwrap();
+        f.flush().unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("pre-commit");
+        std::fs::copy(f.path(), &target).unwrap();
+
+        let settings = EditorSettings::default();
+        let mut view = EditorView::open(&target, &settings).unwrap();
+        view.set_bounds(Rect::new(0, 0, 80, 24));
+        view.draw();
+
+        // Check that the highlight cache produced non-trivial spans
+        let spans = view.compute_viewport_spans(0, 5);
+        assert!(!spans.is_empty(), "should have spans");
+        // At least one span should have non-default fg (colored)
+        let has_color = spans.iter().flatten().any(|s| s.style().fg() != Style::default().fg());
+        assert!(
+            has_color,
+            "shebang file should have syntax coloring, ext={}",
+            view.file_ext
+        );
     }
 }
