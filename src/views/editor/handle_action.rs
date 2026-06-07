@@ -156,6 +156,7 @@ impl EditorView {
     }
 
     fn action_builtin_format(&mut self, _args: &str) {
+        use crate::format_yaml::format_yaml;
         use crate::structured::json_doc::JsonDoc;
         use crate::structured::StructuredDoc;
         use txv_core::message::Message;
@@ -171,6 +172,7 @@ impl EditorView {
                     JsonDoc::parse_jsonc(&content).map(|doc| doc.serialize())
                 }
             }
+            "yaml" | "yml" => format_yaml(&content),
             _ => {
                 let msg = Message::info("fmt", format!("No built-in formatter for .{ext}"));
                 self.state

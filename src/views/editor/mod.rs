@@ -24,6 +24,7 @@ mod handle_tick;
 mod handle_viewport;
 mod methods;
 pub mod sbs_model;
+pub(super) mod sticky_scroll;
 
 use std::path::PathBuf;
 

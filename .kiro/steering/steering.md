@@ -98,6 +98,39 @@ describing its single responsibility, you're splitting wrong.
 
 ---
 
+## Function/Param/Struct Limits — Structural Isolation
+
+These limits exist to prevent the **coupling death spiral** — where a change to one
+component cascades through everything that touches it, which touches more things,
+ad infinitum. At project scale, this is the difference between "fix one function"
+and "rewrite half the codebase."
+
+**Hard limits (enforced by pre-commit mcp-lint):**
+- **40 code lines per function** — forces single-responsibility extraction
+- **7 parameters per function** — forces context structs (RowContext, DrawParams)
+- **1 struct per file** — forces clear module boundaries
+- **No `unwrap()` in non-test code** — forces explicit error handling
+- **No deep paths** (`std::io::stdout()`) — forces `use` imports
+- **No bare `pub` fields** — use `pub(crate)` + accessors
+
+**The correct response to exceeding a limit:**
+
+| Violation | Wrong fix | Right fix |
+|-----------|-----------|-----------|
+| Function too long | Compress formatting | Extract a named helper with clear responsibility |
+| Too many params | Allow attribute | Bundle related params into a context struct |
+| File has 2 structs | Inline one | Move one to its own module file |
+| Deep path | — | Add a `use` import |
+
+**Write compliant from the start:** Before writing a function, estimate its length.
+If it will exceed 40 lines, design the extraction points *first*. Don't write 60 lines
+then figure out where to cut.
+
+**Run pre-commit early:** After the first major block of changes, not at the very end.
+Fixing 2 violations is trivial; fixing 15 at once leads to cascading refactors.
+
+---
+
 ## Architecture: TXV Framework
 
 kairn is built on TXV — a Turbo Vision-inspired TUI framework split into crates:

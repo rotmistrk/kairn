@@ -205,6 +205,7 @@ fn help_commands_core() -> &'static str {
   messages        Show messages window
   grep <pattern>  Search files for pattern
   grep -a <pat>   Search all workspace roots
+  replace /p/r/   Find & replace across project (confirm each)
   add-root <path> Add workspace root directory
   remove-root <p> Remove workspace root
 

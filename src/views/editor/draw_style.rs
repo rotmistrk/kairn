@@ -187,6 +187,17 @@ pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: 
 }
 
 impl super::EditorView {
+    pub(super) fn ephemeral_fill(&self, line_idx: usize, p: &super::draw::DrawParams) -> Style {
+        if self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
+            Style {
+                bg: p.ephemeral_bg,
+                ..Style::default()
+            }
+        } else {
+            Style::default()
+        }
+    }
+
     /// Paint highlight on a word (gs target), accounting for wrapped lines.
     pub(super) fn paint_highlight_word(&mut self, hl_line: usize, col_start: usize, col_end: usize, scroll: usize) {
         if hl_line < scroll {

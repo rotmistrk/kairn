@@ -4,6 +4,7 @@ use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 use super::draw_style::{bracket_depth_at_line, draw_indent_guides, rainbow_brackets_with_depth};
+use super::sticky_scroll;
 use super::EditorView;
 use crate::app_palette::app_palette;
 use crate::editor::motions::match_bracket;
@@ -52,7 +53,15 @@ impl EditorView {
         let viewport_end = (params.scroll + h as usize).min(total_lines);
         let viewport_spans = self.compute_viewport_spans(params.scroll, viewport_end);
 
-        let mut row: usize = 0;
+        let sticky_lines = sticky_scroll::compute_sticky_lines(&self.editor, params.scroll);
+        let sticky_h = sticky_lines.len() as u16;
+
+        // Draw sticky headers at top
+        for (i, sl) in sticky_lines.iter().enumerate() {
+            sticky_scroll::draw_sticky(self.state.buffer_mut(), sl, i as u16, w);
+        }
+
+        let mut row: usize = sticky_h as usize;
         let mut line_idx = params.scroll;
 
         while row < h as usize && line_idx < viewport_end {
@@ -159,17 +168,6 @@ impl EditorView {
         self.draw_line_tail(&line, col_offset, (visual_row, row), p, text_x, fill);
         self.draw_line_cursor(line_idx, row, p, text_x);
         visual_row
-    }
-
-    fn ephemeral_fill(&self, line_idx: usize, p: &DrawParams) -> Style {
-        if self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
-            Style {
-                bg: p.ephemeral_bg,
-                ..Style::default()
-            }
-        } else {
-            Style::default()
-        }
     }
 
     /// Compute visual byte range for a line, handling block mode per-line.

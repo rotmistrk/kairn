@@ -85,6 +85,11 @@ pub(crate) fn cmd_grep(ctx: &mut CommandContext, state: &mut AppState, arg: &str
     }
 }
 
+pub(crate) fn cmd_replace(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    use crate::handler_replace;
+    handler_replace::cmd_replace(ctx, state, arg);
+}
+
 pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop) {
         if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
@@ -266,7 +271,7 @@ pub(crate) fn cmd_welcome(ctx: &mut CommandContext, state: &mut AppState, _arg: 
     }
 }
 
-fn push_status(ctx: &mut CommandContext, msg: Message) {
+pub(crate) fn push_status(ctx: &mut CommandContext, msg: Message) {
     ctx.sink
         .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }

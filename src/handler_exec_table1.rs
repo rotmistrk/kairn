@@ -94,6 +94,11 @@ pub static TABLE_PART1: &[ExecEntry] = &[
         handler: crate::handler_exec_edit::cmd_grep,
     },
     ExecEntry {
+        names: &["replace", "sed"],
+        requires_arg: true,
+        handler: crate::handler_exec_edit::cmd_replace,
+    },
+    ExecEntry {
         names: &["grow"],
         requires_arg: false,
         handler: crate::handler_exec_nav::cmd_grow,
