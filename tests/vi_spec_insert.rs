@@ -50,10 +50,7 @@ use kairn::editor::keymap_vim::VimKeymap;
 use txv_core::event::{KeyCode, KeyEvent, KeyMod};
 
 fn key(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod::default(),
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::default())
 }
 
 #[test]

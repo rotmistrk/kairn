@@ -9,9 +9,9 @@ fn wide_char_positions_correct() {
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
-    assert_eq!(buf.cell(0, 0).ch, 'A');
-    assert_eq!(buf.cell(1, 0).ch, '✅');
-    assert_eq!(buf.cell(3, 0).ch, 'B');
+    assert_eq!(buf.cell(0, 0).ch(), 'A');
+    assert_eq!(buf.cell(1, 0).ch(), '✅');
+    assert_eq!(buf.cell(3, 0).ch(), 'B');
 }
 
 #[test]
@@ -24,8 +24,8 @@ fn matchparen_highlights_matching_bracket() {
     view.draw();
     let buf = view.buffer();
     let cell = buf.cell(7, 0);
-    assert_eq!(cell.ch, ')');
-    assert!(cell.style.attrs.bold, "matching paren should be bold");
+    assert_eq!(cell.ch(), ')');
+    assert!(cell.style().attrs().bold_val(), "matching paren should be bold");
 }
 
 #[test]
@@ -59,8 +59,8 @@ fn rainbow_brackets_colored_on_non_cursor_line() {
     view.draw();
     let buf = view.buffer();
     let cell = buf.cell(3, 1);
-    assert_eq!(cell.ch, '(');
-    assert_ne!(cell.style.fg, Color::Reset);
+    assert_eq!(cell.ch(), '(');
+    assert_ne!(cell.style().fg(), Color::Reset);
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn indent_guides_drawn_at_tab_stops() {
     view.set_bounds(Rect::new(0, 0, 20, 1));
     view.draw();
     let buf = view.buffer();
-    assert_eq!(buf.cell(4, 0).ch, '\u{250A}');
+    assert_eq!(buf.cell(4, 0).ch(), '\u{250A}');
 }
 
 #[test]
@@ -86,9 +86,9 @@ fn indent_guides_on_wrapped_line_appear_on_first_row() {
     view.draw();
     let buf = view.buffer();
     // Indent guide should appear on the FIRST row (row 0) at tab stop col 4
-    assert_eq!(buf.cell(4, 0).ch, '\u{250A}', "indent guide should be on first row");
+    assert_eq!(buf.cell(4, 0).ch(), '\u{250A}', "indent guide should be on first row");
     // Continuation row (row 1) should NOT have the indent guide overwriting text
-    let cont_ch = buf.cell(4, 1).ch;
+    let cont_ch = buf.cell(4, 1).ch();
     assert_ne!(
         cont_ch, '\u{250A}',
         "indent guide should NOT appear on continuation row, got char at (4,1): {cont_ch}"
@@ -108,7 +108,7 @@ fn wrap_preserves_all_text_after_resize() {
     view.set_bounds(Rect::new(0, 0, 80, 5));
     view.draw();
     let buf = view.buffer();
-    let row2: String = (0..80u16).map(|x| buf.cell(x, 1).ch).collect();
+    let row2: String = (0..80u16).map(|x| buf.cell(x, 1).ch()).collect();
     assert!(
         row2.contains("Error>>"),
         "continuation row should contain 'Error>>', got: {row2}"

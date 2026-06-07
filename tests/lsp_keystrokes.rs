@@ -13,11 +13,7 @@ fn setup_editor(h: &mut TestHarness) {
 }
 
 fn ctrl() -> KeyMod {
-    KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    }
+    KeyMod::CTRL
 }
 
 fn none() -> KeyMod {

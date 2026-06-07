@@ -6,22 +6,10 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn ctrl(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::CTRL)
 }
 fn alt(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            alt: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::ALT)
 }
 
 fn open_file(h: &mut TestHarness, name: &str) {
@@ -49,7 +37,7 @@ fn open_clipboard_viewer(h: &mut TestHarness) {
 
 fn verify_ring_contains(h: &TestHarness, expected: &str) -> bool {
     if let Ok(ring) = h.state.clipboard_ref().lock() {
-        ring.entries().iter().any(|e| e.text.contains(expected))
+        ring.entries().iter().any(|e| e.text().contains(expected))
     } else {
         false
     }
@@ -110,13 +98,7 @@ fn mx_ctrl_c_appears_in_ring() {
     // Select all: Home + Shift+End
     h.inject_key(KeyCode::Home, KeyMod::default());
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::End,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::End, KeyMod::SHIFT);
     h.run_cycles(3);
     // Copy
     h.inject_key(ctrl('c').0, ctrl('c').1);
@@ -165,13 +147,7 @@ fn mx_copy_paste_to_editor() {
     h.run_cycles(3);
     h.inject_key(KeyCode::Home, KeyMod::default());
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::End,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::End, KeyMod::SHIFT);
     h.run_cycles(3);
     h.inject_key(ctrl('c').0, ctrl('c').1);
     h.run_cycles(3);

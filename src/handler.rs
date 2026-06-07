@@ -58,10 +58,10 @@ pub fn handle_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn intercept_status_message(ctx: &mut CommandContext, state: &mut AppState) -> bool {
-    if ctx.command != txv_widgets::CM_STATUS_MESSAGE {
+    if ctx.command() != txv_widgets::CM_STATUS_MESSAGE {
         return false;
     }
-    if let Some(boxed) = ctx.data.as_ref() {
+    if let Some(boxed) = ctx.data().as_ref() {
         if let Some(msg) = boxed.downcast_ref::<Message>() {
             if let Ok(mut ring) = state.messages.lock() {
                 ring.push(msg.clone());
@@ -75,7 +75,10 @@ fn intercept_status_message(ctx: &mut CommandContext, state: &mut AppState) -> b
 
 fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
     handle_lsp_command(ctx, state);
-    poll_lsp(state, ctx.sink);
+    {
+        let sink = ctx.sink().clone();
+        poll_lsp(state, &sink);
+    }
     drain_grep(ctx, state);
     drain_build(ctx, state);
     drain_mcp(ctx, state);
@@ -89,7 +92,7 @@ fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
 fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
     state.mcp.tick = state.mcp.tick.wrapping_add(1);
     if state.mcp.snapshot.is_some() && state.mcp.tick.is_multiple_of(20) {
-        if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
             let mut snap = collect_snapshot(desktop);
             snap.terminals = collect_terminal_content(desktop);
             snap.messages = collect_messages(&state.messages);
@@ -114,7 +117,7 @@ fn dispatch_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
-    match ctx.command {
+    match ctx.command() {
         CM_TICK => handle_tick(ctx, state),
         CM_APP_QUIT => handle_app_quit(ctx, state),
         CM_TW_TAB_CLOSE | CM_TAB_CLOSE => handle_tab_close(ctx, state),
@@ -156,12 +159,12 @@ fn handle_tick(ctx: &mut CommandContext, state: &mut AppState) {
         handle_show_messages(ctx, state);
     }
     broadcast_context(ctx, state);
-    update_window_title(state, ctx.sink);
+    update_window_title(state, ctx.sink());
 }
 
 fn handle_suspend(ctx: &mut CommandContext) {
     if let Err(e) = suspend_to_shell() {
-        ctx.sink.push_command(
+        ctx.sink().push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::error("suspend", e))),
         );
@@ -169,7 +172,7 @@ fn handle_suspend(ctx: &mut CommandContext) {
 }
 
 fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
-    match ctx.command {
+    match ctx.command() {
         CM_SPLIT => handle_split(ctx, state),
         CM_SPLIT_CLOSE => handle_split_close(ctx, state),
         CM_OPEN_IN_SPLIT => handle_open_in_split(ctx, state),
@@ -201,16 +204,18 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_show_help(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
             let help = HelpView::new();
-            try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Help".into(), Box::new(help));
+            try_insert_tab(desktop, state, &sink, SlotId::Center, "Help".into(), Box::new(help));
         }
     }
 }
 
 fn handle_show_messages(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         if focus_tab_by_title(desktop, SlotId::Tools, "Messages") {
             desktop.focus_panel(SlotId::Tools as usize);
         } else {
@@ -218,7 +223,7 @@ fn handle_show_messages(ctx: &mut CommandContext, state: &mut AppState) {
             try_insert_tab(
                 desktop,
                 state,
-                ctx.sink,
+                &sink,
                 SlotId::Tools,
                 "Messages".into(),
                 Box::new(messages),
@@ -229,11 +234,12 @@ fn handle_show_messages(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_new_shell(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     let term = new_shell_terminal();
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let name = next_tab_name(desktop, SlotId::Tools, "Shell");
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
-        ctx.sink.push_command(
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
+        sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("shell", format!("Started: {name}")))),
         );

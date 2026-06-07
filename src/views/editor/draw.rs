@@ -111,13 +111,13 @@ impl EditorView {
             gutter_style: app.editor().gutter(),
             cursor_style: app.editor().cursor(),
             hl_match_style: app.editor().highlight_match(),
-            hl_other_bg: app.editor().highlight_other().bg,
+            hl_other_bg: app.editor().highlight_other().bg(),
             visual_bg: if self.state.is_focused() {
-                pal.style(StyleId::VisualSelection).bg
+                pal.style(StyleId::VisualSelection).bg()
             } else {
-                pal.style(StyleId::CursorUnfocused).bg
+                pal.style(StyleId::CursorUnfocused).bg()
             },
-            ephemeral_bg: app.editor().highlight_other().bg,
+            ephemeral_bg: app.editor().highlight_other().bg(),
             scroll,
             avail: w.saturating_sub(gutter_w) as usize,
             wrap,
@@ -252,7 +252,7 @@ impl EditorView {
         if cursor_vrow < p.h as usize && cursor_vcol >= p.h_off && screen_col < p.avail {
             let cx = text_x + screen_col as u16;
             let cy = cursor_vrow as u16;
-            let under = self.state.buffer_mut().cell(cx, cy).ch;
+            let under = self.state.buffer_mut().cell(cx, cy).ch();
             self.state.buffer_mut().put(cx, cy, under, p.cursor_style);
         }
     }

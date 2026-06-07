@@ -9,10 +9,13 @@ use crate::views::editor::EditorView;
 
 /// Handle CM_EDITOR_REPLACE_SELECTION — replace visual selection with text.
 pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
-    let Some(text) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) else {
-        return;
+    let text = {
+        let Some(t) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) else {
+            return;
+        };
+        t.clone()
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();
@@ -24,7 +27,7 @@ pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
     };
     if let Some((start, end)) = editor.editor.visual_range() {
         editor.editor.buf().delete(start, end);
-        editor.editor.buf().insert(start, text);
+        editor.editor.buf().insert(start, &text);
         let (l, c) = editor.editor.buf().offset_to_line_col(start + text.len());
         editor.editor.cursor_line = l;
         editor.editor.cursor_col = c;
@@ -36,12 +39,12 @@ pub fn handle_replace_selection(ctx: &mut CommandContext, _state: &AppState) {
 /// Handle CM_EDITOR_DELETE_LINE — delete a specific line.
 pub fn handle_delete_line(ctx: &mut CommandContext, _state: &AppState) {
     let line = ctx
-        .data
+        .data()
         .as_ref()
         .and_then(|d| d.downcast_ref::<Option<u32>>())
         .copied()
         .flatten();
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();
@@ -70,10 +73,13 @@ pub fn handle_delete_line(ctx: &mut CommandContext, _state: &AppState) {
 
 /// Handle CM_EDITOR_REPLACE_WORD — replace word under cursor.
 pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
-    let Some(text) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) else {
-        return;
+    let text = {
+        let Some(t) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) else {
+            return;
+        };
+        t.clone()
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();
@@ -95,7 +101,7 @@ pub fn handle_replace_word(ctx: &mut CommandContext, _state: &AppState) {
     let line_end = editor.editor.buf().line_col_to_offset(editor.editor.cursor_line, end);
     if let (Some(s), Some(e)) = (line_start, line_end) {
         editor.editor.buf().delete(s, e);
-        editor.editor.buf().insert(s, text);
+        editor.editor.buf().insert(s, &text);
         editor.editor.cursor_col = start + text.chars().count();
     }
 }
@@ -106,7 +112,7 @@ fn is_word(c: char) -> bool {
 
 /// Handle CM_EDITOR_SEARCH — set search pattern and highlight matches.
 pub fn handle_search(ctx: &mut CommandContext, _state: &AppState, pattern: &str) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();
@@ -122,7 +128,7 @@ pub fn handle_search(ctx: &mut CommandContext, _state: &AppState, pattern: &str)
 
 /// Handle CM_EDITOR_CLEAR_HIGHLIGHT — clear search highlights.
 pub fn handle_clear_highlight(ctx: &mut CommandContext, _state: &AppState) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();

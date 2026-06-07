@@ -14,21 +14,23 @@ use crate::views::editor::EditorView;
 
 /// Handle CM_APP_QUIT: always confirm before quitting.
 pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let msg = if has_unsaved_buffers(desktop) {
             "Unsaved changes — quit?"
         } else {
             "Quit?"
         };
         state.confirm_context = Some(ConfirmContext::Quit);
-        ctx.sink.push_command(CM_CONFIRM, Some(Box::new(msg.to_string())));
+        sink.push_command(CM_CONFIRM, Some(Box::new(msg.to_string())));
     }
 }
 
 /// Handle CM_TW_TAB_CLOSE / CM_TAB_CLOSE: check can_close, prompt if dirty.
 pub(crate) fn handle_tab_close(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     let (can_close, focused) = {
-        let Some(desktop) = downcast_desktop(ctx.desktop) else {
+        let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
             return;
         };
         let f = desktop.focused_panel();
@@ -41,7 +43,7 @@ pub(crate) fn handle_tab_close(ctx: &mut CommandContext, state: &mut AppState) {
     if can_close != CloseResult::Ok {
         if let Some(path) = active_editor_path(ctx, focused) {
             state.confirm_context = Some(ConfirmContext::EditorClose(path));
-            ctx.sink.push_command(
+            sink.push_command(
                 CM_CONFIRM,
                 Some(Box::new("Save changes? [y]es [n]o [Esc]cancel".to_string())),
             );
@@ -61,7 +63,7 @@ pub(crate) fn handle_tab_close(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn active_editor_path(ctx: &mut CommandContext, panel_id: usize) -> Option<String> {
-    let desktop = downcast_desktop(ctx.desktop)?;
+    let desktop = downcast_desktop(ctx.desktop_mut())?;
     let panel = desktop.panel_mut(panel_id)?;
     let view = panel.active_view_mut()?;
     let any = view.as_any_mut()?;
@@ -70,7 +72,7 @@ fn active_editor_path(ctx: &mut CommandContext, panel_id: usize) -> Option<Strin
 }
 
 fn save_active_if_dirty(ctx: &mut CommandContext, panel_id: usize) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(panel_id) else {
@@ -90,15 +92,15 @@ fn save_active_if_dirty(ctx: &mut CommandContext, panel_id: usize) {
 }
 
 fn close_active_tab(ctx: &mut CommandContext, panel_id: usize) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let title = desktop.panel(panel_id).and_then(|p| p.active_title().map(String::from));
     if let Some(panel) = desktop.panel_mut(panel_id) {
         panel.close_active();
     }
-    ctx.sink
-        .push_command(CM_FILE_CLOSED, title.map(|t| Box::new(t) as Box<dyn Any + Send>));
+    sink.push_command(CM_FILE_CLOSED, title.map(|t| Box::new(t) as Box<dyn Any + Send>));
 }
 
 /// Check if any editor tab in the center panel has unsaved changes.
@@ -116,7 +118,7 @@ pub fn has_unsaved_buffers(desktop: &TiledWorkspace) -> bool {
 
 /// Handle CM_SAVE_ALL: save all dirty editor tabs in the center panel.
 pub(crate) fn handle_save_all(ctx: &mut CommandContext) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     save_all_dirty(desktop);
@@ -149,7 +151,7 @@ pub(crate) fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState)
     use crate::slots::insert_tab;
     use crate::views::welcome::WelcomeView;
 
-    if let Some(boxed) = ctx.data.as_ref() {
+    if let Some(boxed) = ctx.data().as_ref() {
         if let Some(path) = boxed.downcast_ref::<String>() {
             state.broker.close(path);
             state.kiro_registry.remove(path);
@@ -160,7 +162,7 @@ pub(crate) fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState)
             }
         }
     }
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         complete_pending_insert(desktop, state);
         let empty = desktop
             .panel(SlotId::Center as usize)

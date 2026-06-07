@@ -40,10 +40,10 @@ pub(super) fn build_category_nodes(
 ) {
     let app = app_palette();
     let categories = [
-        (FileStatus::Conflict, "Conflicts", app.git().conflict().fg),
-        (FileStatus::Modified, "Modified", app.git().modified().fg),
-        (FileStatus::Added, "Added", app.git().added().fg),
-        (FileStatus::Untracked, "Untracked", app.git().untracked().fg),
+        (FileStatus::Conflict, "Conflicts", app.git().conflict().fg()),
+        (FileStatus::Modified, "Modified", app.git().modified().fg()),
+        (FileStatus::Added, "Added", app.git().added().fg()),
+        (FileStatus::Untracked, "Untracked", app.git().untracked().fg()),
     ];
     let root_str = root.to_string_lossy();
     for (status, name, color) in &categories {

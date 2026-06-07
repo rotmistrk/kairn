@@ -10,11 +10,7 @@ fn none() -> KeyMod {
     KeyMod::default()
 }
 fn ctrl() -> KeyMod {
-    KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    }
+    KeyMod::CTRL
 }
 
 fn open_and_focus(h: &mut TestHarness, dir: &std::path::Path, file: &str) {

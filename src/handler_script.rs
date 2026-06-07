@@ -30,23 +30,23 @@ pub fn dispatch_script_commands(commands: Vec<ScriptCommand>, ctx: &mut CommandC
 
 /// Handle script-related commands (CM_EDITOR_REPLACE_SELECTION, CM_CHAR_INSERTED, etc.)
 pub fn handle_script_command(ctx: &mut CommandContext, state: &mut AppState) {
-    match ctx.command {
+    match ctx.command() {
         CM_EDITOR_REPLACE_SELECTION => handle_replace_selection(ctx, state),
         CM_EDITOR_DELETE_LINE => handle_delete_line(ctx, state),
         CM_EDITOR_REPLACE_WORD => handle_replace_word(ctx, state),
         CM_CHAR_INSERTED => {
-            if let Some(ch) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<char>()) {
+            if let Some(ch) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<char>()) {
                 let ch_str = ch.to_string();
                 fire_hooks_for_event(state, &HookEvent::CharInserted, &ch_str, ctx);
             }
         }
         CM_WORD_COMPLETED => {
-            if let Some(word) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
+            if let Some(word) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
                 fire_hooks_for_event(state, &HookEvent::WordCompleted, &word, ctx);
             }
         }
         CM_EDITOR_SEARCH => {
-            if let Some(pattern) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
+            if let Some(pattern) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
                 handle_search(ctx, state, &pattern);
             }
         }
@@ -61,31 +61,31 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
     match cmd {
         ScriptCommand::OpenFile { path, line, col } => dispatch_open_file(ctx, state, &path, line, col),
         ScriptCommand::Save => dispatch_save(ctx, state),
-        ScriptCommand::SaveAll => ctx.sink.push_command(CM_SAVE_ALL, None),
-        ScriptCommand::Close => ctx.sink.push_command(CM_TAB_CLOSE, None),
+        ScriptCommand::SaveAll => ctx.sink().push_command(CM_SAVE_ALL, None),
+        ScriptCommand::Close => ctx.sink().push_command(CM_TAB_CLOSE, None),
         ScriptCommand::Goto { line, col } => dispatch_goto(ctx, line, col),
-        ScriptCommand::Insert { text } => ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
+        ScriptCommand::Insert { text } => ctx.sink().push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text))),
         ScriptCommand::Undo | ScriptCommand::Redo => {}
         ScriptCommand::ShowMessage { level, origin, text } => dispatch_show_message(ctx, &level, &origin, &text),
         ScriptCommand::StatusFlash { text } => dispatch_status_flash(ctx, text),
         ScriptCommand::FocusSlot { slot } => dispatch_focus_slot(ctx, &slot),
-        ScriptCommand::ViewTheme { mode } => ctx.sink.push_command(CM_TOGGLE_THEME, Some(Box::new(mode))),
-        ScriptCommand::ViewZoom => ctx.sink.push_command(CM_TW_ZOOM, None),
-        ScriptCommand::ViewToggleTree => ctx.sink.push_command(CM_TW_TOGGLE_TREE, None),
-        ScriptCommand::ViewToggleTools => ctx.sink.push_command(CM_TW_TOGGLE_TOOLS, None),
-        ScriptCommand::ViewLayout => ctx.sink.push_command(CM_TW_LAYOUT_CYCLE, None),
-        ScriptCommand::RunBuild { command } => ctx.sink.push_command(CM_BUILD, command.map(|c| Box::new(c) as _)),
-        ScriptCommand::RunTest { command } => ctx.sink.push_command(CM_TEST, command.map(|c| Box::new(c) as _)),
-        ScriptCommand::TestFile => ctx.sink.push_command(CM_TEST_FILE, None),
-        ScriptCommand::TestAtCursor => ctx.sink.push_command(CM_TEST_AT_CURSOR, None),
-        ScriptCommand::NextError => ctx.sink.push_command(CM_NEXT_ERROR, None),
-        ScriptCommand::PrevError => ctx.sink.push_command(CM_PREV_ERROR, None),
+        ScriptCommand::ViewTheme { mode } => ctx.sink().push_command(CM_TOGGLE_THEME, Some(Box::new(mode))),
+        ScriptCommand::ViewZoom => ctx.sink().push_command(CM_TW_ZOOM, None),
+        ScriptCommand::ViewToggleTree => ctx.sink().push_command(CM_TW_TOGGLE_TREE, None),
+        ScriptCommand::ViewToggleTools => ctx.sink().push_command(CM_TW_TOGGLE_TOOLS, None),
+        ScriptCommand::ViewLayout => ctx.sink().push_command(CM_TW_LAYOUT_CYCLE, None),
+        ScriptCommand::RunBuild { command } => ctx.sink().push_command(CM_BUILD, command.map(|c| Box::new(c) as _)),
+        ScriptCommand::RunTest { command } => ctx.sink().push_command(CM_TEST, command.map(|c| Box::new(c) as _)),
+        ScriptCommand::TestFile => ctx.sink().push_command(CM_TEST_FILE, None),
+        ScriptCommand::TestAtCursor => ctx.sink().push_command(CM_TEST_AT_CURSOR, None),
+        ScriptCommand::NextError => ctx.sink().push_command(CM_NEXT_ERROR, None),
+        ScriptCommand::PrevError => ctx.sink().push_command(CM_PREV_ERROR, None),
         ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {}
-        ScriptCommand::LspHover => ctx.sink.push_command(CM_LSP_HOVER, None),
-        ScriptCommand::LspDefinition => ctx.sink.push_command(CM_LSP_GOTO_DEF, None),
-        ScriptCommand::LspReferences => ctx.sink.push_command(CM_LSP_FIND_REFS, None),
-        ScriptCommand::LspRename { new_name } => ctx.sink.push_command(CM_LSP_RENAME, Some(Box::new(new_name))),
-        ScriptCommand::LspFormat => ctx.sink.push_command(CM_LSP_FORMAT, None),
+        ScriptCommand::LspHover => ctx.sink().push_command(CM_LSP_HOVER, None),
+        ScriptCommand::LspDefinition => ctx.sink().push_command(CM_LSP_GOTO_DEF, None),
+        ScriptCommand::LspReferences => ctx.sink().push_command(CM_LSP_FIND_REFS, None),
+        ScriptCommand::LspRename { new_name } => ctx.sink().push_command(CM_LSP_RENAME, Some(Box::new(new_name))),
+        ScriptCommand::LspFormat => ctx.sink().push_command(CM_LSP_FORMAT, None),
         ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {}
         ScriptCommand::ReplaceSelection { .. }
         | ScriptCommand::DeleteLine { .. }
@@ -101,26 +101,27 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
 }
 
 fn dispatch_status_flash(ctx: &mut CommandContext, text: String) {
-    ctx.sink
+    ctx.sink()
         .push_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("tcl", text))));
 }
 
 fn dispatch_editor_edit(cmd: ScriptCommand, ctx: &mut CommandContext) {
+    let sink = ctx.sink().clone();
     match cmd {
         ScriptCommand::ReplaceSelection { text } => {
-            ctx.sink.push_command(CM_EDITOR_REPLACE_SELECTION, Some(Box::new(text)));
+            sink.push_command(CM_EDITOR_REPLACE_SELECTION, Some(Box::new(text)));
         }
-        ScriptCommand::DeleteLine { line } => ctx.sink.push_command(CM_EDITOR_DELETE_LINE, Some(Box::new(line))),
-        ScriptCommand::ReplaceWord { text } => ctx.sink.push_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text))),
-        ScriptCommand::Search { pattern } => ctx.sink.push_command(CM_EDITOR_SEARCH, Some(Box::new(pattern))),
-        ScriptCommand::ClearHighlight => ctx.sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None),
+        ScriptCommand::DeleteLine { line } => sink.push_command(CM_EDITOR_DELETE_LINE, Some(Box::new(line))),
+        ScriptCommand::ReplaceWord { text } => sink.push_command(CM_EDITOR_REPLACE_WORD, Some(Box::new(text))),
+        ScriptCommand::Search { pattern } => sink.push_command(CM_EDITOR_SEARCH, Some(Box::new(pattern))),
+        ScriptCommand::ClearHighlight => sink.push_command(CM_EDITOR_CLEAR_HIGHLIGHT, None),
         ScriptCommand::SetMark { name } => {
-            if let Some(editor) = find_focused_editor(ctx.desktop) {
+            if let Some(editor) = find_focused_editor(ctx.desktop_mut()) {
                 editor.marks.insert(name, (editor.cursor_line, editor.cursor_col));
             }
         }
         ScriptCommand::JumpMark { name } => {
-            if let Some(editor) = find_focused_editor(ctx.desktop) {
+            if let Some(editor) = find_focused_editor(ctx.desktop_mut()) {
                 if let Some(&(line, col)) = editor.marks.get(&name) {
                     let max_line = editor.buf().line_count().saturating_sub(1);
                     editor.cursor_line = line.min(max_line);
@@ -142,11 +143,12 @@ fn find_focused_editor(desktop: &mut dyn txv_core::view::View) -> Option<&mut cr
 }
 
 fn dispatch_open_file(ctx: &mut CommandContext, state: &mut AppState, path: &str, line: Option<u32>, col: Option<u32>) {
-    handle_edit_file(ctx.desktop, ctx.sink, state, path);
+    let sink = ctx.sink().clone();
+    handle_edit_file(ctx.desktop_mut(), &sink, state, path);
     let Some(l) = line else {
         return;
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     desktop.focus_panel(SlotId::Center as usize);
@@ -162,7 +164,8 @@ fn dispatch_open_file(ctx: &mut CommandContext, state: &mut AppState, path: &str
 }
 
 fn dispatch_save(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let slot = desktop.focused_panel();
         let editor = desktop
             .panel_mut(slot)
@@ -172,19 +175,20 @@ fn dispatch_save(ctx: &mut CommandContext, state: &mut AppState) {
         if let Some(editor) = editor {
             if let Err(e) = editor.save() {
                 let msg = Message::error("editor", e);
-                ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
+                sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
         }
     }
-    ctx.sink.push_command(CM_SAVE, None);
-    ctx.sink.push_broadcast(CM_FS_CHANGED, None);
+    sink.push_command(CM_SAVE, None);
+    sink.push_broadcast(CM_FS_CHANGED, None);
     let _ = state;
 }
 
 fn dispatch_goto(ctx: &mut CommandContext, line: u32, col: u32) {
+    let sink = ctx.sink().clone();
     let l = line.saturating_sub(1);
     let c = col.saturating_sub(1);
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = desktop.focused_panel();
@@ -196,7 +200,7 @@ fn dispatch_goto(ctx: &mut CommandContext, line: u32, col: u32) {
     if let Some(editor) = editor {
         editor.goto(l, c);
         let pos = CursorPos::new(l + 1, c + 1);
-        ctx.sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
+        sink.push_command(CM_CURSOR_MOVED, Some(Box::new(pos)));
     }
 }
 
@@ -207,7 +211,7 @@ fn dispatch_show_message(ctx: &mut CommandContext, level: &str, origin: &str, te
         "warn" => Message::warn("tcl", full_text),
         _ => Message::info("tcl", full_text),
     };
-    ctx.sink.push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
+    ctx.sink().push_command(CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }
 
 fn dispatch_focus_slot(ctx: &mut CommandContext, slot: &str) {
@@ -217,5 +221,5 @@ fn dispatch_focus_slot(ctx: &mut CommandContext, slot: &str) {
         "right" => 2usize,
         _ => return,
     };
-    ctx.sink.push_command(CM_TW_FOCUS_PANEL, Some(Box::new(panel_id)));
+    ctx.sink().push_command(CM_TW_FOCUS_PANEL, Some(Box::new(panel_id)));
 }

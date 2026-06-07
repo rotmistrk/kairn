@@ -11,7 +11,8 @@ use crate::views::git_log::GitLogView;
 
 /// Open the git log viewer as a singleton tab in the right panel.
 pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     close_tab_by_title(desktop, SlotId::Tools, "Log");
@@ -34,13 +35,6 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
 
     let shared = log_async(&state.root_dir, branch, filter_path.as_deref());
     let view = GitLogView::new(shared);
-    try_insert_tab(
-        desktop,
-        state,
-        ctx.sink,
-        SlotId::Tools,
-        "Log".to_string(),
-        Box::new(view),
-    );
+    try_insert_tab(desktop, state, &sink, SlotId::Tools, "Log".to_string(), Box::new(view));
     desktop.focus_panel(SlotId::Tools as usize);
 }

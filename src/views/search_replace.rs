@@ -79,7 +79,7 @@ impl SearchReplaceView {
     }
 
     fn ensure_visible(&mut self) {
-        let h = self.state.bounds().h.saturating_sub(1) as usize;
+        let h = self.state.bounds().h().saturating_sub(1) as usize;
         if h == 0 {
             return;
         }
@@ -170,7 +170,7 @@ impl View for SearchReplaceView {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        match key.code {
+        match key.code() {
             KeyCode::Down | KeyCode::Char('j') => {
                 if self.cursor + 1 < self.matches.len() {
                     self.cursor += 1;

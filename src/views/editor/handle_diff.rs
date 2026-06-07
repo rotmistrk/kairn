@@ -10,7 +10,7 @@ use crate::editor::keymap::EditorMode;
 
 impl EditorView {
     pub(super) fn handle_diff_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
+        if key.code() == KeyCode::Char(':') && !key.modifiers().ctrl() {
             self.editor.mode = EditorMode::Command;
             self.editor.command_buf.clear();
             self.state.mark_dirty();
@@ -29,7 +29,7 @@ impl EditorView {
     }
 
     fn dispatch_diff_key(&mut self, key: &KeyEvent) {
-        match key.code {
+        match key.code() {
             KeyCode::Esc => self.exit_diff_with_message(),
             KeyCode::Enter => {
                 self.exit_diff_at_cursor();
@@ -47,11 +47,11 @@ impl EditorView {
             KeyCode::Char('G') => self.diff_move_end(),
             KeyCode::Char('g') => self.diff_move_start(),
             KeyCode::PageDown | KeyCode::Char(' ') => {
-                let h = self.state.bounds().h as i32;
+                let h = self.state.bounds().h() as i32;
                 self.diff_move(h - 1);
             }
             KeyCode::PageUp => {
-                let h = self.state.bounds().h as i32;
+                let h = self.state.bounds().h() as i32;
                 self.diff_move(-(h - 1));
             }
             KeyCode::Char('R') => {
@@ -84,7 +84,7 @@ impl EditorView {
         if let Some(ds) = &mut self.diff_state {
             if let Some(pos) = ds.next_hunk() {
                 ds.cursor = pos;
-                ds.ensure_visible(self.state.bounds().h as usize);
+                ds.ensure_visible(self.state.bounds().h() as usize);
             }
         }
     }
@@ -93,7 +93,7 @@ impl EditorView {
         if let Some(ds) = &mut self.diff_state {
             if let Some(pos) = ds.prev_hunk() {
                 ds.cursor = pos;
-                ds.ensure_visible(self.state.bounds().h as usize);
+                ds.ensure_visible(self.state.bounds().h() as usize);
             }
         }
     }
@@ -103,26 +103,26 @@ impl EditorView {
             let max = ds.lines.len().saturating_sub(1);
             let new = (ds.cursor as i32 + delta).clamp(0, max as i32) as usize;
             ds.cursor = new;
-            ds.ensure_visible(self.state.bounds().h as usize);
+            ds.ensure_visible(self.state.bounds().h() as usize);
         }
     }
 
     fn diff_move_end(&mut self) {
         if let Some(ds) = &mut self.diff_state {
             ds.cursor = ds.lines.len().saturating_sub(1);
-            ds.ensure_visible(self.state.bounds().h as usize);
+            ds.ensure_visible(self.state.bounds().h() as usize);
         }
     }
 
     fn diff_move_start(&mut self) {
         if let Some(ds) = &mut self.diff_state {
             ds.cursor = 0;
-            ds.ensure_visible(self.state.bounds().h as usize);
+            ds.ensure_visible(self.state.bounds().h() as usize);
         }
     }
 
     pub(super) fn handle_sbs_key(&mut self, key: &KeyEvent) -> HandleResult {
-        if key.code == KeyCode::Char(':') && !key.modifiers.ctrl {
+        if key.code() == KeyCode::Char(':') && !key.modifiers().ctrl() {
             self.editor.mode = EditorMode::Command;
             self.editor.command_buf.clear();
             self.state.mark_dirty();
@@ -141,7 +141,7 @@ impl EditorView {
     }
 
     fn dispatch_sbs_key(&mut self, key: &KeyEvent) {
-        match key.code {
+        match key.code() {
             KeyCode::Esc | KeyCode::Char('q') => {
                 self.sbs_state = None;
                 self.state.mark_dirty();
@@ -166,11 +166,11 @@ impl EditorView {
                 }
             }
             KeyCode::PageDown | KeyCode::Char(' ') => {
-                let h = self.state.bounds().h as i32;
+                let h = self.state.bounds().h() as i32;
                 self.sbs_scroll(h - 1);
             }
             KeyCode::PageUp => {
-                let h = self.state.bounds().h as i32;
+                let h = self.state.bounds().h() as i32;
                 self.sbs_scroll(-(h - 1));
             }
             _ => {}

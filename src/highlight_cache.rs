@@ -3,12 +3,15 @@
 //! On draw, highlights from the nearest cached state before the viewport.
 //! On edit, invalidates caches from the edited line forward.
 
-use syntect::highlighting::{HighlightState, Highlighter as SyntectHighlighter, Theme};
+use syntect::highlighting::{Highlighter as SyntectHighlighter, Theme};
 use syntect::parsing::{ParseState, ScopeStack, SyntaxReference, SyntaxSet};
 
-use txv_core::prelude::{Color, Style};
+#[cfg(test)]
+use txv_core::prelude::Color;
+use txv_core::prelude::Style;
 
-use crate::highlight::{ensure_readable, HlSpan};
+use crate::highlight::HlSpan;
+use crate::highlight_parse::parse_line_styled;
 
 const LINES_PER_SNAPSHOT: usize = 50;
 
@@ -112,68 +115,6 @@ impl HighlightCache {
     }
 }
 
-fn parse_line_styled(
-    parse: &mut ParseState,
-    scope: &mut ScopeStack,
-    line: &str,
-    syntax_set: &SyntaxSet,
-    highlighter: &SyntectHighlighter,
-) -> Vec<HlSpan> {
-    let line_nl = format!("{line}\n");
-    let ops = match parse.parse_line(&line_nl, syntax_set) {
-        Ok(ops) => ops,
-        Err(_) => {
-            return vec![HlSpan {
-                text: line.to_string(),
-                style: Style::default(),
-            }]
-        }
-    };
-
-    let spans = highlight_ops(&ops, &line_nl, scope, highlighter);
-
-    // Apply ops to scope stack for next line.
-    for (_idx, op) in &ops {
-        scope.apply(op).ok();
-    }
-
-    spans
-}
-
-fn highlight_ops(
-    ops: &[(usize, syntect::parsing::ScopeStackOp)],
-    line_nl: &str,
-    scope: &ScopeStack,
-    highlighter: &SyntectHighlighter,
-) -> Vec<HlSpan> {
-    let mut hl_state = HighlightState::new(highlighter, scope.clone());
-    let iter = syntect::highlighting::HighlightIterator::new(&mut hl_state, ops, line_nl, highlighter);
-    let mut spans: Vec<HlSpan> = iter
-        .map(|(style, text)| {
-            let (r, g, b) = ensure_readable(style.foreground.r, style.foreground.g, style.foreground.b);
-            HlSpan {
-                text: text.to_string(),
-                style: Style {
-                    fg: Color::Rgb(r, g, b),
-                    ..Style::default()
-                },
-            }
-        })
-        .collect();
-
-    // Strip the trailing \n we added.
-    if let Some(last) = spans.last_mut() {
-        if last.text.ends_with('\n') {
-            last.text.pop();
-            if last.text.is_empty() {
-                spans.pop();
-            }
-        }
-    }
-
-    spans
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,7 +138,7 @@ mod tests {
         let last_line = &result[3];
         for span in last_line {
             if span.text.contains('}') {
-                let Color::Rgb(r, g, b) = span.style.fg else {
+                let Color::Rgb(r, g, b) = span.style().fg() else {
                     panic!("not rgb")
                 };
                 assert!(
@@ -224,14 +165,15 @@ mod tests {
 
         // Line 1 ("let x = 1;") — "let" should be highlighted as keyword, not comment.
         // Comments and keywords have different colors; verify line 1 != line 0 color.
-        let comment_color = result[0][0].style.fg;
+        let comment_color = result[0][0].style().fg();
         let line1_spans = &result[1];
         let let_span = line1_spans
             .iter()
             .find(|s| s.text.contains("let"))
             .expect("should have 'let'");
         assert_ne!(
-            let_span.style.fg, comment_color,
+            let_span.style().fg(),
+            comment_color,
             "'let' on line after // should not have comment color"
         );
     }
@@ -241,43 +183,27 @@ mod tests {
         let syntax_set = SyntaxSet::load_defaults_newlines();
         let themes = syntect::highlighting::ThemeSet::load_defaults();
         let theme = &themes.themes["base16-eighties.dark"];
-
-        // Build 110 lines: normal code, then a multiline string starting at line 45
-        // that spans past line 60 (into snapshot[1] territory).
-        let mut lines: Vec<String> = Vec::with_capacity(110);
-        for i in 0..45 {
-            lines.push(format!("let x{i} = {i};"));
-        }
-        // Line 45: start a multiline string (raw string in Rust)
-        lines.push("let s = r#\"".to_string());
-        for i in 46..70 {
-            lines.push(format!("  string content line {i}"));
-        }
-        lines.push("\"#;".to_string()); // line 70: close the string
-        for i in 71..110 {
-            lines.push(format!("let y{i} = {i};"));
-        }
+        let lines = make_multiline_string_fixture();
 
         let mut cache = HighlightCache::new("rs");
-        // First pass: build all snapshots by highlighting 0..110
         cache.highlight_viewport(0, 110, 110, |i| lines[i].clone(), &syntax_set, theme);
-        assert!(cache.snapshots.len() >= 2, "should have at least 2 snapshots");
+        assert!(cache.snapshots.len() >= 2);
 
-        // Now request only viewport starting at line 60 (inside the multiline string).
-        // This must use the correct snapshot (snapshot[1] at line 50) which has the
-        // string parse state, not snapshot[0] (line 0) which would lose the context.
         let result = cache.highlight_viewport(60, 65, 110, |i| lines[i].clone(), &syntax_set, theme);
         assert_eq!(result.len(), 5);
+        // Line 60 is inside the raw string — should have non-default color.
+        let has_string_color = result[0].iter().any(|s| s.style().fg() != Style::default().fg());
+        assert!(has_string_color, "line 60 should have string color");
+    }
 
-        // Line 60 is inside the raw string — it should have string color (not default).
-        let line60_spans = &result[0];
-        let default_style = Style::default();
-        let has_string_color = line60_spans.iter().any(|s| s.style.fg != default_style.fg);
-        assert!(
-            has_string_color,
-            "line 60 (inside multiline string) should have non-default color, got: {:?}",
-            line60_spans.iter().map(|s| (&s.text, s.style.fg)).collect::<Vec<_>>()
-        );
+    fn make_multiline_string_fixture() -> Vec<String> {
+        let mut lines: Vec<String> = Vec::with_capacity(110);
+        (0..45).for_each(|i| lines.push(format!("let x{i} = {i};")));
+        lines.push("let s = r#\"".to_string());
+        (46..70).for_each(|i| lines.push(format!("  string content line {i}")));
+        lines.push("\"#;".to_string());
+        (71..110).for_each(|i| lines.push(format!("let y{i} = {i};")));
+        lines
     }
 
     #[test]

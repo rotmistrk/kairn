@@ -9,10 +9,7 @@ use txv_core::prelude::View;
 use txv_widgets::input_line::InputLine;
 
 fn key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod::default(),
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::default()))
 }
 
 #[test]
@@ -21,18 +18,15 @@ fn cursor_not_on_right_overflow_position() {
     input.set_text("abcdefghij");
     input.set_bounds(Rect::new(0, 0, 5, 1));
     input.select();
-    input.handle(&Event::Key(KeyEvent {
-        code: KeyCode::Home,
-        modifiers: KeyMod::default(),
-    }));
+    input.handle(&Event::Key(KeyEvent::new(KeyCode::Home, KeyMod::default())));
     for _ in 0..4 {
         input.handle(&key(KeyCode::Right));
     }
     let cr = input.cursor().expect("cursor request");
     assert!(
-        cr.x < 4,
+        cr.x() < 4,
         "cursor should not be on the right-overflow position, got x={}",
-        cr.x
+        cr.x()
     );
 }
 
@@ -42,17 +36,14 @@ fn cursor_not_on_left_overflow_position() {
     input.set_text("abcdef");
     input.set_bounds(Rect::new(0, 0, 2, 1));
     input.select();
-    input.handle(&Event::Key(KeyEvent {
-        code: KeyCode::End,
-        modifiers: KeyMod::default(),
-    }));
+    input.handle(&Event::Key(KeyEvent::new(KeyCode::End, KeyMod::default())));
     for _ in 0..4 {
         input.handle(&key(KeyCode::Left));
     }
     let cr = input.cursor().expect("cursor request");
     assert!(
-        cr.x > 0,
+        cr.x() > 0,
         "cursor should not be on the left-overflow position, got x={}",
-        cr.x
+        cr.x()
     );
 }

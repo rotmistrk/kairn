@@ -9,13 +9,13 @@ use super::model::{self, Completion, TodoItem};
 /// Process todo-specific keys. Returns true if consumed.
 pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -> Option<HandleAction> {
     let id = data.visible_id(cursor);
-    match key.code {
-        KeyCode::Up if key.modifiers.shift => handle_shift_move(data, id, model::swap_up),
-        KeyCode::Down if key.modifiers.shift => handle_shift_move(data, id, model::swap_down),
-        KeyCode::Left if key.modifiers.shift => handle_shift_move(data, id, model::promote),
-        KeyCode::Right if key.modifiers.shift => handle_shift_move(data, id, model::demote),
-        KeyCode::Char('c') if key.modifiers.ctrl => handle_copy(data, id),
-        KeyCode::Char('v') if key.modifiers.ctrl => handle_paste(data, id, cursor),
+    match key.code() {
+        KeyCode::Up if key.modifiers().shift() => handle_shift_move(data, id, model::swap_up),
+        KeyCode::Down if key.modifiers().shift() => handle_shift_move(data, id, model::swap_down),
+        KeyCode::Left if key.modifiers().shift() => handle_shift_move(data, id, model::promote),
+        KeyCode::Right if key.modifiers().shift() => handle_shift_move(data, id, model::demote),
+        KeyCode::Char('c') if key.modifiers().ctrl() => handle_copy(data, id),
+        KeyCode::Char('v') if key.modifiers().ctrl() => handle_paste(data, id, cursor),
         KeyCode::Char(' ') => handle_toggle_complete(data, id),
         KeyCode::Char('!') => handle_set_priority_5(data, id),
         KeyCode::Char('n') => handle_new_sibling(data, id, cursor),
@@ -24,13 +24,13 @@ pub fn handle_todo_key(key: &KeyEvent, data: &mut TodoTreeData, cursor: usize) -
         KeyCode::Char('S') => handle_sort(data, id),
         KeyCode::Char('c') => handle_clone(data, id, cursor),
         KeyCode::Char('/') => Some(HandleAction::EnterFilter),
-        KeyCode::Char('l') if key.modifiers.ctrl => handle_crypto(data, id),
+        KeyCode::Char('l') if key.modifiers().ctrl() => handle_crypto(data, id),
         KeyCode::Char('J') => handle_shift_move(data, id, model::swap_down),
         KeyCode::Char('K') => handle_shift_move(data, id, model::swap_up),
         KeyCode::Char('H') => handle_shift_move(data, id, model::promote),
         KeyCode::Char('L') => handle_shift_move(data, id, model::demote),
         KeyCode::Enter => handle_open_note(data, id),
-        KeyCode::Right if !key.modifiers.shift => handle_right_expand_or_note(data, id),
+        KeyCode::Right if !key.modifiers().shift() => handle_right_expand_or_note(data, id),
         KeyCode::Char('N') => handle_open_note_focus(data, id),
         KeyCode::Char('y') => handle_copy(data, id),
         KeyCode::Char('p') => handle_paste(data, id, cursor),

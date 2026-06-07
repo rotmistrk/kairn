@@ -69,12 +69,7 @@ impl TestHarness {
         use txv_core::program::CommandContext;
         let sink = self.program.sink().clone();
         let desktop = self.program.desktop_mut();
-        let mut ctx = CommandContext {
-            command: id,
-            data: &data,
-            sink: &sink,
-            desktop,
-        };
+        let mut ctx = CommandContext::new(id, &data, &sink, desktop);
         handle_command(&mut ctx, &mut self.state);
     }
 
@@ -122,7 +117,9 @@ pub fn cursor_at(h: &TestHarness) -> Option<(usize, usize)> {
     for y in 1..height.saturating_sub(1) {
         for x in 0..w {
             let cell = buf.cell(x, y);
-            if cell.style.bg == txv_core::cell::Color::Ansi(7) && cell.style.fg == txv_core::cell::Color::Ansi(0) {
+            if cell.style().bg() == txv_core::cell::Color::Ansi(7)
+                && cell.style().fg() == txv_core::cell::Color::Ansi(0)
+            {
                 let editor_x_start = find_editor_x_start(buf, y);
                 if editor_x_start == 0 && x < 25 {
                     continue; // tree cursor
@@ -147,7 +144,7 @@ fn find_editor_x_start(buf: &txv_core::buffer::Buffer, y: u16) -> u16 {
     use txv_core::cell::Color;
     for x in 0..buf.width() {
         let cell = buf.cell(x, y);
-        if cell.style.fg == Color::Ansi(8) && cell.ch.is_ascii_digit() {
+        if cell.style().fg() == Color::Ansi(8) && cell.ch().is_ascii_digit() {
             return x;
         }
     }
@@ -159,7 +156,7 @@ fn find_gutter_width(buf: &txv_core::buffer::Buffer, y: u16, start_x: u16) -> u1
     let mut w = 0;
     for x in start_x..buf.width() {
         let cell = buf.cell(x, y);
-        if cell.style.fg == Color::Ansi(8) {
+        if cell.style().fg() == Color::Ansi(8) {
             w += 1;
         } else {
             break;
@@ -171,7 +168,7 @@ fn find_gutter_width(buf: &txv_core::buffer::Buffer, y: u16, start_x: u16) -> u1
 fn read_line_number(buf: &txv_core::buffer::Buffer, y: u16, start_x: u16, gutter_w: u16) -> Option<usize> {
     let mut num_str = String::new();
     for x in start_x..start_x + gutter_w {
-        let ch = buf.cell(x, y).ch;
+        let ch = buf.cell(x, y).ch();
         if ch.is_ascii_digit() {
             num_str.push(ch);
         }

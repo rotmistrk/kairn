@@ -10,7 +10,8 @@ use crate::mcp::agent_patch::ensure_agent_patched;
 use crate::views::terminal::new_kiro_terminal_argv;
 
 pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let extra_args = shell_words(arg);
@@ -19,7 +20,7 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
     let patched_agent = match ensure_agent_patched(&state.root_dir, agent_name) {
         Ok(name) => name,
         Err(e) => {
-            ctx.sink.push_command(
+            sink.push_command(
                 txv_widgets::CM_STATUS_MESSAGE,
                 Some(Box::new(Message::error("kiro", e))),
             );
@@ -30,9 +31,9 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
     let argv = build_kiro_argv(&state.settings.kiro().cmd, &patched_agent, &extra_args);
     let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
     let term = new_kiro_terminal_argv(&argv, &state.root_dir);
-    try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, name.clone(), term);
+    try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
     state.kiro_registry.register(&name);
-    ctx.sink.push_command(
+    sink.push_command(
         txv_widgets::CM_STATUS_MESSAGE,
         Some(Box::new(Message::info("kiro", format!("Started: {name}")))),
     );

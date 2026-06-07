@@ -65,13 +65,7 @@ fn shift_down_swaps_items() {
     focus_todo(&mut h);
 
     // Cursor on "First", Shift+Down should swap it with "Second"
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::SHIFT);
     h.run_cycles(2);
 
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();
@@ -92,13 +86,7 @@ fn shift_up_swaps_items() {
     // Move to "Second", then Shift+Up
     h.inject_key(KeyCode::Down, KeyMod::default());
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::Up,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::Up, KeyMod::SHIFT);
     h.run_cycles(2);
 
     let content = std::fs::read_to_string(dir.path().join(".kairn.todo")).unwrap();

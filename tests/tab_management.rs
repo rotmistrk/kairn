@@ -32,11 +32,7 @@ fn tab_bar_shows_all_tabs() {
     );
 }
 
-const ALT: KeyMod = KeyMod {
-    ctrl: false,
-    alt: true,
-    shift: false,
-};
+const ALT: KeyMod = KeyMod::ALT;
 
 #[test]
 fn shell_tabs_get_systematic_names() {

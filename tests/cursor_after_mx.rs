@@ -9,11 +9,7 @@ fn none() -> KeyMod {
     KeyMod::default()
 }
 
-const ALT: KeyMod = KeyMod {
-    ctrl: false,
-    alt: true,
-    shift: false,
-};
+const ALT: KeyMod = KeyMod::ALT;
 
 /// After M-x is opened and dismissed with Esc, the hardware cursor
 /// must NOT remain in the status bar.
@@ -40,7 +36,7 @@ fn cursor_returns_to_editor_after_mx_dismiss() {
 
     let cursor_before = h.backend.cursor();
     assert!(cursor_before.is_some(), "should have cursor in insert mode");
-    let before_y = cursor_before.unwrap().y;
+    let before_y = cursor_before.unwrap().y();
 
     // Open M-x
     h.inject_key(KeyCode::Char('x'), ALT);
@@ -52,7 +48,7 @@ fn cursor_returns_to_editor_after_mx_dismiss() {
 
     let cursor_after = h.backend.cursor();
     assert!(cursor_after.is_some(), "should still have cursor after M-x dismiss");
-    let after_y = cursor_after.unwrap().y;
+    let after_y = cursor_after.unwrap().y();
 
     // Cursor should be back in the editor area, not the status bar (last row)
     let height = h.backend.buffer().map(|b| b.height()).unwrap_or(25);

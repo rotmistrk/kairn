@@ -96,7 +96,7 @@ impl StructuredView {
     }
 
     pub fn save(&mut self) -> Result<(), String> {
-        let content = self.tree.data.doc.serialize();
+        let content = self.tree.data_mut().doc.serialize();
         fs::write(&self.path, &content).map_err(|e| e.to_string())?;
         self.dirty = false;
         self.sync_title();
@@ -108,16 +108,17 @@ impl StructuredView {
     }
 
     pub(crate) fn sync_scroll(&mut self) {
-        let max = self.tree.data.visible_nodes.len().saturating_sub(1);
-        if self.tree.cursor > max {
-            self.tree.cursor = max;
+        let max = self.tree.data_mut().visible_nodes.len().saturating_sub(1);
+        if self.tree.cursor() > max {
+            self.tree.set_cursor(max);
+        } else {
+            self.tree.set_cursor(self.tree.cursor());
         }
-        self.tree.set_cursor(self.tree.cursor);
     }
 
     pub(crate) fn clamp_cursor(&mut self) {
-        let max = self.tree.data.visible_nodes.len().saturating_sub(1);
-        if self.tree.cursor > max {
+        let max = self.tree.data_mut().visible_nodes.len().saturating_sub(1);
+        if self.tree.cursor() > max {
             self.tree.set_cursor(max);
         }
     }
@@ -128,21 +129,21 @@ impl StructuredView {
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "structured".to_string());
-        let filter_mark = if self.tree.data.filter_text.is_empty() {
+        let filter_mark = if self.tree.data_mut().filter_text.is_empty() {
             String::new()
         } else {
-            format!(" [filter: {}]", self.tree.data.filter_text)
+            format!(" [filter: {}]", self.tree.data_mut().filter_text)
         };
         self.display_title = format!("{name}{filter_mark}");
     }
 
     pub(crate) fn save_undo_point(&mut self) {
-        let snapshot = self.tree.data.doc.snapshot();
+        let snapshot = self.tree.data_mut().doc.snapshot();
         self.undo_stack.save_state(&snapshot);
     }
 
     pub(crate) fn apply_undo(&mut self) {
-        let current = self.tree.data.doc.snapshot();
+        let current = self.tree.data_mut().doc.snapshot();
         self.undo_stack.bookmark_current(&current);
         let Some(snapshot) = self.undo_stack.undo().map(|s| s.to_string()) else {
             return;
@@ -150,7 +151,7 @@ impl StructuredView {
         if self.tree.data_mut().doc.restore(&snapshot).is_ok() {
             self.rebuild_visible();
             self.clamp_cursor();
-            self.tree.state.mark_dirty();
+            self.tree.state_mut().mark_dirty();
         }
     }
 
@@ -161,13 +162,13 @@ impl StructuredView {
         if self.tree.data_mut().doc.restore(&snapshot).is_ok() {
             self.rebuild_visible();
             self.clamp_cursor();
-            self.tree.state.mark_dirty();
+            self.tree.state_mut().mark_dirty();
         }
     }
 
     /// Recompute column widths based on current bounds.
     pub(crate) fn update_col_widths(&mut self) {
-        let w = self.tree.state.bounds().w as usize;
+        let w = self.tree.state_mut().bounds().w() as usize;
         let val_w = w * 40 / 100;
         let meta_w = w.saturating_sub(w * 40 / 100 + val_w + 2);
         self.tree.set_col_widths(&[val_w as u16, meta_w as u16]);
@@ -181,8 +182,8 @@ impl StructuredView {
         let Some(row) = self.editing_row else {
             return;
         };
-        let offset = self.tree.scroll.offset;
-        let h = self.tree.state.bounds().h as usize;
+        let offset = self.tree.scroll_offset();
+        let h = self.tree.state_mut().bounds().h() as usize;
         if row < offset || row >= offset + h {
             return;
         }
@@ -191,11 +192,11 @@ impl StructuredView {
         let (col_x, col_w) = self.tree.column_bounds(col_idx);
         input.set_bounds(Rect::new(0, 0, col_w, 1));
         input.draw();
-        let buf = self.tree.state.buffer_mut();
+        let buf = self.tree.state_mut().buffer_mut();
         let input_buf = input.buffer();
         for ix in 0..col_w {
             let cell = input_buf.cell(ix, 0);
-            buf.put(col_x + ix, y, cell.ch, cell.style);
+            buf.put(col_x + ix, y, cell.ch(), cell.style());
         }
     }
 }

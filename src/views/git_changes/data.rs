@@ -106,7 +106,7 @@ impl GitChangesData {
                 .root_badge_colors
                 .get(root_idx)
                 .copied()
-                .unwrap_or(app.git().modified().fg);
+                .unwrap_or(app.git().modified().fg());
             // Root header node
             self.nodes.push(ChangeNode {
                 label: root_name,
@@ -185,10 +185,7 @@ impl TreeData for GitChangesData {
     }
     fn style(&self, id: usize) -> Style {
         let color = self.nodes.get(id).map(|n| n.color).unwrap_or(Color::Ansi(7));
-        Style {
-            fg: color,
-            ..Style::default()
-        }
+        Style::new(color, Color::Reset)
     }
     fn badge_color(&self, id: usize) -> Option<Color> {
         if self.root_badge_colors.is_empty() {

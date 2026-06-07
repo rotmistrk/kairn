@@ -94,14 +94,7 @@ fn redo_after_undo() {
     h.run_cycles(1);
     assert!(h.content_contains("before"), "value should be 'before' after undo");
     // Redo
-    h.inject_key(
-        KeyCode::Char('r'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('r'), KeyMod::CTRL);
     h.run_cycles(1);
     assert!(h.content_contains("after"), "value should be 'after' after redo");
 }
@@ -131,14 +124,7 @@ fn undo_clears_on_new_edit() {
     h.inject_key(KeyCode::Char('d'), KeyMod::default());
     h.run_cycles(1);
     // Redo should do nothing (redo history cleared)
-    h.inject_key(
-        KeyCode::Char('r'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('r'), KeyMod::CTRL);
     h.run_cycles(1);
     // The array should still show [2] (one element was deleted)
     assert!(h.content_contains("[2]"), "redo should have no effect after new edit");

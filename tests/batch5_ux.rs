@@ -82,14 +82,7 @@ fn ctrl_shift_down_shows_dropdown() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Ctrl-Shift-Down should show dropdown with tab list
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     let screen = h.screen_text();
     // Dropdown should show numbered entries (1-based)
@@ -117,14 +110,7 @@ fn dropdown_filter_selects_tab() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // c.rs is active. Open dropdown, type 'a' to filter, Enter to select a.rs
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('a'), KeyMod::default());
     h.run_cycles(1);
@@ -145,14 +131,7 @@ fn dropdown_esc_cancels() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // b.rs is active. Open dropdown, press Esc
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     h.inject_key(KeyCode::Esc, KeyMod::default());
     h.run_cycles(1);
@@ -187,14 +166,7 @@ fn duplicate_filenames_show_path_suffix() {
         top
     );
     // Open dropdown to verify alpha is also disambiguated
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     let screen = h.screen_text();
     assert!(

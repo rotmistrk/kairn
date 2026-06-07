@@ -168,9 +168,9 @@ impl CompletionPopup {
         let pal = palette();
         let normal = pal.style(StyleId::PopupBackground);
         let selected = pal.style(StyleId::PopupSelected);
-        let dim_fg = pal.style(StyleId::Dim).fg;
-        let detail_style = Style { fg: dim_fg, ..normal };
-        let detail_sel_style = Style { fg: dim_fg, ..selected };
+        let dim_fg = pal.style(StyleId::Dim).fg();
+        let detail_style = Style::new(dim_fg, normal.bg()).with_attrs(normal.attrs());
+        let detail_sel_style = Style::new(dim_fg, selected.bg()).with_attrs(selected.attrs());
         let detail_col = (max_label + 2) as u16;
 
         for (i, item) in self.items.iter().skip(self.scroll).take(max_items).enumerate() {

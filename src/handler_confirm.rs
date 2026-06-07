@@ -18,11 +18,12 @@ use crate::views::editor::EditorView;
 use crate::views::todo_tree::TodoTreeView;
 
 pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     let Some(context) = state.confirm_context.take() else {
         return;
     };
     let ch = ctx
-        .data
+        .data()
         .as_ref()
         .and_then(|b| b.downcast_ref::<char>())
         .copied()
@@ -33,10 +34,10 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
         ConfirmContext::FileReload(path) => handle_file_reload(ctx, &path, ch),
         ConfirmContext::Quit => {
             if ch == 'y' {
-                if let Some(desktop) = downcast_desktop(ctx.desktop) {
+                if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
                     save_all_dirty(desktop);
                 }
-                ctx.sink.push_command(CM_QUIT, None);
+                sink.push_command(CM_QUIT, None);
             }
         }
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
@@ -52,14 +53,15 @@ fn handle_editor_close(ctx: &mut CommandContext, state: &mut AppState, path: &st
         _ => {} // Cancel — do nothing
     }
     if ch == 'y' || ch == 'n' {
-        if let Some(desktop) = downcast_desktop(ctx.desktop) {
+        if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
             complete_pending_insert(desktop, state);
         }
     }
 }
 
 fn save_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
@@ -83,7 +85,7 @@ fn save_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
         if let Ok(()) = result {
             editor.editor.buf().mark_saved();
         }
-        emit_save_result(ctx.sink, result, state, path);
+        emit_save_result(&sink, result, state, path);
         break;
     }
 }
@@ -104,7 +106,8 @@ fn emit_save_result(sink: &txv_core::prelude::EventSink, result: std::io::Result
 }
 
 fn discard_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
@@ -124,9 +127,9 @@ fn discard_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str)
             continue;
         }
         editor.editor.buf().mark_saved();
-        ctx.sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
+        sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
         if state.pending_tab.is_none() {
-            ctx.sink.push_command(CM_TAB_CLOSE, None);
+            sink.push_command(CM_TAB_CLOSE, None);
         }
         break;
     }
@@ -136,7 +139,7 @@ fn handle_file_reload(ctx: &mut CommandContext, path: &str, ch: char) {
     if ch != 'y' {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
@@ -167,7 +170,7 @@ fn handle_todo_delete(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
     if ch != 'y' {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
@@ -186,7 +189,7 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
     // For crypto, the 'char' is actually a commit signal; the passphrase comes via data.
     // In our simplified flow, we treat any non-cancel as "use the confirm text as passphrase".
     let passphrase = ctx
-        .data
+        .data()
         .as_ref()
         .and_then(|b| b.downcast_ref::<String>())
         .cloned()
@@ -194,7 +197,7 @@ fn handle_todo_crypto(ctx: &mut CommandContext, _state: &mut AppState, ch: char)
     if ch == '\x1b' || passphrase.is_empty() {
         return; // cancelled
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Left as usize) else {
@@ -214,7 +217,7 @@ fn handle_csv_delete(ctx: &mut CommandContext, ch: char) {
     if ch != 'y' {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
@@ -230,7 +233,7 @@ fn handle_csv_delete(ctx: &mut CommandContext, ch: char) {
 }
 
 pub fn handle_set_confirm_context(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(context) = ctx.data.as_ref().and_then(|b| b.downcast_ref::<ConfirmContext>()) {
+    if let Some(context) = ctx.data().as_ref().and_then(|b| b.downcast_ref::<ConfirmContext>()) {
         state.confirm_context = Some(context.clone());
     }
 }

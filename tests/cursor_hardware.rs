@@ -10,11 +10,7 @@ fn none() -> KeyMod {
 }
 
 fn alt() -> KeyMod {
-    KeyMod {
-        ctrl: false,
-        alt: true,
-        shift: false,
-    }
+    KeyMod::ALT
 }
 
 fn open_file(h: &mut TestHarness, dir: &std::path::Path, file: &str) {
@@ -70,7 +66,7 @@ fn editor_cursor_moves_with_typing() {
     h.inject_key(KeyCode::Char('x'), none());
     h.run_cycles(2);
     let c2 = h.backend.cursor().expect("cursor must exist after typing");
-    assert_eq!(c2.x, c1.x + 1, "cursor must advance after typing");
+    assert_eq!(c2.x(), c1.x() + 1, "cursor must advance after typing");
 }
 
 // === M-x command line cursor ===
@@ -100,7 +96,11 @@ fn mx_cursor_on_status_bar_row() {
 
     let cursor = h.backend.cursor().expect("cursor must exist");
     let height = h.backend.buffer().expect("buffer").height();
-    assert_eq!(cursor.y, height - 1, "M-x cursor must be on the last row (status bar)");
+    assert_eq!(
+        cursor.y(),
+        height - 1,
+        "M-x cursor must be on the last row (status bar)"
+    );
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn mx_cursor_moves_with_typing() {
     let c2 = h.backend.cursor().expect("cursor after 'hel'");
 
     // After layout stabilizes, each char should advance cursor by 1
-    assert_eq!(c2.x, c1.x + 1, "cursor must advance by 1 after layout stabilizes");
+    assert_eq!(c2.x(), c1.x() + 1, "cursor must advance by 1 after layout stabilizes");
 }
 
 #[test]

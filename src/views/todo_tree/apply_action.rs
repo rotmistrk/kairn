@@ -13,9 +13,9 @@ impl TodoTreeView {
         match action {
             HandleAction::Stay => {}
             HandleAction::MoveDown => {
-                let max = self.inner.data.visible_count().saturating_sub(1);
-                if self.inner.cursor < max {
-                    self.inner.set_cursor(self.inner.cursor + 1);
+                let max = self.inner.data_mut().visible_count().saturating_sub(1);
+                if self.inner.cursor() < max {
+                    self.inner.set_cursor(self.inner.cursor() + 1);
                 }
             }
             HandleAction::MoveTo(row) => {

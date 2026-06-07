@@ -29,7 +29,7 @@ pub fn register_text(interp: &mut Interpreter, shared: &SendShared) {
                     ta.set_content(content);
                 }
                 if let Some(val) = opt_val(&opts, "-linenumbers") {
-                    ta.line_numbers = val == "true" || val == "1";
+                    ta.show_line_numbers(val == "true" || val == "1");
                 }
                 st.desktop.insert_widget(id.clone(), Box::new(ta));
                 Ok(TclValue::Str(id))
@@ -44,7 +44,7 @@ pub fn register_text(interp: &mut Interpreter, shared: &SendShared) {
             "get" => {
                 let id = require_arg(args, 1, "text get")?;
                 let ta = get_widget::<TextArea>(&mut st.desktop, &id, "text get")?;
-                Ok(TclValue::Str(ta.lines.join("\n")))
+                Ok(TclValue::Str(ta.content()))
             }
             "clear" => {
                 let id = require_arg(args, 1, "text clear")?;
@@ -56,16 +56,14 @@ pub fn register_text(interp: &mut Interpreter, shared: &SendShared) {
                 let id = require_arg(args, 1, "text append")?;
                 let content = require_arg(args, 2, "text append")?;
                 let ta = get_widget::<TextArea>(&mut st.desktop, &id, "text append")?;
-                for line in content.lines() {
-                    ta.lines.push(line.to_string());
-                }
+                ta.append_lines(&content);
                 Ok(TclValue::Str(String::new()))
             }
             "line-numbers" => {
                 let id = require_arg(args, 1, "text line-numbers")?;
                 let val = require_arg(args, 2, "text line-numbers")?;
                 let ta = get_widget::<TextArea>(&mut st.desktop, &id, "text line-numbers")?;
-                ta.line_numbers = val == "true" || val == "1";
+                ta.show_line_numbers(val == "true" || val == "1");
                 Ok(TclValue::Str(String::new()))
             }
             _ => Ok(TclValue::Str(String::new())),

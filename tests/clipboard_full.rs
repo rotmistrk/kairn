@@ -7,22 +7,10 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn ctrl(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::CTRL)
 }
 fn alt(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            alt: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::ALT)
 }
 
 /// Open M-x, type text, select all (Home + Shift+End), copy, close M-x.
@@ -36,13 +24,7 @@ fn copy_from_mx(h: &mut TestHarness, text: &str) {
     // Select all: Home then Shift+End
     h.inject_key(KeyCode::Home, KeyMod::default());
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::End,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::End, KeyMod::SHIFT);
     h.run_cycles(2);
     h.inject_key(ctrl('c').0, ctrl('c').1);
     h.run_cycles(2);

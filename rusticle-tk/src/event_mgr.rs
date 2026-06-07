@@ -114,7 +114,7 @@ fn handle_command(
     quit_handler: &Option<String>,
     ctx: &mut CommandContext,
 ) {
-    let cmd = ctx.command;
+    let cmd = ctx.command();
     if cmd >= CM_SCRIPT_BASE {
         let idx = (cmd - CM_SCRIPT_BASE) as usize;
         if let Some(script) = binding_scripts.get(idx) {

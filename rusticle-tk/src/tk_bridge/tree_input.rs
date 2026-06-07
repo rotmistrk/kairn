@@ -26,13 +26,13 @@ pub fn register_tree(interp: &mut Interpreter, shared: &SendShared) {
             "selected" => {
                 let id = require_arg(args, 1, "tree selected")?;
                 let tv = get_widget::<TreeView<FileTreeData>>(&mut st.desktop, &id, "tree selected")?;
-                let path = tv.data.path(tv.cursor).display().to_string();
+                let path = tv.data().path(tv.cursor()).display().to_string();
                 Ok(TclValue::Str(path))
             }
             "refresh" => {
                 let id = require_arg(args, 1, "tree refresh")?;
                 let tv = get_widget::<TreeView<FileTreeData>>(&mut st.desktop, &id, "tree refresh")?;
-                tv.data.refresh();
+                tv.data_mut().refresh();
                 Ok(TclValue::Str(String::new()))
             }
             "on-select" | "on-activate" => {
@@ -105,7 +105,7 @@ pub fn register_statusbar(interp: &mut Interpreter, shared: &SendShared) {
             "create" => {
                 let id = st.alloc_id();
                 let mut ta = TextArea::new();
-                ta.line_numbers = false;
+                ta.show_line_numbers(false);
                 st.desktop.insert_widget(id.clone(), Box::new(ta));
                 Ok(TclValue::Str(id))
             }

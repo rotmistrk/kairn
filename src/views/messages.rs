@@ -45,22 +45,22 @@ impl MessagesView {
 }
 
 fn format_msg_line(msg: &txv_core::message::Message) -> (String, Style) {
-    let t = msg.timestamp as i64;
+    let t = msg.timestamp() as i64;
     let (hrs, mins, secs) = epoch_to_local_hms(t);
-    let suffix = if msg.count > 1 {
-        format!(" (×{})", msg.count)
+    let suffix = if msg.count() > 1 {
+        format!(" (×{})", msg.count())
     } else {
         String::new()
     };
     let line = format!(
         "[{hrs:02}:{mins:02}:{secs:02}] [{:>4}] [{}] {}{}",
-        msg.level.label(),
-        msg.origin,
-        msg.text,
+        msg.level().label(),
+        msg.origin(),
+        msg.text(),
         suffix,
     );
     let app = app_palette();
-    let style = match msg.level {
+    let style = match msg.level() {
         MsgLevel::Error => app.msg().error(),
         MsgLevel::Warn => app.msg().warning(),
         MsgLevel::Debug => app.msg().debug(),
@@ -90,7 +90,7 @@ impl View for MessagesView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         match event {
-            Event::Key(key) => match key.code {
+            Event::Key(key) => match key.code() {
                 KeyCode::Up | KeyCode::Char('k') => {
                     let total = self.ring.lock().map(|r| r.len()).unwrap_or(0);
                     if self.scroll < total {

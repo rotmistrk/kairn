@@ -6,13 +6,7 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn alt(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            alt: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::ALT)
 }
 
 fn mx_command(h: &mut TestHarness, cmd: &str) {

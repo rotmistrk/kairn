@@ -58,7 +58,7 @@ pub static SET_OPTIONS: &[SetOption] = &[
         is_toggle: true,
         apply: |ctx, s, on| {
             s.settings.tree_icons = on;
-            toggle_tree_icons(ctx.desktop, on);
+            toggle_tree_icons(ctx.desktop_mut(), on);
         },
     },
     SetOption {
@@ -66,14 +66,14 @@ pub static SET_OPTIONS: &[SetOption] = &[
         is_toggle: true,
         apply: |ctx, s, on| {
             s.settings.tree_connectors = on;
-            toggle_tree_connectors(ctx.desktop, on);
+            toggle_tree_connectors(ctx.desktop_mut(), on);
         },
     },
 ];
 
 /// Handle :set options — dispatches from the single SET_OPTIONS registry.
 pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(opt) = boxed.downcast_ref::<String>() else {
@@ -120,7 +120,7 @@ fn toggle_tree_connectors(desktop: &mut dyn txv_core::view::View, on: bool) {
     if let Some(panel) = d.panel_mut(SlotId::Left as usize) {
         if let Some(view) = panel.view_at_mut(0) {
             if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
-                tree.inner.show_connectors = on;
+                tree.inner.set_show_connectors(on);
             }
         }
     }
@@ -128,7 +128,7 @@ fn toggle_tree_connectors(desktop: &mut dyn txv_core::view::View, on: bool) {
     if let Some(panel) = d.panel_mut(SlotId::Center as usize) {
         if let Some(view) = panel.active_view_mut() {
             if let Some(sv) = view.as_any_mut().and_then(|a| a.downcast_mut::<StructuredView>()) {
-                sv.tree.show_connectors = on;
+                sv.tree.set_show_connectors(on);
             }
         }
     }

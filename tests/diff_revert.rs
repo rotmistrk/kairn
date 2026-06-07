@@ -148,10 +148,7 @@ fn revert_via_r_hotkey() {
         1,
     ));
 
-    let key = Event::Key(KeyEvent {
-        code: KeyCode::Char('R'),
-        modifiers: KeyMod::default(),
-    });
+    let key = Event::Key(KeyEvent::new(KeyCode::Char('R'), KeyMod::default()));
     view.handle(&key);
 
     assert_eq!(view.editor().buf().content(), "aaa\nccc\n");

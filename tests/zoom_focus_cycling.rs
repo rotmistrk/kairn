@@ -5,11 +5,7 @@ mod helpers;
 use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
-const CTRL_SHIFT: KeyMod = KeyMod {
-    ctrl: true,
-    alt: false,
-    shift: true,
-};
+const CTRL_SHIFT: KeyMod = KeyMod::CTRL.with_shift();
 
 #[test]
 fn cycle_focus_in_zoom_moves_to_next_panel_zoomed() {

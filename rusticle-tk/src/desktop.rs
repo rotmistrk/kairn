@@ -22,10 +22,7 @@ pub struct TkDesktop {
 impl TkDesktop {
     pub fn new() -> Self {
         Self {
-            group: GroupState::new(ViewOptions {
-                focusable: true,
-                ..ViewOptions::default()
-            }),
+            group: GroupState::new(ViewOptions::default().with_focusable()),
             names: HashMap::new(),
             layout: LayoutManager::new(),
         }
@@ -61,7 +58,7 @@ impl TkDesktop {
     /// Recompute layout and set bounds on all children.
     fn apply_layout(&mut self) {
         let b = self.group.bounds();
-        if b.w == 0 || b.h == 0 {
+        if b.w() == 0 || b.h() == 0 {
             return;
         }
         let positions = self.layout.compute(b);

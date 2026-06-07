@@ -22,11 +22,11 @@ pub use super::pending::PendingRequests;
 
 /// Handle LSP-related commands. Called before main dispatch.
 pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
-    match ctx.command {
+    match ctx.command() {
         CM_OPEN_FILE | CM_OPEN_FILE_FOCUS => send::send_did_open(ctx, state),
         CM_CONTENT_CHANGED => send::send_did_change(ctx, state),
         CM_LSP_GOTO_DEF => {
-            if let Some(boxed) = ctx.data.as_ref() {
+            if let Some(boxed) = ctx.data().as_ref() {
                 if let Some(jdt) = boxed.downcast_ref::<JdtRequest>() {
                     send::send_jdt_class_contents(jdt, state);
                     return;

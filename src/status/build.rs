@@ -61,13 +61,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
     use crate::completer_file_finder::FileFinderCompleter;
     use crate::completer_symbol::SymbolFinderCompleter;
 
-    let ctrl_p = KeyEvent {
-        code: KeyCode::Char('p'),
-        modifiers: KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    };
+    let ctrl_p = KeyEvent::new(KeyCode::Char('p'), KeyMod::CTRL);
     let input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
@@ -78,13 +72,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .add_child(Box::new(input));
     bar.add(StatusSlot::new(Box::new(finder)).priority(5));
 
-    let ctrl_t = KeyEvent {
-        code: KeyCode::Char('t'),
-        modifiers: KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    };
+    let ctrl_t = KeyEvent::new(KeyCode::Char('t'), KeyMod::CTRL);
     let sym_input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
@@ -98,10 +86,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
 fn add_todo_group(bar: &mut StatusBar) {
     use txv_widgets::KeyLabelView;
 
-    let key = |ch: char| KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod::default(),
-    };
+    let key = |ch: char| KeyEvent::new(KeyCode::Char(ch), KeyMod::NONE);
     let mut group = FocusGatedGroup::new(TODO_STATUS_GROUP);
     group.add_child(Box::new(KeyLabelView::new(key('i'), CM_TODO_TOGGLE_PROGRESS, "▶")));
     group.add_child(Box::new(KeyLabelView::new(key('\\'), CM_TODO_TOGGLE_PAUSE, "⏸")));

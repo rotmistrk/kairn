@@ -63,14 +63,7 @@ fn ctrl_r_redoes() {
     open_file_and_focus(&mut h);
     h.inject_key(KeyCode::Char('x'), KeyMod::default());
     h.inject_key(KeyCode::Char('u'), KeyMod::default());
-    h.inject_key(
-        KeyCode::Char('r'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('r'), KeyMod::CTRL);
     h.run_cycles(1);
     assert!(h.contains("ello"));
     assert!(!h.contains("hello"));

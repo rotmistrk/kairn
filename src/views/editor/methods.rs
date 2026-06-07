@@ -85,7 +85,7 @@ impl EditorView {
             .ephemeral
             .set(vec![EphemeralRange::full_line(target_line)], HighlightOwner::Transient);
         self.ensure_cursor_visible();
-        if self.state.bounds().h == 0 {
+        if self.state.bounds().h() == 0 {
             self.editor.viewport_scroll = self.editor.cursor_line;
         }
         self.state.mark_dirty();

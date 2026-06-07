@@ -14,17 +14,17 @@ use txv_widgets::input_line::CM_CLIPBOARD_PASTE;
 
 impl TodoTreeView {
     pub(super) fn emit_note_update_if_cursor_changed(&mut self, prev_cursor: usize) {
-        if self.inner.cursor == prev_cursor {
+        if self.inner.cursor() == prev_cursor {
             return;
         }
-        let cursor = self.inner.cursor;
-        if cursor >= self.inner.data.visible_count() {
+        let cursor = self.inner.cursor();
+        if cursor >= self.inner.data_mut().visible_count() {
             return;
         }
-        let id = self.inner.data.visible_id(cursor);
-        if let Some(path) = self.inner.data.path_at(id) {
+        let id = self.inner.data_mut().visible_id(cursor);
+        if let Some(path) = self.inner.data_mut().path_at(id) {
             let path = path.clone();
-            if let Some(item) = model::get_item(&self.inner.data.file, &path) {
+            if let Some(item) = model::get_item(&self.inner.data_mut().file, &path) {
                 let note = item.note.clone();
                 self.group
                     .put_command(CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
@@ -34,15 +34,15 @@ impl TodoTreeView {
 
     /// Execute the pending delete.
     pub fn confirm_delete_execute(&mut self) {
-        let cursor = self.inner.cursor;
-        if cursor < self.inner.data.visible_count() {
-            let id = self.inner.data.visible_id(cursor);
-            if let Some(path) = self.inner.data.path_at(id) {
+        let cursor = self.inner.cursor();
+        if cursor < self.inner.data_mut().visible_count() {
+            let id = self.inner.data_mut().visible_id(cursor);
+            if let Some(path) = self.inner.data_mut().path_at(id) {
                 let path = path.clone();
-                model::remove_item(&mut self.inner.data.file, &path);
-                model::propagate_completion(&mut self.inner.data.file, &path);
-                self.inner.data.save();
-                self.inner.data.rebuild_flat();
+                model::remove_item(&mut self.inner.data_mut().file, &path);
+                model::propagate_completion(&mut self.inner.data_mut().file, &path);
+                self.inner.data_mut().save();
+                self.inner.data_mut().rebuild_flat();
                 self.group.mark_dirty();
             }
         }
@@ -55,33 +55,33 @@ impl TodoTreeView {
         };
         match pending {
             CryptoPending::Encrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
+                if let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, &path) {
                     if let Err(e) = encrypt_item(item, passphrase) {
                         log::warn!("encrypt failed: {e}");
                     }
                 }
             }
             CryptoPending::Decrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner.data.file, &path) {
+                if let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, &path) {
                     if let Err(e) = decrypt_item(item, passphrase) {
                         log::warn!("decrypt failed: {e}");
                     }
                 }
             }
         }
-        self.inner.data.save();
-        self.inner.data.rebuild_flat();
+        self.inner.data_mut().save();
+        self.inner.data_mut().rebuild_flat();
         self.group.mark_dirty();
     }
 
     /// Handle commands from the status bar FocusGatedGroup.
     pub(super) fn handle_status_command(&mut self, id: CommandId) -> HandleResult {
-        let cursor = self.inner.cursor;
-        if cursor >= self.inner.data.visible_count() {
+        let cursor = self.inner.cursor();
+        if cursor >= self.inner.data_mut().visible_count() {
             return HandleResult::Ignored;
         }
-        let node_id = self.inner.data.visible_id(cursor);
-        let Some(path) = self.inner.data.path_at(node_id).cloned() else {
+        let node_id = self.inner.data_mut().visible_id(cursor);
+        let Some(path) = self.inner.data_mut().path_at(node_id).cloned() else {
             return HandleResult::Ignored;
         };
         match id {
@@ -93,14 +93,14 @@ impl TodoTreeView {
             CM_TODO_LOE_DOWN => self.loe_change(&path, false),
             _ => return HandleResult::Ignored,
         }
-        self.inner.data.save();
-        self.inner.data.rebuild_flat();
+        self.inner.data_mut().save();
+        self.inner.data_mut().rebuild_flat();
         self.group.mark_dirty();
         HandleResult::Consumed
     }
 
     fn toggle_progress(&mut self, path: &model::TreePath) {
-        let Some(item) = model::get_item_mut(&mut self.inner.data.file, path) else {
+        let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, path) else {
             return;
         };
         if !item.items.is_empty() {
@@ -113,7 +113,7 @@ impl TodoTreeView {
     }
 
     fn toggle_pause(&mut self, path: &model::TreePath) {
-        let Some(item) = model::get_item_mut(&mut self.inner.data.file, path) else {
+        let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, path) else {
             return;
         };
         if !item.items.is_empty() {
@@ -126,7 +126,7 @@ impl TodoTreeView {
     }
 
     fn priority_change(&mut self, path: &model::TreePath, delta: i8) {
-        let Some(item) = model::get_item_mut(&mut self.inner.data.file, path) else {
+        let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, path) else {
             return;
         };
         let current = item.priority.unwrap_or(0);
@@ -140,14 +140,14 @@ impl TodoTreeView {
 
     fn loe_change(&mut self, path: &model::TreePath, up: bool) {
         const FIBONACCI: &[u8] = &[0, 1, 2, 3, 5, 8, 13, 21];
-        let Some(item) = model::get_item_mut(&mut self.inner.data.file, path) else {
+        let Some(item) = model::get_item_mut(&mut self.inner.data_mut().file, path) else {
             return;
         };
         let current = item.effort.unwrap_or(0);
         if !up && current == 0 {
             // Already at 0 and pressing < — toggle LOE column off if no items have effort.
-            if self.inner.data.show_loe && !self.inner.data.loe_strings.iter().any(|s| s.trim() != "") {
-                self.inner.data.show_loe = false;
+            if self.inner.data_mut().show_loe && !self.inner.data_mut().loe_strings.iter().any(|s| s.trim() != "") {
+                self.inner.data_mut().show_loe = false;
             }
             return;
         }
@@ -163,8 +163,8 @@ impl TodoTreeView {
         } else {
             Some(new_val)
         };
-        if !self.inner.data.show_loe {
-            self.inner.data.show_loe = true;
+        if !self.inner.data_mut().show_loe {
+            self.inner.data_mut().show_loe = true;
         }
     }
     pub(super) fn clipboard_paste(&self) -> Option<String> {
@@ -176,7 +176,7 @@ impl TodoTreeView {
         let Event::Key(k) = event else {
             return false;
         };
-        if !k.modifiers.ctrl || k.code != KeyCode::Char('v') {
+        if !k.modifiers().ctrl() || k.code() != KeyCode::Char('v') {
             return false;
         }
         let Some(text) = self.clipboard_paste() else {

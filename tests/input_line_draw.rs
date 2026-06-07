@@ -10,20 +10,11 @@ use txv_core::prelude::View;
 use txv_widgets::input_line::InputLine;
 
 fn key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod::default(),
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::default()))
 }
 
 fn shift_key(code: KeyCode) -> Event {
-    Event::Key(KeyEvent {
-        code,
-        modifiers: KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    })
+    Event::Key(KeyEvent::new(code, KeyMod::SHIFT))
 }
 
 /// Draw InputLine and return buffer cells as (char, style) pairs.
@@ -35,7 +26,7 @@ fn draw_cells(input: &mut InputLine, width: u16) -> Vec<(char, Style)> {
     (0..width)
         .map(|x| {
             let cell = buf.cell(x, 0);
-            (cell.ch, cell.style)
+            (cell.ch(), cell.style())
         })
         .collect()
 }
@@ -65,9 +56,11 @@ fn background_fills_entire_width() {
             continue; // cursor position
         }
         assert_eq!(
-            cells[i].1.bg, text_style.bg,
+            cells[i].1.bg(),
+            text_style.bg(),
             "cell {i} bg should be Text bg ({:?}), got {:?}",
-            text_style.bg, cells[i].1.bg
+            text_style.bg(),
+            cells[i].1.bg()
         );
     }
 }
@@ -82,14 +75,11 @@ fn cursor_at_end_of_text() {
     input.set_bounds(Rect::new(0, 0, 10, 1));
     input.select(); // sets focused + select_all
                     // Deselect text but keep focused — press End to clear selection
-    input.handle(&Event::Key(KeyEvent {
-        code: KeyCode::End,
-        modifiers: KeyMod::default(),
-    }));
+    input.handle(&Event::Key(KeyEvent::new(KeyCode::End, KeyMod::default())));
     // Hardware cursor should be at x=3 with Bar shape
     let cr = input.cursor().expect("should return CursorRequest");
-    assert_eq!(cr.x, 3, "hardware cursor x should be at end of text");
-    assert_eq!(cr.shape, CursorShape::Bar, "should use Bar shape");
+    assert_eq!(cr.x(), 3, "hardware cursor x should be at end of text");
+    assert_eq!(cr.shape(), CursorShape::Bar, "should use Bar shape");
 }
 
 #[test]
@@ -136,8 +126,8 @@ fn overflow_right_indicator() {
     input.handle(&key(KeyCode::Home));
     let cells = draw_cells(&mut input, 5);
     assert_eq!(cells[4].0, '…', "rightmost cell should be overflow '…'");
-    let ov_fg = palette().style(StyleId::OverflowIndicator).fg;
-    assert_eq!(cells[4].1.fg, ov_fg, "overflow should use OverflowIndicator fg");
+    let ov_fg = palette().style(StyleId::OverflowIndicator).fg();
+    assert_eq!(cells[4].1.fg(), ov_fg, "overflow should use OverflowIndicator fg");
 }
 
 #[test]
@@ -146,8 +136,8 @@ fn overflow_left_indicator() {
     input.set_text("abcdefghij"); // 10 chars, cursor at end (pos 10)
     let cells = draw_cells(&mut input, 5);
     assert_eq!(cells[0].0, '…', "leftmost cell should be overflow '…'");
-    let ov_fg = palette().style(StyleId::OverflowIndicator).fg;
-    assert_eq!(cells[0].1.fg, ov_fg, "left overflow should use OverflowIndicator fg");
+    let ov_fg = palette().style(StyleId::OverflowIndicator).fg();
+    assert_eq!(cells[0].1.fg(), ov_fg, "left overflow should use OverflowIndicator fg");
 }
 
 #[test]
@@ -220,7 +210,7 @@ fn view_select_triggers_select_all() {
     let sel_style = palette().style(StyleId::EditSelection);
     for i in 0..5u16 {
         assert_eq!(
-            buf.cell(i, 0).style,
+            buf.cell(i, 0).style(),
             sel_style,
             "cell {i} should be selected after View::select()"
         );

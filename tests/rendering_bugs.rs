@@ -117,7 +117,9 @@ fn cursor_visible_on_tab_in_nolist_mode() {
     for y in 1..23u16 {
         for x in 0..80u16 {
             let cell = buf.cell(x, y);
-            if cell.style.bg == txv_core::cell::Color::Ansi(7) && cell.style.fg == txv_core::cell::Color::Ansi(0) {
+            if cell.style().bg() == txv_core::cell::Color::Ansi(7)
+                && cell.style().fg() == txv_core::cell::Color::Ansi(0)
+            {
                 cursor_x = Some(x);
                 cursor_y = Some(y);
                 break;
@@ -161,7 +163,7 @@ fn tab_expands_to_spaces_in_nolist_mode() {
     let mut tab_char_found = false;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            if buf.cell(x, y).ch == '\t' {
+            if buf.cell(x, y).ch() == '\t' {
                 tab_char_found = true;
             }
         }
@@ -173,8 +175,8 @@ fn tab_expands_to_spaces_in_nolist_mode() {
     let mut hello_x: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
-            if buf.cell(x, y).ch == 'h' {
-                let next = buf.cell(x + 1, y).ch;
+            if buf.cell(x, y).ch() == 'h' {
+                let next = buf.cell(x + 1, y).ch();
                 if next == 'e' {
                     hello_x = Some(x);
                     break;

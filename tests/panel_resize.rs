@@ -16,14 +16,7 @@ fn resize_grow_shrink_changes_layout() {
     // Get initial tree width by checking where content starts
     let row_before = h.row(1);
     // Grow: Alt-Shift-Right
-    h.inject_key(
-        KeyCode::Right,
-        KeyMod {
-            alt: true,
-            shift: true,
-            ctrl: false,
-        },
-    );
+    h.inject_key(KeyCode::Right, KeyMod::ALT.with_shift());
     h.run_cycles(1);
     let row_after = h.row(1);
     // After grow, the tree area should be wider (more chars before divider)

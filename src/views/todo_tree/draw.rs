@@ -8,18 +8,18 @@ use super::TodoTreeView;
 impl TodoTreeView {
     pub(super) fn draw_tree(&mut self) {
         let b = self.group.bounds();
-        let w = b.w;
-        let h = b.h;
+        let w = b.w();
+        let h = b.h();
         if w == 0 || h == 0 {
             return;
         }
         self.group.buffer_mut().fill(' ', Style::default());
-        if self.inner.data.visible_count() == 0 {
+        if self.inner.data_mut().visible_count() == 0 {
             let dim = palette().style(StyleId::Dim);
             self.group.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
-        let has_filter = self.filter_active || !self.inner.data.filter_text.is_empty();
+        let has_filter = self.filter_active || !self.inner.data_mut().filter_text.is_empty();
         let filter_row = if has_filter {
             h.saturating_sub(1)
         } else {
@@ -32,16 +32,16 @@ impl TodoTreeView {
         };
         // Set bounds on inner TreeTableView and draw it
         let inner_bounds = Rect::new(0, 0, w, draw_h);
-        self.inner.state.set_bounds(inner_bounds);
+        self.inner.state_mut().set_bounds(inner_bounds);
         if self.group.is_focused() {
-            self.inner.state.set_focused(true);
+            self.inner.state_mut().set_focused(true);
         } else {
-            self.inner.state.set_focused(false);
+            self.inner.state_mut().set_focused(false);
         }
         self.inner.draw();
         // Blit inner buffer onto group buffer
         let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        unsafe { (*buf_ptr).blit(self.inner.state.buffer(), 0, 0) };
+        unsafe { (*buf_ptr).blit(self.inner.state_mut().buffer(), 0, 0) };
         self.draw_filter_status(w, filter_row);
         self.position_and_blit_child(w, draw_h as usize, filter_row);
     }
@@ -54,7 +54,7 @@ impl TodoTreeView {
         self.group.buffer_mut().hline(0, filter_row, w, ' ', style);
         self.group.buffer_mut().print(0, filter_row, "/", style);
         if !self.filter_active {
-            let ft = self.inner.data.filter_text.clone();
+            let ft = self.inner.data_mut().filter_text.clone();
             self.group.buffer_mut().print(1, filter_row, &ft, style);
         }
     }
@@ -67,13 +67,13 @@ impl TodoTreeView {
         let (x, y, cw) = if self.filter_active {
             (1u16, filter_row, w.saturating_sub(1))
         } else if let Some(row) = self.editing_row {
-            let scroll_offset = self.inner.scroll.offset;
+            let scroll_offset = self.inner.scroll_offset();
             if row < scroll_offset || (row - scroll_offset) >= draw_h {
                 return;
             }
             let screen_y = (row - scroll_offset) as u16;
-            let id = self.inner.data.visible_id(row);
-            let depth = self.inner.data.depth(id);
+            let id = self.inner.data_mut().visible_id(row);
+            let depth = self.inner.data_mut().depth(id);
             let indent = (depth * 2 + 2) as u16;
             (indent, screen_y, w.saturating_sub(indent))
         } else {

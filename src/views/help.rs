@@ -18,7 +18,7 @@ impl Default for HelpView {
 impl HelpView {
     pub fn new() -> Self {
         let mut ta = TextArea::new();
-        ta.line_numbers = false;
+        ta.show_line_numbers(false);
         ta.set_content(&help_text());
         Self { inner: ta }
     }

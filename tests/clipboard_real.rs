@@ -6,22 +6,10 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn alt(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            alt: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::ALT)
 }
 fn ctrl(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::CTRL)
 }
 
 /// Simulate: user opens kairn, opens file, yanks, checks ring.
@@ -54,7 +42,7 @@ fn real_flow_open_file_yy_check_ring() {
         .unwrap()
         .entries()
         .iter()
-        .map(|e| e.text.clone())
+        .map(|e| e.text().to_string())
         .collect();
     assert!(ring_len > 0, "ring should have entry after yy. ring={ring_text:?}");
     assert!(

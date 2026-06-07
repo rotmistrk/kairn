@@ -11,17 +11,17 @@ use crate::app_state::AppState;
 use crate::commands::CM_FS_CHANGED;
 
 fn msg(ctx: &mut CommandContext, text: String) {
-    ctx.sink
+    ctx.sink()
         .push_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("file", text))));
 }
 
 fn err(ctx: &mut CommandContext, text: String) {
-    ctx.sink
+    ctx.sink()
         .push_command(CM_STATUS_MESSAGE, Some(Box::new(Message::error("file", text))));
 }
 
 fn refresh_tree(ctx: &mut CommandContext) {
-    ctx.sink.push_broadcast(CM_FS_CHANGED, None);
+    ctx.sink().push_broadcast(CM_FS_CHANGED, None);
 }
 
 pub(crate) fn cmd_new_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {

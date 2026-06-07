@@ -79,13 +79,7 @@ fn save_note_writes_back_to_todo_json() {
 
     // Type new content (replaces buffer since it starts empty-ish)
     // First select all, then type
-    h.inject_key(
-        KeyCode::Home,
-        KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::Home, KeyMod::CTRL);
     h.run_cycles(1);
     // Enter insert mode and replace content
     h.inject_key(KeyCode::Char('c'), KeyMod::default()); // c in normal mode needs motion

@@ -9,18 +9,10 @@ fn none() -> KeyMod {
     KeyMod::default()
 }
 fn ctrl() -> KeyMod {
-    KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    }
+    KeyMod::CTRL
 }
 fn ctrl_alt() -> KeyMod {
-    KeyMod {
-        ctrl: true,
-        alt: true,
-        shift: false,
-    }
+    KeyMod::CTRL.with_alt()
 }
 
 #[test]

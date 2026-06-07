@@ -12,16 +12,17 @@ use crate::handler_dired::copy_dir_recursive;
 
 impl FileTreeView {
     /// Return the path at the current cursor position.
-    pub(super) fn cursor_path(&self) -> Option<PathBuf> {
-        if self.inner.cursor >= self.inner.data.visible_count() {
+    pub(super) fn cursor_path(&mut self) -> Option<PathBuf> {
+        if self.inner.cursor() >= self.inner.data_mut().visible_count() {
             return None;
         }
-        let id = self.inner.data.visible_id(self.inner.cursor);
-        Some(self.inner.data.path(id).to_path_buf())
+        let cursor = self.inner.cursor();
+        let id = self.inner.data_mut().visible_id(cursor);
+        Some(self.inner.data_mut().path(id).to_path_buf())
     }
 
     /// Return the directory context for new file operations.
-    fn cursor_dir(&self) -> Option<PathBuf> {
+    fn cursor_dir(&mut self) -> Option<PathBuf> {
         let path = self.cursor_path()?;
         if path.is_dir() {
             Some(path)
@@ -31,7 +32,7 @@ impl FileTreeView {
     }
 
     /// Map a dired command ID to a prefilled command string, or None.
-    pub(super) fn dired_prefill(&self, id: u16) -> Option<String> {
+    pub(super) fn dired_prefill(&mut self, id: u16) -> Option<String> {
         match id {
             CM_TREE_NEW_FILE => {
                 let dir = self.cursor_dir().unwrap_or_else(|| self.root.clone());
@@ -90,7 +91,7 @@ impl FileTreeView {
             None => return,
         };
         if self.marked.is_empty() {
-            self.inner.state.put_command(
+            self.inner.state_mut().put_command(
                 CM_STATUS_MESSAGE,
                 Some(Box::new(Message::warn("file", String::from("No marked files")))),
             );
@@ -99,9 +100,9 @@ impl FileTreeView {
         let (ok, errs) = execute_bulk(&mut self.marked, &dest_dir, copy);
         let msg = bulk_message(copy, ok, &errs, &dest_dir);
         self.inner
-            .state
+            .state_mut()
             .put_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("file", msg))));
-        self.inner.state.put_broadcast(CM_FS_CHANGED, None);
+        self.inner.state_mut().put_broadcast(CM_FS_CHANGED, None);
     }
 }
 

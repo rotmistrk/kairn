@@ -27,7 +27,7 @@ fn find_row_with(h: &TestHarness, text: &str) -> Option<u16> {
     for y in 0..buf.height() {
         let mut row = String::new();
         for x in 0..buf.width() {
-            row.push(buf.cell(x, y).ch);
+            row.push(buf.cell(x, y).ch());
         }
         if row.contains(text) {
             return Some(y);
@@ -39,15 +39,17 @@ fn find_row_with(h: &TestHarness, text: &str) -> Option<u16> {
 /// Count cells with EditSelection bg on a given row.
 fn count_selection_cells(h: &TestHarness, y: u16) -> usize {
     let buf = h.backend.buffer().unwrap();
-    let sel_bg = palette().style(StyleId::EditSelection).bg;
-    (0..buf.width()).filter(|&x| buf.cell(x, y).style.bg == sel_bg).count()
+    let sel_bg = palette().style(StyleId::EditSelection).bg();
+    (0..buf.width())
+        .filter(|&x| buf.cell(x, y).style().bg() == sel_bg)
+        .count()
 }
 
 /// Check that a row has CursorFocused bg somewhere.
 fn has_cursor_bg(h: &TestHarness, y: u16) -> bool {
     let buf = h.backend.buffer().unwrap();
-    let cursor_bg = palette().style(StyleId::CursorFocused).bg;
-    (0..buf.width()).any(|x| buf.cell(x, y).style.bg == cursor_bg)
+    let cursor_bg = palette().style(StyleId::CursorFocused).bg();
+    (0..buf.width()).any(|x| buf.cell(x, y).style().bg() == cursor_bg)
 }
 
 // --- StructuredView tests ---
@@ -126,7 +128,7 @@ fn csv_data_row(h: &TestHarness) -> Option<u16> {
     for y in 0..buf.height() {
         let mut row = String::new();
         for x in 0..buf.width() {
-            row.push(buf.cell(x, y).ch);
+            row.push(buf.cell(x, y).ch());
         }
         if row.contains("30") {
             return Some(y);

@@ -42,14 +42,7 @@ fn f1_focuses_existing_help_tab() {
     h.run_cycles(1);
 
     // Switch to Welcome tab via Alt-0 (first tab)
-    h.inject_key(
-        KeyCode::Char('0'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('0'), KeyMod::ALT);
     h.run_cycles(1);
 
     // Press F1 again — should switch back to Help, not create new

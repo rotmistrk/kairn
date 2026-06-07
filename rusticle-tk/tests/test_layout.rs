@@ -41,10 +41,10 @@ fn left_and_fill() {
     let st = shared.lock().unwrap();
     let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 2);
-    assert_eq!(rects[0].1.w, 20);
-    assert_eq!(rects[0].1.x, 0);
-    assert_eq!(rects[1].1.w, 60);
-    assert_eq!(rects[1].1.x, 20);
+    assert_eq!(rects[0].1.w(), 20);
+    assert_eq!(rects[0].1.x(), 0);
+    assert_eq!(rects[1].1.w(), 60);
+    assert_eq!(rects[1].1.x(), 20);
 }
 
 #[test]
@@ -59,10 +59,10 @@ fn bottom_and_fill() {
     let st = shared.lock().unwrap();
     let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 2);
-    assert_eq!(rects[0].1.h, 1);
-    assert_eq!(rects[0].1.y, 23);
-    assert_eq!(rects[1].1.h, 23);
-    assert_eq!(rects[1].1.y, 0);
+    assert_eq!(rects[0].1.h(), 1);
+    assert_eq!(rects[0].1.y(), 23);
+    assert_eq!(rects[1].1.h(), 23);
+    assert_eq!(rects[1].1.y(), 0);
 }
 
 #[test]
@@ -79,12 +79,12 @@ fn three_panel_layout() {
     let st = shared.lock().unwrap();
     let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 3);
-    assert_eq!(rects[0].1.w, 25);
-    assert_eq!(rects[0].1.h, 24);
-    assert_eq!(rects[1].1.h, 1);
-    assert_eq!(rects[1].1.w, 55);
-    assert_eq!(rects[2].1.w, 55);
-    assert_eq!(rects[2].1.h, 23);
+    assert_eq!(rects[0].1.w(), 25);
+    assert_eq!(rects[0].1.h(), 24);
+    assert_eq!(rects[1].1.h(), 1);
+    assert_eq!(rects[1].1.w(), 55);
+    assert_eq!(rects[2].1.w(), 55);
+    assert_eq!(rects[2].1.h(), 23);
 }
 
 #[test]
@@ -103,14 +103,14 @@ fn multiple_widgets_mixed_sides() {
     let st = shared.lock().unwrap();
     let rects = st.desktop.layout.compute(area());
     assert_eq!(rects.len(), 4);
-    assert_eq!(rects[0].1.h, 1);
-    assert_eq!(rects[0].1.w, 80);
-    assert_eq!(rects[0].1.y, 0);
-    assert_eq!(rects[1].1.h, 1);
-    assert_eq!(rects[1].1.w, 80);
-    assert_eq!(rects[1].1.y, 23);
-    assert_eq!(rects[2].1.w, 20);
-    assert_eq!(rects[2].1.h, 22);
-    assert_eq!(rects[3].1.w, 60);
-    assert_eq!(rects[3].1.h, 22);
+    assert_eq!(rects[0].1.h(), 1);
+    assert_eq!(rects[0].1.w(), 80);
+    assert_eq!(rects[0].1.y(), 0);
+    assert_eq!(rects[1].1.h(), 1);
+    assert_eq!(rects[1].1.w(), 80);
+    assert_eq!(rects[1].1.y(), 23);
+    assert_eq!(rects[2].1.w(), 20);
+    assert_eq!(rects[2].1.h(), 22);
+    assert_eq!(rects[3].1.w(), 60);
+    assert_eq!(rects[3].1.h(), 22);
 }

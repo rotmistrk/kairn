@@ -2,6 +2,7 @@
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
+use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::buffer_store::CommandStore;
 use crate::build::ErrorLocation;
@@ -21,7 +22,7 @@ pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(err) = gs.take_error() {
         let msg = Message::new(MsgLevel::Error, "grep", err);
-        ctx.sink
+        ctx.sink()
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = gs.take_entries();
@@ -41,7 +42,7 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(err) = task.take_error() {
         let msg = Message::new(MsgLevel::Error, "build", err);
-        ctx.sink
+        ctx.sink()
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = task.take_entries();
@@ -74,7 +75,7 @@ fn collect_build_errors(entries: &[crate::views::results::ResultEntry], root: &s
 }
 
 fn append_to_active_results(ctx: &mut CommandContext, entries: Vec<crate::views::results::ResultEntry>, done: bool) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let rv = desktop
@@ -98,7 +99,7 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
         refresh_commands(&state.command_list, &state.script);
         for w in warnings {
             let msg = Message::warn("plugin", w);
-            ctx.sink
+            ctx.sink()
                 .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
@@ -106,60 +107,65 @@ pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Open (or focus) the Notes tab for a todo item.
 pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
+    let sink = ctx.sink().clone();
+    let (tree_path, note, focus) = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some((tp, n, f)) = boxed.downcast_ref::<(Vec<usize>, String, bool)>() else {
+            return;
+        };
+        (tp.clone(), n.clone(), *f)
     };
-    let Some((tree_path, note, focus)) = boxed.downcast_ref::<(Vec<usize>, String, bool)>() else {
-        return;
-    };
-    state.todo_note_path = Some(tree_path.clone());
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    state.todo_note_path = Some(tree_path);
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     use crate::views::notes::NotesView;
     if let Some(nv) = find_view_mut::<NotesView>(desktop, SlotId::Center) {
-        // Tab exists — update content and bring to front
-        nv.replace_content(note);
+        nv.replace_content(&note);
         focus_view_mut::<NotesView>(desktop, SlotId::Center);
-        if *focus {
-            desktop.focus_panel(SlotId::Center as usize);
-        } else {
-            desktop.focus_panel(SlotId::Left as usize);
-        }
     } else {
-        // Create new Notes tab
-        let mut nv = NotesView::new(note);
-        nv.editor
-            .editor_mut()
-            .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
-        let store = CommandStore::new(CM_TODO_NOTE_SAVE, ctx.sink.clone());
-        nv.set_store(Box::new(store));
-        let view: Box<dyn View> = Box::new(nv);
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, "Notes".to_string(), view);
-        focus_view_mut::<NotesView>(desktop, SlotId::Center);
-        if *focus {
-            desktop.focus_panel(SlotId::Center as usize);
-        } else {
-            desktop.focus_panel(SlotId::Left as usize);
-        }
+        create_notes_tab(desktop, state, &sink, &note);
     }
+    if focus {
+        desktop.focus_panel(SlotId::Center as usize);
+    } else {
+        desktop.focus_panel(SlotId::Left as usize);
+    }
+}
+
+fn create_notes_tab(desktop: &mut TiledWorkspace, state: &mut AppState, sink: &txv_core::view::EventSink, note: &str) {
+    use crate::views::notes::NotesView;
+    let mut nv = NotesView::new(note);
+    nv.editor
+        .editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    let store = CommandStore::new(CM_TODO_NOTE_SAVE, sink.clone());
+    nv.set_store(Box::new(store));
+    let view: Box<dyn View> = Box::new(nv);
+    try_insert_tab(desktop, state, sink, SlotId::Center, "Notes".to_string(), view);
+    focus_view_mut::<NotesView>(desktop, SlotId::Center);
 }
 
 /// Handle CM_TODO_NOTE_UPDATE — update Notes content if tab exists, don't create.
 pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
+    let (tree_path, note) = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some((tp, n)) = boxed.downcast_ref::<(Vec<usize>, String)>() else {
+            return;
+        };
+        (tp.clone(), n.clone())
     };
-    let Some((tree_path, note)) = boxed.downcast_ref::<(Vec<usize>, String)>() else {
-        return;
-    };
-    state.todo_note_path = Some(tree_path.clone());
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    state.todo_note_path = Some(tree_path);
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     use crate::views::notes::NotesView;
     if let Some(nv) = find_view_mut::<NotesView>(desktop, SlotId::Center) {
-        nv.replace_content(note);
+        nv.replace_content(&note);
     }
 }
 
@@ -168,7 +174,7 @@ pub fn save_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(ref path) = state.todo_note_path else {
         return;
     };
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(content) = boxed.downcast_ref::<String>() else {
@@ -185,10 +191,11 @@ pub fn save_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
 /// Handle CM_TODO_ACTION — dispatch MCP todo actions.
 pub fn handle_todo_action(ctx: &mut CommandContext, _state: &mut AppState) {
     use crate::mcp::commands::McpAction;
-    let Some(action) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<McpAction>()) else {
+    let (_, data, sink, desktop_view) = ctx.split();
+    let Some(action) = data.as_ref().and_then(|d| d.downcast_ref::<McpAction>()) else {
         return;
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(desktop_view) else {
         return;
     };
     let todo_view = desktop
@@ -199,8 +206,7 @@ pub fn handle_todo_action(ctx: &mut CommandContext, _state: &mut AppState) {
     if let Some(tv) = todo_view {
         if let Err(e) = tv.mcp_action(action) {
             let msg = Message::new(MsgLevel::Error, "todo", e);
-            ctx.sink
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }

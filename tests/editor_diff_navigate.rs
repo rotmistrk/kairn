@@ -58,14 +58,7 @@ fn diff_mode_enter_and_exit_esc() {
     open_and_focus(&mut h, dir.path(), "main.rs");
 
     // Enter diff mode via Ctrl-D
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // Should show diff content (+ or - lines, or "modified")
@@ -89,14 +82,7 @@ fn diff_mode_j_k_navigation() {
     h.run_cycles(2);
     open_and_focus(&mut h, dir.path(), "main.rs");
 
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // Navigate down
@@ -125,14 +111,7 @@ fn diff_mode_n_jumps_to_next_hunk() {
     h.run_cycles(2);
     open_and_focus(&mut h, dir.path(), "main.rs");
 
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // n = next hunk
@@ -155,14 +134,7 @@ fn diff_mode_g_and_big_g() {
     h.run_cycles(2);
     open_and_focus(&mut h, dir.path(), "main.rs");
 
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // G = jump to end
@@ -188,14 +160,7 @@ fn diff_mode_enter_exits_at_cursor_line() {
     h.run_cycles(2);
     open_and_focus(&mut h, dir.path(), "main.rs");
 
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // Move to a line and press Enter to exit at that position
@@ -216,14 +181,7 @@ fn diff_on_untracked_file_no_crash() {
     open_and_focus(&mut h, dir.path(), "untracked.rs");
 
     // Ctrl-D on a file with no git history
-    h.inject_key(
-        KeyCode::Char('d'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('d'), KeyMod::CTRL);
     h.run_cycles(5);
 
     // Should not crash, may show message

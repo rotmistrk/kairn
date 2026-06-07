@@ -15,4 +15,12 @@ impl HlSpan {
             style: Style::default(),
         }
     }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn style(&self) -> Style {
+        self.style
+    }
 }

@@ -11,21 +11,11 @@ fn inject_keys(view: &mut EditorView, keys: &[KeyEvent]) {
 }
 
 fn key(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod::default(),
-    }
+    KeyEvent::new(code, KeyMod::default())
 }
 
 fn ctrl(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            shift: false,
-            alt: false,
-        },
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::CTRL)
 }
 
 #[test]

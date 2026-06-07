@@ -103,7 +103,7 @@ impl View for EditorView {
             CursorStyle::Underline => CursorShape::Underline,
         };
         let (x, y) = self.hw_cursor_screen_pos()?;
-        Some(CursorRequest { x, y, shape })
+        Some(CursorRequest::new(x, y, shape))
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -167,7 +167,7 @@ impl EditorView {
 
     fn handle_completion_keys(&mut self, key: &txv_core::event::KeyEvent) -> Option<HandleResult> {
         if self.completion_popup.visible {
-            match (&key.code, key.modifiers.ctrl) {
+            match (key.code(), key.modifiers().ctrl()) {
                 (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
                     self.completion_popup.next();
                     self.state.mark_dirty();
@@ -194,7 +194,7 @@ impl EditorView {
                     self.completion_popup.hide();
                 }
             }
-        } else if key.modifiers.ctrl && key.code == KeyCode::Char('n') {
+        } else if key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
             let pos = (
                 self.path.clone(),
                 self.editor.cursor_line as u32,

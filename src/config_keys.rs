@@ -10,18 +10,18 @@ pub(crate) fn parse_key_var(spec: &str) -> Option<KeyEvent> {
         return None;
     }
     let parts: Vec<&str> = spec.split('-').collect();
-    let mut modifiers = KeyMod::default();
+    let mut modifiers = KeyMod::NONE;
     let key_part = parts.last()?;
     for &part in &parts[..parts.len().saturating_sub(1)] {
         match part {
-            "Ctrl" | "ctrl" => modifiers.ctrl = true,
-            "Alt" | "alt" => modifiers.alt = true,
-            "Shift" | "shift" => modifiers.shift = true,
+            "Ctrl" | "ctrl" => modifiers = modifiers.with_ctrl(),
+            "Alt" | "alt" => modifiers = modifiers.with_alt(),
+            "Shift" | "shift" => modifiers = modifiers.with_shift(),
             _ => {}
         }
     }
     let code = parse_key_code(key_part)?;
-    Some(KeyEvent { code, modifiers })
+    Some(KeyEvent::new(code, modifiers))
 }
 
 fn parse_key_code(s: &str) -> Option<KeyCode> {

@@ -15,6 +15,7 @@ use crate::handler_exec_edit::push_status;
 use crate::views::search_replace::SearchReplaceView;
 
 pub(crate) fn cmd_replace(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let sink = ctx.sink().clone();
     let Some((pattern, replacement)) = parse_replace_arg(arg) else {
         push_status(ctx, Message::warn("replace", "Usage: :replace /pattern/replacement/"));
         return;
@@ -29,9 +30,9 @@ pub(crate) fn cmd_replace(ctx: &mut CommandContext, state: &mut AppState, arg: &
         return;
     }
     let view = SearchReplaceView::new(&pattern, &replacement, &root, entries);
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let title = format!("replace:{pattern}");
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title, Box::new(view));
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, title, Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }

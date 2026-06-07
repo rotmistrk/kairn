@@ -20,12 +20,8 @@ impl Default for LspStatusItem {
 
 impl LspStatusItem {
     pub fn new() -> Self {
-        let mut state = ViewState::new(ViewOptions {
-            preprocess: true,
-            focusable: false,
-            ..ViewOptions::default()
-        });
-        state.set_bounds(Rect { x: 0, y: 0, w: 0, h: 1 });
+        let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+        state.set_bounds(Rect::new(0, 0, 0, 1));
         Self {
             state,
             label: String::new(),
@@ -39,13 +35,8 @@ impl LspStatusItem {
             self.label.len() as u16 + 2
         };
         let b = self.state.bounds();
-        if b.w != w {
-            self.state.set_bounds(Rect {
-                x: b.x,
-                y: b.y,
-                w,
-                h: 1,
-            });
+        if b.w() != w {
+            self.state.set_bounds(Rect::new(b.x(), b.y(), w, 1));
         }
     }
 }

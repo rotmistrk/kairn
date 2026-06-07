@@ -141,7 +141,7 @@ impl ProblemsView {
         if !self.state.is_focused() {
             return HandleResult::Ignored;
         }
-        match key.code {
+        match key.code() {
             KeyCode::Char('j') | KeyCode::Down => self.move_down(),
             KeyCode::Char('k') | KeyCode::Up => self.move_up(),
             KeyCode::Enter => self.open_at_cursor(),

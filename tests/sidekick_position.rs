@@ -6,11 +6,7 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn alt() -> KeyMod {
-    KeyMod {
-        ctrl: false,
-        alt: true,
-        shift: false,
-    }
+    KeyMod::ALT
 }
 
 /// M-x with partial input shows completion popup above the status bar, not at row 0.

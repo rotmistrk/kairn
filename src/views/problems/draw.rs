@@ -176,15 +176,15 @@ fn truncate(s: &str, max: usize) -> &str {
 fn severity_indicator(severity: Severity, base: Style) -> (char, Style) {
     let pal = palette();
     let fg = match severity {
-        Severity::Error => pal.style(StyleId::StateError).fg,
-        Severity::Warning => pal.style(StyleId::StateWarning).fg,
-        Severity::Info => pal.style(StyleId::StateInfo).fg,
-        Severity::Hint => pal.style(StyleId::StateHint).fg,
+        Severity::Error => pal.style(StyleId::StateError).fg(),
+        Severity::Warning => pal.style(StyleId::StateWarning).fg(),
+        Severity::Info => pal.style(StyleId::StateInfo).fg(),
+        Severity::Hint => pal.style(StyleId::StateHint).fg(),
     };
     let ch = if matches!(severity, Severity::Hint) {
         '○'
     } else {
         '●'
     };
-    (ch, Style { fg, ..base })
+    (ch, Style::new(fg, base.bg()).with_attrs(base.attrs()))
 }

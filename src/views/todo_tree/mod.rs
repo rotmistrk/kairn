@@ -62,12 +62,12 @@ impl TodoTreeView {
 
     /// Start editing the current item title.
     fn start_edit(&mut self) {
-        let row = self.inner.cursor;
-        if row >= self.inner.data.visible_count() {
+        let row = self.inner.cursor();
+        if row >= self.inner.data_mut().visible_count() {
             return;
         }
-        let id = self.inner.data.visible_id(row);
-        let label = self.inner.data.label(id).to_owned();
+        let id = self.inner.data_mut().visible_id(row);
+        let label = self.inner.data_mut().label(id).to_owned();
         let mut input = InputLine::new().with_command(CM_OK);
         input.set_text(&label);
         input.select_all();
@@ -93,7 +93,7 @@ impl TodoTreeView {
     /// Start filter mode.
     fn start_filter(&mut self) {
         let mut input = InputLine::new().with_command(CM_OK);
-        input.set_text(&self.inner.data.filter_text.clone());
+        input.set_text(&self.inner.data_mut().filter_text.clone());
         let pal = self.filter_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
@@ -148,7 +148,7 @@ impl TodoTreeView {
         let text = self.input_line_mut().map(|i| i.text().to_string()).unwrap_or_default();
         self.remove_input_line();
         if let Some(row) = self.editing_row.take() {
-            self.inner.data.update_title(row, text);
+            self.inner.data_mut().update_title(row, text);
         }
         self.group.mark_dirty();
         self.group
@@ -177,8 +177,8 @@ impl TodoTreeView {
     fn cancel_filter(&mut self) {
         self.remove_input_line();
         self.filter_active = false;
-        self.inner.data.filter_text.clear();
-        self.inner.data.rebuild_flat();
+        self.inner.data_mut().filter_text.clear();
+        self.inner.data_mut().rebuild_flat();
         self.inner.set_cursor(0);
         self.group.mark_dirty();
         self.group
@@ -251,7 +251,7 @@ impl View for TodoTreeView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if matches!(event, Event::Tick) {
-            if self.inner.data.reload_if_changed() {
+            if self.inner.data_mut().reload_if_changed() {
                 self.group.mark_dirty();
             }
             return HandleResult::Ignored;

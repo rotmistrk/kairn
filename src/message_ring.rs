@@ -29,8 +29,8 @@ impl MessageRing {
 
     pub fn push(&mut self, msg: Message) {
         if let Some(last) = self.entries.back_mut() {
-            if last.level == msg.level && last.origin == msg.origin && last.text == msg.text {
-                last.count += 1;
+            if last.level() == msg.level() && last.origin() == msg.origin() && last.text() == msg.text() {
+                last.increment();
                 self.generation += 1;
                 return;
             }
@@ -68,8 +68,8 @@ mod tests {
         let mut ring = MessageRing::new();
         ring.push(Message::info("test", "hello"));
         assert_eq!(ring.len(), 1);
-        assert_eq!(ring.entries()[0].text, "hello");
-        assert_eq!(ring.entries()[0].origin, "test");
+        assert_eq!(ring.entries()[0].text(), "hello");
+        assert_eq!(ring.entries()[0].origin(), "test");
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod tests {
             ring.push(Message::info("test", format!("msg {i}")));
         }
         assert_eq!(ring.len(), RING_CAPACITY);
-        assert_eq!(ring.entries()[0].text, "msg 10");
+        assert_eq!(ring.entries()[0].text(), "msg 10");
     }
 
     #[test]
@@ -99,7 +99,7 @@ mod tests {
         ring.push(Message::info("git", "Staged: foo.rs"));
         ring.push(Message::info("git", "Staged: foo.rs"));
         assert_eq!(ring.len(), 1);
-        assert_eq!(ring.entries()[0].count, 3);
+        assert_eq!(ring.entries()[0].count(), 3);
         assert_eq!(ring.generation(), 3);
     }
 
@@ -109,7 +109,7 @@ mod tests {
         ring.push(Message::info("git", "Staged: foo.rs"));
         ring.push(Message::info("git", "Staged: bar.rs"));
         assert_eq!(ring.len(), 2);
-        assert_eq!(ring.entries()[0].count, 1);
-        assert_eq!(ring.entries()[1].count, 1);
+        assert_eq!(ring.entries()[0].count(), 1);
+        assert_eq!(ring.entries()[1].count(), 1);
     }
 }

@@ -13,12 +13,12 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
         return HandleResult::Ignored;
     };
-    if key.modifiers.shift {
-        if let Some(r) = handle_shift_motion(view, key.code) {
+    if key.modifiers().shift() {
+        if let Some(r) = handle_shift_motion(view, key.code()) {
             return r;
         }
     }
-    match key.code {
+    match key.code() {
         KeyCode::Down | KeyCode::Char('j') => handle_nav_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_nav_up(view),
         KeyCode::Right | KeyCode::Char('l') => handle_nav_right(view),
@@ -29,7 +29,7 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
         KeyCode::Char('$') => view.cursor_col = view.ncols().saturating_sub(1),
         KeyCode::Enter => view.start_edit(),
         KeyCode::Char('s') => handle_sort(view),
-        KeyCode::Char('f') if key.modifiers.ctrl => handle_clear_all_filters(view),
+        KeyCode::Char('f') if key.modifiers().ctrl() => handle_clear_all_filters(view),
         KeyCode::Char('f') => view.start_filter_edit(),
         KeyCode::Char('F') => handle_clear_col_filter(view),
         KeyCode::Char('a') => row_ops::handle_add_row(view),
@@ -216,7 +216,7 @@ fn handle_sort(view: &mut CsvView) {
 }
 
 pub(super) fn ensure_visible(view: &mut CsvView) {
-    let h = view.group.bounds().h as usize;
+    let h = view.group.bounds().h() as usize;
     let data_h = h.saturating_sub(if view.headers.is_some() {
         1
     } else {

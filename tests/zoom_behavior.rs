@@ -100,14 +100,7 @@ fn ctrl_shift_down_opens_dropdown_in_zoom() {
     h.run_cycles(1);
 
     // Open dropdown with Ctrl-Shift-Down
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
 
     let screen = h.screen_text();

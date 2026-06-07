@@ -102,7 +102,7 @@ impl View for WelcomeView {
         self.ensure_tools();
 
         if let Event::Key(key) = event {
-            if key.code == KeyCode::Char(':') {
+            if key.code() == KeyCode::Char(':') {
                 self.state.put_command(CM_COMMAND_MODE, None);
                 return HandleResult::Consumed;
             }

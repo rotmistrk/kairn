@@ -9,29 +9,29 @@ use super::StructuredView;
 
 impl View for StructuredView {
     fn view_id(&self) -> txv_core::view::ViewId {
-        self.tree.state.id()
+        self.tree.view_id()
     }
 
     fn bounds(&self) -> Rect {
-        self.tree.state.bounds()
+        self.tree.bounds()
     }
 
     fn set_bounds(&mut self, r: Rect) {
-        if self.tree.state.bounds() != r {
+        if self.tree.state_mut().bounds() != r {
             self.cancel_edit();
             self.filtering = false;
             self.sort_path_target = None;
         }
-        self.tree.state.set_bounds(r);
+        self.tree.state_mut().set_bounds(r);
         self.update_col_widths();
     }
 
     fn set_sink(&mut self, sink: EventSink) {
-        self.tree.state.set_sink(sink);
+        self.tree.state_mut().set_sink(sink);
     }
 
     fn options(&self) -> txv_core::view::ViewOptions {
-        self.tree.state.options()
+        self.tree.options()
     }
 
     fn title(&self) -> &str {
@@ -39,11 +39,11 @@ impl View for StructuredView {
     }
 
     fn needs_redraw(&self) -> bool {
-        self.tree.state.is_dirty()
+        self.tree.needs_redraw()
     }
 
     fn mark_redrawn(&mut self) {
-        self.tree.state.mark_redrawn();
+        self.tree.state_mut().mark_redrawn();
     }
 
     fn select(&mut self) {
@@ -59,7 +59,7 @@ impl View for StructuredView {
     }
 
     fn buffer(&self) -> &txv_core::buffer::Buffer {
-        self.tree.state.buffer()
+        self.tree.buffer()
     }
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
@@ -101,7 +101,7 @@ impl View for StructuredView {
                 input.handle(event);
             }
             handle::drain_edit_commands(self);
-            self.tree.state.mark_dirty();
+            self.tree.state_mut().mark_dirty();
             return HandleResult::Consumed;
         }
         handle::handle_struct_key(self, key)

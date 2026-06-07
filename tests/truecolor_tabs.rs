@@ -26,12 +26,12 @@ fn inactive_tabs_use_thin_separators() {
     let row0: Vec<_> = (0..w).map(|x| buf.cell(x, 0).clone()).collect();
 
     // Find thin separators (E0B1 or E0B3) in center panel area
-    let divider = row0.iter().position(|c| c.ch == '┬').unwrap_or(0);
+    let divider = row0.iter().position(|c| c.ch() == '┬').unwrap_or(0);
     let thin_seps: Vec<usize> = row0
         .iter()
         .enumerate()
         .skip(divider)
-        .filter(|(_, c)| c.ch == '\u{E0B1}' || c.ch == '\u{E0B3}')
+        .filter(|(_, c)| c.ch() == '\u{E0B1}' || c.ch() == '\u{E0B3}')
         .map(|(i, _)| i)
         .collect();
 
@@ -57,11 +57,11 @@ fn thin_separator_uses_dim_fg() {
 
     let buf = h.backend.buffer().unwrap();
     let w = buf.width();
-    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch() == '┬').unwrap_or(0);
 
     // Find first thin separator after divider
     let sep_pos = (divider..w).find(|&x| {
-        let ch = buf.cell(x, 0).ch;
+        let ch = buf.cell(x, 0).ch();
         ch == '\u{E0B1}' || ch == '\u{E0B3}'
     });
 
@@ -69,9 +69,11 @@ fn thin_separator_uses_dim_fg() {
         let cell = buf.cell(pos, 0);
         // fg should NOT be the same as bg (must be visible)
         assert_ne!(
-            cell.style.fg, cell.style.bg,
+            cell.style().fg(),
+            cell.style().bg(),
             "thin separator must be visible (fg≠bg): fg={:?} bg={:?}",
-            cell.style.fg, cell.style.bg
+            cell.style().fg(),
+            cell.style().bg()
         );
     }
 }
@@ -92,11 +94,11 @@ fn active_tab_keeps_half_circle_caps_with_thin_seps() {
 
     let buf = h.backend.buffer().unwrap();
     let w = buf.width();
-    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch() == '┬').unwrap_or(0);
 
     // Active tab should still have E0B6 (left) and E0B4 (right)
-    let has_left_cap = (divider..w).any(|x| buf.cell(x, 0).ch == '\u{E0B6}');
-    let has_right_cap = (divider..w).any(|x| buf.cell(x, 0).ch == '\u{E0B4}');
+    let has_left_cap = (divider..w).any(|x| buf.cell(x, 0).ch() == '\u{E0B6}');
+    let has_right_cap = (divider..w).any(|x| buf.cell(x, 0).ch() == '\u{E0B4}');
 
     assert!(has_left_cap, "active tab should have E0B6 left cap");
     assert!(has_right_cap, "active tab should have E0B4 right cap");
@@ -118,13 +120,13 @@ fn gradient_bg_uses_distinct_rgb_values() {
 
     let buf = h.backend.buffer().unwrap();
     let w = buf.width();
-    let divider = (0..w).find(|&x| buf.cell(x, 0).ch == '┬').unwrap_or(0);
+    let divider = (0..w).find(|&x| buf.cell(x, 0).ch() == '┬').unwrap_or(0);
 
     // Collect unique RGB bg values from inactive tab area (after divider, skip active)
     let mut grays: Vec<u8> = Vec::new();
     for x in divider..w {
         let cell = buf.cell(x, 0);
-        if let Color::Rgb(r, g, b) = cell.style.bg {
+        if let Color::Rgb(r, g, b) = cell.style().bg() {
             if r == g && g == b && r > 0x10 && r < 0x80 {
                 if !grays.contains(&r) {
                     grays.push(r);
@@ -157,14 +159,7 @@ fn dropdown_cursor_uses_middle_dots() {
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(1);
     // Open dropdown
-    h.inject_key(
-        KeyCode::Char('0'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('0'), KeyMod::ALT);
     h.run_cycles(1);
 
     let screen = h.screen_text();

@@ -6,7 +6,7 @@ use super::EditorView;
 
 impl EditorView {
     pub(super) fn ensure_cursor_visible(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         if h == 0 {
             return;
         }
@@ -85,7 +85,7 @@ impl EditorView {
 
     /// Available text width (total width minus gutter).
     pub(super) fn text_avail_width(&self) -> usize {
-        let w = self.state.bounds().w;
+        let w = self.state.bounds().w();
         let gutter = self.gutter_width();
         w.saturating_sub(gutter) as usize
     }

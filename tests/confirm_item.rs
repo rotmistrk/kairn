@@ -97,11 +97,7 @@ fn todo_delete_confirm_removes_item() {
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.run_cycles(1);
     // Open dropdown and navigate to Todo (3rd tab)
-    let ctrl_shift = KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: true,
-    };
+    let ctrl_shift = KeyMod::CTRL.with_shift();
     h.inject_key(KeyCode::Down, ctrl_shift);
     h.run_cycles(1);
     h.inject_key(KeyCode::Down, KeyMod::default());
@@ -142,11 +138,7 @@ fn todo_delete_cancel_keeps_item() {
     // Focus left panel and switch to Todo tab
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.run_cycles(1);
-    let ctrl_shift = KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: true,
-    };
+    let ctrl_shift = KeyMod::CTRL.with_shift();
     h.inject_key(KeyCode::Down, ctrl_shift);
     h.run_cycles(1);
     h.inject_key(KeyCode::Down, KeyMod::default());

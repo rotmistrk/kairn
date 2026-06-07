@@ -6,14 +6,7 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn alt_x(h: &mut TestHarness) {
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
 }
 
 /// Tree tab must survive M-x close when tree panel is focused.
@@ -46,14 +39,7 @@ fn tree_tab_survives_alt_w() {
     h.inject_key(KeyCode::F(2), KeyMod::default());
     h.run_cycles(1);
     // Alt-w
-    h.inject_key(
-        KeyCode::Char('w'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('w'), KeyMod::ALT);
     h.run_cycles(2);
     // Tree still there
     assert!(h.contains("b.txt"), "tree tab must not be closed by Alt-w");
@@ -75,14 +61,7 @@ fn terminal_tab_closes_on_command() {
     h.inject_key(KeyCode::F(4), KeyMod::default());
     h.run_cycles(3);
     // Alt-w to close active tab in tools panel
-    h.inject_key(
-        KeyCode::Char('w'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('w'), KeyMod::ALT);
     h.run_cycles(3);
     // The default active tab in tools is Problems (not closeable).
     // So we need to first switch to Shell. Use Alt-; (next tab).

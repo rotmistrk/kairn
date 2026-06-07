@@ -18,7 +18,8 @@ use crate::views::editor::EditorView;
 
 /// Collect context from the focused view and broadcast it.
 pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let slot = slot_from(desktop.focused_panel());
@@ -52,7 +53,7 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
         .collect();
     state.script.set_roots(&root_paths);
 
-    ctx.sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
+    sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
 }
 
 fn collect_editor_context(
@@ -159,7 +160,7 @@ fn read_branch(root: &std::path::Path) -> String {
 }
 
 pub(crate) fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(boxed) = ctx.data.as_ref() {
+    if let Some(boxed) = ctx.data().as_ref() {
         if let Some(pos) = boxed.downcast_ref::<txv_widgets::CursorPos>() {
             state.cursor_pos = (pos.line().saturating_sub(1), pos.col().saturating_sub(1));
         }

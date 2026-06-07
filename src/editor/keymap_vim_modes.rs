@@ -6,16 +6,16 @@ use txv_core::event::{KeyCode, KeyEvent};
 
 impl VimKeymap {
     pub(super) fn insert_key(&self, key: &KeyEvent) -> Command {
-        if key.modifiers.ctrl {
-            return match &key.code {
+        if key.modifiers().ctrl() {
+            return match key.code() {
                 KeyCode::Char('n') => Command::CompletionNext,
                 KeyCode::Char('p') => Command::CompletionPrev,
                 _ => Command::Noop, // pass through to status bar
             };
         }
-        match &key.code {
+        match key.code() {
             KeyCode::Esc => Command::ExitInsertMode,
-            KeyCode::Char(ch) => Command::InsertChar(*ch),
+            KeyCode::Char(ch) => Command::InsertChar(ch),
             KeyCode::Enter => Command::InsertNewline,
             KeyCode::Backspace => Command::DeleteCharBackward,
             KeyCode::Delete => Command::DeleteCharForward,
@@ -31,17 +31,17 @@ impl VimKeymap {
     }
 
     pub(super) fn visual_key(&mut self, key: &KeyEvent) -> Command {
-        if key.modifiers.ctrl {
+        if key.modifiers().ctrl() {
             return Command::Noop;
         }
         // Handle pending 'r' for block replace
         if let Some('r') = self.pending.take() {
-            if let KeyCode::Char(ch) = key.code {
+            if let KeyCode::Char(ch) = key.code() {
                 return Command::BlockReplace(ch);
             }
             return Command::Noop;
         }
-        match &key.code {
+        match key.code() {
             KeyCode::Esc => Command::ExitVisual,
             KeyCode::Char('h') | KeyCode::Left => Command::MoveLeft,
             KeyCode::Char('l') | KeyCode::Right => Command::MoveRight,

@@ -5,22 +5,10 @@ use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
 fn ctrl(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            ctrl: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::CTRL)
 }
 fn alt(ch: char) -> (KeyCode, KeyMod) {
-    (
-        KeyCode::Char(ch),
-        KeyMod {
-            alt: true,
-            ..KeyMod::default()
-        },
-    )
+    (KeyCode::Char(ch), KeyMod::ALT)
 }
 
 #[test]
@@ -49,13 +37,7 @@ fn ctrl_c_does_not_close_mx() {
     // Select: Home + Shift+End
     h.inject_key(KeyCode::Home, KeyMod::default());
     h.run_cycles(1);
-    h.inject_key(
-        KeyCode::End,
-        KeyMod {
-            shift: true,
-            ..KeyMod::default()
-        },
-    );
+    h.inject_key(KeyCode::End, KeyMod::SHIFT);
     h.run_cycles(3);
     h.inject_key(ctrl('c').0, ctrl('c').1);
     h.run_cycles(3);

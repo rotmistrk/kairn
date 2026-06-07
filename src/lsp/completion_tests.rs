@@ -49,7 +49,7 @@ fn draw_renders_items() {
     let mut buf = Buffer::new(20, 5);
     popup.draw(&mut buf);
     let cell = buf.cell(1, 1);
-    assert_eq!(cell.ch, 'h');
+    assert_eq!(cell.ch(), 'h');
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn draw_clamps_right_edge() {
     // Popup should shift left so it fits within 20 cols
     let mut found = false;
     for x in 0..20 {
-        if buf.cell(x, 1).ch == 'l' {
+        if buf.cell(x, 1).ch() == 'l' {
             found = true;
             break;
         }
@@ -78,7 +78,7 @@ fn draw_above_when_no_room_below() {
     popup.draw(&mut buf);
     // Items should appear above anchor (rows 1-3)
     let cell = buf.cell(1, 1);
-    assert_eq!(cell.ch, 'a');
+    assert_eq!(cell.ch(), 'a');
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn scroll_down_past_visible_window() {
     popup.draw(&mut buf);
     // First visible item should be "item2" (scroll=2)
     let cell = buf.cell(1, 1);
-    assert_eq!(cell.ch, 'i');
+    assert_eq!(cell.ch(), 'i');
 }
 
 #[test]

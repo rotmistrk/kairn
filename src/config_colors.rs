@@ -93,14 +93,14 @@ fn parse_style(interp: &Interpreter, var: &str) -> Option<Style> {
     let mut attrs = Attrs::default();
     for part in parts.iter().skip(2) {
         match *part {
-            "bold" => attrs.bold = true,
-            "italic" => attrs.italic = true,
-            "underline" => attrs.underline = true,
-            "dim" => attrs.dim = true,
+            "bold" => attrs.set_bold(true),
+            "italic" => attrs.set_italic(true),
+            "underline" => attrs.set_underline(true),
+            "dim" => attrs.set_dim(true),
             _ => {}
         }
     }
-    Some(Style { fg, bg, attrs })
+    Some(Style::new(fg, bg).with_attrs(attrs))
 }
 
 /// Parse a color: number (ansi 0-15), "p:N" (palette 0-255), "rgb:RRGGBB"
@@ -123,7 +123,7 @@ fn parse_color(s: &str) -> Option<Color> {
 fn apply_fg(interp: &Interpreter, var: &str, style: &mut Style) {
     if let Some(val) = interp.get_var(var) {
         if let Ok(n) = val.as_int() {
-            style.fg = Color::Ansi(n as u8);
+            style.set_fg(Color::Ansi(n as u8));
         }
     }
 }

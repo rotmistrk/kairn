@@ -38,9 +38,9 @@ pub(super) fn collect_state(
     SessionState {
         version: SESSION_VERSION,
         layout: layout.to_string(),
-        wide_proportions: ws_state.wide_proportions,
-        narrow_proportions: ws_state.narrow_proportions,
-        hidden_panels: ws_state.hidden,
+        wide_proportions: ws_state.wide_proportions().to_vec(),
+        narrow_proportions: ws_state.narrow_proportions().to_vec(),
+        hidden_panels: ws_state.hidden().to_vec(),
         active_tab,
         editor_tabs,
         unfolded_dirs,

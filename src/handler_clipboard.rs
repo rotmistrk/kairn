@@ -10,9 +10,9 @@ use crate::slots::SlotId;
 use crate::views::problems::ProblemsView;
 
 pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext, state: &mut AppState) {
-    match ctx.command {
+    match ctx.command() {
         CM_COPY_TO_CLIPBOARD => {
-            if let Some(text) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) {
+            if let Some(text) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) {
                 if let Ok(mut ring) = state.clipboard.lock() {
                     ring.push(text, "input");
                 }
@@ -21,7 +21,7 @@ pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext, state: &mut Ap
         CM_PASTE_REQUEST => {
             if let Ok(mut ring) = state.clipboard.lock() {
                 if let Some(text) = ring.paste() {
-                    ctx.sink.push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
+                    ctx.sink().push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
                 }
             }
         }
@@ -30,13 +30,14 @@ pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext, state: &mut Ap
 }
 
 pub(crate) fn update_problems_view(ctx: &mut CommandContext) {
-    let Some(data) = ctx.data.as_ref() else {
+    let (_, data, _, desktop) = ctx.split();
+    let Some(data) = data.as_ref() else {
         return;
     };
     let Some((uri, diags)) = data.downcast_ref::<(String, Vec<Diagnostic>)>() else {
         return;
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(desktop) else {
         return;
     };
     find_problems_view(desktop, |pv| pv.update_diagnostics(uri, diags.clone()));

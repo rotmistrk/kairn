@@ -86,7 +86,7 @@ impl ResultsView {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h.saturating_sub(1) as usize;
+        let h = self.state.bounds().h().saturating_sub(1) as usize;
         if h == 0 {
             return;
         }
@@ -195,7 +195,7 @@ impl View for ResultsView {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        match key.code {
+        match key.code() {
             KeyCode::Down | KeyCode::Char('j') => {
                 self.next();
                 HandleResult::Consumed

@@ -6,16 +6,8 @@ mod helpers;
 use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
-const ALT: KeyMod = KeyMod {
-    ctrl: false,
-    alt: true,
-    shift: false,
-};
-const CTRL_SHIFT: KeyMod = KeyMod {
-    ctrl: true,
-    alt: false,
-    shift: true,
-};
+const ALT: KeyMod = KeyMod::ALT;
+const CTRL_SHIFT: KeyMod = KeyMod::CTRL.with_shift();
 
 // === Issue 1: Glyph style ===
 // Design: E0B6 (left half-circle) for active tab left edge
@@ -133,15 +125,17 @@ fn count_badge_is_visible_not_black_on_black() {
     let buf = h.backend.buffer().unwrap();
     let w = buf.width();
     // Find ▾ in row 0
-    let badge_pos = (0..w).find(|&x| buf.cell(x, 0).ch == '▾');
+    let badge_pos = (0..w).find(|&x| buf.cell(x, 0).ch() == '▾');
     assert!(badge_pos.is_some(), "should have ▾ badge");
 
     let cell = buf.cell(badge_pos.unwrap(), 0);
     // Must be visible: fg != bg, fg not black
     assert_ne!(
-        cell.style.fg, cell.style.bg,
+        cell.style().fg(),
+        cell.style().bg(),
         "badge must be visible (fg≠bg): fg={:?} bg={:?}",
-        cell.style.fg, cell.style.bg
+        cell.style().fg(),
+        cell.style().bg()
     );
 }
 

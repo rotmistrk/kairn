@@ -43,10 +43,7 @@ fn file_tree_view_multi_root_navigates() {
     view.set_sink(sink.clone());
 
     // Navigate down to second root
-    let down = Event::Key(KeyEvent {
-        code: KeyCode::Down,
-        modifiers: KeyMod::default(),
-    });
+    let down = Event::Key(KeyEvent::new(KeyCode::Down, KeyMod::default()));
     view.handle(&down);
     // No crash, navigation works
 }

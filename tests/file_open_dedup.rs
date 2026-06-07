@@ -12,11 +12,7 @@ use kairn::settings::EditorSettings;
 use kairn::slots::SlotId;
 use txv_core::event::{KeyCode, KeyMod};
 
-const ALT: KeyMod = KeyMod {
-    ctrl: false,
-    alt: true,
-    shift: false,
-};
+const ALT: KeyMod = KeyMod::ALT;
 
 // ─── CM_OPEN_FILE deduplication ───────────────────────────────────────────────
 

@@ -14,22 +14,10 @@ pub struct GitKeys {
 impl Default for GitKeys {
     fn default() -> Self {
         Self {
-            stage: KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyMod::default(),
-            },
-            unstage: KeyEvent {
-                code: KeyCode::Char('u'),
-                modifiers: KeyMod::default(),
-            },
-            untrack: KeyEvent {
-                code: KeyCode::Char('x'),
-                modifiers: KeyMod::default(),
-            },
-            commit: KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyMod::default(),
-            },
+            stage: KeyEvent::new(KeyCode::Char('s'), KeyMod::NONE),
+            unstage: KeyEvent::new(KeyCode::Char('u'), KeyMod::NONE),
+            untrack: KeyEvent::new(KeyCode::Char('x'), KeyMod::NONE),
+            commit: KeyEvent::new(KeyCode::Char('c'), KeyMod::NONE),
         }
     }
 }

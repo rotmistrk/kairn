@@ -11,7 +11,7 @@ use super::protocol;
 use super::send_helpers::start_lsp;
 
 pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(req) = boxed.downcast_ref::<OpenFileRequest>() else {
@@ -53,7 +53,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
 fn report_lsp_error(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(err) = state.lsp.last_error.take() {
         use txv_core::message::{Message, MsgLevel};
-        ctx.sink.push_command(
+        ctx.sink().push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
         );
@@ -61,7 +61,7 @@ fn report_lsp_error(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(changed) = boxed.downcast_ref::<ContentChanged>() else {

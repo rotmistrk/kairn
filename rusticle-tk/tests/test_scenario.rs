@@ -29,7 +29,7 @@ fn desktop_renders_text_widget() {
     let buf = child.buffer();
     let mut row = String::new();
     for x in 0..80 {
-        row.push(buf.cell(x, 0).ch);
+        row.push(buf.cell(x, 0).ch());
     }
     assert!(
         row.contains("Hello, world!"),
@@ -46,10 +46,7 @@ fn desktop_dispatches_keys_to_focused() {
     desktop.focus("input");
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
-    let event = Event::Key(KeyEvent {
-        code: KeyCode::Char('x'),
-        modifiers: KeyMod::default(),
-    });
+    let event = Event::Key(KeyEvent::new(KeyCode::Char('x'), KeyMod::default()));
     let result = desktop.handle(&event);
     assert_eq!(result, HandleResult::Consumed);
 }
@@ -80,10 +77,7 @@ fn desktop_focus_switches_child() {
     desktop.focus("b");
 
     // Typing should go to input (b), not text (a)
-    let event = Event::Key(KeyEvent {
-        code: KeyCode::Char('z'),
-        modifiers: KeyMod::default(),
-    });
+    let event = Event::Key(KeyEvent::new(KeyCode::Char('z'), KeyMod::default()));
     desktop.handle(&event);
 
     // Verify input received the character
@@ -100,14 +94,7 @@ fn program_quit_via_command() {
     let desktop = build_desktop("test");
     let mut bar = StatusBar::new();
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
-        KeyEvent {
-            code: KeyCode::Char('q'),
-            modifiers: KeyMod {
-                ctrl: true,
-                alt: false,
-                shift: false,
-            },
-        },
+        KeyEvent::new(KeyCode::Char('q'), KeyMod::CTRL),
         CM_QUIT,
         "^Q",
     ))));
@@ -116,14 +103,7 @@ fn program_quit_via_command() {
     let mut backend = MockBackend::new(80, 24);
 
     // Inject Ctrl-Q — StatusBar translates to CM_QUIT, Program exits
-    backend.inject_key(
-        KeyCode::Char('q'),
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    );
+    backend.inject_key(KeyCode::Char('q'), KeyMod::CTRL);
 
     // run_cycles should process the quit and return
     program.run_cycles(&mut backend, &mut |_| {}, 5);

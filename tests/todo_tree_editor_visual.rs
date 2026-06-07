@@ -30,10 +30,10 @@ fn item(title: &str) -> String {
 /// The cursor row has CursorFocused bg on the checkbox area.
 fn find_cursor_row(h: &TestHarness) -> Option<u16> {
     let buf = h.backend.buffer()?;
-    let cursor_bg = palette().style(StyleId::CursorFocused).bg;
+    let cursor_bg = palette().style(StyleId::CursorFocused).bg();
     for y in 0..buf.height() {
         let cell = buf.cell(0, y);
-        if cell.style.bg == cursor_bg {
+        if cell.style().bg() == cursor_bg {
             return Some(y);
         }
     }
@@ -45,7 +45,7 @@ fn row_text(h: &TestHarness, y: u16) -> String {
     let buf = h.backend.buffer().unwrap();
     let mut s = String::new();
     for x in 0..buf.width() {
-        let ch = buf.cell(x, y).ch;
+        let ch = buf.cell(x, y).ch();
         // Stop at panel separator (│ after the checkbox area)
         if ch == '│' && x > 5 {
             break;
@@ -97,7 +97,7 @@ fn edit_background_fills_editor_width() {
     h.run_cycles(3);
 
     let y = find_cursor_row(&h).expect("cursor row");
-    let cursor_bg = palette().style(StyleId::CursorFocused).bg;
+    let cursor_bg = palette().style(StyleId::CursorFocused).bg();
     // The entire cursor row should have CursorFocused bg
     // (InputLine gets palette with Text→CursorFocused)
     let buf = h.backend.buffer().unwrap();
@@ -105,7 +105,7 @@ fn edit_background_fills_editor_width() {
     // Check that cells in the editing area have cursor bg, not default
     let mut has_cursor_bg = false;
     for x in 0..w {
-        if buf.cell(x, y).style.bg == cursor_bg {
+        if buf.cell(x, y).style().bg() == cursor_bg {
             has_cursor_bg = true;
         }
     }
@@ -126,13 +126,13 @@ fn edit_selection_color_on_select_all() {
     h.run_cycles(3);
 
     let y = find_cursor_row(&h).expect("cursor row");
-    let sel_bg = palette().style(StyleId::EditSelection).bg;
+    let sel_bg = palette().style(StyleId::EditSelection).bg();
     let buf = h.backend.buffer().unwrap();
 
     // Count cells with selection bg
     let mut sel_count = 0;
     for x in 0..buf.width() {
-        if buf.cell(x, y).style.bg == sel_bg {
+        if buf.cell(x, y).style().bg() == sel_bg {
             sel_count += 1;
         }
     }
@@ -156,20 +156,20 @@ fn edit_selection_ends_at_text_boundary() {
     h.run_cycles(3);
 
     let y = find_cursor_row(&h).expect("cursor row");
-    let sel_bg = palette().style(StyleId::EditSelection).bg;
+    let sel_bg = palette().style(StyleId::EditSelection).bg();
     let buf = h.backend.buffer().unwrap();
 
     // Find the rightmost selected cell
     let mut last_sel_x: Option<u16> = None;
     for x in 0..buf.width() {
-        if buf.cell(x, y).style.bg == sel_bg {
+        if buf.cell(x, y).style().bg() == sel_bg {
             last_sel_x = Some(x);
         }
     }
     let last_sel = last_sel_x.expect("should have selection");
     // Cell after last selection should NOT have selection bg
     if last_sel + 1 < buf.width() {
-        let after_bg = buf.cell(last_sel + 1, y).style.bg;
+        let after_bg = buf.cell(last_sel + 1, y).style().bg();
         assert_ne!(
             after_bg, sel_bg,
             "cell after selection should not have EditSelection bg"
@@ -198,7 +198,7 @@ fn edit_overflow_indicator_on_long_title() {
     // Find the '…' overflow indicator on the editing row
     let mut has_overflow = false;
     for x in 0..buf.width() {
-        if buf.cell(x, y).ch == '…' {
+        if buf.cell(x, y).ch() == '…' {
             has_overflow = true;
             break;
         }

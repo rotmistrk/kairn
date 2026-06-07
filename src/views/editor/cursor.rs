@@ -21,7 +21,7 @@ impl EditorView {
     /// Returns None if cursor is off-screen.
     pub(super) fn hw_cursor_screen_pos(&self) -> Option<(u16, u16)> {
         let scroll = self.editor.viewport_scroll;
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         let avail = self.text_avail_width();
         let tab_w = self.editor.options.tab_width;
         let gutter_w = self.gutter_width();

@@ -19,14 +19,8 @@ use crate::views::welcome::WelcomeView;
 pub fn create_workspace_shell() -> TiledWorkspace {
     let configs = vec![
         PanelConfig::fixed("Files", PanelPosition::Left),
-        PanelConfig {
-            splittable: true,
-            ..PanelConfig::new("Editor", PanelPosition::Center)
-        },
-        PanelConfig {
-            splittable: true,
-            ..PanelConfig::new("Tools", PanelPosition::Right)
-        },
+        PanelConfig::new("Editor", PanelPosition::Center).with_splittable(),
+        PanelConfig::new("Tools", PanelPosition::Right).with_splittable(),
     ];
     let wide_layout = SplitNode::h(vec![
         (0.2, SplitNode::leaf(0)),
@@ -57,25 +51,12 @@ pub fn create_workspace_shell() -> TiledWorkspace {
 
 fn configure_keymap(ws: &mut TiledWorkspace) {
     use txv_core::event::{KeyCode, KeyEvent, KeyMod};
-    let ctrl_shift = |code| KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: true,
-            shift: true,
-            alt: false,
-        },
-    };
+    let ctrl_shift = |code| KeyEvent::new(code, KeyMod::CTRL.with_shift());
     let mut km = ws.keymap().clone();
-    km.tab_dropdown_up = ctrl_shift(KeyCode::Up);
-    km.tab_dropdown_down = ctrl_shift(KeyCode::Down);
-    km.focus_up = KeyEvent {
-        code: KeyCode::F(127),
-        modifiers: KeyMod::default(),
-    };
-    km.focus_down = KeyEvent {
-        code: KeyCode::F(127),
-        modifiers: KeyMod::default(),
-    };
+    km.set_tab_dropdown_up(ctrl_shift(KeyCode::Up));
+    km.set_tab_dropdown_down(ctrl_shift(KeyCode::Down));
+    km.set_focus_up(KeyEvent::new(KeyCode::F(127), KeyMod::NONE));
+    km.set_focus_down(KeyEvent::new(KeyCode::F(127), KeyMod::NONE));
     ws.set_keymap(km);
 }
 

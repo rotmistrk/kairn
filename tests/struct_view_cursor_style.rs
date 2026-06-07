@@ -22,15 +22,15 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
     let buf = h.backend.buffer().expect("buffer should exist");
     let pal = txv_core::palette::palette();
     let dim_style = pal.style(txv_core::palette::StyleId::Dim);
-    let cursor_bg = pal.style(txv_core::palette::StyleId::CursorFocused).bg;
-    let row_bg = pal.style(txv_core::palette::StyleId::CursorUnfocused).bg;
+    let cursor_bg = pal.style(txv_core::palette::StyleId::CursorFocused).bg();
+    let row_bg = pal.style(txv_core::palette::StyleId::CursorUnfocused).bg();
 
     // Find the cursor row by looking for a cell with cursor_focused bg
     let mut cursor_y: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
             let cell = buf.cell(x, y);
-            if cell.style.bg == cursor_bg && cell.ch != ' ' {
+            if cell.style().bg() == cursor_bg && cell.ch() != ' ' {
                 cursor_y = Some(y);
                 break;
             }
@@ -46,17 +46,19 @@ fn cursor_row_non_focused_columns_are_normal_not_dim() {
     let mut found_non_cursor_text = false;
     for x in 0..80u16 {
         let cell = buf.cell(x, y);
-        if cell.ch != ' ' && cell.ch != '│' && cell.style.bg != cursor_bg {
+        if cell.ch() != ' ' && cell.ch() != '│' && cell.style().bg() != cursor_bg {
             found_non_cursor_text = true;
             assert_eq!(
-                cell.style.bg, row_bg,
+                cell.style().bg(),
+                row_bg,
                 "non-focused column text '{}' at ({x},{y}) should have row highlight bg",
-                cell.ch
+                cell.ch()
             );
             assert_ne!(
-                cell.style, dim_style,
+                cell.style(),
+                dim_style,
                 "non-focused column text '{}' at ({x},{y}) should not be dim",
-                cell.ch
+                cell.ch()
             );
         }
     }

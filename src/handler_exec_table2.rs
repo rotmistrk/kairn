@@ -138,7 +138,7 @@ pub static TABLE_PART2: &[ExecEntry] = &[
     ExecEntry {
         names: &["theme"],
         requires_arg: false,
-        handler: crate::handler_exec_edit::cmd_theme,
+        handler: crate::handler_exec_misc::cmd_theme,
     },
     ExecEntry {
         names: &["toggle-tools"],
@@ -153,12 +153,12 @@ pub static TABLE_PART2: &[ExecEntry] = &[
     ExecEntry {
         names: &["vsplit"],
         requires_arg: false,
-        handler: crate::handler_exec_edit::cmd_vsplit,
+        handler: crate::handler_exec_misc::cmd_vsplit,
     },
     ExecEntry {
         names: &["welcome"],
         requires_arg: false,
-        handler: crate::handler_exec_edit::cmd_welcome,
+        handler: crate::handler_exec_misc::cmd_welcome,
     },
     ExecEntry {
         names: &["zoom"],
@@ -236,7 +236,7 @@ pub(crate) fn refresh_completer_roots(state: &AppState) {
 fn emit_roots_changed(ctx: &mut CommandContext, state: &AppState) {
     use crate::commands::RootsChangedData;
     let data = RootsChangedData::from_roots(state.roots());
-    ctx.sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+    ctx.sink().push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
 }
 fn push_msg(state: &AppState, msg: Message) {
     if let Ok(mut ring) = state.messages().lock() {

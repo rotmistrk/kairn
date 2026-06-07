@@ -91,7 +91,7 @@ impl Highlighter {
                     let fg = Color::Rgb(r, g, b);
                     HlSpan {
                         text: text.to_string(),
-                        style: Style { fg, ..Style::default() },
+                        style: Style::new(fg, Style::default().bg()),
                     }
                 })
                 .collect(),
@@ -162,7 +162,7 @@ mod tests {
         let spans = hl.highlight_line("}", "java");
         for span in &spans {
             if span.text.contains('}') {
-                let Color::Rgb(r, g, b) = span.style.fg else {
+                let Color::Rgb(r, g, b) = span.style().fg() else {
                     panic!("not rgb")
                 };
                 eprintln!("  java bracket -> ({r},{g},{b})");

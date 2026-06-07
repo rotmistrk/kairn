@@ -62,7 +62,7 @@ impl LayoutManager {
         let mut rem = area;
 
         for entry in &self.entries {
-            if rem.w == 0 || rem.h == 0 {
+            if rem.w() == 0 || rem.h() == 0 {
                 break;
             }
             let (widget_rect, new_rem) = split_side(rem, entry.side, entry.size);
@@ -77,34 +77,34 @@ impl LayoutManager {
 fn split_side(rem: Rect, side: Side, size: Option<u16>) -> (Rect, Rect) {
     match side {
         Side::Left => {
-            let w = size.unwrap_or(rem.w).min(rem.w);
+            let w = size.unwrap_or(rem.w()).min(rem.w());
             (
-                Rect::new(rem.x, rem.y, w, rem.h),
-                Rect::new(rem.x + w, rem.y, rem.w - w, rem.h),
+                Rect::new(rem.x(), rem.y(), w, rem.h()),
+                Rect::new(rem.x() + w, rem.y(), rem.w() - w, rem.h()),
             )
         }
         Side::Right => {
-            let w = size.unwrap_or(rem.w).min(rem.w);
+            let w = size.unwrap_or(rem.w()).min(rem.w());
             (
-                Rect::new(rem.x + rem.w - w, rem.y, w, rem.h),
-                Rect::new(rem.x, rem.y, rem.w - w, rem.h),
+                Rect::new(rem.x() + rem.w() - w, rem.y(), w, rem.h()),
+                Rect::new(rem.x(), rem.y(), rem.w() - w, rem.h()),
             )
         }
         Side::Top => {
-            let h = size.unwrap_or(rem.h).min(rem.h);
+            let h = size.unwrap_or(rem.h()).min(rem.h());
             (
-                Rect::new(rem.x, rem.y, rem.w, h),
-                Rect::new(rem.x, rem.y + h, rem.w, rem.h - h),
+                Rect::new(rem.x(), rem.y(), rem.w(), h),
+                Rect::new(rem.x(), rem.y() + h, rem.w(), rem.h() - h),
             )
         }
         Side::Bottom => {
-            let h = size.unwrap_or(rem.h).min(rem.h);
+            let h = size.unwrap_or(rem.h()).min(rem.h());
             (
-                Rect::new(rem.x, rem.y + rem.h - h, rem.w, h),
-                Rect::new(rem.x, rem.y, rem.w, rem.h - h),
+                Rect::new(rem.x(), rem.y() + rem.h() - h, rem.w(), h),
+                Rect::new(rem.x(), rem.y(), rem.w(), rem.h() - h),
             )
         }
-        Side::Fill => (rem, Rect::new(rem.x + rem.w, rem.y + rem.h, 0, 0)),
+        Side::Fill => (rem, Rect::new(rem.x() + rem.w(), rem.y() + rem.h(), 0, 0)),
     }
 }
 
@@ -143,9 +143,9 @@ mod tests {
         mgr.add("tree", Side::Left, Some(20));
         mgr.add("main", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects[0].1.w, 20);
-        assert_eq!(rects[1].1.w, 60);
-        assert_eq!(rects[1].1.x, 20);
+        assert_eq!(rects[0].1.w(), 20);
+        assert_eq!(rects[1].1.w(), 60);
+        assert_eq!(rects[1].1.x(), 20);
     }
 
     #[test]
@@ -154,9 +154,9 @@ mod tests {
         mgr.add("status", Side::Bottom, Some(1));
         mgr.add("main", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects[0].1.h, 1);
-        assert_eq!(rects[0].1.y, 23);
-        assert_eq!(rects[1].1.h, 23);
+        assert_eq!(rects[0].1.h(), 1);
+        assert_eq!(rects[0].1.y(), 23);
+        assert_eq!(rects[1].1.h(), 23);
     }
 
     #[test]
@@ -166,11 +166,11 @@ mod tests {
         mgr.add("status", Side::Bottom, Some(1));
         mgr.add("txt", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects[0].1.w, 25);
-        assert_eq!(rects[1].1.h, 1);
-        assert_eq!(rects[1].1.w, 55);
-        assert_eq!(rects[2].1.w, 55);
-        assert_eq!(rects[2].1.h, 23);
+        assert_eq!(rects[0].1.w(), 25);
+        assert_eq!(rects[1].1.h(), 1);
+        assert_eq!(rects[1].1.w(), 55);
+        assert_eq!(rects[2].1.w(), 55);
+        assert_eq!(rects[2].1.h(), 23);
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
         mgr.remove("w1");
         let rects = mgr.compute(area());
         assert_eq!(rects.len(), 1);
-        assert_eq!(rects[0].1.w, 80);
+        assert_eq!(rects[0].1.w(), 80);
     }
 
     #[test]
@@ -198,8 +198,8 @@ mod tests {
         mgr.add("input", Side::Top, Some(3));
         mgr.add("content", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects[0].1.h, 3);
-        assert_eq!(rects[1].1.h, 21);
+        assert_eq!(rects[0].1.h(), 3);
+        assert_eq!(rects[1].1.h(), 21);
     }
 
     #[test]
@@ -208,8 +208,8 @@ mod tests {
         mgr.add("sidebar", Side::Right, Some(30));
         mgr.add("main", Side::Fill, None);
         let rects = mgr.compute(area());
-        assert_eq!(rects[0].1.x, 50);
-        assert_eq!(rects[0].1.w, 30);
-        assert_eq!(rects[1].1.w, 50);
+        assert_eq!(rects[0].1.x(), 50);
+        assert_eq!(rects[0].1.w(), 30);
+        assert_eq!(rects[1].1.w(), 50);
     }
 }

@@ -11,12 +11,12 @@ use txv_core::palette::{palette, StyleId};
 
 /// Helper: get the expected status bar background color.
 fn bar_bg() -> Color {
-    palette().style(StyleId::StatusBar).bg
+    palette().style(StyleId::StatusBar).bg()
 }
 
 /// Helper: get the expected modal background color.
 fn modal_bg() -> Color {
-    palette().style(StyleId::StatusBarModal).bg
+    palette().style(StyleId::StatusBarModal).bg()
 }
 
 /// Status bar row is the last row.
@@ -41,10 +41,10 @@ fn status_bar_dormant_no_black_bg() {
     for x in 0..w {
         let cell = buf.cell(x, y);
         assert!(
-            cell.style.bg != Color::Reset && cell.style.bg != Color::Ansi(0),
+            cell.style().bg() != Color::Reset && cell.style().bg() != Color::Ansi(0),
             "cell at x={x} has black bg ({:?}), expected bar bg ({expected_bg:?}). char={:?}",
-            cell.style.bg,
-            cell.ch,
+            cell.style().bg(),
+            cell.ch(),
         );
     }
 }
@@ -58,14 +58,7 @@ fn status_bar_active_modal_right_cap_colors() {
     h.run_cycles(2);
 
     // Activate M-x modal
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(2);
 
     let buf = h.backend.buffer().expect("no buffer");
@@ -78,17 +71,19 @@ fn status_bar_active_modal_right_cap_colors() {
     let mut found_cap = false;
     for x in 0..w {
         let cell = buf.cell(x, y);
-        if cell.ch == '\u{e0b4}' {
+        if cell.ch() == '\u{e0b4}' {
             found_cap = true;
             assert_eq!(
-                cell.style.fg, expected_modal_bg,
+                cell.style().fg(),
+                expected_modal_bg,
                 "right cap at x={x}: fg should be modal_bg ({expected_modal_bg:?}), got {:?}",
-                cell.style.fg,
+                cell.style().fg(),
             );
             assert_eq!(
-                cell.style.bg, expected_bar_bg,
+                cell.style().bg(),
+                expected_bar_bg,
                 "right cap at x={x}: bg should be bar_bg ({expected_bar_bg:?}), got {:?}",
-                cell.style.bg,
+                cell.style().bg(),
             );
             break;
         }
@@ -105,14 +100,7 @@ fn status_bar_active_modal_no_black_after_cap() {
     h.run_cycles(2);
 
     // Activate M-x modal
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(2);
 
     let buf = h.backend.buffer().expect("no buffer");
@@ -124,7 +112,7 @@ fn status_bar_active_modal_no_black_after_cap() {
     let mut cap_x = None;
     for x in 0..w {
         let cell = buf.cell(x, y);
-        if cell.ch == '\u{e0b4}' {
+        if cell.ch() == '\u{e0b4}' {
             cap_x = Some(x);
             break;
         }
@@ -134,10 +122,10 @@ fn status_bar_active_modal_no_black_after_cap() {
     for x in (cap_x + 1)..w {
         let cell = buf.cell(x, y);
         assert!(
-            cell.style.bg != Color::Reset && cell.style.bg != Color::Ansi(0),
+            cell.style().bg() != Color::Reset && cell.style().bg() != Color::Ansi(0),
             "cell at x={x} (after right cap at {cap_x}) has black bg ({:?}), expected bar bg ({expected_bar_bg:?}). char={:?}",
-            cell.style.bg,
-            cell.ch,
+            cell.style().bg(),
+            cell.ch(),
         );
     }
 }
@@ -173,14 +161,7 @@ fn mx_reopen_selects_old_text_typing_replaces() {
     h.run_cycles(2);
 
     // Open M-x, type "help", press Enter
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(1);
     h.inject_str("help");
     h.run_cycles(1);
@@ -188,14 +169,7 @@ fn mx_reopen_selects_old_text_typing_replaces() {
     h.run_cycles(2);
 
     // Reopen M-x — old text "help" should be there but selected
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(2);
 
     // Type "e" — should replace "help" with "e"
@@ -218,14 +192,7 @@ fn mx_reopen_nav_deselects() {
     h.run_cycles(2);
 
     // Open M-x, type "test", press Enter
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(1);
     h.inject_str("test");
     h.run_cycles(1);
@@ -233,14 +200,7 @@ fn mx_reopen_nav_deselects() {
     h.run_cycles(2);
 
     // Reopen M-x
-    h.inject_key(
-        KeyCode::Char('x'),
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
     h.run_cycles(2);
 
     // Press Left to deselect, then type "X"

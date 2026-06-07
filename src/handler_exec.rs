@@ -24,25 +24,28 @@ pub fn dispatch_table() -> impl Iterator<Item = &'static ExecEntry> {
 
 /// Handle the M-x command dispatch.
 pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
-    };
-    let Some(text) = boxed.downcast_ref::<String>() else {
-        return;
+    let text = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some(t) = boxed.downcast_ref::<String>() else {
+            return;
+        };
+        t.clone()
     };
     log::debug!("execute_command: {:?}", text);
 
     let trimmed = text.trim().strip_prefix(':').unwrap_or(text.trim());
     let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
     let cmd = parts.first().copied().unwrap_or("");
-    let arg = parts.get(1).copied().unwrap_or("");
+    let arg = parts.get(1).copied().unwrap_or("").to_string();
 
     for entry in dispatch_table() {
         if entry.names.contains(&cmd) {
             if entry.requires_arg && arg.is_empty() {
                 return;
             }
-            (entry.handler)(ctx, state, arg);
+            (entry.handler)(ctx, state, &arg);
             return;
         }
     }
@@ -53,7 +56,7 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
 fn execute_as_tcl(ctx: &mut CommandContext, state: &mut AppState, text: &str) {
     if is_bare_word(text) && !state.script.has_command(text) {
         let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
-        ctx.sink
+        ctx.sink()
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     } else {
         match state.script.eval(text) {
@@ -63,13 +66,13 @@ fn execute_as_tcl(ctx: &mut CommandContext, state: &mut AppState, text: &str) {
                 crate::handler_script::dispatch_script_commands(cmds, ctx, state);
                 if !result.is_empty() {
                     let msg = txv_core::message::Message::info("tcl", result);
-                    ctx.sink
+                    ctx.sink()
                         .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
                 }
             }
             Err(e) => {
                 let msg = txv_core::message::Message::error("tcl", e);
-                ctx.sink
+                ctx.sink()
                     .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
             }
         }
@@ -135,14 +138,16 @@ mod tests {
         } else {
             name.to_string()
         };
-        let data: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(text));
-        let mut ctx = txv_core::program::CommandContext {
-            command: CM_EXECUTE_COMMAND,
-            data: &data,
-            sink,
-            desktop: program.desktop_mut(),
-        };
-        handle_execute_command(&mut ctx, state);
+        sink.push_command(CM_EXECUTE_COMMAND, Some(Box::new(text)));
+        program.run_cycles(
+            &mut txv_core::prelude::MockBackend::new(80, 24),
+            &mut |ctx| {
+                if ctx.command() == CM_EXECUTE_COMMAND {
+                    handle_execute_command(ctx, state);
+                }
+            },
+            1,
+        );
 
         let events = sink.drain();
         let produced_unknown = events.iter().any(|ev| {
@@ -152,7 +157,7 @@ mod tests {
                         .as_ref()
                         .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
                     {
-                        return msg.text.contains("Unknown command");
+                        return msg.text().contains("Unknown command");
                     }
                 }
             }
@@ -170,14 +175,16 @@ mod tests {
         let (mut program, sink, mut state) = setup_test_program(&dir);
 
         // ":help" should dispatch the same as "help" (no "Unknown command")
-        let text: Option<Box<dyn std::any::Any + Send>> = Some(Box::new(":help".to_string()));
-        let mut ctx = txv_core::program::CommandContext {
-            command: CM_EXECUTE_COMMAND,
-            data: &text,
-            sink: &sink,
-            desktop: program.desktop_mut(),
-        };
-        handle_execute_command(&mut ctx, &mut state);
+        sink.push_command(CM_EXECUTE_COMMAND, Some(Box::new(":help".to_string())));
+        program.run_cycles(
+            &mut txv_core::prelude::MockBackend::new(80, 24),
+            &mut |ctx| {
+                if ctx.command() == CM_EXECUTE_COMMAND {
+                    handle_execute_command(ctx, &mut state);
+                }
+            },
+            1,
+        );
 
         let events = sink.drain();
         let produced_unknown = events.iter().any(|ev| {
@@ -186,7 +193,7 @@ mod tests {
                     .as_ref()
                     .and_then(|d| d.downcast_ref::<txv_core::message::Message>())
                 {
-                    return msg.text.contains("Unknown command");
+                    return msg.text().contains("Unknown command");
                 }
             }
             false

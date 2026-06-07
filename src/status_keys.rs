@@ -37,30 +37,13 @@ impl Default for StatusKeys {
 }
 
 fn fkey(n: u8) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::F(n),
-        modifiers: KeyMod::default(),
-    }
+    KeyEvent::new(KeyCode::F(n), KeyMod::NONE)
 }
 
 fn ctrl_key(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::CTRL)
 }
 
 fn ctrl_alt_key(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: true,
-            shift: false,
-        },
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::CTRL.with_alt())
 }

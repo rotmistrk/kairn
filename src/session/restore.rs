@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use git2::Repository;
 use txv_widgets::tab_panel::TabPanel;
-use txv_widgets::tiled_workspace::types::WorkspaceState;
+use txv_widgets::tiled_workspace::workspace_state::WorkspaceState;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::desktop::{close_tab_by_title, insert_tab, LayoutMode, SlotId};
@@ -25,11 +25,11 @@ pub fn restore_session(desktop: &mut TiledWorkspace, state: &SessionState) {
         _ => LayoutMode::Auto,
     });
     if !state.wide_proportions.is_empty() || !state.narrow_proportions.is_empty() {
-        let ws_state = WorkspaceState {
-            wide_proportions: state.wide_proportions.clone(),
-            narrow_proportions: state.narrow_proportions.clone(),
-            hidden: state.hidden_panels.clone(),
-        };
+        let ws_state = WorkspaceState::new(
+            state.wide_proportions.clone(),
+            state.narrow_proportions.clone(),
+            state.hidden_panels.clone(),
+        );
         desktop.restore_state(&ws_state);
     }
 }

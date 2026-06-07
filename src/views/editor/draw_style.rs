@@ -15,16 +15,13 @@ pub(super) fn char_style(
 ) -> Style {
     if let Some((vs, ve)) = visual_range {
         if byte_pos >= vs && byte_pos < ve {
-            return Style { bg: visual_bg, ..base };
+            return Style::new(base.fg(), visual_bg).with_attrs(base.attrs());
         }
     } else if let Some(is_current) = highlight.and_then(|h| h.match_at(byte_pos)) {
         if is_current {
             return hl_match;
         }
-        return Style {
-            bg: hl_other_bg,
-            ..base
-        };
+        return Style::new(base.fg(), hl_other_bg).with_attrs(base.attrs());
     }
     base
 }
@@ -39,21 +36,19 @@ pub(super) fn bracket_highlight(
     rainbow_map: &[(usize, Color)],
 ) -> Style {
     if matchparen_pos == Some((line_idx, char_idx)) {
-        Style {
-            fg: if matchparen_style.fg != Color::Reset {
-                matchparen_style.fg
-            } else {
-                base.fg
-            },
-            bg: if matchparen_style.bg != Color::Reset {
-                matchparen_style.bg
-            } else {
-                base.bg
-            },
-            attrs: matchparen_style.attrs,
-        }
+        let fg = if matchparen_style.fg() != Color::Reset {
+            matchparen_style.fg()
+        } else {
+            base.fg()
+        };
+        let bg = if matchparen_style.bg() != Color::Reset {
+            matchparen_style.bg()
+        } else {
+            base.bg()
+        };
+        Style::new(fg, bg).with_attrs(matchparen_style.attrs())
     } else if let Some(&(_, color)) = rainbow_map.iter().find(|(col, _)| *col == char_idx) {
-        Style { fg: color, ..base }
+        base.with_fg(color)
     } else {
         base
     }
@@ -172,7 +167,7 @@ impl super::EditorView {
 pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: u16, to_x: u16) {
     let bg = txv_core::palette::palette()
         .style(txv_core::palette::StyleId::SearchMatch)
-        .bg;
+        .bg();
     if bg == Color::Reset {
         return;
     }
@@ -181,7 +176,7 @@ pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: 
     let base = y as usize * bw;
     for x in (from_x as usize)..(to_x as usize) {
         if let Some(c) = cells.get_mut(base + x) {
-            c.style.bg = bg;
+            c.style_mut().set_bg(bg);
         }
     }
 }
@@ -189,10 +184,7 @@ pub(super) fn paint_line_bg(buf: &mut txv_core::buffer::Buffer, y: u16, from_x: 
 impl super::EditorView {
     pub(super) fn ephemeral_fill(&self, line_idx: usize, p: &super::draw::DrawParams) -> Style {
         if self.editor.ephemeral.ranges.iter().any(|r| r.covers_line(line_idx)) {
-            Style {
-                bg: p.ephemeral_bg,
-                ..Style::default()
-            }
+            Style::default().with_bg(p.ephemeral_bg)
         } else {
             Style::default()
         }
@@ -215,12 +207,12 @@ impl super::EditorView {
             return;
         }
         let app = crate::app_palette::app_palette();
-        let bg = app.editor().highlight_match().bg;
+        let bg = app.editor().highlight_match().bg();
         let x_start = gutter_w + col_start as u16;
         let x_end = gutter_w + (col_end as u16).min(w.saturating_sub(gutter_w));
         let y = vis_row as u16;
         for x in x_start..x_end {
-            self.state.buffer_mut().cell_mut(x, y).style.bg = bg;
+            self.state.buffer_mut().cell_mut(x, y).style_mut().set_bg(bg);
         }
     }
 }

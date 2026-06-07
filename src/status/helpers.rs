@@ -2,49 +2,17 @@
 
 use txv_core::prelude::*;
 
-pub const ALT_X: KeyEvent = KeyEvent {
-    code: KeyCode::Char('x'),
-    modifiers: KeyMod {
-        ctrl: false,
-        alt: true,
-        shift: false,
-    },
-};
-
-pub const APPROX: KeyEvent = KeyEvent {
-    code: KeyCode::Char('≈'),
-    modifiers: KeyMod {
-        ctrl: false,
-        alt: false,
-        shift: false,
-    },
-};
+pub const ALT_X: KeyEvent = KeyEvent::new(KeyCode::Char('x'), KeyMod::ALT);
+pub const APPROX: KeyEvent = KeyEvent::new(KeyCode::Char('≈'), KeyMod::NONE);
 
 pub fn key(code: KeyCode) -> KeyEvent {
-    KeyEvent {
-        code,
-        modifiers: KeyMod::default(),
-    }
+    KeyEvent::new(code, KeyMod::NONE)
 }
 
 pub fn ctrl(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: false,
-        },
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::CTRL)
 }
 
 pub fn alt(ch: char) -> KeyEvent {
-    KeyEvent {
-        code: KeyCode::Char(ch),
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    }
+    KeyEvent::new(KeyCode::Char(ch), KeyMod::ALT)
 }

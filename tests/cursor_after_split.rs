@@ -85,14 +85,7 @@ fn focus_tools_in_narrow_layout() {
 
     // Focus should start on center (editor) panel
     // Try Ctrl+Shift+Down to reach tools at bottom
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            shift: true,
-            alt: false,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(2);
 
     // Tools panel should now be focused — Shell tab should be active
@@ -128,14 +121,7 @@ fn tools_subpanel_divider_in_narrow_layout() {
     h.run_cycles(1);
 
     // Move tab to create subpanel split (Ctrl+Alt+W)
-    h.inject_key(
-        KeyCode::Char('w'),
-        KeyMod {
-            ctrl: true,
-            alt: true,
-            shift: false,
-        },
-    );
+    h.inject_key(KeyCode::Char('w'), KeyMod::CTRL.with_alt());
     h.run_cycles(2);
 
     let screen = h.screen_text();

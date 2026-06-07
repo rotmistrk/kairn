@@ -230,16 +230,16 @@ pub fn collect_messages(ring: &std::sync::Arc<std::sync::Mutex<crate::message_ri
         .entries()
         .iter()
         .map(|m| {
-            let level = match m.level {
+            let level = match m.level() {
                 MsgLevel::Error => "ERR",
                 MsgLevel::Warn => "WARN",
                 MsgLevel::Info => "INFO",
                 MsgLevel::Debug => "DBG",
             };
-            if m.count > 1 {
-                format!("[{}] [{}] {} (x{})", level, m.origin, m.text, m.count)
+            if m.count() > 1 {
+                format!("[{}] [{}] {} (x{})", level, m.origin(), m.text(), m.count())
             } else {
-                format!("[{}] [{}] {}", level, m.origin, m.text)
+                format!("[{}] [{}] {}", level, m.origin(), m.text())
             }
         })
         .collect()

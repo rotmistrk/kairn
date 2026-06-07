@@ -20,7 +20,7 @@ pub(super) fn defer(
     data: Box<dyn std::any::Any + Send>,
 ) {
     use txv_core::message::{Message, MsgLevel};
-    ctx.sink.push_command(
+    ctx.sink().push_command(
         txv_widgets::CM_STATUS_MESSAGE,
         Some(Box::new(Message::new(
             MsgLevel::Info,
@@ -39,7 +39,7 @@ pub(super) fn defer(
 pub(super) fn emit_last_error(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(err) = state.lsp.last_error.take() {
         use txv_core::message::{Message, MsgLevel};
-        ctx.sink.push_command(
+        ctx.sink().push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::new(MsgLevel::Error, "lsp", err))),
         );

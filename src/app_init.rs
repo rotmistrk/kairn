@@ -93,7 +93,7 @@ fn apply_tree_connectors(desktop: &mut txv_widgets::tiled_workspace::TiledWorksp
         return;
     };
     if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
-        tree.inner.show_connectors = true;
+        tree.inner.set_show_connectors(true);
     }
 }
 

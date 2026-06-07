@@ -23,6 +23,7 @@ pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Handle :run — run project in a shell tab.
 pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     let cmd = tcl_override(&mut state.script, "run-command").or_else(|| {
         Some(
             state
@@ -35,10 +36,10 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(cmd) = cmd else {
         return;
     };
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         close_tab_by_title(desktop, SlotId::Tools, "Run");
         let term = new_shell_with_command(&cmd, &state.root_dir);
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, "Run".into(), term);
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, "Run".into(), term);
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }
@@ -75,6 +76,7 @@ pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Spawn an async build/test task and open a ResultsView.
 fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: &str) {
+    let sink = ctx.sink().clone();
     let Some(waker) = state.waker.clone() else {
         return;
     };
@@ -84,17 +86,10 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
     state.build_errors.clear();
     state.build_error_idx = 0;
 
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         close_tab_by_title(desktop, SlotId::Tools, title);
         let view = ResultsView::searching(title, &state.root_dir);
-        try_insert_tab(
-            desktop,
-            state,
-            ctx.sink,
-            SlotId::Tools,
-            title.to_string(),
-            Box::new(view),
-        );
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, title.to_string(), Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }
@@ -102,7 +97,7 @@ fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: 
 fn report_no_cmd(ctx: &mut CommandContext, what: &str) {
     use txv_core::message::Message;
     let msg = Message::error("build", format!("No {what} command configured"));
-    ctx.sink
+    ctx.sink()
         .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
 }
 
@@ -118,7 +113,7 @@ fn detect_run_command(root: &std::path::Path) -> String {
 
 /// Try to detect the test function name at the cursor position.
 fn detect_test_name(ctx: &mut CommandContext, _state: &AppState) -> String {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return String::new();
     };
     let editor = desktop
@@ -179,7 +174,7 @@ fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
     let err = &state.build_errors[state.build_error_idx];
     let path = state.root_dir.join(&err.file);
     let req = OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
-    ctx.sink.push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+    ctx.sink().push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }
 
 /// Try a Tcl proc override. Returns Some(cmd) if proc exists and returns non-empty.

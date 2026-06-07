@@ -20,6 +20,7 @@ use crate::views::todo_tree::TodoTreeView;
 
 /// Drain MCP write commands and execute them on the live app state.
 pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     let Some(ref queue) = state.mcp.commands else {
         return;
     };
@@ -27,14 +28,14 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
     if requests.is_empty() {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         for req in requests {
             let _ = req.reply.send(Err("Desktop unavailable".to_string()));
         }
         return;
     };
     for req in requests {
-        let result = dispatch_mcp_action(&req.action, desktop, state, ctx.sink);
+        let result = dispatch_mcp_action(&req.action, desktop, state, &sink);
         let _ = req.reply.send(result);
     }
 }

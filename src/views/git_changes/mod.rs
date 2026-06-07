@@ -63,10 +63,10 @@ impl GitChangesView {
     }
 
     /// Get the relative path of the currently selected file (for git operations).
-    fn selected_rel_path(&self) -> Option<String> {
-        let row = self.inner.cursor;
-        let id = self.inner.data.visible_id(row);
-        let abs = self.inner.data.file_path(id)?;
+    fn selected_rel_path(&mut self) -> Option<String> {
+        let row = self.inner.cursor();
+        let id = self.inner.data_mut().visible_id(row);
+        let abs = self.inner.data_mut().file_path(id)?;
         // Try each root to find the matching one
         for root in &self.roots {
             if let Ok(rel) = abs.strip_prefix(root) {
@@ -103,8 +103,8 @@ impl View for GitChangesView {
             if *id == CM_ROOTS_CHANGED {
                 if let Some(rcd) = data.as_ref().and_then(|d| d.downcast_ref::<RootsChangedData>()) {
                     self.roots = rcd.paths.clone();
-                    self.inner.data.set_root_badge_colors(rcd.colors.clone());
-                    self.inner.data.set_root_labels(rcd.labels.clone());
+                    self.inner.data_mut().set_root_badge_colors(rcd.colors.clone());
+                    self.inner.data_mut().set_root_labels(rcd.labels.clone());
                     self.needs_rebuild = true;
                 }
                 return HandleResult::Ignored;
@@ -119,7 +119,7 @@ impl View for GitChangesView {
             if let Some(result) = self.handle_git_key(key) {
                 return result;
             }
-            self.last_key_was_right = key.code == KeyCode::Right;
+            self.last_key_was_right = key.code() == KeyCode::Right;
         }
         self.inner.handle(event)
     }
@@ -141,7 +141,7 @@ impl GitChangesView {
         let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
         if changed {
             self.needs_rebuild = false;
-            self.inner.data.rebuild_roots(&self.roots);
+            self.inner.data_mut().rebuild_roots(&self.roots);
             self.inner.mark_dirty();
             self.cooldown = 4;
         }
@@ -151,18 +151,20 @@ impl GitChangesView {
     fn handle_cm_ok(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
         if let Some(boxed) = data.as_ref() {
             if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                if let Some(path) = self.inner.data.file_path(node_id) {
+                let path = self.inner.data_mut().file_path(node_id).map(|p| p.to_path_buf());
+                if let Some(path) = path {
+                    let untracked = self.inner.data_mut().is_untracked(node_id);
                     let cmd = if self.last_key_was_right {
                         CM_OPEN_FILE_FOCUS
                     } else {
                         CM_OPEN_FILE
                     };
-                    let req = if self.inner.data.is_untracked(node_id) {
-                        OpenFileRequest::new(path.to_path_buf())
+                    let req = if untracked {
+                        OpenFileRequest::new(path)
                     } else {
-                        OpenFileRequest::with_diff(path.to_path_buf())
+                        OpenFileRequest::with_diff(path)
                     };
-                    self.inner.state.put_command(cmd, Some(Box::new(req)));
+                    self.inner.state_mut().put_command(cmd, Some(Box::new(req)));
                 }
                 return HandleResult::Consumed;
             }
@@ -173,24 +175,24 @@ impl GitChangesView {
     fn handle_git_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
         if *key == self.keys.stage {
             if let Some(rel) = self.selected_rel_path() {
-                self.inner.state.put_command(CM_GIT_STAGE, Some(Box::new(rel)));
+                self.inner.state_mut().put_command(CM_GIT_STAGE, Some(Box::new(rel)));
             }
             return Some(HandleResult::Consumed);
         }
         if *key == self.keys.unstage {
             if let Some(rel) = self.selected_rel_path() {
-                self.inner.state.put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
+                self.inner.state_mut().put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
             }
             return Some(HandleResult::Consumed);
         }
         if *key == self.keys.untrack {
             if let Some(rel) = self.selected_rel_path() {
-                self.inner.state.put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
+                self.inner.state_mut().put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
             }
             return Some(HandleResult::Consumed);
         }
         if *key == self.keys.commit {
-            self.inner.state.put_command(CM_GIT_COMMIT_PROMPT, None);
+            self.inner.state_mut().put_command(CM_GIT_COMMIT_PROMPT, None);
             return Some(HandleResult::Consumed);
         }
         None

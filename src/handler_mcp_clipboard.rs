@@ -30,9 +30,9 @@ pub(crate) fn mcp_clipboard_list(state: &mut AppState) -> Result<serde_json::Val
                 .map(|(i, e)| {
                     serde_json::json!({
                         "index": i,
-                        "first_line": e.text.lines().next().unwrap_or(""),
-                        "line_count": e.line_count,
-                        "source": e.source,
+                        "first_line": e.text().lines().next().unwrap_or(""),
+                        "line_count": e.line_count(),
+                        "source": e.source(),
                     })
                 })
                 .collect()

@@ -24,10 +24,10 @@ fn focused_cursor_has_blue_bg() {
     // Cursor row (row 0) should have bg = Ansi(4)
     let cell = tv.buffer().cell(0, 0);
     assert_eq!(
-        cell.style.bg,
+        cell.style().bg(),
         Color::Ansi(4),
         "focused cursor should have blue bg, got {:?}",
-        cell.style.bg
+        cell.style().bg()
     );
 }
 
@@ -40,10 +40,10 @@ fn unfocused_cursor_has_subtle_bg() {
     // Cursor row (row 0) should have bg = Ansi(8) (subtle gray)
     let cell = tv.buffer().cell(0, 0);
     assert_eq!(
-        cell.style.bg,
+        cell.style().bg(),
         Color::Ansi(8),
         "unfocused cursor should have gray bg, got {:?}",
-        cell.style.bg
+        cell.style().bg()
     );
 }
 
@@ -54,7 +54,10 @@ fn focused_cursor_has_underline() {
     tv.draw();
 
     let cell = tv.buffer().cell(0, 0);
-    assert!(cell.style.attrs.underline, "focused cursor should be underlined");
+    assert!(
+        cell.style().attrs().underline_val(),
+        "focused cursor should be underlined"
+    );
 }
 
 #[test]
@@ -64,5 +67,8 @@ fn unfocused_cursor_no_underline() {
     tv.draw();
 
     let cell = tv.buffer().cell(0, 0);
-    assert!(!cell.style.attrs.underline, "unfocused cursor should not be underlined");
+    assert!(
+        !cell.style().attrs().underline_val(),
+        "unfocused cursor should not be underlined"
+    );
 }

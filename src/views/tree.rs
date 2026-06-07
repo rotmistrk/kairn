@@ -38,7 +38,7 @@ pub struct FileTreeView {
 impl FileTreeView {
     pub fn new(root: PathBuf, watcher: Option<WatchHandle>) -> Self {
         let data = FileTreeData::new(root.clone());
-        let view = Self {
+        let mut view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
             watcher,
@@ -53,14 +53,14 @@ impl FileTreeView {
     }
 
     pub fn set_show_icons(&mut self, on: bool) {
-        self.inner.data.show_icons = on;
+        self.inner.data_mut().set_show_icons(on);
     }
 
     /// Create a multi-root file tree view.
     pub fn with_roots(roots: Vec<PathBuf>, watcher: Option<WatchHandle>) -> Self {
         let primary = roots.first().cloned().unwrap_or_default();
         let data = FileTreeData::with_roots(roots);
-        let view = Self {
+        let mut view = Self {
             inner: TreeView::new(data),
             last_key_was_right: false,
             watcher,
@@ -75,8 +75,14 @@ impl FileTreeView {
     }
 
     /// Spawn background thread to compute git status colors.
-    pub(super) fn request_colors(&self) {
-        let roots: Vec<PathBuf> = self.inner.data.all_roots().iter().map(|p| p.to_path_buf()).collect();
+    pub(super) fn request_colors(&mut self) {
+        let roots: Vec<PathBuf> = self
+            .inner
+            .data_mut()
+            .all_roots()
+            .iter()
+            .map(|p| p.to_path_buf())
+            .collect();
         let slot = Arc::clone(&self.pending_colors);
         thread::spawn(move || {
             let mut colors: HashMap<String, Color> = HashMap::new();
@@ -100,7 +106,7 @@ impl FileTreeView {
             guard.take()
         };
         if let Some(c) = colors {
-            self.inner.data.set_colors(c);
+            self.inner.data_mut().set_colors(c);
             self.inner.mark_dirty();
             true
         } else {
@@ -118,30 +124,30 @@ impl FileTreeView {
     pub(super) fn clear_filter(&mut self) {
         if self.filter_active {
             self.filter_active = false;
-            self.inner.data.set_filter("");
+            self.inner.data_mut().set_filter("");
             self.inner.mark_dirty();
         }
     }
 
     /// Return paths of all expanded directories.
-    pub fn expanded_paths(&self) -> Vec<PathBuf> {
-        self.inner.data.expanded_paths()
+    pub fn expanded_paths(&mut self) -> Vec<PathBuf> {
+        self.inner.data_mut().expanded_paths()
     }
 
     /// Expand directories matching the given paths.
     pub fn expand_paths(&mut self, paths: &[PathBuf]) {
-        self.inner.data.expand_paths(paths);
+        self.inner.data_mut().expand_paths(paths);
     }
 }
 
 fn status_color(status: FileStatus) -> Color {
     let app = app_palette();
     match status {
-        FileStatus::Modified => app.git().modified().fg,
-        FileStatus::Added => app.git().added().fg,
-        FileStatus::Untracked => app.git().untracked().fg,
-        FileStatus::Ignored => app.git().ignored().fg,
-        FileStatus::Conflict => app.git().conflict().fg,
+        FileStatus::Modified => app.git().modified().fg(),
+        FileStatus::Added => app.git().added().fg(),
+        FileStatus::Untracked => app.git().untracked().fg(),
+        FileStatus::Ignored => app.git().ignored().fg(),
+        FileStatus::Conflict => app.git().conflict().fg(),
         FileStatus::Clean => Color::Reset,
     }
 }
@@ -161,25 +167,25 @@ impl View for FileTreeView {
         if !self.filter_active {
             return None;
         }
-        Some(CursorRequest {
-            x: 1 + self.inner.data.filter().len() as u16,
-            y: self.inner.bounds().h.saturating_sub(1),
-            shape: CursorShape::Bar,
-        })
+        Some(CursorRequest::new(
+            1 + self.inner.data().filter().len() as u16,
+            self.inner.bounds().h().saturating_sub(1),
+            CursorShape::Bar,
+        ))
     }
 
     fn unselect(&mut self) {
         self.clear_filter();
         self.inner.unselect();
         self.inner
-            .state
+            .state_mut()
             .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(DIRED_STATUS_GROUP)));
     }
 
     fn select(&mut self) {
         self.inner.select();
         self.inner
-            .state
+            .state_mut()
             .put_command(CM_ACTIVATE_GROUP, Some(Box::new(DIRED_STATUS_GROUP)));
     }
 
@@ -200,7 +206,7 @@ impl View for FileTreeView {
             return self.handle_broadcast(*id, data);
         }
         if let Event::Key(key) = event {
-            self.last_key_was_right = key.code == KeyCode::Right;
+            self.last_key_was_right = key.code() == KeyCode::Right;
             if let Some(result) = self.handle_filter_key(key) {
                 return result;
             }
@@ -211,7 +217,7 @@ impl View for FileTreeView {
             }
             if let Some(prefill) = self.dired_prefill(*id) {
                 self.inner
-                    .state
+                    .state_mut()
                     .put_command(CM_COMMAND_PREFILL, Some(Box::new(prefill)));
                 return HandleResult::Consumed;
             }
@@ -230,9 +236,9 @@ impl FileTreeView {
         }
         if id == CM_ROOTS_CHANGED {
             if let Some(rcd) = data.as_ref().and_then(|d| d.downcast_ref::<RootsChangedData>()) {
-                self.inner.data.set_roots(rcd.paths.clone());
-                self.inner.data.set_root_labels(&rcd.labels);
-                self.inner.data.set_root_badge_colors(rcd.colors.clone());
+                self.inner.data_mut().set_roots(rcd.paths.clone());
+                self.inner.data_mut().set_root_labels(&rcd.labels);
+                self.inner.data_mut().set_root_badge_colors(rcd.colors.clone());
                 self.inner.mark_dirty();
                 self.request_colors();
             }
@@ -240,7 +246,7 @@ impl FileTreeView {
         }
         if id == CM_OPEN_FILES_CHANGED {
             if let Some(set) = data.as_ref().and_then(|d| d.downcast_ref::<HashSet<PathBuf>>()) {
-                self.inner.data.set_open_files(set.clone());
+                self.inner.data_mut().set_open_files(set.clone());
                 self.inner.mark_dirty();
             }
             return HandleResult::Ignored;

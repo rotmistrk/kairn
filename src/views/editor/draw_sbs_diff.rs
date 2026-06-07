@@ -76,7 +76,7 @@ impl EditorView {
         for row in 0..h as usize {
             let vi = sbs.scroll + row;
             let y = row as u16;
-            self.state.buffer_mut().put(half_w, y, g.ui.separator_v, styles.divider);
+            self.state.buffer_mut().put(half_w, y, g.ui().separator_v(), styles.divider);
             if vi >= sbs.left.len() {
                 self.state.buffer_mut().print_line(0, y, "~", half_w, styles.context);
                 self.state.buffer_mut().print_line(right_x, y, "~", right_w, styles.context);

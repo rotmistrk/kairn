@@ -117,14 +117,7 @@ fn ctrl_shift_down_cycles_to_previous_tab() {
     h.inject_key(KeyCode::Right, KeyMod::default()); // open c.rs + focus
     h.run_cycles(1);
     // Now c.rs is active. Ctrl-Shift-Down opens dropdown, type 'b' + Enter for b.rs
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('b'), KeyMod::default());
     h.run_cycles(1);
@@ -148,14 +141,7 @@ fn ctrl_shift_down_twice_cycles_further_back() {
     h.inject_key(KeyCode::Right, KeyMod::default());
     h.run_cycles(1);
     // Open dropdown and type 'a' + Enter to select a.rs
-    h.inject_key(
-        KeyCode::Down,
-        KeyMod {
-            ctrl: true,
-            alt: false,
-            shift: true,
-        },
-    );
+    h.inject_key(KeyCode::Down, KeyMod::CTRL.with_shift());
     h.run_cycles(1);
     h.inject_key(KeyCode::Char('a'), KeyMod::default());
     h.run_cycles(1);

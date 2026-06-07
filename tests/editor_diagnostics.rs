@@ -15,8 +15,11 @@ fn diagnostic_underlines_error_range() {
 
     // Check that cells in the diagnostic range have underline + red fg
     let cell = view.buffer().cell(12, 1);
-    assert!(cell.style.attrs.underline, "diagnostic range should be underlined");
-    assert_eq!(cell.style.fg, Color::Ansi(1), "error should be red");
+    assert!(
+        cell.style().attrs().underline_val(),
+        "diagnostic range should be underlined"
+    );
+    assert_eq!(cell.style().fg(), Color::Ansi(1), "error should be red");
 }
 
 #[test]
@@ -55,7 +58,7 @@ fn gutter_marker_shows_for_error_line() {
     // Gutter marker '●' should appear in the gutter area of line 1
     let gutter_w = view.gutter_width();
     let marker_cell = view.buffer().cell(gutter_w - 1, 1);
-    assert_eq!(marker_cell.ch, '●');
+    assert_eq!(marker_cell.ch(), '●');
 }
 
 #[test]
@@ -70,7 +73,7 @@ fn gutter_marker_absent_for_clean_line() {
     // Line 0 should NOT have a marker
     let gutter_w = view.gutter_width();
     let cell = view.buffer().cell(gutter_w - 1, 0);
-    assert_ne!(cell.ch, '●');
+    assert_ne!(cell.ch(), '●');
 }
 
 #[test]
@@ -83,14 +86,14 @@ fn clear_diagnostics_removes_markers() {
 
     // Marker present
     let gutter_w = view.gutter_width();
-    assert_eq!(view.buffer().cell(gutter_w - 1, 0).ch, '●');
+    assert_eq!(view.buffer().cell(gutter_w - 1, 0).ch(), '●');
 
     // Clear and redraw
     view.clear_diagnostics();
     view.draw();
 
     // Marker gone
-    assert_ne!(view.buffer().cell(gutter_w - 1, 0).ch, '●');
+    assert_ne!(view.buffer().cell(gutter_w - 1, 0).ch(), '●');
 }
 
 #[test]
@@ -108,6 +111,6 @@ fn highest_severity_wins_for_gutter_marker() {
     // Error color (red) should win over warning
     let gutter_w = view.gutter_width();
     let cell = view.buffer().cell(gutter_w - 1, 0);
-    assert_eq!(cell.ch, '●');
-    assert_eq!(cell.style.fg, Color::Ansi(1)); // red = error
+    assert_eq!(cell.ch(), '●');
+    assert_eq!(cell.style().fg(), Color::Ansi(1)); // red = error
 }

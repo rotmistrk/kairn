@@ -1,5 +1,6 @@
 //! Key handling for StructuredView — navigation and editing dispatch.
 
+pub(crate) mod filter_ops;
 pub(crate) mod ops;
 
 use txv_core::message::Message;
@@ -21,13 +22,13 @@ pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
                 .unwrap_or_default();
             let msg = Message::info("struct", format!("Saved: {name}"));
             view.tree
-                .state
+                .state_mut()
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
         Err(e) => {
             let msg = Message::error("struct", format!("Save failed: {e}"));
             view.tree
-                .state
+                .state_mut()
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
@@ -36,7 +37,7 @@ pub fn handle_save_command(view: &mut StructuredView) -> HandleResult {
 
 /// Handle a key event for the structured view.
 pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    match key.code {
+    match key.code() {
         KeyCode::Down | KeyCode::Char('j') => handle_move_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_move_up(view),
         KeyCode::Char('g') => handle_jump_top(view),
@@ -48,13 +49,13 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleRes
             handle_enter(view);
             HandleResult::Consumed
         }
-        KeyCode::Char('r') if key.modifiers.ctrl => {
+        KeyCode::Char('r') if key.modifiers().ctrl() => {
             view.apply_redo();
             HandleResult::Consumed
         }
         KeyCode::Char(':') => {
             view.tree
-                .state
+                .state_mut()
                 .put_command(CM_COMMAND_PREFILL, Some(Box::new(String::new())));
             HandleResult::Consumed
         }
@@ -63,7 +64,7 @@ pub fn handle_struct_key(view: &mut StructuredView, key: &KeyEvent) -> HandleRes
 }
 
 fn handle_struct_ops(view: &mut StructuredView, key: &KeyEvent) -> HandleResult {
-    match key.code {
+    match key.code() {
         KeyCode::Char('n') => ops::handle_new_sibling(view),
         KeyCode::Char('b') => ops::handle_new_child(view),
         KeyCode::Char('d') => ops::handle_delete(view),
@@ -79,8 +80,8 @@ fn handle_struct_ops(view: &mut StructuredView, key: &KeyEvent) -> HandleResult 
         KeyCode::Char('!') => ops::handle_toggle_inline(view),
         KeyCode::Char('s') => ops::handle_sort(view),
         KeyCode::Char('S') => ops::handle_sort_by_path_start(view),
-        KeyCode::Char('f') => ops::handle_filter_start(view),
-        KeyCode::Char('F') => ops::handle_filter_clear(view),
+        KeyCode::Char('f') => filter_ops::handle_filter_start(view),
+        KeyCode::Char('F') => filter_ops::handle_filter_clear(view),
         KeyCode::Char('u') => view.apply_undo(),
         _ => return HandleResult::Ignored,
     }
@@ -133,11 +134,11 @@ fn handle_commit(view: &mut StructuredView, text: String) {
         if let Some(err) = view.commit_edit() {
             let msg = Message::error("struct", err);
             view.tree
-                .state
+                .state_mut()
                 .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
-    view.tree.state.mark_dirty();
+    view.tree.state_mut().mark_dirty();
 }
 
 fn handle_jump_top(view: &mut StructuredView) -> HandleResult {
@@ -146,47 +147,49 @@ fn handle_jump_top(view: &mut StructuredView) -> HandleResult {
 }
 
 fn handle_jump_bottom(view: &mut StructuredView) -> HandleResult {
-    let max = view.tree.data.visible_nodes.len().saturating_sub(1);
+    let max = view.tree.data_mut().visible_nodes.len().saturating_sub(1);
     view.tree.set_cursor(max);
     HandleResult::Consumed
 }
 
 fn handle_move_down(view: &mut StructuredView) -> HandleResult {
-    let max = view.tree.data.visible_nodes.len().saturating_sub(1);
-    if view.tree.cursor < max {
-        view.tree.set_cursor(view.tree.cursor + 1);
+    let max = view.tree.data_mut().visible_nodes.len().saturating_sub(1);
+    if view.tree.cursor() < max {
+        view.tree.set_cursor(view.tree.cursor() + 1);
     }
     HandleResult::Consumed
 }
 
 fn handle_move_up(view: &mut StructuredView) -> HandleResult {
-    if view.tree.cursor > 0 {
-        view.tree.set_cursor(view.tree.cursor - 1);
+    if view.tree.cursor() > 0 {
+        view.tree.set_cursor(view.tree.cursor() - 1);
     }
     HandleResult::Consumed
 }
 
 fn handle_expand(view: &mut StructuredView) -> HandleResult {
-    if let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) {
-        if view.tree.data.doc.node_kind(node_id) != NodeKind::Scalar {
+    let cursor = view.tree.cursor();
+    if let Some(&node_id) = view.tree.data_mut().visible_nodes.get(cursor) {
+        if view.tree.data_mut().doc.node_kind(node_id) != NodeKind::Scalar {
             view.tree.data_mut().doc.toggle_expand(node_id);
             view.rebuild_visible();
             view.clamp_cursor();
-            view.tree.state.mark_dirty();
+            view.tree.state_mut().mark_dirty();
         }
     }
     HandleResult::Consumed
 }
 
 fn handle_collapse_or_parent(view: &mut StructuredView) -> HandleResult {
-    if let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) {
-        let kind = view.tree.data.doc.node_kind(node_id);
-        if kind != NodeKind::Scalar && view.tree.data.doc.is_expanded(node_id) {
+    let cursor = view.tree.cursor();
+    if let Some(&node_id) = view.tree.data_mut().visible_nodes.get(cursor) {
+        let kind = view.tree.data_mut().doc.node_kind(node_id);
+        if kind != NodeKind::Scalar && view.tree.data_mut().doc.is_expanded(node_id) {
             view.tree.data_mut().doc.toggle_expand(node_id);
             view.rebuild_visible();
-            view.tree.state.mark_dirty();
-        } else if let Some(parent) = view.tree.data.doc.parent(node_id) {
-            if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == parent) {
+            view.tree.state_mut().mark_dirty();
+        } else if let Some(parent) = view.tree.data_mut().doc.parent(node_id) {
+            if let Some(pos) = view.tree.data_mut().visible_nodes.iter().position(|&n| n == parent) {
                 view.tree.set_cursor(pos);
             }
         }
@@ -205,17 +208,18 @@ fn handle_tab_focus(view: &mut StructuredView) -> HandleResult {
 }
 
 fn handle_enter(view: &mut StructuredView) {
-    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+    let cursor = view.tree.cursor();
+    let Some(&node_id) = view.tree.data_mut().visible_nodes.get(cursor) else {
         return;
     };
     match view.col_focus {
         ColFocus::Value => {
-            if view.tree.data.doc.node_kind(node_id) == NodeKind::Scalar {
+            if view.tree.data_mut().doc.node_kind(node_id) == NodeKind::Scalar {
                 view.start_edit(EditTarget::Value);
             }
         }
         ColFocus::Key => {
-            if view.tree.data.doc.key(node_id).is_some() {
+            if view.tree.data_mut().doc.key(node_id).is_some() {
                 view.start_edit(EditTarget::Key);
             }
         }
@@ -226,17 +230,19 @@ fn handle_enter(view: &mut StructuredView) {
 }
 
 fn handle_yank(view: &mut StructuredView) {
-    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+    let cursor = view.tree.cursor();
+    let Some(&node_id) = view.tree.data_mut().visible_nodes.get(cursor) else {
         return;
     };
-    view.yanked = Some(view.tree.data.doc.serialize_node(node_id));
+    view.yanked = Some(view.tree.data_mut().doc.serialize_node(node_id));
 }
 
 fn handle_paste(view: &mut StructuredView) {
     let Some(json) = view.yanked.clone() else {
         return;
     };
-    let Some(&node_id) = view.tree.data.visible_nodes.get(view.tree.cursor) else {
+    let cursor = view.tree.cursor();
+    let Some(&node_id) = view.tree.data_mut().visible_nodes.get(cursor) else {
         return;
     };
     view.save_undo_point();
@@ -244,9 +250,9 @@ fn handle_paste(view: &mut StructuredView) {
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();
-        if let Some(pos) = view.tree.data.visible_nodes.iter().position(|&n| n == new_id) {
+        if let Some(pos) = view.tree.data_mut().visible_nodes.iter().position(|&n| n == new_id) {
             view.tree.set_cursor(pos);
         }
-        view.tree.state.mark_dirty();
+        view.tree.state_mut().mark_dirty();
     }
 }

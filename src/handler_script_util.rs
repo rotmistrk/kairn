@@ -38,7 +38,7 @@ pub fn fire_hooks_for_event(state: &mut AppState, event: &HookEvent, context: &s
 
 pub fn lsp_cmd(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
     let msg = lsp_handle(arg, state);
-    ctx.sink
+    ctx.sink()
         .push_command(CM_STATUS_MESSAGE, Some(Box::new(Message::info("lsp", msg))));
 }
 

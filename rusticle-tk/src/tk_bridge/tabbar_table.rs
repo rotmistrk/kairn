@@ -70,9 +70,9 @@ pub fn register_table(interp: &mut Interpreter, shared: &SendShared) {
             "create" => {
                 let opts = parse_opts(args, 1);
                 let col_names = opt_val(&opts, "-columns").map(parse_string_list).unwrap_or_default();
-                let columns: Vec<txv_widgets::table::Column> = col_names
+                let columns: Vec<txv_widgets::Column> = col_names
                     .into_iter()
-                    .map(|title| txv_widgets::table::Column { title, width: 20 })
+                    .map(|title| txv_widgets::Column::new(title, 20))
                     .collect();
                 let id = st.alloc_id();
                 let tbl = Table::new(columns);
@@ -86,9 +86,7 @@ pub fn register_table(interp: &mut Interpreter, shared: &SendShared) {
                     .ok_or_else(|| TclError::new("table add-row: missing row data"))?;
                 let cells = tcl_to_string_list(row_val)?;
                 let tbl = get_widget::<Table>(&mut st.desktop, &id, "table add-row")?;
-                let mut rows = std::mem::take(&mut tbl.rows);
-                rows.push(cells);
-                tbl.set_rows(rows);
+                tbl.add_row(cells);
                 Ok(TclValue::Str(String::new()))
             }
             "clear" => {
@@ -100,7 +98,7 @@ pub fn register_table(interp: &mut Interpreter, shared: &SendShared) {
             "selected" => {
                 let id = require_arg(args, 1, "table selected")?;
                 let tbl = get_widget::<Table>(&mut st.desktop, &id, "table selected")?;
-                Ok(TclValue::Int(tbl.cursor as i64))
+                Ok(TclValue::Int(tbl.selected() as i64))
             }
             _ => Err(TclError::new(format!("table: unknown subcommand {sub}"))),
         }

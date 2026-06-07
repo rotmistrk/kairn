@@ -73,7 +73,7 @@ fn dispatch_root(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSt
     };
     if changed {
         let data = RootsChangedData::from_roots(&state.roots);
-        ctx.sink.push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+        ctx.sink().push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
     }
     true
 }
@@ -142,14 +142,14 @@ fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mu
 
 fn dispatch_git(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
     match cmd {
-        ScriptCommand::GitStage { file } => ctx.sink.push_command(CM_GIT_STAGE, Some(Box::new(file))),
-        ScriptCommand::GitUnstage { file } => ctx.sink.push_command(CM_GIT_UNSTAGE, Some(Box::new(file))),
-        ScriptCommand::GitCommit { message } => ctx.sink.push_command(CM_GIT_COMMIT, Some(Box::new(message))),
-        ScriptCommand::GitBlame => ctx.sink.push_command(CM_BLAME, None),
-        ScriptCommand::GitNoBlame => ctx.sink.push_command(CM_NOBLAME, None),
-        ScriptCommand::GitUntrack { file } => ctx.sink.push_command(CM_GIT_UNTRACK, Some(Box::new(file))),
-        ScriptCommand::GitLog => ctx.sink.push_command(CM_GIT_LOG, None),
-        ScriptCommand::GitDiff => ctx.sink.push_command(CM_DIFF, None),
+        ScriptCommand::GitStage { file } => ctx.sink().push_command(CM_GIT_STAGE, Some(Box::new(file))),
+        ScriptCommand::GitUnstage { file } => ctx.sink().push_command(CM_GIT_UNSTAGE, Some(Box::new(file))),
+        ScriptCommand::GitCommit { message } => ctx.sink().push_command(CM_GIT_COMMIT, Some(Box::new(message))),
+        ScriptCommand::GitBlame => ctx.sink().push_command(CM_BLAME, None),
+        ScriptCommand::GitNoBlame => ctx.sink().push_command(CM_NOBLAME, None),
+        ScriptCommand::GitUntrack { file } => ctx.sink().push_command(CM_GIT_UNTRACK, Some(Box::new(file))),
+        ScriptCommand::GitLog => ctx.sink().push_command(CM_GIT_LOG, None),
+        ScriptCommand::GitDiff => ctx.sink().push_command(CM_DIFF, None),
         _ => {}
     }
     true
@@ -191,7 +191,7 @@ fn dispatch_todo(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
         ScriptCommand::TodoList => return true,
         _ => return false,
     };
-    ctx.sink.push_command(CM_TODO_ACTION, Some(Box::new(action)));
+    ctx.sink().push_command(CM_TODO_ACTION, Some(Box::new(action)));
     true
 }
 
@@ -199,14 +199,14 @@ fn dispatch_split(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
     match cmd {
         ScriptCommand::SplitVertical { file } => {
             let req = SplitRequest { vertical: true, file };
-            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
+            ctx.sink().push_command(CM_SPLIT, Some(Box::new(req)));
         }
         ScriptCommand::SplitHorizontal { file } => {
             let req = SplitRequest { vertical: false, file };
-            ctx.sink.push_command(CM_SPLIT, Some(Box::new(req)));
+            ctx.sink().push_command(CM_SPLIT, Some(Box::new(req)));
         }
-        ScriptCommand::SplitClose => ctx.sink.push_command(CM_SPLIT_CLOSE, None),
-        ScriptCommand::SplitFocus => ctx.sink.push_command(CM_SPLIT_FOCUS, None),
+        ScriptCommand::SplitClose => ctx.sink().push_command(CM_SPLIT_CLOSE, None),
+        ScriptCommand::SplitFocus => ctx.sink().push_command(CM_SPLIT_FOCUS, None),
         ScriptCommand::SplitOpen { path } => {
             let req = OpenFileRequest {
                 path: PathBuf::from(path),
@@ -214,10 +214,10 @@ fn dispatch_split(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
                 col: None,
                 diff: false,
             };
-            ctx.sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
+            ctx.sink().push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
         }
-        ScriptCommand::SplitLinked { on } => ctx.sink.push_command(CM_SPLIT_LINKED, Some(Box::new(on))),
-        ScriptCommand::DiffRevert => ctx.sink.push_command(CM_DIFF_REVERT, None),
+        ScriptCommand::SplitLinked { on } => ctx.sink().push_command(CM_SPLIT_LINKED, Some(Box::new(on))),
+        ScriptCommand::DiffRevert => ctx.sink().push_command(CM_DIFF_REVERT, None),
         _ => return false,
     }
     true

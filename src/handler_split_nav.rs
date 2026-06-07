@@ -16,7 +16,7 @@ use crate::views::editor::sbs_model::{split_for_side_by_side, SbsDiffState};
 use crate::views::editor::EditorView;
 
 pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(req) = boxed.downcast_ref::<DiffSplitRequest>() else {
@@ -24,7 +24,7 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
     };
     let base_content = req.base_content.clone();
     let base_ref = req.base_ref.clone();
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
@@ -90,7 +90,7 @@ fn set_sbs_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content: &str
 }
 
 pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(req) = boxed.downcast_ref::<OpenFileRequest>() else {
@@ -100,7 +100,7 @@ pub(crate) fn handle_open_in_split(ctx: &mut CommandContext, state: &mut AppStat
     let line = req.line.unwrap_or(0);
     let col = req.col.unwrap_or(0);
 
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
 

@@ -18,7 +18,7 @@ use crate::views::struct_view::StructuredView;
 
 /// Sync buffer dirty state to tab bar badges for center panel.
 pub fn sync_dirty_badges(ctx: &mut CommandContext) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
@@ -51,7 +51,7 @@ pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppStat
     if !state.settings.terminal_auto_close {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     for slot in [SlotId::Tools] {
@@ -85,7 +85,7 @@ pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
     let idle_dur = Duration::from_secs(idle_secs);
     let frame = (state.mcp.tick / 16) as usize % SPINNER.len();
 
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(panel) = desktop.panel_mut(SlotId::Tools as usize) else {
@@ -151,13 +151,14 @@ fn apply_pty_badge(
 
 /// Recompute disambiguated tab titles when the set of open files changes.
 pub fn sync_tab_titles(ctx: &mut CommandContext, state: &mut AppState) {
+    let sink = ctx.sink().clone();
     if !state.tab_titles_dirty {
         return;
     }
     state.tab_titles_dirty = false;
 
     let root = state.root_dir.clone();
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
@@ -173,7 +174,7 @@ pub fn sync_tab_titles(ctx: &mut CommandContext, state: &mut AppState) {
         };
         disambiguate_panel(panel, &root, &mut open_set);
     }
-    ctx.sink.push_broadcast(CM_OPEN_FILES_CHANGED, Some(Box::new(open_set)));
+    sink.push_broadcast(CM_OPEN_FILES_CHANGED, Some(Box::new(open_set)));
 }
 
 /// Disambiguate tab titles within a single TabPanel.
@@ -230,7 +231,7 @@ pub fn sync_root_badges(ctx: &mut CommandContext, state: &AppState) {
     if state.roots().len() <= 1 {
         return;
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     let Some(sp) = desktop.split_panel_mut(SlotId::Center as usize) else {
@@ -250,10 +251,7 @@ pub fn sync_root_badges(ctx: &mut CommandContext, state: &AppState) {
                 .and_then(|any| any.downcast_ref::<EditorView>())
                 .map(|ev| state.roots().root_for(ev.path()).color);
             if let Some(c) = color {
-                let style = Style {
-                    fg: c,
-                    ..Style::default()
-                };
+                let style = Style::default().with_fg(c);
                 panel.bar_mut().set_badge_styled(i, Some(" ●".to_string()), Some(style));
             }
         }

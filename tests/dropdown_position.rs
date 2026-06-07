@@ -5,11 +5,7 @@ mod helpers;
 use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
-const CTRL_SHIFT_DOWN: KeyMod = KeyMod {
-    ctrl: true,
-    alt: false,
-    shift: true,
-};
+const CTRL_SHIFT_DOWN: KeyMod = KeyMod::CTRL.with_shift();
 
 /// In wide layout (>=200 cols), right slot is on the right side.
 /// Dropdown should appear below the right slot's chrome, not at top.

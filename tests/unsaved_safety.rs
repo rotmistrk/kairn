@@ -26,14 +26,7 @@ fn disable_autosave(h: &mut TestHarness) {
 }
 
 fn alt(code: KeyCode) -> (KeyCode, KeyMod) {
-    (
-        code,
-        KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    )
+    (code, KeyMod::ALT)
 }
 
 // --- Task 1: Alt-w must prompt on dirty buffer ---
@@ -133,11 +126,7 @@ fn ctrl_q_blocked_by_dirty_buffer() {
     h.run_cycles(2);
 
     // Ctrl-Q should NOT quit — should prompt about unsaved files
-    let ctrl = KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    };
+    let ctrl = KeyMod::CTRL;
     h.inject_key(KeyCode::Char('q'), ctrl);
     h.run_cycles(2);
 
@@ -154,11 +143,7 @@ fn ctrl_q_quits_when_all_clean() {
     h.run_cycles(2);
 
     // Ctrl-Q shows confirmation prompt
-    let ctrl = KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    };
+    let ctrl = KeyMod::CTRL;
     h.inject_key(KeyCode::Char('q'), ctrl);
     h.run_cycles(2);
 
@@ -282,11 +267,7 @@ fn ctrl_q_saves_autosave_pending_buffers() {
     h.run_cycles(2);
 
     // Ctrl-Q shows confirmation
-    let ctrl = KeyMod {
-        ctrl: true,
-        alt: false,
-        shift: false,
-    };
+    let ctrl = KeyMod::CTRL;
     h.inject_key(KeyCode::Char('q'), ctrl);
     h.run_cycles(2);
 

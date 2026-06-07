@@ -72,7 +72,7 @@ impl GitLogView {
     }
 
     fn visible_height(&self) -> usize {
-        self.state.bounds().h as usize
+        self.state.bounds().h() as usize
     }
 
     fn format_entry(e: &CommitEntry, width: usize) -> String {
@@ -148,7 +148,7 @@ impl View for GitLogView {
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
-        match key.code {
+        match key.code() {
             KeyCode::Char('j') | KeyCode::Down => {
                 if self.cursor + 1 < self.entries.len() {
                     self.cursor += 1;

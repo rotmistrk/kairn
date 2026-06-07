@@ -16,10 +16,7 @@ fn right_arrow_on_expanded_dir_does_not_open_file() {
     view.set_bounds(Rect::new(0, 0, 40, 10));
     view.set_sink(sink.clone());
 
-    let right = Event::Key(KeyEvent {
-        code: KeyCode::Right,
-        modifiers: KeyMod::default(),
-    });
+    let right = Event::Key(KeyEvent::new(KeyCode::Right, KeyMod::default()));
     view.handle(&right);
     let events = sink.drain();
     assert!(!events

@@ -28,21 +28,24 @@ use crate::views::struct_view::StructuredView;
 
 /// Handle Ctrl+P file finder submit — convert relative path to OpenFileRequest.
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        log::warn!("CM_OPEN_FILE with no data");
-        return;
-    };
-    let Some(req) = boxed.downcast_ref::<OpenFileRequest>() else {
-        log::warn!("CM_OPEN_FILE data is not OpenFileRequest");
-        return;
+    let req = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            log::warn!("CM_OPEN_FILE with no data");
+            return;
+        };
+        let Some(r) = boxed.downcast_ref::<OpenFileRequest>() else {
+            log::warn!("CM_OPEN_FILE data is not OpenFileRequest");
+            return;
+        };
+        r.clone()
     };
     let path = &req.path;
     let abs_key = path.to_string_lossy().to_string();
     log::info!("Open file: {abs_key} (broker check)");
 
     match state.broker.open(&abs_key, SlotId::Center, 0) {
-        OpenResult::AlreadyOpen { .. } => handle_already_open(ctx, state, req, &abs_key, focus_center),
-        OpenResult::Opened => handle_fresh_open(ctx, state, req, &abs_key, focus_center),
+        OpenResult::AlreadyOpen { .. } => handle_already_open(ctx, state, &req, &abs_key, focus_center),
+        OpenResult::Opened => handle_fresh_open(ctx, state, &req, &abs_key, focus_center),
     }
 }
 
@@ -53,7 +56,8 @@ fn handle_already_open(
     abs_key: &str,
     focus_center: bool,
 ) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     if !focus_editor_by_path(desktop, abs_key) {
@@ -62,11 +66,11 @@ fn handle_already_open(
         let title = initial_title(path);
         let view: Box<dyn View> =
             try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title, view);
+        try_insert_tab(desktop, state, &sink, SlotId::Center, title, view);
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
         }
-        ctx.sink.push_command(
+        sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("editor", format!("Opened: {abs_key}")))),
         );
@@ -77,7 +81,7 @@ fn handle_already_open(
         }
     }
     if req.diff {
-        ctx.sink.push_command(CM_DIFF, Some(Box::new(String::new())));
+        sink.push_command(CM_DIFF, Some(Box::new(String::new())));
     }
 }
 
@@ -106,18 +110,19 @@ fn handle_fresh_open(
     _abs_key: &str,
     focus_center: bool,
 ) {
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         close_tab_by_title(desktop, SlotId::Center, "Welcome");
         let path = &req.path;
         let title = initial_title(path);
         let view: Box<dyn View> =
             try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Center, title.clone(), view);
+        try_insert_tab(desktop, state, &sink, SlotId::Center, title.clone(), view);
         state.tab_titles_dirty = true;
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
         }
-        ctx.sink.push_command(
+        sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("editor", format!("Opened: {title}")))),
         );
@@ -164,18 +169,22 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
 }
 
 pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
+    let output = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some(o) = boxed.downcast_ref::<String>() else {
+            return;
+        };
+        o.clone()
     };
-    let Some(output) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let view = EditorView::from_text(output);
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
+        let view = EditorView::from_text(&output);
         try_insert_tab(
             desktop,
             state,
-            ctx.sink,
+            &sink,
             SlotId::Center,
             "[cmd output]".into(),
             Box::new(view),
@@ -184,15 +193,19 @@ pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState
 }
 
 pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
+    let (title, entries) = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some((t, e)) = boxed.downcast_ref::<(String, Vec<ResultEntry>)>() else {
+            return;
+        };
+        (t.clone(), e.clone())
     };
-    let Some((title, entries)) = boxed.downcast_ref::<(String, Vec<ResultEntry>)>() else {
-        return;
-    };
-    if let Some(desktop) = downcast_desktop(ctx.desktop) {
-        let view = ResultsView::new(title, entries.clone()).with_root(&state.root_dir);
-        try_insert_tab(desktop, state, ctx.sink, SlotId::Tools, title.clone(), Box::new(view));
+    let sink = ctx.sink().clone();
+    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
+        let view = ResultsView::new(&title, entries).with_root(&state.root_dir);
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, title, Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }

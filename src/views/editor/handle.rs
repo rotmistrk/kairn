@@ -18,8 +18,8 @@ pub(super) fn is_search_navigation(cmd: &Command) -> bool {
 impl EditorView {
     pub(super) fn handle_command_input(&mut self, key: &txv_core::event::KeyEvent) -> HandleResult {
         use txv_core::event::KeyCode;
-        if key.modifiers.ctrl {
-            if key.code == KeyCode::Char('c') {
+        if key.modifiers().ctrl() {
+            if key.code() == KeyCode::Char('c') {
                 self.editor.mode = EditorMode::Normal;
                 self.editor.command_buf.clear();
                 self.editor.highlight = None;
@@ -28,7 +28,7 @@ impl EditorView {
             }
             return HandleResult::Ignored;
         }
-        match &key.code {
+        match key.code() {
             KeyCode::Esc => self.cancel_command_input(),
             KeyCode::Enter => self.submit_command_input(),
             KeyCode::Backspace => self.backspace_command_input(),
@@ -36,7 +36,7 @@ impl EditorView {
             KeyCode::Up => self.history_prev(),
             KeyCode::Down => self.history_next(),
             KeyCode::Char(c) => {
-                self.editor.command_buf.push(*c);
+                self.editor.command_buf.push(c);
                 self.editor.history_index = None;
                 self.update_incsearch();
             }

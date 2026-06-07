@@ -9,7 +9,7 @@ use crate::handler::downcast_desktop;
 use crate::views::editor::EditorView;
 
 pub fn handle_toggle_theme(ctx: &mut CommandContext, state: &mut AppState) {
-    let arg = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
+    let arg = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
     let Some(ref ts) = state.theme_state else {
         return;
     };
@@ -39,8 +39,11 @@ pub fn handle_toggle_theme(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(name) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) else {
-        return;
+    let name = {
+        let Some(n) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) else {
+            return;
+        };
+        n.clone()
     };
     let is_light = state
         .theme_state
@@ -52,7 +55,7 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
     } else {
         state.settings.theme_syntax_dark = name.clone();
     }
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     for slot in [SlotId::Center, SlotId::Tools] {
@@ -65,7 +68,7 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
                 .and_then(|v| v.as_any_mut())
                 .and_then(|a| a.downcast_mut::<EditorView>());
             if let Some(editor) = editor {
-                editor.set_syntax_theme(name);
+                editor.set_syntax_theme(&name);
             }
         }
     }
@@ -73,7 +76,7 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
 
 pub fn handle_set_glyphs(ctx: &mut CommandContext, state: &mut AppState) {
     use txv_core::glyphs::{set_glyphs, GlyphSet, GlyphTier};
-    let Some(g) = ctx.data.as_ref().and_then(|d| d.downcast_ref::<String>()) else {
+    let Some(g) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) else {
         return;
     };
     let tier = match g.as_str() {

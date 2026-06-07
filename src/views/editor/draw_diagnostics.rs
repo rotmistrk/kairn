@@ -57,11 +57,10 @@ impl EditorView {
             let end = gutter_w + col_e as u16;
             for x in start..end.min(w) {
                 let cell = self.state.buffer_mut().cell(x, y);
-                let merged = Style {
-                    fg: style.fg, bg: cell.style.bg,
-                    attrs: Attrs { underline: true, ..cell.style.attrs },
-                };
-                marks.push(DiagMark { x, y, ch: cell.ch, style: merged });
+                let cell_style = cell.style();
+                let merged = Style::new(style.fg(), cell_style.bg())
+                    .with_attrs(cell_style.attrs().underline());
+                marks.push(DiagMark { x, y, ch: cell.ch(), style: merged });
             }
         }
         marks
@@ -123,8 +122,5 @@ pub(super) fn diag_marker_style(severity: Severity) -> Style {
         Severity::Info => app.diag().info(),
         Severity::Hint => app.diag().hint(),
     };
-    Style {
-        fg: ps.fg,
-        ..Style::default()
-    }
+    Style::new(ps.fg(), Style::default().bg())
 }

@@ -30,18 +30,18 @@ fn has_software_cursor(h: &TestHarness) -> bool {
         // Look for the '│' divider followed by line number
         for x in 0..w.saturating_sub(3) {
             let c = buf.cell(x, y);
-            if c.ch == '│' {
+            if c.ch() == '│' {
                 // Check if next non-space char is '1'
                 let mut nx = x + 1;
-                while nx < w && buf.cell(nx, y).ch == ' ' {
+                while nx < w && buf.cell(nx, y).ch() == ' ' {
                     nx += 1;
                 }
-                if nx < w && buf.cell(nx, y).ch == '1' {
+                if nx < w && buf.cell(nx, y).ch() == '1' {
                     // Found line 1 row. Now check for reverse cells after the gutter
                     let content_start = nx + 2; // past "1 "
                     for cx in content_start..w {
-                        if buf.cell(cx, y).style.bg == txv_core::cell::Color::Ansi(7)
-                            && buf.cell(cx, y).style.fg == txv_core::cell::Color::Ansi(0)
+                        if buf.cell(cx, y).style().bg() == txv_core::cell::Color::Ansi(7)
+                            && buf.cell(cx, y).style().fg() == txv_core::cell::Color::Ansi(0)
                         {
                             return true;
                         }

@@ -94,14 +94,7 @@ fn add_hidden_resize(bar: &mut StatusBar) {
     let h = |k: KeyEvent, cmd| StatusSlot::new(Box::new(KeyLabelView::new(k, cmd, "")));
     bar.add(h(key(KeyCode::Char('≠')), CM_TW_GROW_SUBPANEL));
     bar.add(h(key(KeyCode::Char('–')), CM_TW_SHRINK_SUBPANEL));
-    let alt_shift = |code| KeyEvent {
-        code,
-        modifiers: KeyMod {
-            ctrl: false,
-            shift: true,
-            alt: true,
-        },
-    };
+    let alt_shift = |code| KeyEvent::new(code, KeyMod::ALT.with_shift());
     bar.add(h(alt_shift(KeyCode::Right), CM_TW_GROW_H));
     bar.add(h(alt_shift(KeyCode::Left), CM_TW_SHRINK_H));
     bar.add(h(alt_shift(KeyCode::Down), CM_TW_GROW_V));
@@ -119,14 +112,7 @@ fn add_hidden_misc(bar: &mut StatusBar) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('o'), CM_PEEK, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('d'), CM_DIFF, ""))));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(ctrl('l'), CM_REPAINT, ""))));
-    let alt_backslash = KeyEvent {
-        code: KeyCode::Char('\\'),
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    };
+    let alt_backslash = KeyEvent::new(KeyCode::Char('\\'), KeyMod::ALT);
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
         alt_backslash,
         CM_TW_LAYOUT_CYCLE,
@@ -143,14 +129,7 @@ fn add_hidden_misc(bar: &mut StatusBar) {
 pub fn add_tab_digit_bindings(bar: &mut StatusBar) {
     use txv_widgets::tiled_workspace::commands::CM_TW_TAB_DROPDOWN;
     let mac_digits = ['º', '¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
-    let alt_0 = KeyEvent {
-        code: KeyCode::Char('0'),
-        modifiers: KeyMod {
-            ctrl: false,
-            alt: true,
-            shift: false,
-        },
-    };
+    let alt_0 = KeyEvent::new(KeyCode::Char('0'), KeyMod::ALT);
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(
         alt_0,
         CM_TW_TAB_DROPDOWN,
@@ -163,14 +142,7 @@ pub fn add_tab_digit_bindings(bar: &mut StatusBar) {
     ))));
     for i in 1..10u8 {
         let tab_idx = (i - 1) as u16;
-        let alt_key = KeyEvent {
-            code: KeyCode::Char((b'0' + i) as char),
-            modifiers: KeyMod {
-                ctrl: false,
-                alt: true,
-                shift: false,
-            },
-        };
+        let alt_key = KeyEvent::new(KeyCode::Char((b'0' + i) as char), KeyMod::ALT);
         bar.add(StatusSlot::new(Box::new(
             KeyLabelView::new(alt_key, CM_TW_ACTIVATE_TAB, "").with_data(tab_idx),
         )));

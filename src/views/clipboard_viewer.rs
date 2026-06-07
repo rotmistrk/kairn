@@ -56,9 +56,9 @@ impl View for ClipboardViewer {
             };
             self.state.buffer_mut().hline(0, y, w, ' ', style);
             if let Some(entry) = entries.get(idx) {
-                let line = entry.text.lines().next().unwrap_or("");
-                let disp = if entry.line_count > 1 {
-                    format!("[{}L] {}", entry.line_count, line)
+                let line = entry.text().lines().next().unwrap_or("");
+                let disp = if entry.line_count() > 1 {
+                    format!("[{}L] {}", entry.line_count(), line)
                 } else {
                     line.to_string()
                 };
@@ -77,7 +77,7 @@ impl View for ClipboardViewer {
             return HandleResult::Ignored;
         };
         let entry_count = self.clipboard.lock().map(|r| r.len()).unwrap_or(0);
-        match key.code {
+        match key.code() {
             KeyCode::Up | KeyCode::Char('k') => {
                 if self.cursor > 0 {
                     self.cursor -= 1;
@@ -106,7 +106,7 @@ impl View for ClipboardViewer {
 
 impl ClipboardViewer {
     fn sync_scroll(&mut self) {
-        let h = self.state.bounds().h as usize;
+        let h = self.state.bounds().h() as usize;
         if h == 0 {
             return;
         }

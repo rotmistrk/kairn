@@ -5,22 +5,13 @@ use txv_core::event::{KeyCode, KeyMod};
 use txv_core::prelude::*;
 
 fn send_ex(view: &mut EditorView, cmd: &str) {
-    let colon = Event::Key(txv_core::event::KeyEvent {
-        code: KeyCode::Char(':'),
-        modifiers: KeyMod::default(),
-    });
+    let colon = Event::Key(txv_core::event::KeyEvent::new(KeyCode::Char(':'), KeyMod::default()));
     view.handle(&colon);
     for ch in cmd.chars() {
-        let ev = Event::Key(txv_core::event::KeyEvent {
-            code: KeyCode::Char(ch),
-            modifiers: KeyMod::default(),
-        });
+        let ev = Event::Key(txv_core::event::KeyEvent::new(KeyCode::Char(ch), KeyMod::default()));
         view.handle(&ev);
     }
-    let enter = Event::Key(txv_core::event::KeyEvent {
-        code: KeyCode::Enter,
-        modifiers: KeyMod::default(),
-    });
+    let enter = Event::Key(txv_core::event::KeyEvent::new(KeyCode::Enter, KeyMod::default()));
     view.handle(&enter);
 }
 

@@ -5,14 +5,14 @@ use txv_core::prelude::*;
 /// Parse a keyspec string like "Ctrl-Q" into a KeyEvent.
 pub fn parse_keyspec(spec: &str) -> Option<KeyEvent> {
     let parts: Vec<&str> = spec.split('-').collect();
-    let mut modifiers = KeyMod::default();
+    let mut modifiers = KeyMod::NONE;
     let key_part = parts.last()?;
 
     for &part in &parts[..parts.len().saturating_sub(1)] {
         match part {
-            "Ctrl" => modifiers.ctrl = true,
-            "Alt" => modifiers.alt = true,
-            "Shift" => modifiers.shift = true,
+            "Ctrl" => modifiers = modifiers.with_ctrl(),
+            "Alt" => modifiers = modifiers.with_alt(),
+            "Shift" => modifiers = modifiers.with_shift(),
             _ => {}
         }
     }
@@ -39,7 +39,7 @@ pub fn parse_keyspec(spec: &str) -> Option<KeyEvent> {
         _ => return None,
     };
 
-    Some(KeyEvent { code, modifiers })
+    Some(KeyEvent::new(code, modifiers))
 }
 
 /// Format a keyspec into a short label for the status bar.
@@ -55,16 +55,16 @@ pub fn format_key_label(spec: &str) -> String {
 /// Convert a KeyEvent back to a keyspec string.
 pub fn key_to_spec(key: KeyEvent) -> String {
     let mut parts = Vec::new();
-    if key.modifiers.ctrl {
+    if key.modifiers().ctrl() {
         parts.push("Ctrl");
     }
-    if key.modifiers.alt {
+    if key.modifiers().alt() {
         parts.push("Alt");
     }
-    if key.modifiers.shift {
+    if key.modifiers().shift() {
         parts.push("Shift");
     }
-    let key_name = match key.code {
+    let key_name = match key.code() {
         KeyCode::Char(c) => {
             let upper = c.to_ascii_uppercase();
             return if parts.is_empty() {
@@ -103,62 +103,30 @@ mod tests {
     #[test]
     fn parse_ctrl_q() {
         let key = parse_keyspec("Ctrl-Q");
-        assert_eq!(
-            key,
-            Some(KeyEvent {
-                code: KeyCode::Char('Q'),
-                modifiers: KeyMod {
-                    ctrl: true,
-                    alt: false,
-                    shift: false
-                },
-            })
-        );
+        assert_eq!(key, Some(KeyEvent::new(KeyCode::Char('Q'), KeyMod::CTRL,)));
     }
 
     #[test]
     fn parse_f1() {
         let key = parse_keyspec("F1");
-        assert_eq!(
-            key,
-            Some(KeyEvent {
-                code: KeyCode::F(1),
-                modifiers: KeyMod::default()
-            })
-        );
+        assert_eq!(key, Some(KeyEvent::new(KeyCode::F(1), KeyMod::NONE)));
     }
 
     #[test]
     fn parse_escape() {
         let key = parse_keyspec("Escape");
-        assert_eq!(
-            key,
-            Some(KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyMod::default()
-            })
-        );
+        assert_eq!(key, Some(KeyEvent::new(KeyCode::Esc, KeyMod::NONE)));
     }
 
     #[test]
     fn to_spec_simple_char() {
-        let key = KeyEvent {
-            code: KeyCode::Char('a'),
-            modifiers: KeyMod::default(),
-        };
+        let key = KeyEvent::new(KeyCode::Char('a'), KeyMod::NONE);
         assert_eq!(key_to_spec(key), "a");
     }
 
     #[test]
     fn to_spec_ctrl_q() {
-        let key = KeyEvent {
-            code: KeyCode::Char('q'),
-            modifiers: KeyMod {
-                ctrl: true,
-                alt: false,
-                shift: false,
-            },
-        };
+        let key = KeyEvent::new(KeyCode::Char('q'), KeyMod::CTRL);
         assert_eq!(key_to_spec(key), "Ctrl-Q");
     }
 }

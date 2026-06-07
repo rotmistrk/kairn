@@ -3,37 +3,46 @@
 //! Uses TiledWorkspace's native subpanel mechanism: the center panel's
 //! SplitPanel gets a second TabPanel child when split.
 
-use std::any::Any;
-
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 use txv_widgets::tab_panel::TabPanel;
 use txv_widgets::tiled_workspace::types::SplitDir;
 
-use crate::commands::{SplitRequest, CM_SPLIT};
+use crate::commands::SplitRequest;
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_split_nav::open_into_editor;
 use crate::views::editor::EditorView;
 
 pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
-        return;
+    let (vertical, file) = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some(req) = boxed.downcast_ref::<SplitRequest>() else {
+            return;
+        };
+        (req.vertical, req.file.clone())
     };
-    let Some(req) = boxed.downcast_ref::<SplitRequest>() else {
-        return;
-    };
-    let vertical = req.vertical;
-    let file = req.file.clone();
     let direction = if vertical {
         SplitDir::Horizontal
     } else {
         SplitDir::Vertical
     };
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
+    do_split_inner(desktop, state, &sink, direction, file.as_deref());
+}
 
+fn do_split_inner(
+    desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace,
+    state: &mut AppState,
+    _sink: &EventSink,
+    direction: SplitDir,
+    file: Option<&str>,
+) {
     let focused = desktop.focused_panel();
     if focused != SlotId::Center as usize {
         desktop.move_tab_to_subpanel();
@@ -46,9 +55,9 @@ pub(crate) fn handle_split(ctx: &mut CommandContext, state: &mut AppState) {
         .unwrap_or(false);
 
     if is_split {
-        handle_split_existing(desktop, state, file, direction);
+        handle_split_existing(desktop, state, file.map(|s| s.to_string()), direction);
     } else {
-        handle_split_new(desktop, state, file, direction);
+        handle_split_new(desktop, state, file.map(|s| s.to_string()), direction);
     }
 }
 
@@ -93,21 +102,21 @@ fn handle_split_new(
 }
 
 pub(crate) fn handle_split_close(ctx: &mut CommandContext, _state: &mut AppState) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     desktop.collapse_other_subpanel();
 }
 
 pub(crate) fn handle_split_focus(ctx: &mut CommandContext) {
-    let Some(desktop) = downcast_desktop(ctx.desktop) else {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
     desktop.with_split_panel(|sp| sp.cycle_focus());
 }
 
 pub(crate) fn handle_split_linked(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(&on) = boxed.downcast_ref::<bool>() else {
@@ -186,14 +195,7 @@ pub(crate) fn handle_split_h(ctx: &mut CommandContext, state: &mut AppState) {
         vertical: false,
         file: None,
     };
-    let data = Some(Box::new(req) as Box<dyn Any + Send>);
-    let mut sub = CommandContext {
-        command: CM_SPLIT,
-        data: &data,
-        sink: ctx.sink,
-        desktop: ctx.desktop,
-    };
-    handle_split(&mut sub, state);
+    do_split(ctx, state, req);
 }
 
 pub(crate) fn handle_split_v(ctx: &mut CommandContext, state: &mut AppState) {
@@ -201,12 +203,20 @@ pub(crate) fn handle_split_v(ctx: &mut CommandContext, state: &mut AppState) {
         vertical: true,
         file: None,
     };
-    let data = Some(Box::new(req) as Box<dyn Any + Send>);
-    let mut sub = CommandContext {
-        command: CM_SPLIT,
-        data: &data,
-        sink: ctx.sink,
-        desktop: ctx.desktop,
+    do_split(ctx, state, req);
+}
+
+fn do_split(ctx: &mut CommandContext, state: &mut AppState, req: SplitRequest) {
+    let vertical = req.vertical;
+    let file = req.file.clone();
+    let direction = if vertical {
+        SplitDir::Horizontal
+    } else {
+        SplitDir::Vertical
     };
-    handle_split(&mut sub, state);
+    let sink = ctx.sink().clone();
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
+        return;
+    };
+    do_split_inner(desktop, state, &sink, direction, file.as_deref());
 }

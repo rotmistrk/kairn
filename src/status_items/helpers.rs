@@ -5,17 +5,8 @@ use txv_core::prelude::*;
 
 /// Create ViewState for a status indicator.
 pub(super) fn indicator_state(initial_width: u16) -> ViewState {
-    let mut state = ViewState::new(ViewOptions {
-        preprocess: true,
-        focusable: false,
-        ..ViewOptions::default()
-    });
-    state.set_bounds(Rect {
-        x: 0,
-        y: 0,
-        w: initial_width,
-        h: 1,
-    });
+    let mut state = ViewState::new(ViewOptions::default().with_preprocess());
+    state.set_bounds(Rect::new(0, 0, initial_width, 1));
     state
 }
 
@@ -28,26 +19,15 @@ pub(super) fn sync_bounds(state: &mut ViewState, label: &str) {
         visible_len as u16 + 2
     };
     let b = state.bounds();
-    if b.w != w {
-        state.set_bounds(Rect {
-            x: b.x,
-            y: b.y,
-            w,
-            h: 1,
-        });
+    if b.w() != w {
+        state.set_bounds(Rect::new(b.x(), b.y(), w, 1));
     }
 }
 
 /// Draw label into buffer with status bar style. ~ toggles bold.
 pub(super) fn draw_label(state: &mut ViewState, label: &str) {
     let style = palette().style(StyleId::StatusBar);
-    let bold_style = Style {
-        attrs: Attrs {
-            bold: true,
-            ..style.attrs
-        },
-        ..style
-    };
+    let bold_style = Style::new(style.fg(), style.bg()).with_attrs(style.attrs().bold());
     state.buffer_mut().fill(' ', style);
     if !label.is_empty() {
         render_styled_text(state.buffer_mut(), label, style, bold_style);

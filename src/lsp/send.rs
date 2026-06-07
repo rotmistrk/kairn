@@ -13,7 +13,7 @@ use super::{protocol, requests, send_helpers};
 pub(super) use super::send_sync::{send_did_change, send_did_open};
 
 pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
@@ -41,7 +41,7 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
@@ -59,7 +59,7 @@ pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col, symbol)) = boxed.downcast_ref::<(PathBuf, u32, u32, String)>() else {
@@ -93,7 +93,7 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
@@ -113,7 +113,7 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
@@ -133,7 +133,7 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some((path, line, col)) = boxed.downcast_ref::<(PathBuf, u32, u32)>() else {
@@ -151,7 +151,7 @@ pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState
 }
 
 pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data.as_ref() else {
+    let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(new_name) = boxed.downcast_ref::<String>() else {
@@ -221,7 +221,7 @@ pub(super) fn send_format(ctx: &mut CommandContext, state: &mut AppState) {
 type FormatParams = (PathBuf, Option<(u32, u32)>, u32);
 
 fn extract_format_params(ctx: &mut CommandContext, state: &mut AppState) -> Option<FormatParams> {
-    if let Some(boxed) = ctx.data.as_ref() {
+    if let Some(boxed) = ctx.data().as_ref() {
         boxed
             .downcast_ref::<FormatParams>()
             .map(|(p, r, t)| (p.clone(), *r, *t))
