@@ -2284,6 +2284,7 @@ name = "txv-edit"
 version = "0.1.0"
 dependencies = [
  "regex",
+ "syntect",
  "txv-core",
 ]
 

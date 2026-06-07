@@ -54,14 +54,14 @@ impl EditorView {
         st: &mut CharDrawState,
     ) -> bool {
         let app = app_palette();
-        for ch in span.text.chars() {
+        for ch in span.text().chars() {
             if ch == '\t' {
-                self.draw_tab_char(span.style, p, hl, &app, st);
+                self.draw_tab_char(span.style(), p, hl, &app, st);
                 st.char_idx += 1;
                 st.byte_pos += ch.len_utf8();
                 continue;
             }
-            if !self.process_non_tab(ch, span.style, line_idx, p, hl, st) {
+            if !self.process_non_tab(ch, span.style(), line_idx, p, hl, st) {
                 return false;
             }
         }

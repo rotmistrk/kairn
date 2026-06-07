@@ -86,8 +86,6 @@ pub mod help_global;
 pub mod help_global_extra;
 pub mod highlight;
 pub mod highlight_cache;
-mod highlight_parse;
-pub mod highlight_snapshot;
 pub mod hl_span;
 pub mod init;
 pub mod kiro_registry;
