@@ -61,6 +61,14 @@ pub static SET_OPTIONS: &[SetOption] = &[
             toggle_tree_icons(ctx.desktop, on);
         },
     },
+    SetOption {
+        name: "tree.connectors",
+        is_toggle: true,
+        apply: |ctx, s, on| {
+            s.settings.tree_connectors = on;
+            toggle_tree_connectors(ctx.desktop, on);
+        },
+    },
 ];
 
 /// Handle :set options — dispatches from the single SET_OPTIONS registry.
@@ -100,5 +108,28 @@ fn toggle_tree_icons(desktop: &mut dyn txv_core::view::View, on: bool) {
     };
     if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
         tree.set_show_icons(on);
+    }
+}
+
+fn toggle_tree_connectors(desktop: &mut dyn txv_core::view::View, on: bool) {
+    use crate::views::struct_view::StructuredView;
+    let Some(d) = downcast_desktop(desktop) else {
+        return;
+    };
+    // Toggle on file tree
+    if let Some(panel) = d.panel_mut(SlotId::Left as usize) {
+        if let Some(view) = panel.view_at_mut(0) {
+            if let Some(tree) = view.as_any_mut().and_then(|a| a.downcast_mut::<FileTreeView>()) {
+                tree.inner.show_connectors = on;
+            }
+        }
+    }
+    // Toggle on active center view if it's a structured view
+    if let Some(panel) = d.panel_mut(SlotId::Center as usize) {
+        if let Some(view) = panel.active_view_mut() {
+            if let Some(sv) = view.as_any_mut().and_then(|a| a.downcast_mut::<StructuredView>()) {
+                sv.tree.show_connectors = on;
+            }
+        }
     }
 }

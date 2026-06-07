@@ -103,48 +103,11 @@ impl StructDocSource {
         d
     }
 
-    pub fn is_last_child(&self, id: NodeId) -> bool {
-        if let Some(parent) = self.doc.parent(id) {
-            let siblings = self.doc.children(parent);
-            siblings.last() == Some(&id)
-        } else {
-            true
-        }
-    }
-
     fn build_label(&self, node_id: NodeId) -> String {
         let depth = self.depth(node_id);
-        let mut text = self.build_tree_guides(node_id, depth);
+        let mut text = String::new();
         self.append_expand_marker(node_id, &mut text);
         self.append_key_label(node_id, depth, &mut text);
-        text
-    }
-
-    fn build_tree_guides(&self, node_id: NodeId, depth: usize) -> String {
-        let mut text = String::new();
-        if depth > 0 {
-            let mut guides = Vec::with_capacity(depth.saturating_sub(1));
-            let mut current = node_id;
-            for _ in 0..depth.saturating_sub(1) {
-                if let Some(parent) = self.doc.parent(current) {
-                    current = parent;
-                    guides.push(!self.is_last_child(current));
-                }
-            }
-            guides.reverse();
-            for has_line in &guides {
-                text.push_str(if *has_line {
-                    "│ "
-                } else {
-                    "  "
-                });
-            }
-            text.push_str(if self.is_last_child(node_id) {
-                "└─"
-            } else {
-                "├─"
-            });
-        }
         text
     }
 

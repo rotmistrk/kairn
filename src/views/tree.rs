@@ -25,7 +25,7 @@ use crate::git_watcher::WatchHandle;
 pub const DIRED_STATUS_GROUP: u16 = 2;
 
 pub struct FileTreeView {
-    pub(super) inner: TreeView<FileTreeData>,
+    pub(crate) inner: TreeView<FileTreeData>,
     pub(super) last_key_was_right: bool,
     pub(super) watcher: Option<WatchHandle>,
     pub(super) root: PathBuf,

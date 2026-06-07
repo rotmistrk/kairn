@@ -27,6 +27,7 @@ pub struct AppSettings {
     pub(crate) layout_wide_threshold: u16,
     pub(crate) layout_tall_threshold: u16,
     pub(crate) tree_icons: bool,
+    pub(crate) tree_connectors: bool,
     pub(crate) clipboard_max: usize,
     pub(crate) kiro: KiroLaunchSettings,
 }
@@ -53,6 +54,7 @@ impl Default for AppSettings {
             layout_wide_threshold: 300,
             layout_tall_threshold: 200,
             tree_icons: false,
+            tree_connectors: true,
             clipboard_max: 50,
             kiro: KiroLaunchSettings::default(),
         }
