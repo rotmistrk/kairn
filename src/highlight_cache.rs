@@ -54,9 +54,8 @@ impl HighlightCache {
         syntax_set: &SyntaxSet,
         theme: &Theme,
     ) -> Vec<Vec<HlSpan>> {
-        let syntax = match syntax_set.find_syntax_by_extension(&self.ext) {
-            Some(s) => s,
-            None => return self.plain_lines(start_line, end_line, &get_line),
+        let Some(syntax) = find_syntax(syntax_set, &self.ext) else {
+            return self.plain_lines(start_line, end_line, &get_line);
         };
 
         let end_line = end_line.min(line_count);
@@ -304,4 +303,10 @@ mod tests {
         assert_eq!(cache.snapshots.len(), 1); // 60/50 = 1, keep first snapshot
         assert!(before > cache.snapshots.len());
     }
+}
+
+fn find_syntax<'a>(syntax_set: &'a SyntaxSet, ext: &str) -> Option<&'a SyntaxReference> {
+    syntax_set
+        .find_syntax_by_extension(ext)
+        .or_else(|| syntax_set.find_syntax_by_name(ext))
 }

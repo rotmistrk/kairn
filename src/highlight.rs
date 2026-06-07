@@ -103,9 +103,41 @@ impl Highlighter {
     }
 }
 
-/// Extract file extension from a path.
+/// Extract file extension from a path, with special-case filename matching.
 pub fn extension_from_path(path: &Path) -> &str {
-    path.extension().and_then(|e| e.to_str()).unwrap_or("")
+    // Check extension first
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        return ext;
+    }
+    // Special filenames without extension
+    match path.file_name().and_then(|f| f.to_str()).unwrap_or("") {
+        "Makefile" | "makefile" | "GNUmakefile" => "Makefile",
+        "Dockerfile" => "Dockerfile",
+        "Jenkinsfile" => "Groovy",
+        "Rakefile" | "Gemfile" => "rb",
+        _ => "",
+    }
+}
+
+/// Detect syntax from shebang line (first line of file).
+pub fn extension_from_shebang(first_line: &str) -> Option<&'static str> {
+    if !first_line.starts_with("#!") {
+        return None;
+    }
+    let line = first_line.trim();
+    if line.contains("/bash") || line.contains("/sh") || line.ends_with(" bash") || line.ends_with(" sh") {
+        Some("sh")
+    } else if line.contains("/python") || line.contains(" python") {
+        Some("py")
+    } else if line.contains("/ruby") || line.contains(" ruby") {
+        Some("rb")
+    } else if line.contains("/node") || line.contains(" node") {
+        Some("js")
+    } else if line.contains("/perl") || line.contains(" perl") {
+        Some("pl")
+    } else {
+        None
+    }
 }
 
 /// Ensure foreground color is readable on a dark background.

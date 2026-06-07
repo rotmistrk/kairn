@@ -107,7 +107,14 @@ impl EditorView {
     }
 
     fn build(editor: Editor, path: &Path, settings: &EditorSettings) -> Self {
-        let file_ext = highlight::extension_from_path(path).to_string();
+        let mut file_ext = highlight::extension_from_path(path).to_string();
+        if file_ext.is_empty() {
+            if let Some(first_line) = editor.buf().line(0) {
+                if let Some(ext) = highlight::extension_from_shebang(&first_line) {
+                    file_ext = ext.to_string();
+                }
+            }
+        }
         let root_dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
         let display_title = path
             .file_name()
