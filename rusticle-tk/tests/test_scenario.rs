@@ -14,7 +14,7 @@ fn build_desktop(content: &str) -> TkDesktop {
     let mut ta = TextArea::new();
     ta.set_content(content);
     desktop.insert_widget("txt".into(), Box::new(ta));
-    desktop.layout.add("txt", Side::Fill, None);
+    desktop.layout_mut().add("txt", Side::Fill, None);
     desktop
 }
 
@@ -42,7 +42,7 @@ fn desktop_renders_text_widget() {
 fn desktop_dispatches_keys_to_focused() {
     let mut desktop = build_desktop("Line 1\nLine 2\nLine 3");
     desktop.insert_widget("input".into(), Box::new(txv_widgets::InputLine::new()));
-    desktop.layout.add("input", Side::Bottom, Some(1));
+    desktop.layout_mut().add("input", Side::Bottom, Some(1));
     desktop.focus("input");
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
@@ -56,7 +56,7 @@ fn desktop_layout_sets_bounds_on_children() {
     let mut desktop = TkDesktop::new();
     let ta = TextArea::new();
     desktop.insert_widget("main".into(), Box::new(ta));
-    desktop.layout.add("main", Side::Fill, None);
+    desktop.layout_mut().add("main", Side::Fill, None);
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
     let child = desktop.get("main");
@@ -70,8 +70,8 @@ fn desktop_focus_switches_child() {
     let mut desktop = TkDesktop::new();
     desktop.insert_widget("a".into(), Box::new(TextArea::new()));
     desktop.insert_widget("b".into(), Box::new(txv_widgets::InputLine::new()));
-    desktop.layout.add("a", Side::Fill, None);
-    desktop.layout.add("b", Side::Bottom, Some(1));
+    desktop.layout_mut().add("a", Side::Fill, None);
+    desktop.layout_mut().add("b", Side::Bottom, Some(1));
     desktop.set_bounds(Rect::new(0, 0, 80, 24));
 
     desktop.focus("b");

@@ -1837,6 +1837,7 @@ dependencies = [
  "log",
  "rusticle",
  "txv-core",
+ "txv-edit",
  "txv-render",
  "txv-widgets",
 ]

@@ -16,7 +16,7 @@ pub fn register_window(interp: &mut Interpreter, shared: &SendShared) {
         match sub.as_str() {
             "create" => {
                 let title = args.get(1).map(|v| v.as_str().into_owned()).unwrap_or_default();
-                st.desktop.layout.set_title(&title);
+                st.desktop.layout_mut().set_title(&title);
                 Ok(TclValue::Str("window_0".into()))
             }
             "add" => {
@@ -31,13 +31,13 @@ pub fn register_window(interp: &mut Interpreter, shared: &SendShared) {
                 let size = opt_val(&opts, "-width")
                     .or_else(|| opt_val(&opts, "-height"))
                     .and_then(|v| v.parse::<u16>().ok());
-                st.desktop.layout.add(&widget_id, side, size);
+                st.desktop.layout_mut().add(&widget_id, side, size);
                 Ok(TclValue::Str(String::new()))
             }
             "title" => {
                 let _win = require_arg(args, 1, "window title")?;
                 let title = require_arg(args, 2, "window title")?;
-                st.desktop.layout.set_title(&title);
+                st.desktop.layout_mut().set_title(&title);
                 Ok(TclValue::Str(String::new()))
             }
             _ => Err(TclError::new(format!("window: unknown subcommand {sub}"))),

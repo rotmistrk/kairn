@@ -4,6 +4,7 @@
 //! captures a `Shared` handle for access to the desktop and event state.
 
 mod commands;
+mod editor_widget;
 mod tabbar_table;
 mod text_list;
 mod tree_input;
@@ -143,5 +144,6 @@ pub fn register_all(interp: &mut Interpreter) -> Shared {
     commands::register_focus(interp, &ss);
     commands::register_notify(interp);
     commands::register_files(interp);
+    editor_widget::register_editor(interp, &ss);
     shared
 }

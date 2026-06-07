@@ -14,9 +14,9 @@ use crate::layout_mgr::LayoutManager;
 pub struct TkDesktop {
     group: GroupState,
     /// Widget name → child index in group.
-    pub names: HashMap<String, usize>,
+    pub(crate) names: HashMap<String, usize>,
     /// Layout manager (pack model).
-    pub layout: LayoutManager,
+    pub(crate) layout: LayoutManager,
 }
 
 impl TkDesktop {
@@ -26,6 +26,14 @@ impl TkDesktop {
             names: HashMap::new(),
             layout: LayoutManager::new(),
         }
+    }
+
+    pub fn layout(&self) -> &LayoutManager {
+        &self.layout
+    }
+
+    pub fn layout_mut(&mut self) -> &mut LayoutManager {
+        &mut self.layout
     }
 
     /// Insert a widget with a name. Returns the child index.

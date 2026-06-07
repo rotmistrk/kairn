@@ -24,7 +24,7 @@ fn single_fill_widget() {
     eval(&mut interp, "window add $w $t -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.desktop.layout.compute(area());
+    let rects = st.desktop.layout().compute(area());
     assert_eq!(rects.len(), 1);
     assert_eq!(rects[0].1, area());
 }
@@ -39,7 +39,7 @@ fn left_and_fill() {
     eval(&mut interp, "window add $w $b -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.desktop.layout.compute(area());
+    let rects = st.desktop.layout().compute(area());
     assert_eq!(rects.len(), 2);
     assert_eq!(rects[0].1.w(), 20);
     assert_eq!(rects[0].1.x(), 0);
@@ -57,7 +57,7 @@ fn bottom_and_fill() {
     eval(&mut interp, "window add $w $b -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.desktop.layout.compute(area());
+    let rects = st.desktop.layout().compute(area());
     assert_eq!(rects.len(), 2);
     assert_eq!(rects[0].1.h(), 1);
     assert_eq!(rects[0].1.y(), 23);
@@ -77,7 +77,7 @@ fn three_panel_layout() {
     eval(&mut interp, "window add $w $main -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.desktop.layout.compute(area());
+    let rects = st.desktop.layout().compute(area());
     assert_eq!(rects.len(), 3);
     assert_eq!(rects[0].1.w(), 25);
     assert_eq!(rects[0].1.h(), 24);
@@ -101,7 +101,7 @@ fn multiple_widgets_mixed_sides() {
     eval(&mut interp, "window add $w $main -side fill");
 
     let st = shared.lock().unwrap();
-    let rects = st.desktop.layout.compute(area());
+    let rects = st.desktop.layout().compute(area());
     assert_eq!(rects.len(), 4);
     assert_eq!(rects[0].1.h(), 1);
     assert_eq!(rects[0].1.w(), 80);
