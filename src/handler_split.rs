@@ -160,7 +160,7 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
     let syntax_theme = state.current_syntax_theme().to_string();
     let buf_id = ev.buffer_id;
     let shared_buf = ev.editor.buffer.clone();
-    let file_path = ev.editor.buf().file_path.clone();
+    let file_path = ev.editor.buf().file_path().map(|s| s.to_string());
     let cursor_line = ev.editor.cursor_line;
     let cursor_col = ev.editor.cursor_col;
     let scroll = ev.editor.viewport_scroll;

@@ -1247,6 +1247,7 @@ dependencies = [
  "syntect",
  "tempfile",
  "txv-core",
+ "txv-edit",
  "txv-render",
  "txv-widgets",
 ]
@@ -2276,6 +2277,13 @@ dependencies = [
  "libc",
  "log",
  "unicode-width",
+]
+
+[[package]]
+name = "txv-edit"
+version = "0.1.0"
+dependencies = [
+ "txv-core",
 ]
 
 [[package]]
