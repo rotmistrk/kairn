@@ -250,11 +250,12 @@ mod tests {
         view.set_bounds(Rect::new(0, 0, 80, 24));
         view.draw();
 
-        // Check that the highlight cache produced non-trivial spans
-        let spans = view.compute_viewport_spans(0, 5);
-        assert!(!spans.is_empty(), "should have spans");
-        // At least one span should have non-default fg (colored)
-        let has_color = spans.iter().flatten().any(|s| s.style().fg() != Style::default().fg());
+        // Check that drawing produced colored output (syntax highlighting works)
+        let buf = view.buffer();
+        let has_color = (0..80u16).any(|x| {
+            let cell = buf.cell(x, 0);
+            cell.style().fg() != Style::default().fg()
+        });
         assert!(
             has_color,
             "shebang file should have syntax coloring, ext={}",

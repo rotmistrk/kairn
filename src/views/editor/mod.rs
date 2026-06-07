@@ -2,19 +2,17 @@
 
 mod build;
 mod cursor;
+mod delegate;
 mod diff;
 pub mod diff_model;
 pub mod diff_opts;
 mod draw;
 mod draw_blame;
-mod draw_chars;
 mod draw_diagnostics;
 mod draw_diff;
 mod draw_diff_helpers;
-mod draw_gutter;
 mod draw_sbs_diff;
 mod draw_style;
-mod draw_viewport;
 mod handle;
 mod handle_action;
 mod handle_command_event;
@@ -25,7 +23,6 @@ mod handle_tick;
 mod handle_viewport;
 mod methods;
 pub mod sbs_model;
-pub(super) mod sticky_scroll;
 
 use std::path::PathBuf;
 
