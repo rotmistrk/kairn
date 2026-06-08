@@ -88,10 +88,6 @@ impl EditorView {
             self.editor.replace_content(&content);
             self.hl_cache.borrow_mut().invalidate_all();
             self.state.mark_dirty();
-            self.state.put_command(
-                txv_widgets::CM_STATUS_MESSAGE,
-                Some(Box::new(format!("{} reloaded", self.display_title))),
-            );
         }
     }
 
