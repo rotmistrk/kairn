@@ -191,7 +191,6 @@ impl View for ResultsView {
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
-        log::error!("RESULTS_HANDLE event={:?}", std::mem::discriminant(event));
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
