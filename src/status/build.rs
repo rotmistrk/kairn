@@ -46,6 +46,7 @@ fn add_command_items(
     let input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_EXECUTE_COMMAND)
+        .with_prefill_command(CM_COMMAND_PREFILL)
         .with_completer(completer);
     let command_line = ModalKey::new("M-x", ":")
         .trigger_key(ALT_X)
