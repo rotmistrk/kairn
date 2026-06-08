@@ -10,6 +10,9 @@ use crate::commands::{ViewContext, CM_CONTEXT_UPDATE, CM_CURSOR_MOVED};
 pub struct CtxPositionItem {
     state: ViewState,
     label: String,
+    line: u32,
+    col: u32,
+    pct: String,
 }
 
 impl Default for CtxPositionItem {
@@ -24,7 +27,16 @@ impl CtxPositionItem {
         Self {
             state: indicator_state(label.len() as u16 + 2),
             label,
+            line: 1,
+            col: 1,
+            pct: "Top".to_string(),
         }
+    }
+
+    fn rebuild_label(&mut self) {
+        self.label = format!("{},{} {}", self.line, self.col, self.pct);
+        sync_bounds(&mut self.state, &self.label);
+        self.state.mark_dirty();
     }
 
     fn scroll_pct(line: u32, total: u32) -> String {
@@ -53,18 +65,18 @@ impl View for CtxPositionItem {
         };
         if *id == CM_CURSOR_MOVED {
             if let Some(pos) = data.as_ref().and_then(|d| d.downcast_ref::<CursorPos>()) {
-                self.label = format!("{},{}", pos.line(), pos.col());
-                sync_bounds(&mut self.state, &self.label);
-                self.state.mark_dirty();
+                self.line = pos.line();
+                self.col = pos.col();
+                self.rebuild_label();
             }
         }
         if *id == CM_CONTEXT_UPDATE {
             if let Some(vc) = data.as_ref().and_then(|d| d.downcast_ref::<ViewContext>()) {
                 if vc.line > 0 {
-                    let pct = Self::scroll_pct(vc.line, vc.total_lines);
-                    self.label = format!("{},{} {}", vc.line, vc.col, pct);
-                    sync_bounds(&mut self.state, &self.label);
-                    self.state.mark_dirty();
+                    self.line = vc.line;
+                    self.col = vc.col;
+                    self.pct = Self::scroll_pct(vc.line, vc.total_lines);
+                    self.rebuild_label();
                 }
             }
         }

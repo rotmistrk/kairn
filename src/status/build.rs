@@ -30,9 +30,9 @@ pub fn build_status_bar(
     keys::add_prefix_bindings(&mut bar);
     keys::add_dired_prefix(&mut bar);
     keys::add_tab_digit_bindings(&mut bar);
-    add_command_items(&mut bar, completer, clipboard.clone());
-    add_file_finder(&mut bar, root_dir.clone(), clipboard);
+    add_file_finder(&mut bar, root_dir.clone(), clipboard.clone());
     add_todo_group(&mut bar);
+    add_command_items(&mut bar, completer, clipboard);
     add_right_side(&mut bar, root_dir, clock_interval);
     bar
 }
