@@ -101,9 +101,36 @@ impl EditorView {
             self.complete_command_path();
             return;
         }
+        if buf.starts_with("set ") || buf.starts_with("setglobal ") {
+            self.complete_set_option(&buf);
+            return;
+        }
         let app_commands = Self::app_command_names();
         let extra: Vec<&str> = app_commands.iter().map(|s| s.as_str()).collect();
         self.editor.complete_ex(&extra);
+    }
+
+    fn complete_set_option(&mut self, buf: &str) {
+        use crate::handler_set::SET_OPTIONS;
+        let (prefix, sub) = if let Some(s) = buf.strip_prefix("setglobal ") {
+            ("setglobal ", s)
+        } else {
+            ("set ", buf.strip_prefix("set ").unwrap_or(""))
+        };
+        let matches: Vec<&str> = SET_OPTIONS
+            .iter()
+            .filter(|o| o.name.starts_with(sub))
+            .map(|o| o.name)
+            .collect();
+        if matches.len() == 1 {
+            self.editor.set_command_buf(format!("{prefix}{}", matches[0]));
+        } else if matches.len() > 1 {
+            // Complete common prefix
+            let common = common_prefix(&matches);
+            if common.len() > sub.len() {
+                self.editor.set_command_buf(format!("{prefix}{common}"));
+            }
+        }
     }
 
     fn app_command_names() -> Vec<String> {
@@ -150,4 +177,18 @@ impl EditorView {
             self.editor.set_command_buf(format!("{prefix}{}", matches[0]));
         }
     }
+}
+
+fn common_prefix(strings: &[&str]) -> String {
+    if strings.is_empty() {
+        return String::new();
+    }
+    let first = strings[0];
+    let len = first
+        .char_indices()
+        .take_while(|&(i, c)| strings[1..].iter().all(|s| s.as_bytes().get(i) == Some(&(c as u8))))
+        .map(|(i, c)| i + c.len_utf8())
+        .last()
+        .unwrap_or(0);
+    first[..len].to_string()
 }
