@@ -1,6 +1,5 @@
 PREFIX ?= /usr/local
 LOCAL_PREFIX ?= $(HOME)/.local
-TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 
 # ── IMPORTANT ───────────────────────────────────────────
 # NEVER use `cargo install`. Use `make install-local` only.
@@ -10,8 +9,8 @@ TK_DEMO_DIR ?= $(LOCAL_PREFIX)/share/rusticle-tk/examples
 
 .PHONY: all check lint clippy test test-fast fmt clean build release run \
         install-local uninstall-local purge-cargo-bin \
-        install-rusticle-tk install-kairn \
-        install-demos verify setup check-hooks
+        install-kairn \
+	verify setup check-hooks
 
 MCP_LINT_DIR ?= $(HOME)/Workplace/mcp-lint
 
@@ -98,8 +97,8 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: sync-deps test-fast purge-cargo-bin install-rusticle-tk install-kairn install-rusticle-lsp install-demos
-	@echo "✅ Installed rusticle, rusticle-tk, rusticle-lsp, kairn, and demos to $(LOCAL_PREFIX)"
+install-local: sync-deps test-fast purge-cargo-bin install-kairn install-rusticle-lsp 
+	@echo "✅ Installed rusticle, rusticle-lsp, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Pull local dependency overrides (txv) if present, or update git dep
 sync-deps:
@@ -113,13 +112,8 @@ sync-deps:
 
 # Remove stale copies from ~/.cargo/bin that shadow ~/.local/bin
 purge-cargo-bin:
-	@rm -f $(HOME)/.cargo/bin/kairn $(HOME)/.cargo/bin/rusticle $(HOME)/.cargo/bin/rusticle-tk
+	@rm -f $(HOME)/.cargo/bin/kairn $(HOME)/.cargo/bin/rusticle 
 	@echo "  🧹 Removed stale binaries from ~/.cargo/bin (if any)"
-
-install-rusticle-tk: $(BINARY)
-	install -d $(LOCAL_PREFIX)/bin
-	install -m 755 target/release/rusticle-tk $(LOCAL_PREFIX)/bin/rusticle-tk
-	@echo "  ✅ rusticle-tk → $(LOCAL_PREFIX)/bin/rusticle-tk"
 
 install-kairn: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
@@ -131,20 +125,10 @@ install-rusticle-lsp: $(BINARY)
 	install -m 755 target/release/rusticle-lsp $(LOCAL_PREFIX)/bin/rusticle-lsp
 	@echo "  ✅ rusticle-lsp → $(LOCAL_PREFIX)/bin/rusticle-lsp"
 
-install-demos:
-	install -d $(TK_DEMO_DIR)
-	install -m 644 rusticle-tk/examples/*.tcl $(TK_DEMO_DIR)/
-	@echo "  ✅ rusticle-tk demos → $(TK_DEMO_DIR)/"
-
 # ── Uninstall ───────────────────────────────────────────
 
 uninstall-local:
-	rm -f $(LOCAL_PREFIX)/bin/rusticle
-	rm -f $(LOCAL_PREFIX)/bin/rusticle-tk
-	rm -f $(LOCAL_PREFIX)/bin/rusticle-lsp
 	rm -f $(LOCAL_PREFIX)/bin/kairn
-	rm -rf $(LOCAL_PREFIX)/share/rusticle
-	rm -rf $(LOCAL_PREFIX)/share/rusticle-tk
 	@echo "✅ Uninstalled"
 
 # ── Clean ───────────────────────────────────────────────
@@ -164,10 +148,3 @@ run-script:
 	cargo run -p rusticle -- $(SCRIPT)
 
 # Run a rusticle-tk app
-run-tk:
-	@test -n "$(SCRIPT)" || (echo "Usage: make run-tk SCRIPT=path.tcl" && exit 1)
-	cargo run -p rusticle-tk -- $(SCRIPT)
-
-# Run rusticle-tk hello demo
-demo-tk:
-	cargo run -p rusticle-tk -- rusticle-tk/examples/hello.tcl

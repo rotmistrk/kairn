@@ -79,6 +79,18 @@ impl EditorViewDelegate for KairnEditorDelegate<'_> {
     fn on_action(&mut self, _action: &EditorAction) -> bool {
         false
     }
+
+    fn highlight_match_style(&self) -> Style {
+        app_palette().editor().highlight_match()
+    }
+
+    fn highlight_other_bg(&self) -> Color {
+        app_palette().editor().highlight_other().bg()
+    }
+
+    fn matchparen_style(&self) -> Style {
+        app_palette().editor().matchparen()
+    }
 }
 
 fn diag_underline_style(severity: Severity) -> Style {
