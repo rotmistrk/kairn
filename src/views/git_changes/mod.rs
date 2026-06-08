@@ -80,10 +80,14 @@ impl GitChangesView {
 }
 
 impl View for GitChangesView {
-    delegate_view!(inner, override { title, handle });
+    delegate_view!(inner, override { title, handle, cursor });
 
     fn title(&self) -> &str {
         "Git"
+    }
+
+    fn cursor(&self) -> Option<CursorRequest> {
+        None
     }
 
     fn can_close(&self) -> CloseResult {

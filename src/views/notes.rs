@@ -32,7 +32,7 @@ impl NotesView {
 }
 
 impl View for NotesView {
-    delegate_view!(editor, override { title, as_any_mut });
+    delegate_view!(editor, override { title, as_any_mut, cursor });
 
     fn title(&self) -> &str {
         "Notes"

@@ -87,6 +87,9 @@ impl EditorView {
             let prompt = format!("{} changed on disk — reload? [y/n]", self.display_title);
             self.state.put_command(CM_CONFIRM, Some(Box::new(prompt)));
         } else if let Ok(content) = read_to_string(&self.path) {
+            if content == self.editor.buf().content() {
+                return; // mtime changed but content same — skip
+            }
             self.editor.replace_content(&content);
             self.hl_cache.borrow_mut().invalidate_all();
             self.state.mark_dirty();

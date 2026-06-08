@@ -2,6 +2,7 @@
 
 use crate::editor::keymap::EditorMode;
 use crate::settings::CursorStyle;
+use txv_edit::view::draw::sticky::sticky_line_count;
 
 use super::EditorView;
 
@@ -32,7 +33,8 @@ impl EditorView {
         };
 
         // Compute visual row of cursor line
-        let mut vis_row: usize = 0;
+        let sticky_h = sticky_line_count(&self.editor) as usize;
+        let mut vis_row: usize = sticky_h;
         for li in scroll..self.editor.cursor_line() {
             vis_row += if self.editor.options().wrap() {
                 self.wrapped_line_rows(li, avail)

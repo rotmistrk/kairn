@@ -4,6 +4,7 @@ use super::delegate::KairnEditorDelegate;
 use super::EditorView;
 use crate::app_palette::app_palette;
 use txv_edit::view::draw::draw_editor;
+use txv_edit::view::draw::sticky::sticky_line_count;
 
 impl EditorView {
     pub(super) fn draw_editor(&mut self) {
@@ -74,7 +75,7 @@ impl EditorView {
             self.editor.h_scroll()
         };
 
-        let mut vis_row: usize = 0;
+        let mut vis_row: usize = sticky_line_count(&self.editor) as usize;
         for li in scroll..line {
             vis_row += if self.editor.options().wrap() {
                 self.wrapped_line_rows(li, avail)

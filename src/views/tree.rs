@@ -153,7 +153,7 @@ fn status_color(status: FileStatus) -> Color {
 }
 
 impl View for FileTreeView {
-    delegate_view!(inner, override { title, handle, select, unselect, can_close });
+    delegate_view!(inner, override { title, handle, select, unselect, can_close, cursor });
 
     fn title(&self) -> &str {
         "Files"
