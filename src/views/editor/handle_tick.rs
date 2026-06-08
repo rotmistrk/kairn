@@ -2,6 +2,8 @@
 
 use std::fs::{metadata, read_dir, read_to_string};
 
+use txv_core::message::Message;
+
 use super::EditorView;
 use crate::commands::{
     ConfirmContext, ContentChanged, CM_CONFIRM, CM_CONTENT_CHANGED, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP,
@@ -88,6 +90,9 @@ impl EditorView {
             self.editor.replace_content(&content);
             self.hl_cache.borrow_mut().invalidate_all();
             self.state.mark_dirty();
+            let msg = Message::info("editor", format!("{} reloaded", self.display_title));
+            self.state
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 
