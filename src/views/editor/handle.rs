@@ -36,11 +36,14 @@ impl EditorView {
             KeyCode::Up => self.history_prev(),
             KeyCode::Down => self.history_next(),
             KeyCode::Char(c) => {
+                self.editor.reset_ex_completion();
                 self.editor.command_buf_mut().push(c);
                 self.editor.set_history_index(None);
                 self.update_incsearch();
             }
-            _ => {}
+            _ => {
+                self.editor.reset_ex_completion();
+            }
         }
         self.ensure_cursor_visible();
         self.state.mark_dirty();

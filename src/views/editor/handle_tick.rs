@@ -96,20 +96,22 @@ impl EditorView {
     }
 
     pub(super) fn complete_command_buf(&mut self) {
-        let buf = self.editor.command_buf();
+        let buf = self.editor.command_buf().to_string();
         if buf.starts_with("e ") || buf.starts_with("edit ") {
             self.complete_command_path();
             return;
         }
-        use crate::editor::ex_commands::CMD_TABLE_NAMES;
-        let matches: Vec<&str> = CMD_TABLE_NAMES
-            .iter()
-            .filter(|cmd| cmd.starts_with(buf))
-            .copied()
-            .collect();
-        if matches.len() == 1 {
-            self.editor.set_command_buf(matches[0].to_string());
-        }
+        let app_commands = Self::app_command_names();
+        let extra: Vec<&str> = app_commands.iter().map(|s| s.as_str()).collect();
+        self.editor.complete_ex(&extra);
+    }
+
+    fn app_command_names() -> Vec<String> {
+        use crate::handler_exec::dispatch_table;
+        dispatch_table()
+            .flat_map(|e| e.names.iter().copied())
+            .map(|s| s.to_string())
+            .collect()
     }
 
     fn complete_command_path(&mut self) {
