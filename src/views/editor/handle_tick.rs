@@ -90,7 +90,16 @@ impl EditorView {
             if content == self.editor.buf().content() {
                 return; // mtime changed but content same — skip
             }
+            let old_line = self.editor.cursor_line();
+            let old_col = self.editor.cursor_col();
+            let old_scroll = self.editor.viewport_scroll();
             self.editor.replace_content(&content);
+            let max_line = self.editor.buf().line_count().saturating_sub(1);
+            let line = old_line.min(max_line);
+            self.editor.set_cursor_line(line);
+            let line_len = self.editor.buf().line(line).map(|l| l.len()).unwrap_or(0);
+            self.editor.set_cursor_col(old_col.min(line_len));
+            self.editor.set_viewport_scroll(old_scroll.min(max_line));
             self.hl_cache.borrow_mut().invalidate_all();
             self.state.mark_dirty();
             let msg = Message::info("editor", format!("{} reloaded", self.display_title));
