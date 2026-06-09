@@ -13,16 +13,17 @@ impl TodoTreeView {
         match action {
             HandleAction::Stay => {}
             HandleAction::MoveDown => {
-                let max = self.inner.data_mut().visible_count().saturating_sub(1);
-                if self.inner.cursor() < max {
-                    self.inner.set_cursor(self.inner.cursor() + 1);
+                let max = self.inner_mut().data_mut().visible_count().saturating_sub(1);
+                if self.inner_mut().cursor() < max {
+                    let cur = self.inner_mut().cursor();
+                    self.inner_mut().set_cursor(cur + 1);
                 }
             }
             HandleAction::MoveTo(row) => {
-                self.inner.set_cursor(row);
+                self.inner_mut().set_cursor(row);
             }
             HandleAction::EditNew(row) => {
-                self.inner.set_cursor(row);
+                self.inner_mut().set_cursor(row);
                 self.start_edit_selected();
             }
             HandleAction::ConfirmDelete => {}

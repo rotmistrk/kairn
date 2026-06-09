@@ -1,17 +1,15 @@
 //! TodoTreeView — non-closeable tab showing hierarchical tasks from .kairn.todo.
 
 use std::path::Path;
-use std::sync::Arc;
 
 use txv_core::prelude::*;
-use txv_widgets::input_line::InputLine;
-use txv_widgets::tree_view::TreeData;
 use txv_widgets::{TreeTableView, CM_ACTIVATE_GROUP, CM_DEACTIVATE_GROUP};
 
 mod apply_action;
 pub mod data;
 mod dispatch;
 mod draw;
+mod edit;
 mod flat_node;
 mod handle;
 mod mcp;
@@ -24,10 +22,9 @@ pub use self::data::TodoTreeData;
 /// Group ID for the todo status bar section.
 pub const TODO_STATUS_GROUP: u16 = 1;
 
-/// The todo tree view — a Group that hosts an InputLine child when editing.
+/// The todo tree view — a Group that hosts TreeTableView (child 0) and InputLine (child 1 when editing).
 pub struct TodoTreeView {
     group: GroupState,
-    inner: TreeTableView<TodoTreeData>,
     /// Sink for capturing InputLine commands (separate from group sink).
     child_sink: EventSink,
     /// Editing state: which visible row is being edited.
@@ -49,9 +46,10 @@ impl TodoTreeView {
     pub fn new(root: &Path) -> Self {
         let todo_path = root.join(".kairn.todo");
         let data = TodoTreeData::new(&todo_path);
+        let mut group = GroupState::default();
+        group.insert(Box::new(TreeTableView::new(data, &[3, 2])));
         Self {
-            group: GroupState::default(),
-            inner: TreeTableView::new(data, &[3, 2]),
+            group,
             child_sink: EventSink::new(),
             editing_row: None,
             filter_active: false,
@@ -60,144 +58,22 @@ impl TodoTreeView {
         }
     }
 
-    /// Start editing the current item title.
-    fn start_edit(&mut self) {
-        let row = self.inner.cursor();
-        if row >= self.inner.data_mut().visible_count() {
-            return;
-        }
-        let id = self.inner.data_mut().visible_id(row);
-        let label = self.inner.data_mut().label(id).to_owned();
-        let mut input = InputLine::new().with_command(CM_OK);
-        input.set_text(&label);
-        input.select_all();
-        let pal = self.edit_palette();
-        let sink = self.child_sink.clone();
-        self.group.insert(Box::new(input));
-        self.group.set_focused_index(0);
-        if let Some(child) = self.group.child_mut(0) {
-            child.set_sink(sink);
-            child.set_palette(pal);
-            child.select();
-        }
-        self.editing_row = Some(row);
-        self.group.mark_dirty();
+    /// Typed access to the TreeTableView (always child 0).
+    pub(crate) fn inner(&self) -> &TreeTableView<TodoTreeData> {
         self.group
-            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
+            .child(0)
+            .and_then(|c| c.as_any())
+            .and_then(|a| a.downcast_ref())
+            .unwrap_or_else(|| unreachable!())
     }
 
-    fn start_edit_selected(&mut self) {
-        self.start_edit();
-    }
-
-    /// Start filter mode.
-    fn start_filter(&mut self) {
-        let mut input = InputLine::new().with_command(CM_OK);
-        input.set_text(&self.inner.data_mut().filter_text.clone());
-        let pal = self.filter_palette();
-        let sink = self.child_sink.clone();
-        self.group.insert(Box::new(input));
-        self.group.set_focused_index(0);
-        if let Some(child) = self.group.child_mut(0) {
-            child.set_sink(sink);
-            child.set_palette(pal);
-            child.select();
-        }
-        self.filter_active = true;
-        self.group.mark_dirty();
+    /// Typed mutable access to the TreeTableView (always child 0).
+    pub(crate) fn inner_mut(&mut self) -> &mut TreeTableView<TodoTreeData> {
         self.group
-            .put_command(CM_DEACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
-    }
-
-    /// Palette for item editing: Text = cursor row style (focused).
-    fn edit_palette(&self) -> Arc<dyn Palette> {
-        use txv_core::palette::{palette, DerivedPalette, StyleId};
-        let base = palette();
-        let cursor_style = base.style(StyleId::CursorFocused);
-        Arc::new(DerivedPalette::new(base).with_override(StyleId::Text, cursor_style))
-    }
-
-    /// Palette for filter bar: Text = StatusBar style.
-    fn filter_palette(&self) -> Arc<dyn Palette> {
-        use txv_core::palette::{palette, DerivedPalette, StyleId};
-        let base = palette();
-        let sb_style = base.style(StyleId::StatusBar);
-        Arc::new(DerivedPalette::new(base).with_override(StyleId::Text, sb_style))
-    }
-
-    /// Get the InputLine child mutably.
-    fn input_line_mut(&mut self) -> Option<&mut InputLine> {
-        if self.group.child_count() > 0 {
-            self.group
-                .child_mut(0)
-                .and_then(|c| c.as_any_mut()?.downcast_mut::<InputLine>())
-        } else {
-            None
-        }
-    }
-
-    /// Remove the InputLine child.
-    fn remove_input_line(&mut self) {
-        if self.group.child_count() > 0 {
-            self.group.remove(0);
-        }
-    }
-
-    /// Commit the active edit.
-    fn commit_edit(&mut self) {
-        let text = self.input_line_mut().map(|i| i.text().to_string()).unwrap_or_default();
-        self.remove_input_line();
-        if let Some(row) = self.editing_row.take() {
-            self.inner.data_mut().update_title(row, text);
-        }
-        self.group.mark_dirty();
-        self.group
-            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
-    }
-
-    /// Cancel the active edit.
-    fn cancel_edit(&mut self) {
-        self.remove_input_line();
-        self.editing_row = None;
-        self.group.mark_dirty();
-        self.group
-            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
-    }
-
-    /// Commit filter (keep filter text, remove InputLine).
-    fn commit_filter(&mut self) {
-        self.remove_input_line();
-        self.filter_active = false;
-        self.group.mark_dirty();
-        self.group
-            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
-    }
-
-    /// Cancel filter (clear filter text, remove InputLine).
-    fn cancel_filter(&mut self) {
-        self.remove_input_line();
-        self.filter_active = false;
-        self.inner.data_mut().filter_text.clear();
-        self.inner.data_mut().rebuild_flat();
-        self.inner.set_cursor(0);
-        self.group.mark_dirty();
-        self.group
-            .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
-    }
-
-    /// Whether we're in any editing mode.
-    fn is_editing(&self) -> bool {
-        self.editing_row.is_some() || self.filter_active
-    }
-
-    /// Emit CM_TODO_NOTE_UPDATE if cursor moved to a different item.
-    /// Commit any active edit on resize.
-    fn commit_edit_on_resize(&mut self) {
-        if self.editing_row.is_some() {
-            self.commit_edit();
-        } else if self.filter_active {
-            self.commit_filter();
-        }
+            .child_mut(0)
+            .and_then(|c| c.as_any_mut())
+            .and_then(|a| a.downcast_mut())
+            .unwrap_or_else(|| unreachable!())
     }
 }
 
@@ -213,6 +89,18 @@ impl View for TodoTreeView {
             self.commit_edit_on_resize();
         }
         self.group.set_bounds(r);
+        // Position TreeTableView (child 0) — fills area minus optional filter row
+        let h = r.h();
+        let w = r.w();
+        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text.is_empty();
+        let draw_h = if has_filter {
+            h.saturating_sub(1)
+        } else {
+            h
+        };
+        self.group.set_child_bounds(0, Rect::new(0, 0, w, draw_h));
+        self.sync_tree_visibility();
+        self.layout_edit_child();
     }
 
     fn select(&mut self) {
@@ -251,8 +139,8 @@ impl View for TodoTreeView {
 
     fn handle(&mut self, event: &Event) -> HandleResult {
         if matches!(event, Event::Tick) {
-            if self.inner.data_mut().reload_if_changed() {
-                self.group.mark_dirty();
+            if self.inner_mut().data_mut().reload_if_changed() {
+                self.sync_tree_visibility();
             }
             return HandleResult::Ignored;
         }

@@ -36,7 +36,9 @@ The pre-commit hook enforces ALL of the following. Code MUST pass before commit:
 3. **240 CODE lines per file maximum** (blank/comment lines don't count)
 4. `cargo test --workspace --no-fail-fast` (all tests pass)
 
-**NEVER use `--no-verify` without explicit user permission.**
+**NEVER use `--no-verify`.** This is absolute — no exceptions, no "I'll fix it later", no "unrelated test hang". If the hook fails or hangs, the correct action is to fix the underlying problem, not bypass the hook.
+
+**The only consequence of a commit that skipped pre-commit hooks is a hard reset to the last validated commit.** All work in such commits is permanently discarded. This has already happened and will happen again without hesitation.
 
 ---
 

@@ -72,7 +72,11 @@ pub struct EditorView {
 }
 
 impl View for EditorView {
-    delegate_view_state!(state, override { title, needs_redraw, draw, cursor });
+    delegate_view_state!(state, override { title, needs_redraw, draw, cursor, as_any_mut });
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
+    }
 
     fn title(&self) -> &str {
         &self.display_title

@@ -1,7 +1,7 @@
-//! Draw logic for TodoTreeView — delegates tree rendering to TreeTableView.
+//! Draw logic for TodoTreeView — only draws own pixels (filter row).
+//! TreeTableView (child 0) and InputLine (child 1) are rendered by the group pipeline.
 
 use txv_core::prelude::*;
-use txv_widgets::tree_view::TreeData;
 
 use super::TodoTreeView;
 
@@ -13,80 +13,34 @@ impl TodoTreeView {
         if w == 0 || h == 0 {
             return;
         }
-        self.group.buffer_mut().fill(' ', Style::default());
-        if self.inner.data_mut().visible_count() == 0 {
+        if !self.group.is_child_visible(0) {
+            // Tree is hidden (empty) — show placeholder
             let dim = palette().style(StyleId::Dim);
+            self.group.buffer_mut().fill(' ', Style::default());
             self.group.buffer_mut().print(0, 0, "  (empty — press 'n' to add)", dim);
             return;
         }
-        let has_filter = self.filter_active || !self.inner.data_mut().filter_text.is_empty();
-        let filter_row = if has_filter {
-            h.saturating_sub(1)
-        } else {
-            0
-        };
-        let draw_h = if has_filter {
-            h.saturating_sub(1)
-        } else {
-            h
-        };
-        // Set bounds on inner TreeTableView and draw it
-        let inner_bounds = Rect::new(0, 0, w, draw_h);
-        self.inner.state_mut().set_bounds(inner_bounds);
+        // Set focused state on inner tree
         if self.group.is_focused() {
-            self.inner.state_mut().set_focused(true);
+            self.inner_mut().state_mut().set_focused(true);
         } else {
-            self.inner.state_mut().set_focused(false);
+            self.inner_mut().state_mut().set_focused(false);
         }
-        self.inner.draw();
-        // Blit inner buffer onto group buffer
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        unsafe { (*buf_ptr).blit(self.inner.state_mut().buffer(), 0, 0) };
-        self.draw_filter_status(w, filter_row);
-        self.position_and_blit_child(w, draw_h as usize, filter_row);
+        // Draw filter status row if active
+        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text.is_empty();
+        if has_filter {
+            let filter_row = h.saturating_sub(1);
+            self.draw_filter_status(w, filter_row);
+        }
     }
 
     fn draw_filter_status(&mut self, w: u16, filter_row: u16) {
-        if filter_row == 0 {
-            return;
-        }
         let style = palette().style(StyleId::StatusBar);
         self.group.buffer_mut().hline(0, filter_row, w, ' ', style);
         self.group.buffer_mut().print(0, filter_row, "/", style);
         if !self.filter_active {
-            let ft = self.inner.data_mut().filter_text.clone();
+            let ft = self.inner_mut().data_mut().filter_text.clone();
             self.group.buffer_mut().print(1, filter_row, &ft, style);
-        }
-    }
-
-    /// Position the InputLine child and blit it onto the group buffer.
-    fn position_and_blit_child(&mut self, w: u16, draw_h: usize, filter_row: u16) {
-        if self.group.child_count() == 0 {
-            return;
-        }
-        let (x, y, cw) = if self.filter_active {
-            (1u16, filter_row, w.saturating_sub(1))
-        } else if let Some(row) = self.editing_row {
-            let scroll_offset = self.inner.scroll_offset();
-            if row < scroll_offset || (row - scroll_offset) >= draw_h {
-                return;
-            }
-            let screen_y = (row - scroll_offset) as u16;
-            let id = self.inner.data_mut().visible_id(row);
-            let depth = self.inner.data_mut().depth(id);
-            let indent = (depth * 2 + 2) as u16;
-            (indent, screen_y, w.saturating_sub(indent))
-        } else {
-            return;
-        };
-        self.group.set_child_bounds(0, Rect::new(x, y, cw, 1));
-        if let Some(child) = self.group.child_mut(0) {
-            child.draw();
-        }
-        let buf_ptr = self.group.buffer_mut() as *mut Buffer;
-        if let Some(child) = self.group.child(0) {
-            let (ox, oy) = self.group.child_origin(0);
-            unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
         }
     }
 }

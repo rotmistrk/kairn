@@ -126,6 +126,8 @@ When a file grows too large, split by responsibility into submodules (e.g., `han
 
 All commits must pass: `cargo fmt` + `cargo clippy -D warnings` + 240-line check + `cargo test --workspace`. The hook is at `hooks/pre-commit`. Run it before pushing.
 
+**NEVER skip the pre-commit hook** (`--no-verify` is forbidden). If the hook fails or hangs, fix the underlying problem first. The only consequence of a commit that skipped pre-commit is a hard reset to the last validated commit — all work in such commits is permanently discarded, no exceptions.
+
 ## View Architecture
 
 - Views implement the `View` trait from `txv_core`

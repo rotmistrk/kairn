@@ -60,6 +60,7 @@ impl EditorView {
     /// Set diff state directly (for testing).
     pub fn set_diff_state(&mut self, state: DiffState) {
         self.diff_state = Some(state);
+        self.state.mark_dirty();
     }
 
     /// Set side-by-side diff state.

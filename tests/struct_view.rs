@@ -226,3 +226,22 @@ fn swap_nodes() {
     assert!(h.content_contains("2"), "value 2 should still be visible");
     assert!(h.content_contains("3"), "value 3 should still be visible");
 }
+
+#[test]
+fn nested_keys_are_indented() {
+    let json = r#"{"a": {"b": 1, "c": 2}}"#;
+    let dir = temp_project(&[("data.json", json)]);
+    let mut h = TestHarness::new(dir.path());
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(2);
+    // Expand root "a"
+    h.inject_key(KeyCode::Right, KeyMod::default());
+    h.run_cycles(2);
+    let content = h.screen_text();
+    // "b" should have some indent (spaces or connector chars before it)
+    assert!(
+        content.contains("  b") || content.contains("├─b") || content.contains("└─b"),
+        "nested key 'b' should be indented, got:\n{}",
+        content
+    );
+}

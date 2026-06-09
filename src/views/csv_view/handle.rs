@@ -213,6 +213,7 @@ fn handle_sort(view: &mut CsvView) {
         }
     });
     view.cursor_row = 0;
+    view.group.mark_dirty();
 }
 
 pub(super) fn ensure_visible(view: &mut CsvView) {

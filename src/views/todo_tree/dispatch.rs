@@ -10,25 +10,25 @@ use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 
 impl TodoTreeView {
     pub(super) fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
-        if key.code() == KeyCode::Esc && !self.inner.data_mut().filter_text.is_empty() {
-            self.inner.data_mut().filter_text.clear();
-            self.inner.data_mut().rebuild_flat();
-            self.inner.set_cursor(0);
-            self.group.mark_dirty();
+        if key.code() == KeyCode::Esc && !self.inner_mut().data_mut().filter_text.is_empty() {
+            self.inner_mut().data_mut().filter_text.clear();
+            self.inner_mut().data_mut().rebuild_flat();
+            self.inner_mut().set_cursor(0);
+            self.mark_tree_dirty();
             return HandleResult::Consumed;
         }
-        if key.code() == KeyCode::Char('n') && self.inner.data_mut().visible_count() == 0 {
-            self.inner.data_mut().add_first_item();
+        if key.code() == KeyCode::Char('n') && self.inner_mut().data_mut().visible_count() == 0 {
+            self.inner_mut().data_mut().add_first_item();
             return HandleResult::Consumed;
         }
-        if key.code() == KeyCode::Char('e') && self.inner.data_mut().visible_count() > 0 {
+        if key.code() == KeyCode::Char('e') && self.inner_mut().data_mut().visible_count() > 0 {
             self.start_edit();
             return HandleResult::Consumed;
         }
-        let prev_cursor = self.inner.cursor();
-        let cursor = self.inner.cursor();
-        if self.inner.data_mut().visible_count() > 0 {
-            if let Some(action) = handle::handle_todo_key(key, self.inner.data_mut(), cursor) {
+        let prev_cursor = self.inner_mut().cursor();
+        let cursor = self.inner_mut().cursor();
+        if self.inner_mut().data_mut().visible_count() > 0 {
+            if let Some(action) = handle::handle_todo_key(key, self.inner_mut().data_mut(), cursor) {
                 if matches!(action, HandleAction::ConfirmDelete) {
                     self.group
                         .put_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::TodoDelete)));
@@ -40,9 +40,9 @@ impl TodoTreeView {
                 return HandleResult::Consumed;
             }
         }
-        let result = self.inner.handle(event);
+        let result = self.inner_mut().handle(event);
         if result == HandleResult::Consumed {
-            self.group.mark_dirty();
+            self.mark_tree_dirty();
         }
         self.emit_note_update_if_cursor_changed(prev_cursor);
         result
@@ -59,8 +59,8 @@ impl TodoTreeView {
                             .unwrap_or_default();
                         let row = self.editing_row.take().unwrap_or(0);
                         self.remove_input_line();
-                        self.inner.data_mut().update_title(row, text);
-                        self.group.mark_dirty();
+                        self.inner_mut().data_mut().update_title(row, text);
+                        self.mark_tree_dirty();
                         self.group
                             .put_command(CM_ACTIVATE_GROUP, Some(Box::new(TODO_STATUS_GROUP)));
                         return;
@@ -85,11 +85,11 @@ impl TodoTreeView {
         let result = self.group.dispatch(event);
         self.drain_child_sink();
         if let Some(input) = self.input_line_mut() {
-            self.inner.data_mut().filter_text = input.text().to_string();
+            self.inner_mut().data_mut().filter_text = input.text().to_string();
         }
-        self.inner.data_mut().rebuild_flat();
-        self.inner.set_cursor(0);
-        self.group.mark_dirty();
+        self.inner_mut().data_mut().rebuild_flat();
+        self.inner_mut().set_cursor(0);
+        self.mark_tree_dirty();
         if key.code() == KeyCode::Esc {
             self.cancel_filter();
         } else if key.code() == KeyCode::Enter {

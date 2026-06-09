@@ -106,6 +106,9 @@ impl StructDocSource {
     fn build_label(&self, node_id: NodeId) -> String {
         let depth = self.depth(node_id);
         let mut text = String::new();
+        for _ in 0..depth {
+            text.push_str("  ");
+        }
         self.append_expand_marker(node_id, &mut text);
         self.append_key_label(node_id, depth, &mut text);
         text
@@ -145,8 +148,17 @@ impl TreeTableSource for StructDocSource {
         self.labels.get(row).map(|s| s.as_str()).unwrap_or("")
     }
 
-    fn depth(&self, _row: usize) -> usize {
-        0
+    fn depth(&self, row: usize) -> usize {
+        let Some(&id) = self.visible_nodes.get(row) else {
+            return 0;
+        };
+        let mut d = 0;
+        let mut current = id;
+        while let Some(p) = self.doc.parent(current) {
+            d += 1;
+            current = p;
+        }
+        d
     }
 
     fn is_expandable(&self, _row: usize) -> bool {
