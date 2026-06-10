@@ -1,8 +1,7 @@
 //! KairnEditorDelegate — app-specific extensions for the txv-edit draw engine.
 
 use txv_core::prelude::*;
-use txv_edit::editor::{Editor, EditorAction};
-use txv_edit::view::draw::compute_gutter_width;
+use txv_edit::editor::EditorAction;
 use txv_edit::view::EditorViewDelegate;
 
 use crate::app_palette::app_palette;
@@ -31,19 +30,19 @@ impl EditorViewDelegate for KairnEditorDelegate<'_> {
         sign_w + self.blame_w
     }
 
-    fn draw_gutter_sign(&self, buf: &mut Buffer, line: usize, x: u16, y: u16) {
+    fn gutter_sign(&self, line: usize) -> Option<(char, Style)> {
         if !self.show_gutter_signs {
-            return;
+            return None;
         }
-        if let Some(sign) = self.gutter_signs.iter().find(|(l, _)| *l == line).map(|(_, s)| *s) {
+        // Git signs only — diagnostic markers rendered by kairn's draw_diagnostics
+        self.gutter_signs.iter().find(|(l, _)| *l == line).map(|(_, s)| {
             let app = app_palette();
-            let (ch, style) = match sign {
+            match s {
                 GutterSign::Added => ('▎', app.diff().added()),
                 GutterSign::Modified => ('▎', app.git().modified()),
                 GutterSign::Deleted => ('▸', app.diff().deleted()),
-            };
-            buf.put(x, y, ch, style);
-        }
+            }
+        })
     }
 
     fn extra_style(&self, line: usize, col: usize) -> Option<Style> {
@@ -56,24 +55,8 @@ impl EditorViewDelegate for KairnEditorDelegate<'_> {
         None
     }
 
-    fn post_draw(&self, buf: &mut Buffer, editor: &Editor) {
-        // Diagnostic gutter markers at end of line-number area
-        let Some(diags) = self.diagnostics else {
-            return;
-        };
-        let scroll = editor.viewport_scroll();
-        let h = buf.height() as usize;
-        for d in diags {
-            if d.line >= scroll && d.line < scroll + h {
-                let y = (d.line - scroll) as u16;
-                let marker_style = diag_marker_style(d.severity);
-                // Place marker just before the text area starts
-                let gutter_w = compute_gutter_width(editor, self);
-                if gutter_w > 0 {
-                    buf.put(gutter_w - 1, y, '●', marker_style);
-                }
-            }
-        }
+    fn line_decorations(&self, _line: usize) -> &[txv_edit::view::delegate::LineDecoration] {
+        &[]
     }
 
     fn on_action(&mut self, _action: &EditorAction) -> bool {

@@ -57,14 +57,14 @@ fn dropdown_entries_have_padding() {
     h.inject_key(KeyCode::Down, CTRL_SHIFT);
     h.run_cycles(1);
 
-    // Entries should have padding (spaces or middle dots for cursor)
+    // Entries should have padding (spaces between border and content)
     let screen = h.screen_text();
     assert!(
-        screen.contains(" 1:Files ")
-            || screen.contains("·1:Files·")
-            || screen.contains(" 2:Git ")
-            || screen.contains(" Files ")
-            || screen.contains(" Git "),
+        screen.contains(" ₁Files")
+            || screen.contains(" ₂Git")
+            || screen.contains(" ₃Todo")
+            || screen.contains(" Files")
+            || screen.contains(" Git"),
         "dropdown entries need horizontal padding: {screen}"
     );
 }

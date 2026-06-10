@@ -192,6 +192,7 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         | CM_EDITOR_REPLACE_WORD
         | CM_EDITOR_SEARCH
         | CM_EDITOR_CLEAR_HIGHLIGHT
+        | CM_EDITOR_SET
         | CM_CHAR_INSERTED
         | CM_WORD_COMPLETED => handle_script_command(ctx, state),
         CM_TODO_NOTE_SAVE => save_todo_note(ctx, state),

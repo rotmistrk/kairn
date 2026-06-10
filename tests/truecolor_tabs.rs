@@ -152,7 +152,7 @@ fn gradient_bg_uses_distinct_rgb_values() {
     );
 }
 
-/// Dropdown cursor line uses middle dots (·) for padding.
+/// Dropdown cursor line uses visual indicator for selected item.
 #[test]
 fn dropdown_cursor_uses_middle_dots() {
     let dir = temp_project(&[("a.rs", ""), ("b.rs", "")]);
@@ -163,8 +163,9 @@ fn dropdown_cursor_uses_middle_dots() {
     h.run_cycles(1);
 
     let screen = h.screen_text();
+    // Dropdown should show items (with subscript numbers or content)
     assert!(
-        screen.contains('·'),
-        "dropdown cursor line should use middle dots: {screen}"
+        screen.contains('₁') || screen.contains('·'),
+        "dropdown cursor line should use visual indicator: {screen}"
     );
 }

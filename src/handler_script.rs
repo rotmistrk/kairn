@@ -14,7 +14,8 @@ use crate::handler::downcast_desktop;
 use crate::handler_open::handle_edit_file;
 use crate::handler_script_dispatch::dispatch_extended;
 use crate::handler_script_edit::{
-    handle_clear_highlight, handle_delete_line, handle_replace_selection, handle_replace_word, handle_search,
+    handle_clear_highlight, handle_delete_line, handle_editor_set, handle_replace_selection, handle_replace_word,
+    handle_search,
 };
 use crate::handler_script_util::fire_hooks_for_event;
 use crate::scripting::hooks::HookEvent;
@@ -53,6 +54,11 @@ pub fn handle_script_command(ctx: &mut CommandContext, state: &mut AppState) {
         CM_EDITOR_CLEAR_HIGHLIGHT => {
             handle_clear_highlight(ctx, state);
         }
+        CM_EDITOR_SET => {
+            if let Some(option) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned() {
+                handle_editor_set(ctx, &option);
+            }
+        }
         _ => {}
     }
 }
@@ -76,16 +82,11 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         ScriptCommand::ViewLayout => ctx.sink().push_command(CM_TW_LAYOUT_CYCLE, None),
         ScriptCommand::RunBuild { command } => ctx.sink().push_command(CM_BUILD, command.map(|c| Box::new(c) as _)),
         ScriptCommand::RunTest { command } => ctx.sink().push_command(CM_TEST, command.map(|c| Box::new(c) as _)),
-        ScriptCommand::TestFile => ctx.sink().push_command(CM_TEST_FILE, None),
-        ScriptCommand::TestAtCursor => ctx.sink().push_command(CM_TEST_AT_CURSOR, None),
-        ScriptCommand::NextError => ctx.sink().push_command(CM_NEXT_ERROR, None),
-        ScriptCommand::PrevError => ctx.sink().push_command(CM_PREV_ERROR, None),
-        ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {}
-        ScriptCommand::LspHover => ctx.sink().push_command(CM_LSP_HOVER, None),
-        ScriptCommand::LspDefinition => ctx.sink().push_command(CM_LSP_GOTO_DEF, None),
-        ScriptCommand::LspReferences => ctx.sink().push_command(CM_LSP_FIND_REFS, None),
-        ScriptCommand::LspRename { new_name } => ctx.sink().push_command(CM_LSP_RENAME, Some(Box::new(new_name))),
-        ScriptCommand::LspFormat => ctx.sink().push_command(CM_LSP_FORMAT, None),
+        ScriptCommand::LspHover
+        | ScriptCommand::LspDefinition
+        | ScriptCommand::LspReferences
+        | ScriptCommand::LspRename { .. }
+        | ScriptCommand::LspFormat => dispatch_lsp(cmd, ctx),
         ScriptCommand::GetSelection | ScriptCommand::GetLine { .. } => {}
         ScriptCommand::ReplaceSelection { .. }
         | ScriptCommand::DeleteLine { .. }
@@ -94,9 +95,22 @@ fn dispatch_one(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppSta
         | ScriptCommand::ClearHighlight
         | ScriptCommand::SetMark { .. }
         | ScriptCommand::JumpMark { .. } => dispatch_editor_edit(cmd, ctx),
+        ScriptCommand::EditorSet { option } => ctx.sink().push_command(CM_EDITOR_SET, Some(Box::new(option))),
+        ScriptCommand::SetKeyBinding { .. } | ScriptCommand::UnbindKey { .. } => {}
         other => {
             dispatch_extended(other, ctx, state);
         }
+    }
+}
+
+fn dispatch_lsp(cmd: ScriptCommand, ctx: &mut CommandContext) {
+    match cmd {
+        ScriptCommand::LspHover => ctx.sink().push_command(CM_LSP_HOVER, None),
+        ScriptCommand::LspDefinition => ctx.sink().push_command(CM_LSP_GOTO_DEF, None),
+        ScriptCommand::LspReferences => ctx.sink().push_command(CM_LSP_FIND_REFS, None),
+        ScriptCommand::LspRename { new_name } => ctx.sink().push_command(CM_LSP_RENAME, Some(Box::new(new_name))),
+        ScriptCommand::LspFormat => ctx.sink().push_command(CM_LSP_FORMAT, None),
+        _ => {}
     }
 }
 

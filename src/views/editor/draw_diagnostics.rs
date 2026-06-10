@@ -27,6 +27,19 @@ impl EditorView {
         let visible_lines = self.state.buffer_mut().height() as usize;
         let h_off = self.editor.h_scroll();
 
+        // Gutter markers (●)
+        for diag in &diagnostics {
+            if diag.line < scroll || diag.line >= scroll + visible_lines {
+                continue;
+            }
+            let y = (diag.line - scroll) as u16;
+            if gutter_w > 0 {
+                let style = diag_marker_style(diag.severity);
+                self.state.buffer_mut().put(gutter_w - 1, y, '●', style);
+            }
+        }
+
+        // Underlines
         let marks = self.collect_diag_marks(&diagnostics, w, gutter_w, scroll, visible_lines, h_off);
         for ov in marks {
             self.state.buffer_mut().put(ov.x, ov.y, ov.ch, ov.style);

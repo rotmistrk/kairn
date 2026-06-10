@@ -218,6 +218,10 @@ fn dispatch_split(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
         }
         ScriptCommand::SplitLinked { on } => ctx.sink().push_command(CM_SPLIT_LINKED, Some(Box::new(on))),
         ScriptCommand::DiffRevert => ctx.sink().push_command(CM_DIFF_REVERT, None),
+        ScriptCommand::TestFile => ctx.sink().push_command(CM_TEST_FILE, None),
+        ScriptCommand::TestAtCursor => ctx.sink().push_command(CM_TEST_AT_CURSOR, None),
+        ScriptCommand::NextError => ctx.sink().push_command(CM_NEXT_ERROR, None),
+        ScriptCommand::PrevError => ctx.sink().push_command(CM_PREV_ERROR, None),
         _ => return false,
     }
     true

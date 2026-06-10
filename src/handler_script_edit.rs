@@ -3,6 +3,7 @@
 use txv_core::program::CommandContext;
 
 use crate::app_state::AppState;
+use crate::editor::command::Command;
 use crate::editor::keymap::EditorMode;
 use crate::handler::downcast_desktop;
 use crate::views::editor::EditorView;
@@ -146,4 +147,19 @@ pub fn handle_clear_highlight(ctx: &mut CommandContext, _state: &AppState) {
         return;
     };
     editor.editor.set_highlight(None);
+}
+
+pub fn handle_editor_set(ctx: &mut CommandContext, option: &str) {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
+        return;
+    };
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
+        return;
+    };
+    let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+        return;
+    };
+    let cmd = format!("set {option}");
+    editor.editor.execute(Command::ExCommand(cmd));
 }

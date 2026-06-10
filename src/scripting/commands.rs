@@ -163,6 +163,9 @@ pub enum ScriptCommand {
     Grep {
         pattern: String,
     },
+    EditorSet {
+        option: String,
+    },
     LspStart {
         pattern: String,
     },

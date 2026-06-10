@@ -29,6 +29,7 @@ pub fn register(
             "current-file" | "current-line" | "current-col" | "modified?" | "filetype" => {
                 handle_query_ops(&snapshot, &sub)
             }
+            "set" => handle_set_op(&cmds, args),
             other => Err(TclError::new(format!("editor: unknown subcommand '{other}'"))),
         }
     });
@@ -176,6 +177,12 @@ fn push(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, cmd: ScriptCommand) {
     if let Ok(mut v) = cmds.lock() {
         v.push(cmd);
     }
+}
+
+fn handle_set_op(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, args: &[TclValue]) -> Result<TclValue, TclError> {
+    let option = super::arg_str(args, 1)?;
+    push(cmds, ScriptCommand::EditorSet { option });
+    Ok(TclValue::Str(String::new()))
 }
 
 fn parse_flag_u32(args: &[TclValue], flag: &str) -> Option<u32> {

@@ -73,13 +73,15 @@ pub static SET_OPTIONS: &[SetOption] = &[
 
 /// Handle :set options — dispatches from the single SET_OPTIONS registry.
 pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(boxed) = ctx.data().as_ref() else {
-        return;
+    let opt = {
+        let Some(boxed) = ctx.data().as_ref() else {
+            return;
+        };
+        let Some(s) = boxed.downcast_ref::<String>() else {
+            return;
+        };
+        s.trim().to_string()
     };
-    let Some(opt) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    let opt = opt.trim();
 
     for entry in SET_OPTIONS {
         if opt == entry.name || (entry.is_toggle && opt == format!("{} true", entry.name)) {
@@ -94,8 +96,37 @@ pub fn handle_set_global(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
     }
+    // Forward unrecognized options to all open editors as per-buffer :set
+    apply_set_to_all_editors(ctx, &opt);
 }
 
+fn apply_set_to_all_editors(ctx: &mut CommandContext, opt: &str) {
+    let Some(d) = downcast_desktop(ctx.desktop_mut()) else {
+        return;
+    };
+    let cmd = format!("set {opt}");
+    for slot in 0..3 {
+        let Some(panel) = d.panel_mut(slot) else {
+            continue;
+        };
+        apply_set_to_panel(panel, &cmd);
+    }
+}
+
+fn apply_set_to_panel(panel: &mut txv_widgets::tab_panel::TabPanel, cmd: &str) {
+    use crate::editor::command::Command;
+    use crate::views::editor::EditorView;
+    let count = panel.tab_count();
+    for i in 0..count {
+        let Some(view) = panel.view_at_mut(i) else {
+            continue;
+        };
+        let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+            continue;
+        };
+        ev.editor.execute(Command::ExCommand(cmd.to_string()));
+    }
+}
 fn toggle_tree_icons(desktop: &mut dyn txv_core::view::View, on: bool) {
     let Some(d) = downcast_desktop(desktop) else {
         return;
