@@ -78,7 +78,7 @@ impl ProblemsView {
         };
         let req = OpenFileRequest {
             path: entry.path.clone(),
-            line: Some(entry.line as u32 + 1),
+            line: Some(entry.line as u32),
             col: None,
             diff: false,
         };
