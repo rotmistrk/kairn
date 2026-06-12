@@ -3,7 +3,6 @@
 use std::fs::metadata;
 use std::path::PathBuf;
 
-use txv_core::prelude::*;
 use txv_edit::view::draw::compute_gutter_width;
 
 use super::EditorView;
@@ -108,10 +107,23 @@ impl EditorView {
         self.editor_mut()
             .ephemeral_mut()
             .set(vec![EphemeralRange::full_line(target_line)], HighlightOwner::Transient);
-        if self.inner.bounds().h() == 0 {
-            self.editor_mut().set_viewport_scroll(target_line);
-        }
+        self.scroll_to_line(target_line);
         self.inner.mark_dirty();
+    }
+
+    pub(crate) fn scroll_to_line(&mut self, line: usize) {
+        let h = self.editor().viewport_height();
+        if h == 0 {
+            self.editor_mut().set_viewport_scroll(line);
+            return;
+        }
+        let margin = 2.min(h / 2);
+        let scroll = self.editor().viewport_scroll();
+        if line < scroll + margin {
+            self.editor_mut().set_viewport_scroll(line.saturating_sub(margin));
+        } else if line + margin >= scroll + h {
+            self.editor_mut().set_viewport_scroll(line + margin + 1 - h);
+        }
     }
 
     pub fn undo(&mut self) {

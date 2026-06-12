@@ -60,6 +60,9 @@ impl View for EditorView {
     }
     fn set_bounds(&mut self, r: Rect) {
         self.inner.set_bounds(r);
+        // Ensure cursor stays visible after viewport resize
+        let line = self.editor().cursor_line();
+        self.scroll_to_line(line);
     }
     fn set_sink(&mut self, sink: txv_core::view::EventSink) {
         self.inner.set_sink(sink);
