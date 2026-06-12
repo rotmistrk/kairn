@@ -12,18 +12,18 @@ pub struct NotesView {
 impl NotesView {
     pub fn new(content: &str) -> Self {
         let mut editor = EditorView::from_text(content);
-        editor.file_ext = "md".to_string();
-        editor.display_title = "Notes".to_string();
+        editor.set_file_ext("md");
+        editor.set_display_title("Notes");
         Self { editor }
     }
 
     pub fn replace_content(&mut self, content: &str) {
-        self.editor.editor.replace_content(content);
-        self.editor.state.mark_dirty();
+        self.editor.editor_mut().replace_content(content);
+        self.editor.inner.mark_dirty();
     }
 
     pub fn content(&self) -> String {
-        self.editor.editor.buf().content()
+        self.editor.editor().buf().content()
     }
 
     pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {

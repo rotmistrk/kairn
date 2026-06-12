@@ -30,7 +30,7 @@ pub(crate) fn mcp_edit_buffer(
     text: &str,
 ) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
-    let mut buf = editor.editor.buf();
+    let mut buf = editor.editor().buf();
     let line_count = buf.line_count();
     let start = start_line.min(line_count);
     let end = end_line.min(line_count);
@@ -61,7 +61,7 @@ pub(crate) fn mcp_insert_text(
     text: &str,
 ) -> Result<serde_json::Value, String> {
     let editor = find_editor(desktop, name)?;
-    editor.editor.buf().insert_at(line, col, text);
+    editor.editor().buf().insert_at(line, col, text);
     Ok(serde_json::json!({"inserted": text.len()}))
 }
 
@@ -101,7 +101,7 @@ pub(crate) fn mcp_get_diagnostics(desktop: &mut TiledWorkspace, name: &str) -> R
         let Some(editor) = any.downcast_ref::<EditorView>() else {
             continue;
         };
-        if let Some(diags) = &editor.diagnostics {
+        if let Some(diags) = &editor.delegate().diagnostics {
             for d in diags {
                 let severity = match d.severity {
                     Severity::Error => "error",

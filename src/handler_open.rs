@@ -11,6 +11,7 @@ use crate::commands::*;
 use crate::desktop::{close_tab_by_title, focus_editor_by_path, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
+use crate::handler_open_titles::sync_titles_immediate;
 use crate::views::results::{ResultEntry, ResultsView};
 
 /// Initial tab label — just the filename. `sync_tab_titles` will disambiguate.
@@ -145,20 +146,8 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
             }
         }
         OpenResult::Opened => {
-            let view: Box<dyn View> = try_open_structured(&path, Some(state.clipboard.clone())).unwrap_or_else(|| {
-                let syntax_theme = state.current_syntax_theme().to_string();
-                let defaults = state.settings.editor_defaults.clone();
-                let mut editor = EditorView::open_with_theme(&path, &defaults, &syntax_theme)
-                    .unwrap_or_else(|_| EditorView::new_file(&path, &defaults));
-                editor.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
-                editor
-                    .editor_mut()
-                    .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
-                let canon = path.canonicalize().unwrap_or_else(|_| path.clone());
-                let buf_id = state.buffers.register(Some(canon));
-                editor.buffer_id = Some(buf_id);
-                Box::new(editor)
-            });
+            let view: Box<dyn View> = try_open_structured(&path, Some(state.clipboard.clone()))
+                .unwrap_or_else(|| create_editor_view(&path, state));
             if let Some(d) = downcast_desktop(desktop) {
                 try_insert_tab(d, state, sink, SlotId::Center, title, view);
                 d.focus_panel(SlotId::Center as usize);
@@ -166,6 +155,28 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
             }
         }
     }
+    // Sync titles immediately (don't wait for next tick)
+    if state.tab_titles_dirty {
+        if let Some(d) = downcast_desktop(desktop) {
+            sync_titles_immediate(d, &state.root_dir);
+            state.tab_titles_dirty = false;
+        }
+    }
+}
+
+fn create_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
+    let syntax_theme = state.current_syntax_theme().to_string();
+    let defaults = state.settings.editor_defaults.clone();
+    let mut editor = EditorView::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
+    editor
+        .editor_mut()
+        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let buf_id = state.buffers.register(Some(canon));
+    editor.buffer_id = Some(buf_id);
+    Box::new(editor)
 }
 
 pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState) {

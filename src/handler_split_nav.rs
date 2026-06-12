@@ -3,6 +3,7 @@
 //! Side-by-side diff is a rendering mode within a single EditorView (no split).
 //! Open-in-split uses TiledWorkspace's native subpanel mechanism.
 
+use txv_core::message::Message;
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 use txv_widgets::tab_panel::TabPanel;
@@ -35,7 +36,7 @@ pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState)
         .active_view_mut()
         .and_then(|v| v.as_any_mut())
         .and_then(|a| a.downcast_ref::<EditorView>())
-        .map(|ev| ev.editor.buf().content());
+        .map(|ev| ev.editor().buf().content());
 
     let identical = current_content.as_deref() == Some(&base_content);
     if identical {
@@ -60,7 +61,10 @@ fn set_identical_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content
                 context_lines: 2,
                 ignore_ws: false,
             });
-            ev.editor.set_status(format!("[no changes vs {}]", base_ref));
+            ev.editor_mut().set_status(format!("[no changes vs {}]", base_ref));
+            let msg = Message::info("editor", format!("[no changes vs {}]", base_ref));
+            ev.inner
+                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -84,7 +88,7 @@ fn set_sbs_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content: &str
                 cursor: 0,
                 base_ref: base_ref.to_string(),
             });
-            ev.editor.set_status(format!("[DIFF vs {}]", base_ref));
+            ev.editor_mut().set_status(format!("[DIFF vs {}]", base_ref));
         }
     }
 }
@@ -141,7 +145,7 @@ fn open_in_existing_split(
     };
     open_into_editor(ev, path, line, col, state);
     let word_range = word_cols_at(ev, line as usize, col as usize);
-    ev.highlight_word = Some((line as usize, word_range.0, word_range.1));
+    ev.delegate_mut().highlight_word = Some((line as usize, word_range.0, word_range.1));
 }
 
 fn create_split_with_file(
@@ -154,7 +158,7 @@ fn create_split_with_file(
     let mut new_pane = open_new_pane(state, path, line, col);
     if let Some(ev) = new_pane.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
         let wr = word_cols_at(ev, line as usize, col as usize);
-        ev.highlight_word = Some((line as usize, wr.0, wr.1));
+        ev.delegate_mut().highlight_word = Some((line as usize, wr.0, wr.1));
     }
 
     let title = desktop
@@ -199,7 +203,7 @@ fn open_new_pane(state: &mut AppState, path: &std::path::Path, line: u32, col: u
 
 /// Find word boundaries (col_start, col_end) at a given position.
 fn word_cols_at(ev: &EditorView, line: usize, col: usize) -> (usize, usize) {
-    let text = ev.editor.buf().line(line).unwrap_or_default();
+    let text = ev.editor().buf().line(line).unwrap_or_default();
     let chars: Vec<char> = text.chars().collect();
     if col >= chars.len() {
         return (col, col + 1);

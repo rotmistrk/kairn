@@ -111,14 +111,14 @@ fn extract_editor_state(
     let Some(editor) = any.downcast_ref::<EditorView>() else {
         return (false, None, None);
     };
-    let modified = editor.editor.buf().is_dirty();
+    let modified = editor.editor().buf().is_dirty();
     let cursor = Some(CursorPos {
-        line: editor.editor.cursor_line(),
-        col: editor.editor.cursor_col(),
+        line: editor.editor().cursor_line(),
+        col: editor.editor().cursor_col(),
     });
-    let selection = editor.editor.visual_range().map(|(start, end)| {
-        let (sl, sc) = editor.editor.buf().offset_to_line_col(start);
-        let (el, ec) = editor.editor.buf().offset_to_line_col(end);
+    let selection = editor.editor().visual_range().map(|(start, end)| {
+        let (sl, sc) = editor.editor().buf().offset_to_line_col(start);
+        let (el, ec) = editor.editor().buf().offset_to_line_col(end);
         SelectionRange {
             start_line: sl,
             start_col: sc,
@@ -205,7 +205,7 @@ fn collect_center_contents(desktop: &mut TiledWorkspace) -> HashMap<String, Stri
                 continue;
             };
             if let Some(editor) = any.downcast_ref::<EditorView>() {
-                contents.insert(title, editor.editor.buf().content());
+                contents.insert(title, editor.editor().buf().content());
             } else if let Some(results) = any.downcast_ref::<ResultsView>() {
                 let lines: Vec<String> = results
                     .entries()

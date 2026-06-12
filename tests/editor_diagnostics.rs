@@ -15,6 +15,12 @@ fn diagnostic_underlines_error_range() {
 
     // Check that cells in the diagnostic range have underline + red fg
     let cell = view.buffer().cell(12, 1);
+    eprintln!(
+        "cell ch={:?} fg={:?} underline={}",
+        cell.ch(),
+        cell.style().fg(),
+        cell.style().attrs().underline_val()
+    );
     assert!(
         cell.style().attrs().underline_val(),
         "diagnostic range should be underlined"

@@ -34,7 +34,7 @@ pub fn sync_dirty_badges(ctx: &mut CommandContext) {
         for i in 0..panel.tab_count() {
             let dirty = panel.view_at_mut(i).and_then(|v| v.as_any_mut()).is_some_and(|any| {
                 if let Some(ev) = any.downcast_ref::<EditorView>() {
-                    ev.editor.buf().is_dirty()
+                    ev.editor().buf().is_dirty()
                 } else if let Some(sv) = any.downcast_ref::<StructuredView>() {
                     sv.dirty
                 } else {

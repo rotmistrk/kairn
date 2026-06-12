@@ -80,10 +80,10 @@ fn save_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str) {
         if editor.path().to_string_lossy() != path {
             continue;
         }
-        let content = editor.editor.buf().content();
+        let content = editor.editor().buf().content();
         let result = save_file(editor.path(), &content);
         if let Ok(()) = result {
-            editor.editor.buf().mark_saved();
+            editor.editor().buf().mark_saved();
         }
         emit_save_result(&sink, result, state, path);
         break;
@@ -126,7 +126,7 @@ fn discard_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str)
         if editor.path().to_string_lossy() != path {
             continue;
         }
-        editor.editor.buf().mark_saved();
+        editor.editor().buf().mark_saved();
         sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
         if state.pending_tab.is_none() {
             sink.push_command(CM_TAB_CLOSE, None);
@@ -159,7 +159,7 @@ fn handle_file_reload(ctx: &mut CommandContext, path: &str, ch: char) {
             continue;
         }
         if let Ok(content) = read_to_string(editor.path()) {
-            editor.editor.replace_content(&content);
+            editor.editor_mut().replace_content(&content);
             editor.invalidate_highlight();
         }
         break;

@@ -125,8 +125,8 @@ fn collect_tabs_from_child(child: Option<&mut Box<dyn View>>, _root_dir: &Path) 
         // Store absolute path
         tabs.push(EditorTabState {
             path: path_str,
-            line: editor.editor.cursor_line() as u32,
-            col: editor.editor.cursor_col() as u32,
+            line: editor.editor().cursor_line() as u32,
+            col: editor.editor().cursor_col() as u32,
         });
     }
     tabs

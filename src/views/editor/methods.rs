@@ -1,146 +1,179 @@
-//! EditorView utility methods (save, settings, navigation, undo/redo).
+//! EditorView utility methods.
+
+use std::fs::metadata;
+use std::path::PathBuf;
+
+use txv_core::prelude::*;
+use txv_edit::view::draw::compute_gutter_width;
 
 use super::EditorView;
 use crate::blame::blame_async;
 use crate::gutter_signs::compute_gutter_signs;
 
 impl EditorView {
-    /// Recompute git gutter signs (diff vs HEAD).
     pub fn refresh_gutter_signs(&mut self) {
-        if !self.editor.options().gutter_signs() {
-            self.gutter_signs.clear();
+        let d = self.inner.delegate();
+        if !d.settings.gutter_signs {
+            self.inner.delegate_mut().gutter_signs.clear();
             return;
         }
+        let root = d.root_dir.clone();
         let rel = self
-            .path
-            .strip_prefix(&self.root_dir)
-            .unwrap_or(&self.path)
+            .path()
+            .strip_prefix(&root)
+            .unwrap_or(self.path())
             .to_string_lossy()
             .to_string();
-        let content = self.editor.buf().content();
-        self.gutter_signs = compute_gutter_signs(&self.root_dir, &rel, &content);
+        let content = self.editor().buf().content();
+        self.inner.delegate_mut().gutter_signs = compute_gutter_signs(&root, &rel, &content);
     }
 
-    /// Save the buffer to disk immediately. Returns true on success.
     pub fn save_now(&mut self) -> bool {
         self.save_buffer()
     }
 
-    pub fn language(&self) -> &str {
-        &self.file_ext
-    }
-
-    pub(super) fn apply_settings(&mut self) {
-        let opts = self.editor.options_mut();
-        opts.set_wrap(self.settings.wrap);
-        opts.set_list(self.settings.list);
-        opts.set_tab_width(self.settings.tabstop as usize);
-        opts.set_number(self.settings.number);
-        opts.set_rainbow(self.settings.rainbow);
-        opts.set_guides(self.settings.guides);
-        opts.set_gutter_signs(self.settings.gutter_signs);
-        opts.set_scrolloff(self.settings.scrolloff);
-        opts.set_cursor_insert(self.settings.cursor_insert);
-        opts.set_cursor_normal(self.settings.cursor_normal);
-        opts.set_cursor_command(self.settings.cursor_command);
-    }
-
-    pub fn set_syntax_theme(&mut self, name: &str) {
-        self.highlighter.set_theme(name);
-        self.hl_cache.borrow_mut().invalidate_all();
-    }
-
-    /// Invalidate highlight cache and mark view dirty (for external content reload).
-    pub fn invalidate_highlight(&mut self) {
-        self.hl_cache.borrow_mut().invalidate_all();
-        self.state.mark_dirty();
-    }
-
-    /// Replace the persistence backend.
-    pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {
-        self.store = store;
+    pub(crate) fn save_buffer(&mut self) -> bool {
+        let content = self.editor().buf().content();
+        if self.inner.delegate_mut().store.save(&content).is_ok() {
+            self.editor_mut().buf().mark_saved();
+            self.inner.delegate_mut().disk_mtime = metadata(self.path()).and_then(|m| m.modified()).ok();
+            self.refresh_gutter_signs();
+            true
+        } else {
+            false
+        }
     }
 
     pub fn save(&mut self) -> Result<(), String> {
-        let content = self.editor.buf().content();
-        self.store.save(&content)?;
-        self.editor.buf().mark_saved();
+        let content = self.editor().buf().content();
+        self.inner.delegate_mut().store.save(&content)?;
+        self.editor_mut().buf().mark_saved();
         Ok(())
     }
 
+    pub fn language(&self) -> &str {
+        &self.inner.delegate().file_ext
+    }
+
+    pub fn apply_settings(&mut self) {
+        let s = self.inner.delegate().settings.clone();
+        let opts = self.editor_mut().options_mut();
+        opts.set_wrap(s.wrap);
+        opts.set_list(s.list);
+        opts.set_tab_width(s.tabstop as usize);
+        opts.set_number(s.number);
+        opts.set_rainbow(s.rainbow);
+        opts.set_guides(s.guides);
+        opts.set_gutter_signs(s.gutter_signs);
+        opts.set_scrolloff(s.scrolloff);
+        opts.set_cursor_insert(s.cursor_insert);
+        opts.set_cursor_normal(s.cursor_normal);
+        opts.set_cursor_command(s.cursor_command);
+    }
+
+    pub fn set_syntax_theme(&mut self, name: &str) {
+        self.inner.highlighter_mut().set_theme(name);
+        self.inner.hl_cache_mut().invalidate_all();
+        self.inner.mark_dirty();
+    }
+
+    pub fn invalidate_highlight(&mut self) {
+        self.inner.hl_cache_mut().invalidate_all();
+        self.inner.mark_dirty();
+    }
+
+    pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {
+        self.inner.delegate_mut().store = store;
+    }
+
+    pub fn set_root_dir(&mut self, root: PathBuf) {
+        self.inner.delegate_mut().root_dir = root;
+        self.refresh_gutter_signs();
+    }
+
     pub fn request_close(&mut self) {
-        if self.editor.buf().is_dirty() && !self.settings.autosave {
-            self.eviction_close = true;
-            self.state.mark_dirty();
+        if !self.inner.delegate().settings.autosave {
+            self.inner.delegate_mut().eviction_close = true;
         }
+        self.inner.mark_dirty();
     }
 
     pub fn goto(&mut self, line: u32, col: u32) {
         use crate::editor::ephemeral::HighlightOwner;
         use crate::editor::ephemeral_range::EphemeralRange;
-        let max_line = self.editor.buf().line_count().saturating_sub(1);
+        let max_line = self.editor().buf().line_count().saturating_sub(1);
         let target_line = (line as usize).min(max_line);
-        self.editor.set_cursor_line(target_line);
-        self.editor.set_cursor_col(col as usize);
-        self.editor
+        self.editor_mut().set_cursor_line(target_line);
+        self.editor_mut().set_cursor_col(col as usize);
+        self.editor_mut()
             .ephemeral_mut()
             .set(vec![EphemeralRange::full_line(target_line)], HighlightOwner::Transient);
-        self.ensure_cursor_visible();
-        if self.state.bounds().h() == 0 {
-            self.editor.set_viewport_scroll(self.editor.cursor_line());
+        if self.inner.bounds().h() == 0 {
+            self.editor_mut().set_viewport_scroll(target_line);
         }
-        self.state.mark_dirty();
+        self.inner.mark_dirty();
     }
 
-    /// Undo the last edit.
     pub fn undo(&mut self) {
-        self.editor.buf().undo();
-        self.editor.clamp_cursor();
-        self.state.mark_dirty();
+        self.editor_mut().buf().undo();
+        self.editor_mut().clamp_cursor();
+        self.inner.mark_dirty();
     }
 
-    /// Redo the last undone edit.
     pub fn redo(&mut self) {
-        self.editor.buf().redo();
-        self.editor.clamp_cursor();
-        self.state.mark_dirty();
+        self.editor_mut().buf().redo();
+        self.editor_mut().clamp_cursor();
+        self.inner.mark_dirty();
+    }
+
+    pub fn sync_title(&mut self) {
+        let name = self
+            .path()
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("untitled")
+            .to_string();
+        self.inner.delegate_mut().display_title = name;
+    }
+
+    pub fn set_file_ext(&mut self, ext: &str) {
+        self.inner.delegate_mut().file_ext = ext.to_string();
+    }
+
+    pub fn set_display_title(&mut self, title: &str) {
+        self.inner.delegate_mut().display_title = title.to_string();
     }
 
     pub fn gutter_width(&self) -> u16 {
-        if !self.editor.options().number() {
-            return 0;
-        }
-        let lines = self.editor.buf().line_count();
-        let digits = if lines == 0 {
-            1
-        } else {
-            (lines as f64).log10() as u16 + 1
-        };
-        let sign_w: u16 = if self.editor.options().gutter_signs() {
-            1
-        } else {
-            0
-        };
-        let blame_w = if self.blame_state.is_some() {
-            24
-        } else {
-            0
-        };
-        sign_w + digits + 1 + blame_w
+        compute_gutter_width(self.editor(), self.delegate())
     }
 
-    /// Toggle blame mode on/off.
-    pub(super) fn toggle_blame(&mut self) {
-        if self.blame_state.is_some() {
-            self.blame_state = None;
+    pub fn toggle_blame(&mut self) {
+        let d = self.inner.delegate_mut();
+        if d.blame_state.is_some() {
+            d.blame_state = None;
         } else {
-            let rel = self
-                .path
-                .strip_prefix(&self.root_dir)
-                .unwrap_or(&self.path)
-                .to_path_buf();
-            self.blame_state = Some(blame_async(&self.root_dir, &rel));
+            let root = d.root_dir.clone();
+            let rel = self.path().strip_prefix(&root).unwrap_or(self.path()).to_path_buf();
+            self.inner.delegate_mut().blame_state = Some(blame_async(&root, &rel));
         }
-        self.state.mark_dirty();
+        self.inner.mark_dirty();
     }
+
+    pub fn set_diagnostics(&mut self, diagnostics: Vec<crate::lsp::diagnostics::Diagnostic>) {
+        self.inner.delegate_mut().diagnostics = Some(diagnostics);
+        self.inner.mark_dirty();
+    }
+
+    pub fn clear_diagnostics(&mut self) {
+        self.inner.delegate_mut().clear_diagnostics();
+    }
+
+    pub fn diagnostic_at_cursor(&self) -> Option<&str> {
+        let diags = self.inner.delegate().diagnostics.as_ref()?;
+        let line = self.editor().cursor_line();
+        diags.iter().find(|d| d.line == line).map(|d| d.message.as_str())
+    }
+
+    // --- Diff mode ---
 }

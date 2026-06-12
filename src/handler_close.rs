@@ -85,7 +85,7 @@ fn save_active_if_dirty(ctx: &mut CommandContext, panel_id: usize) {
         return;
     };
     if let Some(editor) = any.downcast_mut::<EditorView>() {
-        if editor.editor.buf().is_dirty() {
+        if editor.editor().buf().is_dirty() {
             editor.save_now();
         }
     }
@@ -139,7 +139,7 @@ pub(crate) fn save_all_dirty(desktop: &mut TiledWorkspace) {
         let Some(editor) = any.downcast_mut::<EditorView>() else {
             continue;
         };
-        if editor.editor.buf().is_dirty() {
+        if editor.editor().buf().is_dirty() {
             editor.save_now();
         }
     }

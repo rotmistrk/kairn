@@ -1,6 +1,6 @@
 //! StructuredView — tree-table view for structured data (JSON, YAML, etc.).
 //!
-//! Uses TreeTableView<StructDocSource> for rendering, with InputLine overlay for editing.
+//! Uses TreeTableView<StructDocSource> for rendering, with InputLine child for editing.
 
 mod edit;
 mod handle;
@@ -174,7 +174,7 @@ impl StructuredView {
         self.tree.set_col_widths(&[val_w as u16, meta_w as u16]);
     }
 
-    /// Overlay the InputLine on the TreeTableView's buffer at the editing position.
+    /// Draw the InputLine on the TreeTableView's buffer at the editing position.
     pub(crate) fn blit_input_line(&mut self) {
         let Some(input) = self.input_line.as_mut() else {
             return;

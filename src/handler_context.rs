@@ -74,12 +74,12 @@ fn collect_editor_context(
     };
     fill_from_editor(editor, state, vc);
     current_line_text = editor
-        .editor
+        .editor()
         .buf()
-        .line(editor.editor.cursor_line())
+        .line(editor.editor().cursor_line())
         .unwrap_or_default();
-    if let Some((start, end)) = editor.editor.visual_range() {
-        let content = editor.editor.buf().content();
+    if let Some((start, end)) = editor.editor().visual_range() {
+        let content = editor.editor().buf().content();
         if end <= content.len() {
             selection_text = content[start..end].to_string();
         }
@@ -110,7 +110,7 @@ fn collect_split_state(
 }
 
 fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext) {
-    let e = &editor.editor;
+    let e = &editor.editor();
     vc.line = e.cursor_line() as u32 + 1;
     vc.col = e.cursor_col() as u32 + 1;
     vc.total_lines = e.buf().line_count() as u32;

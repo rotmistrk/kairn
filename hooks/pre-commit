@@ -90,7 +90,21 @@ if [ -n "$PUB_FIELD_VIOLATIONS" ]; then
     exit 1
 fi
 
-# 7. mcp-lint (coding standards: struct count, method length, nesting, etc.)
+# 7. Banned words
+echo "  banned words..."
+BANNED_HITS=""
+for f in $(find src -name '*.rs' 2>/dev/null); do
+    HITS=$(grep -in 'overlay' "$f" | grep -v '^\s*//' || true)
+    if [ -n "$HITS" ]; then
+        BANNED_HITS="$BANNED_HITS\n  $f:\n$HITS"
+    fi
+done
+if [ -n "$BANNED_HITS" ]; then
+    echo -e "❌ TXV does not have \"overlay\" concept. Use legit view/group hierarchy for right event handling and rendering:$BANNED_HITS"
+    exit 1
+fi
+
+# 8. mcp-lint (coding standards: struct count, method length, nesting, etc.)
 echo "  mcp-lint..."
 if ! command -v mcp-lint-cli >/dev/null 2>&1; then
     echo "❌ mcp-lint-cli not found. Run: make setup"

@@ -1,11 +1,12 @@
-//! Signature help display for EditorView.
+//! Signature help display.
 
-use txv_core::prelude::*;
+use txv_core::message::Message;
 
-use super::EditorView;
+use super::delegate::KairnDelegate;
+use crate::lsp::requests::SignatureHelp;
 
-impl EditorView {
-    pub(super) fn show_signature_help(&mut self, sig: &crate::lsp::requests::SignatureHelp) {
+impl KairnDelegate {
+    pub(crate) fn show_signature_help(&mut self, sig: &SignatureHelp) {
         let msg = if let Some(active) = sig.active_param {
             if let Some(&(start, end)) = sig.params.get(active) {
                 let label = &sig.label;
@@ -19,7 +20,7 @@ impl EditorView {
         } else {
             sig.label.clone()
         };
-        self.state.put_command(
+        self.emit(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("sig", msg))),
         );

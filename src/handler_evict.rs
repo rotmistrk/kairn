@@ -91,7 +91,7 @@ fn autosave_tab(desktop: &mut TiledWorkspace, slot: SlotId, idx: usize) {
         .and_then(|v| v.as_any_mut())
         .and_then(|a| a.downcast_mut::<EditorView>());
     if let Some(editor) = editor {
-        if editor.editor.buf().is_dirty() {
+        if editor.editor().buf().is_dirty() {
             let _ = editor.save();
         }
     }

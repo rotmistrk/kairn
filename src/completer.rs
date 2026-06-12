@@ -56,6 +56,16 @@ impl AppCompleter {
         }
     }
 
+    /// Create a minimal completer that only handles file path completion.
+    pub fn file_only(root: PathBuf) -> Self {
+        Self {
+            root,
+            commands: Arc::new(Mutex::new(Vec::new())),
+            lsp_languages: Arc::new(Mutex::new(Vec::new())),
+            roots: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
     pub fn set_lsp_languages(&mut self, langs: LspLanguageList) {
         self.lsp_languages = langs;
     }

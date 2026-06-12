@@ -155,7 +155,7 @@ fn find_focused_editor(desktop: &mut dyn txv_core::view::View) -> Option<&mut cr
     let slot = desktop.focused_panel();
     let view = desktop.panel_mut(slot)?.active_view_mut()?;
     let editor_view = view.as_any_mut()?.downcast_mut::<EditorView>()?;
-    Some(&mut editor_view.editor)
+    Some(editor_view.editor_mut())
 }
 
 fn dispatch_open_file(ctx: &mut CommandContext, state: &mut AppState, path: &str, line: Option<u32>, col: Option<u32>) {

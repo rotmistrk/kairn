@@ -124,7 +124,14 @@ fn apply_set_to_panel(panel: &mut txv_widgets::tab_panel::TabPanel, cmd: &str) {
         let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
             continue;
         };
-        ev.editor.execute(Command::ExCommand(cmd.to_string()));
+        ev.editor_mut().execute(Command::ExCommand(cmd.to_string()));
+        // Sync delegate settings from editor options
+        let cn = ev.editor().options().cursor_normal();
+        let ci = ev.editor().options().cursor_insert();
+        let cc = ev.editor().options().cursor_command();
+        ev.delegate_mut().settings.cursor_normal = cn;
+        ev.delegate_mut().settings.cursor_insert = ci;
+        ev.delegate_mut().settings.cursor_command = cc;
     }
 }
 fn toggle_tree_icons(desktop: &mut dyn txv_core::view::View, on: bool) {
