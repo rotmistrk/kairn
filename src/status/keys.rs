@@ -37,7 +37,7 @@ pub fn add_dired_prefix(bar: &mut StatusBar) {
         .add_child(b('C', CM_TREE_COPY_MARKED, "Copy"));
     let mut group = FocusGatedGroup::new(DIRED_STATUS_GROUP);
     group.add_child(Box::new(prefix));
-    bar.add(StatusSlot::new(Box::new(group)).priority(1));
+    bar.add(StatusSlot::new(Box::new(group)).priority(8));
 }
 
 /// Ctrl-W prefix key sequence for subpanel management.
