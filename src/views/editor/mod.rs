@@ -59,7 +59,6 @@ impl View for EditorView {
         self.inner.bounds()
     }
     fn set_bounds(&mut self, r: Rect) {
-        eprintln!("BOUNDS: {}x{}", r.w(), r.h());
         self.inner.set_bounds(r);
     }
     fn set_sink(&mut self, sink: txv_core::view::EventSink) {
