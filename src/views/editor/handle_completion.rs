@@ -107,6 +107,16 @@ impl KairnDelegate {
     }
 
     fn accept_completion(&mut self, editor: &mut Editor) {
+        let prefix = Self::word_prefix(editor);
+        if let Some(common) = self.common_completion_prefix(&prefix) {
+            if common.len() > prefix.len() {
+                // Extend to common prefix without accepting any single item
+                self.replace_word_with_completion(editor, &common);
+                self.dirty = true;
+                return;
+            }
+        }
+        // Common prefix equals typed prefix — accept selected item
         let text = self.completion_popup.selected_text().map(|s| s.to_string());
         self.completion_popup.hide();
         if let Some(text) = text {
@@ -114,6 +124,30 @@ impl KairnDelegate {
         }
         self.clear_diagnostics();
         self.dirty = true;
+    }
+
+    fn common_completion_prefix(&self, typed: &str) -> Option<String> {
+        let items = &self.completion_popup.items;
+        if items.is_empty() {
+            return None;
+        }
+        let lower_typed = typed.to_lowercase();
+        let matching: Vec<&str> = items
+            .iter()
+            .map(|i| i.insert_text.as_deref().unwrap_or(&i.label))
+            .filter(|t| t.to_lowercase().starts_with(&lower_typed))
+            .collect();
+        if matching.is_empty() {
+            return None;
+        }
+        let first = matching[0];
+        let common_len = (0..first.len())
+            .take_while(|&i| {
+                let ch = first.as_bytes().get(i);
+                matching.iter().all(|m| m.as_bytes().get(i) == ch)
+            })
+            .count();
+        Some(first[..common_len].to_string())
     }
 
     fn replace_word_with_completion(&mut self, editor: &mut Editor, text: &str) {
