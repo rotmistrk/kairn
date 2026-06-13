@@ -1,5 +1,8 @@
 //! Diff mode operations on KairnDelegate.
 
+use txv_core::prelude::*;
+
+use crate::app_palette::app_palette;
 use crate::editor::Editor;
 use crate::lsp::diagnostics::Severity;
 
@@ -119,4 +122,25 @@ impl KairnDelegate {
                 Severity::Hint => 3,
             })
     }
+}
+
+pub(super) fn diag_underline_style(severity: Severity) -> Style {
+    let app = app_palette();
+    match severity {
+        Severity::Error => app.diag().error(),
+        Severity::Warning => app.diag().warning(),
+        Severity::Info => app.diag().info(),
+        Severity::Hint => app.diag().hint(),
+    }
+}
+
+pub(super) fn diag_marker_style(severity: Severity) -> Style {
+    let app = app_palette();
+    let ps = match severity {
+        Severity::Error => app.diag().error(),
+        Severity::Warning => app.diag().warning(),
+        Severity::Info => app.diag().info(),
+        Severity::Hint => app.diag().hint(),
+    };
+    Style::new(ps.fg(), Style::default().bg())
 }

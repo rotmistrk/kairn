@@ -188,5 +188,11 @@ impl EditorView {
         diags.iter().find(|d| d.line == line).map(|d| d.message.as_str())
     }
 
+    pub fn set_gutter_signs_data(&mut self, signs: Vec<(usize, crate::gutter_signs::GutterSign)>) {
+        let dm = self.inner.delegate_mut();
+        dm.gutter_signs = signs;
+        self.inner.mark_dirty();
+    }
+
     // --- Diff mode ---
 }

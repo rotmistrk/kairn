@@ -13,8 +13,10 @@ use crate::buffer_store::BufferStore;
 use crate::completer::{new_command_list, AppCompleter};
 use crate::gutter_signs::GutterSign;
 use crate::lsp::completion::CompletionPopup;
-use crate::lsp::diagnostics::{Diagnostic, Severity};
+use crate::lsp::diagnostics::Diagnostic;
 use crate::settings::EditorSettings;
+
+use super::delegate_diff::{diag_marker_style, diag_underline_style};
 
 /// Kairn's delegate: holds IDE state, provides draw info and event hooks.
 pub struct KairnDelegate {
@@ -92,16 +94,12 @@ impl EditorViewDelegate for KairnDelegate {
         if !self.settings.number || !self.settings.gutter_signs {
             return self.blame_width();
         }
-        1 + self.blame_width()
+        2 + self.blame_width()
     }
 
     fn gutter_sign(&self, line: usize) -> Option<(char, Style)> {
         if !self.show_gutter_signs() {
             return None;
-        }
-        // Diagnostic markers take priority over git signs
-        if let Some(sev) = self.diagnostic_severity_at(line) {
-            return Some(('●', diag_marker_style(sev)));
         }
         let app = app_palette();
         self.gutter_signs
@@ -112,6 +110,14 @@ impl EditorViewDelegate for KairnDelegate {
                 GutterSign::Modified => ('▎', app.git().modified()),
                 GutterSign::Deleted => ('▸', app.diff().deleted()),
             })
+    }
+
+    fn gutter_sign_right(&self, line: usize) -> Option<(char, Style)> {
+        if !self.show_gutter_signs() {
+            return None;
+        }
+        let sev = self.diagnostic_severity_at(line)?;
+        Some(('●', diag_marker_style(sev)))
     }
 
     fn extra_style(&self, line: usize, col: usize) -> Option<Style> {
@@ -250,25 +256,4 @@ impl EditorViewDelegate for KairnDelegate {
             self.command_list.clone(),
         )))
     }
-}
-
-fn diag_underline_style(severity: Severity) -> Style {
-    let app = app_palette();
-    match severity {
-        Severity::Error => app.diag().error(),
-        Severity::Warning => app.diag().warning(),
-        Severity::Info => app.diag().info(),
-        Severity::Hint => app.diag().hint(),
-    }
-}
-
-fn diag_marker_style(severity: Severity) -> Style {
-    let app = app_palette();
-    let ps = match severity {
-        Severity::Error => app.diag().error(),
-        Severity::Warning => app.diag().warning(),
-        Severity::Info => app.diag().info(),
-        Severity::Hint => app.diag().hint(),
-    };
-    Style::new(ps.fg(), Style::default().bg())
 }

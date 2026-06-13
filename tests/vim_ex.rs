@@ -51,9 +51,9 @@ fn editor_shows_line_numbers() {
     let mut h = TestHarness::new(dir.path());
     open_file_and_focus(&mut h);
     h.run_cycles(1);
-    assert!(h.contains("1 aaa"));
-    assert!(h.contains("2 bbb"));
-    assert!(h.contains("3 ccc"));
+    assert!(h.contains("1  aaa"));
+    assert!(h.contains("2  bbb"));
+    assert!(h.contains("3  ccc"));
 }
 
 #[test]
