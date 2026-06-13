@@ -13,6 +13,7 @@ use crate::app_palette::app_palette;
 use crate::commands::CM_OPEN_FILES_CHANGED;
 use crate::desktop::{close_tab_by_title, SlotId};
 use crate::handler::{downcast_desktop, AppState};
+use crate::views::diff_view::DiffView;
 use crate::views::editor::EditorView;
 use crate::views::struct_view::StructuredView;
 
@@ -248,8 +249,12 @@ pub fn sync_root_badges(ctx: &mut CommandContext, state: &AppState) {
             let color = panel
                 .view_at_mut(i)
                 .and_then(|v| v.as_any_mut())
-                .and_then(|any| any.downcast_ref::<EditorView>())
-                .map(|ev| state.roots().root_for(ev.path()).color());
+                .and_then(|any| {
+                    any.downcast_ref::<EditorView>()
+                        .map(|ev| ev.path().to_path_buf())
+                        .or_else(|| any.downcast_ref::<DiffView>().map(|dv| dv.path().clone()))
+                })
+                .map(|p| state.roots().root_for(&p).color());
             if let Some(c) = color {
                 let style = Style::default().with_fg(c);
                 panel.bar_mut().set_badge_styled(i, Some(" ●".to_string()), Some(style));

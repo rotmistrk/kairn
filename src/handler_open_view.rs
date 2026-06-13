@@ -22,6 +22,9 @@ pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn Vie
     let mut ed = EditorView::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
     ed.set_root_dir(state.roots().root_for(path).path().to_path_buf());
+    let cl = state.command_list.clone();
+    let dm = ed.delegate_mut();
+    dm.command_list = cl;
     ed.editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());

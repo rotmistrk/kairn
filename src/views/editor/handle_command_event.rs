@@ -36,7 +36,7 @@ impl KairnDelegate {
             return self.handle_lsp_completion(data, editor);
         }
         if id == CM_BLAME {
-            self.dirty = true;
+            self.toggle_blame_state();
             return HandleResult::Consumed;
         }
         if id == CM_NOBLAME {
@@ -176,4 +176,18 @@ fn parse_format_edits(edits: &[serde_json::Value]) -> Vec<(usize, usize, usize, 
             Some((sl, sc, el, ec, new_text))
         })
         .collect()
+}
+
+impl KairnDelegate {
+    pub(super) fn toggle_blame_state(&mut self) {
+        use crate::blame::blame_async;
+        self.blame_state = if self.blame_state.is_some() {
+            None
+        } else {
+            let root = self.root_dir.clone();
+            let rel = self.path.strip_prefix(&root).unwrap_or(&self.path).to_path_buf();
+            Some(blame_async(&root, &rel))
+        };
+        self.dirty = true;
+    }
 }

@@ -10,7 +10,7 @@ use txv_edit::view::delegate::{EditorViewDelegate, LineDecoration};
 use crate::app_palette::app_palette;
 use crate::blame::SharedBlame;
 use crate::buffer_store::BufferStore;
-use crate::completer::AppCompleter;
+use crate::completer::{new_command_list, AppCompleter};
 use crate::gutter_signs::GutterSign;
 use crate::lsp::completion::CompletionPopup;
 use crate::lsp::diagnostics::{Diagnostic, Severity};
@@ -35,6 +35,7 @@ pub struct KairnDelegate {
     pub(crate) gutter_signs: Vec<(usize, GutterSign)>,
     pub(crate) highlight_word: Option<(usize, usize, usize)>,
     pub(crate) diff_state: Option<super::diff_model::DiffState>,
+    pub(crate) command_list: crate::completer::CommandList,
     /// Commands to emit after hook returns (delegate can't reach the view's sink).
     pub(crate) pending_commands: Vec<(u16, Option<Box<dyn std::any::Any + Send>>)>,
     pub(crate) pending_broadcasts: Vec<(u16, Option<Box<dyn std::any::Any + Send>>)>,
@@ -65,6 +66,7 @@ impl KairnDelegate {
             gutter_signs: Vec::new(),
             highlight_word: None,
             diff_state: None,
+            command_list: new_command_list(),
             pending_commands: Vec::new(),
             pending_broadcasts: Vec::new(),
             dirty: false,
@@ -243,7 +245,10 @@ impl EditorViewDelegate for KairnDelegate {
     }
 
     fn cmdline_completer(&self) -> Option<Box<dyn txv_core::complete::Completer>> {
-        Some(Box::new(AppCompleter::file_only(self.root_dir.clone())))
+        Some(Box::new(AppCompleter::new(
+            self.root_dir.clone(),
+            self.command_list.clone(),
+        )))
     }
 }
 
