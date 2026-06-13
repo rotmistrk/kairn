@@ -78,8 +78,8 @@ pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileReque
     editor
         .editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
-    if let (Some(line), Some(col)) = (req.line, req.col) {
-        editor.goto(line, col);
+    if let Some(line) = req.line {
+        editor.goto(line, req.col.unwrap_or(0));
     }
     if req.diff {
         editor.toggle_diff("");

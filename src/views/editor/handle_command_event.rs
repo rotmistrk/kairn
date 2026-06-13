@@ -10,7 +10,6 @@ use crate::commands::{
 };
 use crate::editor::Editor;
 use crate::lsp::diagnostics::Diagnostic;
-use crate::lsp::protocol::path_to_uri;
 use crate::lsp::requests::CompletionItem;
 
 impl KairnDelegate {
@@ -113,8 +112,8 @@ impl KairnDelegate {
     fn handle_diagnostic(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
         if let Some(boxed) = data.as_ref() {
             if let Some((uri, diags)) = boxed.downcast_ref::<(String, Vec<Diagnostic>)>() {
-                let file_uri = path_to_uri(&self.path);
-                if *uri == file_uri {
+                let self_path = self.path.to_string_lossy();
+                if *uri == self_path.as_ref() {
                     self.diagnostics = Some(diags.clone());
                     self.dirty = true;
                     return HandleResult::Consumed;

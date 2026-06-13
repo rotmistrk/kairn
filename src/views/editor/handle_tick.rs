@@ -30,6 +30,7 @@ impl KairnDelegate {
                 content: editor.buf().content(),
             };
             self.emit(CM_CONTENT_CHANGED, Some(Box::new(changed)));
+            self.refresh_gutter_signs_from(editor);
         }
         // Completion trigger: 5 ticks after last edit in insert mode
         if editor.mode() == EditorMode::Insert && self.last_edit_tick > 0 && tick - self.last_edit_tick == 5 {

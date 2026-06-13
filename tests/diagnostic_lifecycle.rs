@@ -38,10 +38,7 @@ fn diagnostics_appear_for_matching_uri() {
     h.run_cycles(2);
     open_file(&mut h, dir.path(), "src/main.rs");
 
-    let uri = format!(
-        "file://{}",
-        dir.path().join("src/main.rs").canonicalize().unwrap().display()
-    );
+    let uri = dir.path().join("src/main.rs").to_string_lossy().to_string();
     inject_diagnostics(
         &mut h,
         &uri,
@@ -79,7 +76,7 @@ fn edit_clears_diagnostics() {
     h.run_cycles(2);
     open_file(&mut h, dir.path(), "f.rs");
 
-    let uri = format!("file://{}", dir.path().join("f.rs").canonicalize().unwrap().display());
+    let uri = dir.path().join("f.rs").to_string_lossy().to_string();
     inject_diagnostics(&mut h, &uri, vec![Diagnostic::new(0, 9, 12, Severity::Error, "err")]);
     h.run_cycles(1);
     assert!(h.content_contains("●"));

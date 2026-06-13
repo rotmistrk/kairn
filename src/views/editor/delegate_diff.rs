@@ -4,6 +4,7 @@ use txv_core::prelude::*;
 
 use crate::app_palette::app_palette;
 use crate::editor::Editor;
+use crate::gutter_signs::compute_gutter_signs;
 use crate::lsp::diagnostics::Severity;
 
 use super::delegate::KairnDelegate;
@@ -107,6 +108,22 @@ impl KairnDelegate {
             self.diagnostics = None;
             self.dirty = true;
         }
+    }
+
+    pub(crate) fn refresh_gutter_signs_from(&mut self, editor: &Editor) {
+        if !self.settings.gutter_signs {
+            self.gutter_signs.clear();
+            return;
+        }
+        let rel = self
+            .path
+            .strip_prefix(&self.root_dir)
+            .unwrap_or(&self.path)
+            .to_string_lossy()
+            .to_string();
+        let content = editor.buf().content();
+        self.gutter_signs = compute_gutter_signs(&self.root_dir, &rel, &content);
+        self.dirty = true;
     }
 
     pub(super) fn diagnostic_severity_at(&self, line: usize) -> Option<Severity> {
