@@ -102,7 +102,8 @@ fn local_has_kairn_mcp(path: &Path) -> bool {
 }
 
 fn mtime(path: &Path) -> Result<SystemTime, std::io::Error> {
-    fs::metadata(path)?.modified()
+    let meta = fs::metadata(path)?;
+    meta.modified()
 }
 
 /// Load the base agent JSON from source, existing local, or create minimal.

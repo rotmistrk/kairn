@@ -143,11 +143,8 @@ fn tool_get_note(path: &[usize]) -> Result<Value, String> {
 pub fn tool_add_subtree(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
     let queue = cmd_queue.ok_or("Write operations disabled")?;
     let path = resolve_path(args)?;
-    let items = args
-        .get("items")
-        .and_then(Value::as_array)
-        .ok_or("Missing 'items'")?
-        .clone();
+    let items_ref = args.get("items").and_then(Value::as_array).ok_or("Missing 'items'")?;
+    let items = items_ref.clone();
 
     queue.send(McpAction::TodoAddSubtree { path, items })
 }

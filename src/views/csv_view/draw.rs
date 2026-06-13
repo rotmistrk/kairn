@@ -2,7 +2,6 @@
 
 use txv_core::buffer::Buffer;
 use txv_core::cell::Style;
-use txv_core::geometry::Rect;
 use txv_core::palette::{palette, StyleId};
 
 use super::format::{format_cell, format_numeric_cell, RowContext};
@@ -55,7 +54,6 @@ pub fn draw_csv_view(view: &mut CsvView) {
         y += 1;
     }
     draw_data_rows(view, w, h, y, &styles);
-    blit_editor(view, w, h, y);
 }
 
 fn draw_data_rows(view: &mut CsvView, w: u16, h: u16, y: u16, styles: &DrawStyles) {
@@ -128,43 +126,5 @@ fn draw_row(buf: &mut Buffer, y: u16, max_w: u16, row: &RowContext, styles: &Dra
         if cx <= max_w {
             buf.print(cx - 1, y, "│", styles.cursor_row);
         }
-    }
-}
-
-/// Position and blit the InputLine editor at the cursor cell.
-fn blit_editor(view: &mut CsvView, _w: u16, h: u16, header_offset: u16) {
-    if view.group.child_count() == 0 {
-        return;
-    }
-    let Some(row) = view.editing_row else {
-        return;
-    };
-    if row < view.scroll_row {
-        return;
-    }
-    let screen_row = (row - view.scroll_row) as u16 + header_offset;
-    if screen_row >= h {
-        return;
-    }
-    // Compute x position of cursor_col
-    let mut cx: u16 = 0;
-    for (col_idx, &width) in view.col_widths.iter().enumerate() {
-        if col_idx < view.scroll_col {
-            continue;
-        }
-        if col_idx == view.cursor_col {
-            break;
-        }
-        cx += width + 1;
-    }
-    let col_w = view.col_widths.get(view.cursor_col).copied().unwrap_or(10);
-    view.group.set_child_bounds(0, Rect::new(cx, screen_row, col_w, 1));
-    if let Some(child) = view.group.child_mut(0) {
-        child.draw();
-    }
-    let buf_ptr = view.group.buffer_mut() as *mut Buffer;
-    if let Some(child) = view.group.child(0) {
-        let (ox, oy) = view.group.child_origin(0);
-        unsafe { (*buf_ptr).blit(child.buffer(), ox, oy) };
     }
 }

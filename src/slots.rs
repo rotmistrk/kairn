@@ -35,7 +35,8 @@ pub fn find_view_mut<T: View + 'static>(ws: &mut TiledWorkspace, slot: SlotId) -
     })?;
     let panel = ws.panel_mut(slot as usize)?;
     let view = panel.view_at_mut(idx)?;
-    view.as_any_mut()?.downcast_mut::<T>()
+    let any = view.as_any_mut()?;
+    any.downcast_mut::<T>()
 }
 
 pub fn focus_view_mut<T: View + 'static>(ws: &mut TiledWorkspace, slot: SlotId) -> Option<&mut T> {
@@ -50,7 +51,8 @@ pub fn focus_view_mut<T: View + 'static>(ws: &mut TiledWorkspace, slot: SlotId) 
     let panel = ws.panel_mut(slot as usize)?;
     panel.set_active(idx);
     let view = panel.active_view_mut()?;
-    view.as_any_mut()?.downcast_mut::<T>()
+    let any = view.as_any_mut()?;
+    any.downcast_mut::<T>()
 }
 
 pub fn insert_tab(ws: &mut TiledWorkspace, slot: SlotId, title: impl Into<String>, view: Box<dyn View>) {
@@ -72,7 +74,8 @@ pub fn close_tab_by_title(ws: &mut TiledWorkspace, slot: SlotId, title: &str) ->
 }
 
 pub fn active_tab_title(ws: &TiledWorkspace, slot: SlotId) -> Option<&str> {
-    ws.panel(slot as usize)?.active_title()
+    let panel = ws.panel(slot as usize)?;
+    panel.active_title()
 }
 
 pub fn next_tab_name(ws: &TiledWorkspace, slot: SlotId, prefix: &str) -> String {

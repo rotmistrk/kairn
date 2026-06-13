@@ -78,9 +78,12 @@ pub fn parse_message(json: &Value) -> Option<LspMessage> {
         }
         let result = json.get("result").cloned();
         let error = json.get("error").and_then(|e| {
+            let code_val = e.get("code")?;
+            let msg_val = e.get("message")?;
+            let msg_str = msg_val.as_str()?;
             Some(RpcError {
-                code: e.get("code")?.as_i64()?,
-                message: e.get("message")?.as_str()?.to_string(),
+                code: code_val.as_i64()?,
+                message: msg_str.to_string(),
             })
         });
         Some(LspMessage::Response { id, result, error })

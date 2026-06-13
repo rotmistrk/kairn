@@ -83,9 +83,10 @@ impl TodoTreeView {
     /// Get the InputLine child mutably (child 1 when editing).
     pub(super) fn input_line_mut(&mut self) -> Option<&mut InputLine> {
         if self.group.child_count() > 1 {
-            self.group
-                .child_mut(1)
-                .and_then(|c| c.as_any_mut()?.downcast_mut::<InputLine>())
+            self.group.child_mut(1).and_then(|c| {
+                let any = c.as_any_mut()?;
+                any.downcast_mut::<InputLine>()
+            })
         } else {
             None
         }

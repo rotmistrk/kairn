@@ -166,7 +166,7 @@ fn toggle_tree_connectors(desktop: &mut dyn txv_core::view::View, on: bool) {
     if let Some(panel) = d.panel_mut(SlotId::Center as usize) {
         if let Some(view) = panel.active_view_mut() {
             if let Some(sv) = view.as_any_mut().and_then(|a| a.downcast_mut::<StructuredView>()) {
-                sv.tree.set_show_connectors(on);
+                sv.inner_mut().set_show_connectors(on);
             }
         }
     }

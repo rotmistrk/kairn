@@ -43,7 +43,8 @@ fn handle_shift_move(
     id: usize,
     op: fn(&mut model::TodoFile, &model::TreePath) -> Option<model::TreePath>,
 ) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let new_path = op(&mut data.file, &path)?;
     data.save();
     data.rebuild_flat();
@@ -51,7 +52,8 @@ fn handle_shift_move(
 }
 
 fn handle_toggle_complete(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item_mut(&mut data.file, &path)?;
     item.completed = match item.completed {
         Completion::Done => Completion::Open,
@@ -64,7 +66,8 @@ fn handle_toggle_complete(data: &mut TodoTreeData, id: usize) -> Option<HandleAc
 }
 
 fn handle_set_priority_5(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item_mut(&mut data.file, &path)?;
     let current = item.priority.unwrap_or(0);
     item.priority = Some(if current == 5 {
@@ -78,7 +81,8 @@ fn handle_set_priority_5(data: &mut TodoTreeData, id: usize) -> Option<HandleAct
 }
 
 fn handle_new_sibling(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let new_item = TodoItem::new("<new task>");
     if !model::add_sibling(&mut data.file, &path, new_item) {
         return Some(HandleAction::Stay);
@@ -95,7 +99,8 @@ fn handle_new_sibling(data: &mut TodoTreeData, id: usize, cursor: usize) -> Opti
 }
 
 fn handle_new_child(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let child_idx = model::get_item(&data.file, &path).map_or(0, |item| item.items.len());
     let new_item = TodoItem::new("<new task>");
     if !model::add_child(&mut data.file, &path, new_item) {
@@ -114,7 +119,8 @@ fn handle_new_child(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option
 }
 
 fn handle_delete(data: &mut TodoTreeData, id: usize, _cursor: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item(&data.file, &path)?;
     let needs_confirm = !item.items.is_empty() || !matches!(item.completed, Completion::Done);
     if !needs_confirm {
@@ -129,7 +135,8 @@ fn handle_delete(data: &mut TodoTreeData, id: usize, _cursor: usize) -> Option<H
 }
 
 fn handle_sort(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     model::sort_children(&mut data.file, &path);
     data.save();
     data.rebuild_flat();
@@ -137,7 +144,8 @@ fn handle_sort(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
 }
 
 fn handle_clone(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     if model::clone_subtree(&mut data.file, &path) {
         let mut new_path = path.clone();
         if let Some(last) = new_path.last_mut() {
@@ -153,7 +161,8 @@ fn handle_clone(data: &mut TodoTreeData, id: usize, cursor: usize) -> Option<Han
 }
 
 fn handle_crypto(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item(&data.file, &path)?;
     if item.is_locked() {
         Some(HandleAction::CryptoDecrypt(path))
@@ -173,13 +182,15 @@ fn handle_crypto(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
 }
 
 fn handle_open_note(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item(&data.file, &path)?;
     Some(HandleAction::OpenNote(path, item.note.clone()))
 }
 
 fn handle_right_expand_or_note(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item_mut(&mut data.file, &path)?;
     if !item.items.is_empty() && item.folded {
         item.folded = false;
@@ -193,7 +204,8 @@ fn handle_right_expand_or_note(data: &mut TodoTreeData, id: usize) -> Option<Han
 }
 
 fn handle_open_note_focus(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
-    let path = data.path_at(id)?.clone();
+    let path_ref = data.path_at(id)?;
+    let path = path_ref.clone();
     let item = model::get_item(&data.file, &path)?;
     Some(HandleAction::OpenNoteFocus(path, item.note.clone()))
 }

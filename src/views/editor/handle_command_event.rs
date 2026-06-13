@@ -166,11 +166,17 @@ fn parse_format_edits(edits: &[serde_json::Value]) -> Vec<(usize, usize, usize, 
             let range = e.get("range")?;
             let start = range.get("start")?;
             let end = range.get("end")?;
-            let sl = start.get("line")?.as_u64()? as usize;
-            let sc = start.get("character")?.as_u64()? as usize;
-            let el = end.get("line")?.as_u64()? as usize;
-            let ec = end.get("character")?.as_u64()? as usize;
-            let new_text = e.get("newText")?.as_str()?.to_string();
+            let sl_val = start.get("line")?;
+            let sl = sl_val.as_u64()? as usize;
+            let sc_val = start.get("character")?;
+            let sc = sc_val.as_u64()? as usize;
+            let el_val = end.get("line")?;
+            let el = el_val.as_u64()? as usize;
+            let ec_val = end.get("character")?;
+            let ec = ec_val.as_u64()? as usize;
+            let new_text_val = e.get("newText")?;
+            let new_text_str = new_text_val.as_str()?;
+            let new_text = new_text_str.to_string();
             Some((sl, sc, el, ec, new_text))
         })
         .collect()

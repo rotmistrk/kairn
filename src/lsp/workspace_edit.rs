@@ -53,24 +53,10 @@ fn apply_text_edits(path: &str, edits_val: &Value) -> bool {
     };
     let lines: Vec<&str> = content.lines().collect();
 
-    // Parse edits and sort in reverse order (apply from bottom to top)
-    let mut parsed: Vec<(usize, usize, usize, usize, &str)> = edits
-        .iter()
-        .filter_map(|e| {
-            let range = e.get("range")?;
-            let start = range.get("start")?;
-            let end = range.get("end")?;
-            let sl = start.get("line")?.as_u64()? as usize;
-            let sc = start.get("character")?.as_u64()? as usize;
-            let el = end.get("line")?.as_u64()? as usize;
-            let ec = end.get("character")?.as_u64()? as usize;
-            let new_text = e.get("newText")?.as_str()?;
-            Some((sl, sc, el, ec, new_text))
-        })
-        .collect();
+    let mut parsed = parse_edits(edits);
     parsed.sort_by(|a, b| (b.0, b.1).cmp(&(a.0, a.1)));
 
-    // Convert to byte offsets and apply
+    // Convert to byte offsets and apply from bottom to top
     let mut result = content.clone();
     for (sl, sc, el, ec, new_text) in &parsed {
         let start_byte = line_col_to_byte(&lines, *sl, *sc);
@@ -84,6 +70,28 @@ fn apply_text_edits(path: &str, edits_val: &Value) -> bool {
         return false;
     }
     true
+}
+
+fn parse_edits(edits: &[Value]) -> Vec<(usize, usize, usize, usize, String)> {
+    edits
+        .iter()
+        .filter_map(|e| {
+            let range = e.get("range")?;
+            let start = range.get("start")?;
+            let end = range.get("end")?;
+            let sl_val = start.get("line")?;
+            let sl = sl_val.as_u64()? as usize;
+            let sc_val = start.get("character")?;
+            let sc = sc_val.as_u64()? as usize;
+            let el_val = end.get("line")?;
+            let el = el_val.as_u64()? as usize;
+            let ec_val = end.get("character")?;
+            let ec = ec_val.as_u64()? as usize;
+            let new_text_val = e.get("newText")?;
+            let new_text = new_text_val.as_str()?;
+            Some((sl, sc, el, ec, new_text.to_string()))
+        })
+        .collect()
 }
 
 /// Convert line/col (0-indexed) to byte offset.

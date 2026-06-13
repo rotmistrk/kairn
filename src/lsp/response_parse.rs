@@ -69,7 +69,9 @@ pub fn parse_completion(result: &Value) -> Vec<CompletionItem> {
 }
 
 fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
-    let label = val.get("label")?.as_str()?.to_string();
+    let label_val = val.get("label")?;
+    let label_str = label_val.as_str()?;
+    let label = label_str.to_string();
     let detail = val.get("detail").and_then(|v| v.as_str()).map(|s| s.to_string());
     let insert_text = val.get("insertText").and_then(|v| v.as_str()).map(|s| s.to_string());
     let kind = match val.get("kind").and_then(|v| v.as_u64()) {
@@ -77,26 +79,7 @@ fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
         Some(3) => CompletionKind::Function,
         _ => CompletionKind::Other,
     };
-    let additional_edits = val
-        .get("additionalTextEdits")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|e| {
-                    let range = e.get("range")?;
-                    let start = range.get("start")?;
-                    let end = range.get("end")?;
-                    Some(TextEdit {
-                        start_line: start.get("line")?.as_u64()? as u32,
-                        start_col: start.get("character")?.as_u64()? as u32,
-                        end_line: end.get("line")?.as_u64()? as u32,
-                        end_col: end.get("character")?.as_u64()? as u32,
-                        new_text: e.get("newText")?.as_str()?.to_string(),
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let additional_edits = parse_additional_edits(val);
     Some(CompletionItem {
         label,
         detail,
@@ -104,6 +87,34 @@ fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
         kind,
         additional_edits,
     })
+}
+
+fn parse_additional_edits(val: &Value) -> Vec<TextEdit> {
+    val.get("additionalTextEdits")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|e| {
+                    let range = e.get("range")?;
+                    let start = range.get("start")?;
+                    let end = range.get("end")?;
+                    let sl = start.get("line")?;
+                    let sc = start.get("character")?;
+                    let el = end.get("line")?;
+                    let ec = end.get("character")?;
+                    let new_text_val = e.get("newText")?;
+                    let new_text_str = new_text_val.as_str()?;
+                    Some(TextEdit {
+                        start_line: sl.as_u64()? as u32,
+                        start_col: sc.as_u64()? as u32,
+                        end_line: el.as_u64()? as u32,
+                        end_col: ec.as_u64()? as u32,
+                        new_text: new_text_str.to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Parse a definition/references response into locations.
@@ -121,11 +132,15 @@ pub fn parse_locations(result: &Value) -> Vec<Location> {
 }
 
 fn parse_one_location(val: &Value) -> Option<Location> {
-    let uri = val.get("uri")?.as_str()?.to_string();
+    let uri_val = val.get("uri")?;
+    let uri_s = uri_val.as_str()?;
+    let uri = uri_s.to_string();
     let range = val.get("range")?;
     let start = range.get("start")?;
-    let line = start.get("line")?.as_u64()? as u32;
-    let character = start.get("character")?.as_u64()? as u32;
+    let line_val = start.get("line")?;
+    let line = line_val.as_u64()? as u32;
+    let char_val = start.get("character")?;
+    let character = char_val.as_u64()? as u32;
     Some(Location { uri, line, character })
 }
 

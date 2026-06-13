@@ -101,3 +101,23 @@ pub(super) fn split_scientific_str(s: &str) -> (&str, &str) {
     }
     (s, "")
 }
+
+pub(super) fn compute_col_widths(headers: &Option<Vec<String>>, rows: &[Vec<String>], ncols: usize) -> Vec<u16> {
+    let mut widths = vec![0u16; ncols];
+    if let Some(hdrs) = headers {
+        for (i, h) in hdrs.iter().enumerate() {
+            widths[i] = widths[i].max(h.len() as u16);
+        }
+    }
+    for row in rows.iter().take(200) {
+        for (i, cell) in row.iter().enumerate() {
+            if i < ncols {
+                widths[i] = widths[i].max(cell.len() as u16);
+            }
+        }
+    }
+    for w in &mut widths {
+        *w = (*w).clamp(3, 40);
+    }
+    widths
+}

@@ -167,7 +167,8 @@ pub(crate) fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()>
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let target = dest.join(entry.file_name());
-        if entry.file_type()?.is_dir() {
+        let ft = entry.file_type()?;
+        if ft.is_dir() {
             copy_dir_recursive(&entry.path(), &target)?;
         } else {
             fs::copy(entry.path(), target)?;

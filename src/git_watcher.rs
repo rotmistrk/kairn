@@ -76,7 +76,8 @@ fn find_git_dir(root: &Path) -> Option<PathBuf> {
         return None;
     }
     let content = std::fs::read_to_string(&git_path).ok()?;
-    let dir = content.strip_prefix("gitdir: ")?.trim();
+    let stripped = content.strip_prefix("gitdir: ")?;
+    let dir = stripped.trim();
     let p = if Path::new(dir).is_absolute() {
         PathBuf::from(dir)
     } else {

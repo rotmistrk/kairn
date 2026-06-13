@@ -58,9 +58,8 @@ fn handle_cursor_ops(
 ) -> Result<TclValue, TclError> {
     match sub {
         "goto" => {
-            let line = super::arg_str(args, 1)?
-                .parse::<u32>()
-                .map_err(|e| TclError::new(e.to_string()))?;
+            let line_str = super::arg_str(args, 1)?;
+            let line = line_str.parse::<u32>().map_err(|e| TclError::new(e.to_string()))?;
             let col = super::arg_opt(args, 2).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
             push(cmds, ScriptCommand::Goto { line, col });
         }

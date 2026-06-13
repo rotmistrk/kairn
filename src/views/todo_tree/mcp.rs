@@ -100,7 +100,8 @@ impl TodoTreeView {
 
     fn mcp_add_subtree(&mut self, path: &[usize], items: &[serde_json::Value]) -> Result<(), String> {
         fn build_item(val: &serde_json::Value) -> Option<model::TodoItem> {
-            let title = val.get("title")?.as_str()?;
+            let title_val = val.get("title")?;
+            let title = title_val.as_str()?;
             let mut item = TodoItem::new(title);
             if let Some(children) = val.get("items").and_then(|v| v.as_array()) {
                 for child_val in children {

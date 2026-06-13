@@ -38,7 +38,8 @@ fn parse_gcc_style(line: &str, root: &Path) -> Option<ResultEntry> {
     }
     // Find file:line:col: pattern
     let mut parts = line.splitn(4, ':');
-    let file = parts.next()?.trim();
+    let next = parts.next()?;
+    let file = next.trim();
     if file.is_empty() {
         return None;
     }

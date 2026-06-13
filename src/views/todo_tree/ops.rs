@@ -170,7 +170,9 @@ impl TodoTreeView {
         }
     }
     pub(super) fn clipboard_paste(&self) -> Option<String> {
-        self.clipboard.as_ref()?.lock().ok()?.paste()
+        let clip = self.clipboard.as_ref()?;
+        let mut guard = clip.lock().ok()?;
+        guard.paste()
     }
 
     /// Intercept Ctrl+V in edit mode: paste from ring directly into InputLine.

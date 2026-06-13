@@ -23,7 +23,6 @@ use crate::handler_diff_view::{handle_diff_exit, handle_diff_open_view, handle_d
 use crate::handler_drain::{
     drain_build, drain_grep, handle_todo_action, open_todo_note, refresh_plugins, save_todo_note, update_todo_note,
 };
-use crate::handler_evict::try_insert_tab;
 use crate::handler_exec::handle_execute_command;
 use crate::handler_exec_nav::handle_file_finder_open;
 use crate::handler_git::{
@@ -38,14 +37,11 @@ use crate::handler_split::{
     handle_split, handle_split_close, handle_split_focus, handle_split_h, handle_split_linked, handle_split_v,
 };
 use crate::handler_split_nav::{handle_diff_split, handle_open_in_split};
+use crate::handler_tabs;
 use crate::handler_theme::{handle_set_glyphs, handle_set_syntax_theme, handle_toggle_theme};
 use crate::lsp::handler::{handle_lsp_command, poll_lsp};
 use crate::mcp::collect::{collect_messages, collect_snapshot, collect_terminal_content};
-use crate::slots::{focus_tab_by_title, next_tab_name, SlotId};
 use crate::suspend::{peek_screen, suspend_to_shell};
-use crate::views::help::HelpView;
-use crate::views::messages::MessagesView;
-use crate::views::terminal::new_shell_terminal;
 
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
@@ -209,51 +205,21 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn handle_show_help(ctx: &mut CommandContext, state: &mut AppState) {
-    let sink = ctx.sink().clone();
-    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
-            let help = HelpView::new();
-            try_insert_tab(desktop, state, &sink, SlotId::Center, "Help".into(), Box::new(help));
-        }
-    }
+    handler_tabs::handle_show_help(ctx, state);
 }
 
 fn handle_show_messages(ctx: &mut CommandContext, state: &mut AppState) {
-    let sink = ctx.sink().clone();
-    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        if focus_tab_by_title(desktop, SlotId::Tools, "Messages") {
-            desktop.focus_panel(SlotId::Tools as usize);
-        } else {
-            let messages = MessagesView::new(state.messages.clone());
-            try_insert_tab(
-                desktop,
-                state,
-                &sink,
-                SlotId::Tools,
-                "Messages".into(),
-                Box::new(messages),
-            );
-            desktop.focus_panel(SlotId::Tools as usize);
-        }
-    }
+    handler_tabs::handle_show_messages(ctx, state);
 }
 
 fn handle_new_shell(ctx: &mut CommandContext, state: &mut AppState) {
-    let sink = ctx.sink().clone();
-    let term = new_shell_terminal();
-    if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        let name = next_tab_name(desktop, SlotId::Tools, "Shell");
-        try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
-        sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::info("shell", format!("Started: {name}")))),
-        );
-    }
+    handler_tabs::handle_new_shell(ctx, state);
 }
 
 /// Downcast the desktop View to TiledWorkspace.
 pub fn downcast_workspace(view: &mut dyn View) -> Option<&mut TiledWorkspace> {
-    view.as_any_mut()?.downcast_mut::<TiledWorkspace>()
+    let any = view.as_any_mut()?;
+    any.downcast_mut::<TiledWorkspace>()
 }
 
 /// Deprecated alias.

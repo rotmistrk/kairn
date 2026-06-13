@@ -61,7 +61,8 @@ pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppStat
         };
         let titles: Vec<String> = (0..panel.tab_count())
             .filter_map(|i| {
-                let t = desktop.panel(slot as usize)?.tab_title(i)?;
+                let panel_ref = desktop.panel(slot as usize)?;
+                let t = panel_ref.tab_title(i)?;
                 if t.contains("[exited]") {
                     Some(t.to_string())
                 } else {

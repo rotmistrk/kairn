@@ -37,9 +37,11 @@ pub use super::diagnostic_store::DiagnosticStore;
 
 /// Parse a `textDocument/publishDiagnostics` notification params.
 pub fn parse_publish_diagnostics(params: &Value) -> Option<(String, Vec<Diagnostic>)> {
-    let raw_uri = params.get("uri")?.as_str()?;
+    let uri_val = params.get("uri")?;
+    let raw_uri = uri_val.as_str()?;
     let uri = super::uri::uri_to_path(raw_uri);
-    let diags_val = params.get("diagnostics")?.as_array()?;
+    let diags_raw = params.get("diagnostics")?;
+    let diags_val = diags_raw.as_array()?;
     let diagnostics = diags_val.iter().filter_map(parse_one_diagnostic).collect();
     Some((uri, diagnostics))
 }
@@ -48,9 +50,12 @@ fn parse_one_diagnostic(val: &Value) -> Option<Diagnostic> {
     let range = val.get("range")?;
     let start = range.get("start")?;
     let end = range.get("end")?;
-    let line = start.get("line")?.as_u64()? as usize;
-    let col_start = start.get("character")?.as_u64()? as usize;
-    let col_end = end.get("character")?.as_u64().unwrap_or(col_start as u64 + 1) as usize;
+    let line_val = start.get("line")?;
+    let line = line_val.as_u64()? as usize;
+    let col_start_val = start.get("character")?;
+    let col_start = col_start_val.as_u64()? as usize;
+    let col_end_val = end.get("character")?;
+    let col_end = col_end_val.as_u64().unwrap_or(col_start as u64 + 1) as usize;
     let severity = match val.get("severity").and_then(|v| v.as_u64()) {
         Some(1) => Severity::Error,
         Some(2) => Severity::Warning,
@@ -58,7 +63,9 @@ fn parse_one_diagnostic(val: &Value) -> Option<Diagnostic> {
         Some(4) => Severity::Hint,
         _ => Severity::Error,
     };
-    let message = val.get("message")?.as_str()?.to_string();
+    let msg_val = val.get("message")?;
+    let msg_str = msg_val.as_str()?;
+    let message = msg_str.to_string();
     Some(Diagnostic {
         line,
         col_start,

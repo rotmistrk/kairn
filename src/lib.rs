@@ -81,6 +81,7 @@ pub mod handler_script_util;
 pub mod handler_set;
 pub mod handler_split;
 pub mod handler_split_nav;
+mod handler_tabs;
 pub mod handler_theme;
 pub mod help;
 pub mod help_editor;

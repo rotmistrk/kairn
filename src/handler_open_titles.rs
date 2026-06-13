@@ -24,17 +24,15 @@ pub(crate) fn sync_titles_immediate(
         };
         let paths: Vec<String> = (0..panel.tab_count())
             .filter_map(|i| {
-                panel
-                    .view_at_mut(i)?
-                    .as_any_mut()?
-                    .downcast_ref::<EditorView>()
-                    .map(|ev| {
-                        ev.path()
-                            .strip_prefix(root)
-                            .unwrap_or(ev.path())
-                            .to_string_lossy()
-                            .to_string()
-                    })
+                let view = panel.view_at_mut(i)?;
+                let any = view.as_any_mut()?;
+                any.downcast_ref::<EditorView>().map(|ev| {
+                    ev.path()
+                        .strip_prefix(root)
+                        .unwrap_or(ev.path())
+                        .to_string_lossy()
+                        .to_string()
+                })
             })
             .collect();
         let refs: Vec<&str> = paths.iter().map(|s| s.as_str()).collect();

@@ -42,7 +42,8 @@ pub(crate) fn try_open_structured(path: &Path, clipboard: Option<ClipboardHandle
     if meta.len() > STRUCTURED_VIEW_MAX_SIZE {
         return None; // too large — fall back to text editor
     }
-    let ext = path.extension()?.to_str()?;
+    let ext_os = path.extension()?;
+    let ext = ext_os.to_str()?;
     let content = fs::read_to_string(path).ok()?;
     match ext {
         "json" => {

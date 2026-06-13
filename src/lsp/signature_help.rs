@@ -24,10 +24,13 @@ pub struct SignatureHelp {
 
 /// Parse a signatureHelp response.
 pub fn parse_signature_help(result: &Value) -> Option<SignatureHelp> {
-    let sigs = result.get("signatures")?.as_array()?;
+    let sigs_val = result.get("signatures")?;
+    let sigs = sigs_val.as_array()?;
     let active_sig = result.get("activeSignature").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
     let sig = sigs.get(active_sig)?;
-    let label = sig.get("label")?.as_str()?.to_string();
+    let label_val = sig.get("label")?;
+    let label_str = label_val.as_str()?;
+    let label = label_str.to_string();
     let active_param = result
         .get("activeParameter")
         .and_then(|v| v.as_u64())
@@ -51,8 +54,10 @@ fn parse_param_ranges(sig: &Value, label: &str) -> Vec<(usize, usize)> {
                 .filter_map(|p| {
                     let lbl = p.get("label")?;
                     if let Some(arr) = lbl.as_array() {
-                        let start = arr.first()?.as_u64()? as usize;
-                        let end = arr.get(1)?.as_u64()? as usize;
+                        let start_val = arr.first()?;
+                        let start = start_val.as_u64()? as usize;
+                        let end_val = arr.get(1)?;
+                        let end = end_val.as_u64()? as usize;
                         Some((start, end))
                     } else if let Some(s) = lbl.as_str() {
                         let start = label.find(s)?;

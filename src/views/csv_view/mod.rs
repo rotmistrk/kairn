@@ -57,7 +57,7 @@ impl CsvView {
         let ncols = headers
             .as_ref()
             .map_or_else(|| rows.first().map_or(0, |r| r.len()), |h| h.len());
-        let col_widths = compute_col_widths(&headers, &rows, ncols);
+        let col_widths = format::compute_col_widths(&headers, &rows, ncols);
         let visible_rows: Vec<usize> = (0..rows.len()).collect();
 
         Self {
@@ -166,6 +166,7 @@ impl CsvView {
             child.select();
         }
         self.editing_row = Some(self.cursor_row);
+        self.layout_input_child();
         self.group.mark_dirty();
     }
 
@@ -176,6 +177,32 @@ impl CsvView {
         self.editing_row = None;
         self.editing_filter = false;
         self.group.mark_dirty();
+    }
+
+    /// Position the InputLine child at the cursor cell.
+    pub(crate) fn layout_input_child(&mut self) {
+        if self.group.child_count() == 0 {
+            return;
+        }
+        let header_offset: u16 = if self.headers.is_some() {
+            1
+        } else {
+            0
+        };
+        let row = self.editing_row.unwrap_or(0);
+        let screen_row = (row.saturating_sub(self.scroll_row)) as u16 + header_offset;
+        let mut cx: u16 = 0;
+        for (col_idx, &width) in self.col_widths.iter().enumerate() {
+            if col_idx < self.scroll_col {
+                continue;
+            }
+            if col_idx == self.cursor_col {
+                break;
+            }
+            cx += width + 1;
+        }
+        let col_w = self.col_widths.get(self.cursor_col).copied().unwrap_or(10);
+        self.group.set_child_bounds(0, Rect::new(cx, screen_row, col_w, 1));
     }
 
     fn edit_palette(&self) -> Arc<dyn Palette> {
@@ -201,6 +228,7 @@ impl View for CsvView {
             self.cancel_edit();
         }
         self.group.set_bounds(r);
+        self.layout_input_child();
     }
 
     fn select(&mut self) {
@@ -239,24 +267,4 @@ fn file_title(path: &Path) -> String {
     path.file_name()
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_else(|| "csv".into())
-}
-
-fn compute_col_widths(headers: &Option<Vec<String>>, rows: &[Vec<String>], ncols: usize) -> Vec<u16> {
-    let mut widths = vec![0u16; ncols];
-    if let Some(hdrs) = headers {
-        for (i, h) in hdrs.iter().enumerate() {
-            widths[i] = widths[i].max(h.len() as u16);
-        }
-    }
-    for row in rows.iter().take(200) {
-        for (i, cell) in row.iter().enumerate() {
-            if i < ncols {
-                widths[i] = widths[i].max(cell.len() as u16);
-            }
-        }
-    }
-    for w in &mut widths {
-        *w = (*w).clamp(3, 40);
-    }
-    widths
 }

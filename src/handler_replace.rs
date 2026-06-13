@@ -47,7 +47,8 @@ fn parse_replace_arg(arg: &str) -> Option<(String, String)> {
         Some((pattern, replacement))
     } else {
         let mut parts = arg.splitn(2, ' ');
-        let pattern = parts.next()?.to_string();
+        let next = parts.next()?;
+        let pattern = next.to_string();
         let replacement = parts.next().unwrap_or("").to_string();
         if pattern.is_empty() {
             None

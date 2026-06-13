@@ -8,67 +8,47 @@ use super::handle;
 use super::StructuredView;
 
 impl View for StructuredView {
-    fn view_id(&self) -> txv_core::view::ViewId {
-        self.tree.view_id()
-    }
-
-    fn bounds(&self) -> Rect {
-        self.tree.bounds()
-    }
-
-    fn set_bounds(&mut self, r: Rect) {
-        if self.tree.state_mut().bounds() != r {
-            self.cancel_edit();
-            self.filtering = false;
-            self.sort_path_target = None;
-        }
-        self.tree.state_mut().set_bounds(r);
-        self.update_col_widths();
-    }
-
-    fn set_sink(&mut self, sink: EventSink) {
-        self.tree.state_mut().set_sink(sink);
-    }
-
-    fn options(&self) -> txv_core::view::ViewOptions {
-        self.tree.options()
-    }
+    delegate_group_state!(group, override {
+        title, draw, handle, set_bounds, cursor, select, unselect
+    });
 
     fn title(&self) -> &str {
         &self.display_title
     }
 
-    fn needs_redraw(&self) -> bool {
-        self.tree.needs_redraw()
-    }
-
-    fn mark_redrawn(&mut self) {
-        self.tree.state_mut().mark_redrawn();
+    fn set_bounds(&mut self, r: Rect) {
+        if self.group.bounds() != r {
+            self.cancel_edit();
+            self.filtering = false;
+            self.sort_path_target = None;
+        }
+        self.group.set_bounds(r);
+        self.group.set_child_bounds(0, Rect::new(0, 0, r.w(), r.h()));
+        self.update_col_widths();
+        self.layout_input_line();
     }
 
     fn select(&mut self) {
-        self.tree.select();
+        self.group.set_focused(true);
+        self.inner_mut().state_mut().set_focused(true);
+        self.group.mark_dirty();
     }
 
     fn unselect(&mut self) {
-        self.tree.unselect();
-    }
-
-    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
-        Some(self)
-    }
-
-    fn buffer(&self) -> &txv_core::buffer::Buffer {
-        self.tree.buffer()
+        self.group.set_focused(false);
+        self.inner_mut().state_mut().set_focused(false);
+        self.group.mark_dirty();
     }
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
         if self.is_editing() {
-            if let Some(input) = &self.input_line {
-                return input.cursor();
-            }
+            return self.group.cursor();
         }
         None
+    }
+
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(self)
     }
 
     fn can_close(&self) -> CloseResult {
@@ -76,8 +56,8 @@ impl View for StructuredView {
     }
 
     fn draw(&mut self) {
-        self.tree.draw();
-        self.blit_input_line();
+        // TreeTableView (child 0) renders itself via the group pipeline.
+        // InputLine (child 1) bounds are set when editing starts and on set_bounds.
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -97,11 +77,9 @@ impl View for StructuredView {
             return HandleResult::Ignored;
         };
         if self.is_editing() {
-            if let Some(input) = self.input_line.as_mut() {
-                input.handle(event);
-            }
+            self.group.dispatch(event);
             handle::drain_edit_commands(self);
-            self.tree.state_mut().mark_dirty();
+            self.group.mark_dirty();
             return HandleResult::Consumed;
         }
         handle::handle_struct_key(self, key)

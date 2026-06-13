@@ -153,8 +153,10 @@ fn dispatch_editor_edit(cmd: ScriptCommand, ctx: &mut CommandContext) {
 fn find_focused_editor(desktop: &mut dyn txv_core::view::View) -> Option<&mut crate::editor::Editor> {
     let desktop = downcast_desktop(desktop)?;
     let slot = desktop.focused_panel();
-    let view = desktop.panel_mut(slot)?.active_view_mut()?;
-    let editor_view = view.as_any_mut()?.downcast_mut::<EditorView>()?;
+    let panel = desktop.panel_mut(slot)?;
+    let view = panel.active_view_mut()?;
+    let any = view.as_any_mut()?;
+    let editor_view = any.downcast_mut::<EditorView>()?;
     Some(editor_view.editor_mut())
 }
 

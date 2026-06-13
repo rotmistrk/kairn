@@ -41,6 +41,7 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
         KeyCode::Char(':') => view.group.put_command(CM_COMMAND_MODE, None),
         _ => return HandleResult::Ignored,
     }
+    view.group.mark_dirty();
     HandleResult::Consumed
 }
 
