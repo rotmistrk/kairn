@@ -26,7 +26,12 @@ impl EditorView {
 
     pub fn revert_hunk(&mut self) -> Result<String, String> {
         use super::diff_model::is_change;
-        let ds = self.inner.delegate().diff_state_ref().as_ref().ok_or("Not in diff mode")?;
+        let ds = self
+            .inner
+            .delegate()
+            .diff_state_ref()
+            .as_ref()
+            .ok_or("Not in diff mode")?;
         let cursor = ds.cursor;
         if cursor >= ds.lines.len() {
             return Err("Cursor out of range".to_string());
@@ -35,7 +40,12 @@ impl EditorView {
             return Err("Cursor not on a change".to_string());
         }
         let (start, end) = Self::find_hunk_bounds(&ds.lines, cursor);
-        let ds = self.inner.delegate().diff_state_ref().as_ref().ok_or("Not in diff mode")?;
+        let ds = self
+            .inner
+            .delegate()
+            .diff_state_ref()
+            .as_ref()
+            .ok_or("Not in diff mode")?;
         let (buf_lines, deleted_text, insert_line) = Self::collect_hunk_data(ds, start, end);
         self.apply_revert(&buf_lines, &deleted_text, insert_line);
         *self.inner.delegate_mut().diff_state_mut() = None;

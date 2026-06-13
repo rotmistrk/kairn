@@ -54,8 +54,10 @@ impl KairnDelegate {
         if let Some(boxed) = data.as_ref() {
             if let Some(&(line, col)) = boxed.downcast_ref::<(u32, u32)>() {
                 let max = editor.buf().line_count().saturating_sub(1);
-                editor.set_cursor_line((line as usize).min(max));
+                let target = (line as usize).min(max);
+                editor.set_cursor_line(target);
                 editor.set_cursor_col(col as usize);
+                Self::ensure_line_visible(editor, target);
                 self.dirty = true;
                 return HandleResult::Consumed;
             }

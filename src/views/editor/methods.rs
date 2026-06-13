@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use txv_edit::view::draw::compute_gutter_width;
 
+use super::delegate::KairnDelegate;
 use super::EditorView;
 use crate::blame::blame_async;
 use crate::gutter_signs::compute_gutter_signs;
@@ -118,18 +119,7 @@ impl EditorView {
     }
 
     pub(crate) fn scroll_to_line(&mut self, line: usize) {
-        let h = self.editor().viewport_height();
-        if h == 0 {
-            self.editor_mut().set_viewport_scroll(line);
-            return;
-        }
-        let margin = 2.min(h / 2);
-        let scroll = self.editor().viewport_scroll();
-        if line < scroll + margin {
-            self.editor_mut().set_viewport_scroll(line.saturating_sub(margin));
-        } else if line + margin >= scroll + h {
-            self.editor_mut().set_viewport_scroll(line + margin + 1 - h);
-        }
+        KairnDelegate::ensure_line_visible(self.editor_mut(), line);
     }
 
     pub fn undo(&mut self) {

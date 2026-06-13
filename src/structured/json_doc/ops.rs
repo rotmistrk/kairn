@@ -7,9 +7,9 @@ use crate::structured::{NodeId, NodeKind, ScalarType};
 use super::JsonDoc;
 
 pub(crate) fn add_sibling(doc: &mut JsonDoc, id: NodeId) -> Result<NodeId, String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot add sibling to root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot add sibling to root")?;
     let new_id = doc.alloc_scalar(None, "null".into(), ScalarType::Null);
-    doc.node_mut(new_id).parent = Some(parent_id);
+    doc.node_mut(new_id).set_parent(Some(parent_id));
     let siblings = &doc.nodes[parent_id.0].children;
     let pos = siblings.iter().position(|c| *c == id).unwrap_or(siblings.len());
     doc.nodes[parent_id.0].children.insert(pos + 1, new_id);
@@ -18,21 +18,21 @@ pub(crate) fn add_sibling(doc: &mut JsonDoc, id: NodeId) -> Result<NodeId, Strin
 }
 
 pub(crate) fn add_child(doc: &mut JsonDoc, id: NodeId) -> Result<NodeId, String> {
-    let kind = doc.node(id).kind;
+    let kind = doc.node(id).kind();
     if kind == NodeKind::Scalar {
         return Err("Cannot add child to scalar".into());
     }
     let new_id = doc.alloc_scalar(None, "null".into(), ScalarType::Null);
-    doc.node_mut(new_id).parent = Some(id);
+    doc.node_mut(new_id).set_parent(Some(id));
     doc.nodes[id.0].children.push(new_id);
     doc.update_container_display(id);
     Ok(new_id)
 }
 
 pub(crate) fn clone_node(doc: &mut JsonDoc, id: NodeId) -> Result<NodeId, String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot clone root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot clone root")?;
     let cloned = deep_clone(doc, id);
-    doc.node_mut(cloned).parent = Some(parent_id);
+    doc.node_mut(cloned).set_parent(Some(parent_id));
     let siblings = &doc.nodes[parent_id.0].children;
     let pos = siblings.iter().position(|c| *c == id).unwrap_or(siblings.len());
     doc.nodes[parent_id.0].children.insert(pos + 1, cloned);
@@ -55,14 +55,14 @@ fn deep_clone(doc: &mut JsonDoc, id: NodeId) -> NodeId {
 }
 
 pub(crate) fn remove(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot remove root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot remove root")?;
     doc.nodes[parent_id.0].children.retain(|c| *c != id);
     doc.update_container_display(parent_id);
     Ok(())
 }
 
 pub(crate) fn swap_up(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot swap root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot swap root")?;
     let children = &doc.nodes[parent_id.0].children;
     let pos = children
         .iter()
@@ -76,7 +76,7 @@ pub(crate) fn swap_up(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
 }
 
 pub(crate) fn swap_down(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot swap root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot swap root")?;
     let children = &doc.nodes[parent_id.0].children;
     let pos = children
         .iter()
@@ -91,8 +91,8 @@ pub(crate) fn swap_down(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
 }
 
 pub(crate) fn promote(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot promote root")?;
-    let grandparent_id = doc.node(parent_id).parent.ok_or("Parent is root, cannot promote")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot promote root")?;
+    let grandparent_id = doc.node(parent_id).parent().ok_or("Parent is root, cannot promote")?;
     // Remove from parent
     doc.nodes[parent_id.0].children.retain(|c| *c != id);
     doc.update_container_display(parent_id);
@@ -106,14 +106,14 @@ pub(crate) fn promote(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
 }
 
 pub(crate) fn demote(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot demote root")?;
+    let parent_id = doc.node(id).parent().ok_or("Cannot demote root")?;
     let siblings = &doc.nodes[parent_id.0].children;
     let pos = siblings.iter().position(|c| *c == id).ok_or("Node not found")?;
     if pos == 0 {
         return Err("No previous sibling to demote into".into());
     }
     let prev_sibling = siblings[pos - 1];
-    if doc.node(prev_sibling).kind == NodeKind::Scalar {
+    if doc.node(prev_sibling).kind() == NodeKind::Scalar {
         return Err("Previous sibling is scalar, cannot demote into it".into());
     }
     // Remove from parent
@@ -127,10 +127,10 @@ pub(crate) fn demote(doc: &mut JsonDoc, id: NodeId) -> Result<(), String> {
 }
 
 pub(crate) fn cycle_type(doc: &mut JsonDoc, id: NodeId) {
-    if doc.node(id).kind != NodeKind::Scalar {
+    if doc.node(id).kind() != NodeKind::Scalar {
         return;
     }
-    let (new_type, new_val) = match doc.node(id).scalar_type {
+    let (new_type, new_val) = match doc.node(id).scalar_type() {
         ScalarType::String => (ScalarType::Number, "0".into()),
         ScalarType::Number => (ScalarType::Bool, "true".into()),
         ScalarType::Bool => (ScalarType::Null, "null".into()),
@@ -141,7 +141,7 @@ pub(crate) fn cycle_type(doc: &mut JsonDoc, id: NodeId) {
 }
 
 pub(crate) fn convert_container(doc: &mut JsonDoc, id: NodeId) {
-    let kind = doc.node(id).kind;
+    let kind = doc.node(id).kind();
     match kind {
         NodeKind::Dict => {
             doc.nodes[id.0].kind = NodeKind::Array;
@@ -163,7 +163,7 @@ pub(crate) fn convert_container(doc: &mut JsonDoc, id: NodeId) {
 }
 
 pub(crate) fn sort_children(doc: &mut JsonDoc, id: NodeId, ascending: bool) {
-    let kind = doc.node(id).kind;
+    let kind = doc.node(id).kind();
     if kind == NodeKind::Scalar {
         return;
     }
@@ -215,7 +215,7 @@ fn sort_array_children(doc: &JsonDoc, children: &mut [NodeId], ascending: bool) 
 }
 
 pub(crate) fn sort_children_by_path(doc: &mut JsonDoc, id: NodeId, path: &str, ascending: bool) {
-    if doc.node(id).kind != NodeKind::Array {
+    if doc.node(id).kind() != NodeKind::Array {
         return;
     }
     let segments: Vec<&str> = path

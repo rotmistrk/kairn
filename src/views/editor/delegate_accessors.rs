@@ -53,14 +53,10 @@ impl KairnDelegate {
     pub(crate) fn set_dirty(&mut self, v: bool) {
         self.dirty = v;
     }
-    pub(crate) fn pending_commands_mut(
-        &mut self,
-    ) -> &mut Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
+    pub(crate) fn pending_commands_mut(&mut self) -> &mut Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
         &mut self.pending_commands
     }
-    pub(crate) fn pending_broadcasts_mut(
-        &mut self,
-    ) -> &mut Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
+    pub(crate) fn pending_broadcasts_mut(&mut self) -> &mut Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
         &mut self.pending_broadcasts
     }
     pub(crate) fn is_save_requested(&self) -> bool {
@@ -110,5 +106,22 @@ impl KairnDelegate {
     }
     pub(crate) fn completion_visible(&self) -> bool {
         self.completion_popup.visible
+    }
+
+    /// Scroll viewport so `line` is visible with a 2-line margin.
+    /// Use this everywhere instead of duplicating scroll logic.
+    pub(crate) fn ensure_line_visible(editor: &mut crate::editor::Editor, line: usize) {
+        let h = editor.viewport_height();
+        if h == 0 {
+            editor.set_viewport_scroll(line);
+            return;
+        }
+        let margin = 2.min(h / 2);
+        let scroll = editor.viewport_scroll();
+        if line < scroll + margin {
+            editor.set_viewport_scroll(line.saturating_sub(margin));
+        } else if line + margin >= scroll + h {
+            editor.set_viewport_scroll(line + margin + 1 - h);
+        }
     }
 }

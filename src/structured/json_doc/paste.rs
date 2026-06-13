@@ -5,16 +5,16 @@ use crate::structured::{NodeId, NodeKind, StructuredDoc};
 use super::JsonDoc;
 
 pub(crate) fn paste_after(doc: &mut JsonDoc, id: NodeId, json: &str) -> Result<NodeId, String> {
-    let parent_id = doc.node(id).parent.ok_or("Cannot paste at root level")?;
-    let parent_kind = doc.node(parent_id).kind;
+    let parent_id = doc.node(id).parent().ok_or("Cannot paste at root level")?;
+    let parent_kind = doc.node(parent_id).kind();
 
     let parsed = JsonDoc::parse(json).or_else(|_| JsonDoc::parse(&format!("[{json}]")))?;
 
     let source_root = parsed.root();
     let source_children = &parsed.nodes[source_root.0].children;
 
-    let source_id = if (parent_kind == NodeKind::Dict && parsed.node(source_root).kind == NodeKind::Dict)
-        || (parent_kind == NodeKind::Array && parsed.node(source_root).kind == NodeKind::Array)
+    let source_id = if (parent_kind == NodeKind::Dict && parsed.node(source_root).kind() == NodeKind::Dict)
+        || (parent_kind == NodeKind::Array && parsed.node(source_root).kind() == NodeKind::Array)
     {
         source_children.first().copied().unwrap_or(source_root)
     } else {
@@ -46,7 +46,7 @@ fn deep_copy_node(doc: &mut JsonDoc, source: &JsonDoc, source_id: NodeId, parent
     });
     let child_ids: Vec<NodeId> = source
         .node(source_id)
-        .children
+        .children()
         .iter()
         .map(|&child_id| deep_copy_node(doc, source, child_id, Some(new_id)))
         .collect();

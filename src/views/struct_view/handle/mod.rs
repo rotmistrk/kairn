@@ -125,7 +125,10 @@ fn handle_commit(view: &mut StructuredView, text: String) {
         view.input_line = None;
         view.editing_row = None;
         view.save_undo_point();
-        view.tree.data_mut().doc_mut().sort_children_by_path(sort_target, &text, true);
+        view.tree
+            .data_mut()
+            .doc_mut()
+            .sort_children_by_path(sort_target, &text, true);
         view.dirty = true;
         view.sync_title();
         view.rebuild_visible();

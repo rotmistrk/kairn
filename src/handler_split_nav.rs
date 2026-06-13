@@ -145,7 +145,8 @@ fn open_in_existing_split(
     };
     open_into_editor(ev, path, line, col, state);
     let word_range = word_cols_at(ev, line as usize, col as usize);
-    ev.delegate_mut().set_highlight_word(Some((line as usize, word_range.0, word_range.1)));
+    ev.delegate_mut()
+        .set_highlight_word(Some((line as usize, word_range.0, word_range.1)));
 }
 
 fn create_split_with_file(

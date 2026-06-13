@@ -157,7 +157,7 @@ fn serialize_node_compact(doc: &JsonDoc, id: NodeId) -> String {
             }
             let mut out = String::from("{");
             for (i, &child) in children.iter().enumerate() {
-                if let Some(k) = doc.node(child).key.as_deref() {
+                if let Some(k) = doc.node(child).key() {
                     out.push('"');
                     out.push_str(&escape_json(k));
                     out.push_str("\":");
