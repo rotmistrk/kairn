@@ -5,6 +5,8 @@
 
 mod helpers;
 
+// testing
+
 use helpers::{temp_project, TestHarness};
 use kairn::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
 use txv_core::event::{KeyCode, KeyMod};
@@ -182,5 +184,100 @@ fn diff_no_changes_shows_message() {
     assert!(
         !text.contains("[diff]"),
         "No diff tab should open for unmodified file. Screen:\n{text}"
+    );
+}
+
+// --- Bug scenario tests ---
+
+/// Bug 1: Exit diff lands on wrong line.
+/// When cursor is on an Added line in the diff, pressing Esc should return
+/// to editor at that buffer line. Previously returned wrong line due to
+/// backward search crossing deleted lines.
+#[test]
+fn diff_exit_jumps_to_correct_buffer_line() {
+    // File with 3 deleted lines above an added line.
+    // Base: lines a,b,c,d,e,f  Current: lines d,e,NEW,f
+    // The diff should show: Deleted a, Deleted b, Deleted c, Context d, Context e, Added NEW, Context f
+    let base = "a\nb\nc\nd\ne\nf\n";
+    let modified = "d\ne\nNEW\nf\n";
+    let dir = git_project_modified("exit_line.rs", base, modified);
+    let mut h = TestHarness::new(dir.path());
+    open_file(&mut h, "exit_line.rs");
+    send_ex(&mut h, "diff");
+
+    // Move cursor down to the Added line (should be at diff index ~5: del,del,del,ctx,ctx,added)
+    // Navigate with 'n' to first hunk (deletions), then past them to the Added line
+    for _ in 0..5 {
+        press_key(&mut h, KeyCode::Char('j'));
+    }
+
+    // Exit diff
+    press_key(&mut h, KeyCode::Esc);
+    h.run_cycles(5);
+
+    // After exit, cursor should be on buffer line 2 (0-indexed), which is "NEW"
+    let pos = helpers::cursor_at(&h);
+    assert!(pos.is_some(), "Cursor should be visible after diff exit");
+    let (line, _) = pos.unwrap();
+    // "NEW" is at buffer line 2 (0-indexed: d=0, e=1, NEW=2, f=3)
+    assert_eq!(line, 2, "Cursor should be on buffer line 2 (the Added line 'NEW')");
+}
+
+/// Bug 3: :vdiff not recognized — should act as :diff -y (side-by-side).
+/// When user types :vdiff in diff view, it should switch to side-by-side mode.
+#[test]
+fn diff_vdiff_command_switches_to_sbs() {
+    let dir = git_project_modified("vdiff.rs", "base_vd\n", "curr_vd\n");
+    let mut h = TestHarness::with_size(dir.path(), 80, 24);
+    open_file(&mut h, "vdiff.rs");
+    send_ex(&mut h, "diff");
+
+    // In diff view, type :vdiff
+    h.inject_key(KeyCode::Char(':'), KeyMod::default());
+    for ch in "vdiff".chars() {
+        h.inject_key(KeyCode::Char(ch), KeyMod::default());
+    }
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(5);
+
+    // Should switch to side-by-side — both columns on same row
+    let mut found_sbs_row = false;
+    for y in 0..24 {
+        let row = h.row(y);
+        if row.contains("base_vd") && row.contains("curr_vd") {
+            found_sbs_row = true;
+            break;
+        }
+    }
+    assert!(
+        found_sbs_row,
+        "vdiff should switch to SBS mode with both columns on same row. Screen:\n{}",
+        h.screen_text()
+    );
+}
+
+/// Bug 4: :diff -y should show side-by-side mode with vertical divider.
+/// The old (deleted/base) content and new (added/current) content must appear
+/// on the same row, separated by a divider.
+#[test]
+fn diff_side_by_side_shows_both_columns() {
+    let dir = git_project_modified("sbs.rs", "base_line\n", "curr_line\n");
+    let mut h = TestHarness::with_size(dir.path(), 80, 24);
+    open_file(&mut h, "sbs.rs");
+    send_ex(&mut h, "diff -y");
+
+    // Check individual rows — both "base_line" and "curr_line" on same row
+    let mut found_sbs_row = false;
+    for y in 0..24 {
+        let row = h.row(y);
+        if row.contains("base_line") && row.contains("curr_line") {
+            found_sbs_row = true;
+            break;
+        }
+    }
+    assert!(
+        found_sbs_row,
+        "SBS diff must show base and current on same row. Screen:\n{}",
+        h.screen_text()
     );
 }

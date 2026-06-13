@@ -3,8 +3,11 @@
 //! Uses GroupState to host an InputLine for command mode (: prefix),
 //! same pattern as txv-edit's EditorView.
 
+mod completer;
 mod draw;
+mod draw_sbs;
 mod handle;
+mod sbs_cell;
 
 use std::path::PathBuf;
 
@@ -12,6 +15,7 @@ use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
 use crate::views::editor::diff_model::DiffState;
+use completer::DiffCompleter;
 
 /// Standalone diff view replacing the editor tab.
 pub struct DiffView {
@@ -23,18 +27,26 @@ pub struct DiffView {
     display_title: String,
     cmd_active: bool,
     cmdline_prefix: char,
+    sbs_mode: bool,
+    base_text: String,
 }
 
 impl DiffView {
     pub fn new(ds: DiffState, buf_content: &str, path: PathBuf, show_numbers: bool) -> Self {
+        use txv_widgets::input_line::InputLine;
+
         let buf_lines: Vec<String> = buf_content.lines().map(|l| l.to_string()).collect();
         let name = path
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_default();
         let display_title = format!("[diff] {name}");
+        let mut group = GroupState::new(ViewOptions::default());
+        let il = InputLine::new().with_completer(Box::new(DiffCompleter));
+        group.insert(Box::new(il));
+        group.set_child_visible(0, false);
         Self {
-            group: GroupState::new(ViewOptions::default()),
+            group,
             ds,
             buf_lines,
             path,
@@ -42,7 +54,16 @@ impl DiffView {
             display_title,
             cmd_active: false,
             cmdline_prefix: ':',
+            sbs_mode: false,
+            base_text: String::new(),
         }
+    }
+
+    pub fn new_sbs(ds: DiffState, buf_content: &str, base_text: &str, path: PathBuf, show_numbers: bool) -> Self {
+        let mut view = Self::new(ds, buf_content, path, show_numbers);
+        view.sbs_mode = true;
+        view.base_text = base_text.to_string();
+        view
     }
 
     pub fn path(&self) -> &PathBuf {
@@ -70,9 +91,7 @@ impl DiffView {
     }
 
     fn activate_cmdline(&mut self) {
-        use txv_widgets::input_line::InputLine;
-        let il = InputLine::new();
-        self.group.insert(Box::new(il));
+        self.group.set_child_visible(0, true);
         self.group.set_focused_index(0);
         self.group.select_focused();
         self.cmd_active = true;
@@ -83,7 +102,10 @@ impl DiffView {
 
     fn deactivate_cmdline(&mut self) {
         if self.cmd_active {
-            self.group.remove(0);
+            if let Some(child) = self.group.child_mut(0) {
+                child.unselect();
+            }
+            self.group.set_child_visible(0, false);
             self.cmd_active = false;
             self.group.mark_dirty();
         }
@@ -108,6 +130,14 @@ impl DiffView {
             .and_then(|a| a.downcast_ref::<InputLine>())
             .map(|il| il.text().to_string())
             .unwrap_or_default()
+    }
+
+    pub fn sbs_mode(&self) -> bool {
+        self.sbs_mode
+    }
+
+    pub fn base_text(&self) -> &str {
+        &self.base_text
     }
 }
 
@@ -138,7 +168,11 @@ impl View for DiffView {
     }
 
     fn draw(&mut self) {
-        self.draw_unified();
+        if self.sbs_mode {
+            self.draw_sbs();
+        } else {
+            self.draw_unified();
+        }
         if self.cmd_active {
             let b = self.group.bounds();
             let y = b.h().saturating_sub(1);

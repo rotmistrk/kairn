@@ -29,6 +29,7 @@ pub struct SbsDiffState {
 }
 
 /// Split unified diff lines into left (base) and right (current) streams.
+/// Pairs adjacent Deleted+Added lines on the same row for proper SBS display.
 pub fn split_for_side_by_side(
     unified: &[DiffLine],
     base_text: &str,
@@ -38,41 +39,60 @@ pub fn split_for_side_by_side(
     let current_lines: Vec<&str> = current_text.lines().collect();
     let mut left = Vec::new();
     let mut right = Vec::new();
-
-    for dl in unified {
-        split_one_diff_line(dl, &base_lines, &current_lines, &mut left, &mut right);
+    let mut i = 0;
+    while i < unified.len() {
+        match &unified[i] {
+            DiffLine::Context { buf_line, base_line } => {
+                let lt = base_lines.get(*base_line).unwrap_or(&"").to_string();
+                let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
+                left.push(sbs_content(*base_line, lt, false));
+                right.push(sbs_content(*buf_line, rt, false));
+                i += 1;
+            }
+            DiffLine::Folded { count } => {
+                left.push(SbsLine::Folded { count: *count });
+                right.push(SbsLine::Folded { count: *count });
+                i += 1;
+            }
+            DiffLine::Deleted { .. } | DiffLine::Added { .. } => {
+                i = pair_hunk_lines(unified, i, &base_lines, &current_lines, &mut left, &mut right);
+            }
+        }
     }
     (left, right)
 }
 
-fn split_one_diff_line(
-    dl: &DiffLine,
-    base_lines: &[&str],
+/// Collect a run of Deleted/Added lines and pair them on same rows.
+fn pair_hunk_lines(
+    unified: &[DiffLine],
+    start: usize,
+    _base_lines: &[&str],
     current_lines: &[&str],
     left: &mut Vec<SbsLine>,
     right: &mut Vec<SbsLine>,
-) {
-    match dl {
-        DiffLine::Context { buf_line, base_line } => {
-            let lt = base_lines.get(*base_line).unwrap_or(&"").to_string();
-            let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
-            left.push(sbs_content(*base_line, lt, false));
-            right.push(sbs_content(*buf_line, rt, false));
+) -> usize {
+    let mut dels: Vec<SbsLine> = Vec::new();
+    let mut adds: Vec<SbsLine> = Vec::new();
+    let mut i = start;
+    while i < unified.len() {
+        match &unified[i] {
+            DiffLine::Deleted { base_line, text } => {
+                dels.push(sbs_content(*base_line, text.clone(), true));
+            }
+            DiffLine::Added { buf_line } => {
+                let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
+                adds.push(sbs_content(*buf_line, rt, true));
+            }
+            _ => break,
         }
-        DiffLine::Deleted { base_line, text } => {
-            left.push(sbs_content(*base_line, text.clone(), true));
-            right.push(SbsLine::Gap);
-        }
-        DiffLine::Added { buf_line } => {
-            let rt = current_lines.get(*buf_line).unwrap_or(&"").to_string();
-            left.push(SbsLine::Gap);
-            right.push(sbs_content(*buf_line, rt, true));
-        }
-        DiffLine::Folded { count } => {
-            left.push(SbsLine::Folded { count: *count });
-            right.push(SbsLine::Folded { count: *count });
-        }
+        i += 1;
     }
+    let max_len = dels.len().max(adds.len());
+    for idx in 0..max_len {
+        left.push(dels.get(idx).cloned().unwrap_or(SbsLine::Gap));
+        right.push(adds.get(idx).cloned().unwrap_or(SbsLine::Gap));
+    }
+    i
 }
 
 fn sbs_content(line_no: usize, text: String, changed: bool) -> SbsLine {

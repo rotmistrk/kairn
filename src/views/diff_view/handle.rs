@@ -91,6 +91,22 @@ impl DiffView {
             self.do_revert();
         } else if cmd == "q" || (cmd.len() >= 3 && "nodiff".starts_with(cmd)) {
             self.request_exit();
+        } else if cmd == "vdiff" || cmd.starts_with("diff ") && cmd.contains("-y") {
+            self.enable_sbs_mode();
+        } else if cmd.starts_with("diff") {
+            self.handle_diff_cmd(cmd);
+        }
+    }
+
+    fn enable_sbs_mode(&mut self) {
+        self.sbs_mode = true;
+        self.group.mark_dirty();
+    }
+
+    fn handle_diff_cmd(&mut self, cmd: &str) {
+        let args = cmd.strip_prefix("diff").unwrap_or("").trim();
+        if args.contains("-y") {
+            self.enable_sbs_mode();
         }
     }
 

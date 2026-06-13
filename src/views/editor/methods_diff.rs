@@ -178,7 +178,8 @@ impl EditorView {
         let ds = DiffState::new(lines, 0, base_ref, opts.context, opts.ignore_ws);
         // Store on delegate for revert access, and emit view for display
         *self.inner.delegate_mut().diff_state_mut() = Some(ds.clone());
-        let data: (DiffState, String, PathBuf, bool) = (ds, current, path, show_numbers);
+        let data: (DiffState, String, PathBuf, bool, bool, String) =
+            (ds, current, path, show_numbers, opts.side_by_side, base_content);
         self.inner.put_command(CM_DIFF_OPEN_VIEW, Some(Box::new(data)));
     }
 
