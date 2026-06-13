@@ -45,3 +45,51 @@ fn gutter_sign_appears_after_insert() {
         "git gutter sign ▎ should appear after inserting a line"
     );
 }
+
+#[test]
+fn gutter_signs_clear_after_commit() {
+    let dir = git_project_committed("f.txt", "line1\nline2\n");
+    let mut h = TestHarness::with_size(dir.path(), 60, 10);
+    h.run_cycles(1);
+
+    let req = OpenFileRequest::new(dir.path().join("f.txt"));
+    h.dispatch_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
+    h.run_cycles(3);
+
+    // Insert a line
+    h.inject_key(KeyCode::Char('o'), KeyMod::NONE);
+    h.run_cycles(2);
+    h.inject_str("added");
+    h.inject_key(KeyCode::Esc, KeyMod::NONE);
+    h.run_cycles(5);
+    assert!(h.content_contains("▎"), "sign should appear after insert");
+
+    // Save the file
+    h.inject_key(KeyCode::Char(':'), KeyMod::NONE);
+    h.inject_str("w");
+    h.inject_key(KeyCode::Enter, KeyMod::NONE);
+    h.run_cycles(3);
+
+    // Commit via git2
+    let repo = git2::Repository::open(dir.path()).unwrap();
+    let mut index = repo.index().unwrap();
+    index.add_path(std::path::Path::new("f.txt")).unwrap();
+    index.write().unwrap();
+    let tree_id = index.write_tree().unwrap();
+    let tree = repo.find_tree(tree_id).unwrap();
+    let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "add line", &tree, &[&head])
+        .unwrap();
+
+    // Save again to trigger gutter sign refresh (save calls refresh_gutter_signs)
+    h.inject_key(KeyCode::Char(':'), KeyMod::NONE);
+    h.inject_str("w");
+    h.inject_key(KeyCode::Enter, KeyMod::NONE);
+    h.run_cycles(5);
+
+    assert!(
+        !h.content_contains("▎"),
+        "gutter sign ▎ should be gone after commit (working tree matches HEAD)"
+    );
+}

@@ -53,7 +53,6 @@ fn find_highlight_cells(buf: &txv_core::buffer::Buffer) -> bool {
     use txv_core::cell::Color;
     let w = buf.width();
     let h = buf.height();
-    // Default palette: highlight_match bg = Rgb(0x44,0x44,0x00), highlight_other bg = Rgb(0x00,0x44,0x00)
     let match_bg = Color::Rgb(0x44, 0x44, 0x00);
     let other_bg = Color::Rgb(0x00, 0x44, 0x00);
     for y in 1..h.saturating_sub(1) {
@@ -65,4 +64,40 @@ fn find_highlight_cells(buf: &txv_core::buffer::Buffer) -> bool {
         }
     }
     false
+}
+
+/// Check that search highlight cells contain the character 'a' with non-default bg.
+fn has_highlighted_char(buf: &txv_core::buffer::Buffer, ch: char) -> bool {
+    use txv_core::cell::Color;
+    let w = buf.width();
+    let h = buf.height();
+    for y in 1..h.saturating_sub(1) {
+        for x in 0..w {
+            let cell = buf.cell(x, y);
+            if cell.ch() == ch && cell.style().bg() != Color::Reset {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn search_highlight_visible_on_cells() {
+    let dir = temp_project(&[("f.txt", "aaa bbb aaa ccc aaa")]);
+    let mut h = TestHarness::new(dir.path());
+    h.run_cycles(2);
+    open_and_focus(&mut h, &dir.path().join("f.txt"));
+
+    // Search for /aaa
+    h.inject_key(KeyCode::Char('/'), KeyMod::default());
+    h.inject_str("aaa");
+    h.inject_key(KeyCode::Enter, KeyMod::default());
+    h.run_cycles(3);
+
+    let buf = h.backend.buffer().unwrap();
+    assert!(
+        has_highlighted_char(buf, 'a'),
+        "at least one 'a' cell should have non-default background (search highlight)"
+    );
 }
