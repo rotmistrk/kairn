@@ -9,7 +9,7 @@ use crate::commands::*;
 use crate::editor::Editor;
 
 impl KairnDelegate {
-    pub(crate) fn handle_action_post(&mut self, action: &EditorAction, _editor: &Editor) {
+    pub(crate) fn handle_action_post(&mut self, action: &EditorAction, editor: &Editor) {
         match action {
             EditorAction::ContentChanged => {
                 self.last_edit_tick = u64::MAX;
@@ -29,11 +29,11 @@ impl KairnDelegate {
             EditorAction::BuiltinFormat(args) => {
                 self.emit(CM_EXECUTE_COMMAND, Some(Box::new(format!("fmt! {args}"))));
             }
-            _ => self.handle_action_extended(action),
+            _ => self.handle_action_extended(action, editor),
         }
     }
 
-    fn handle_action_extended(&mut self, action: &EditorAction) {
+    fn handle_action_extended(&mut self, action: &EditorAction, editor: &Editor) {
         match action {
             EditorAction::Diff(args) => self.pending_diff = Some(args.clone()),
             EditorAction::NoDiff => {
@@ -46,10 +46,10 @@ impl KairnDelegate {
                 self.dirty = true;
             }
             EditorAction::Revert => self.pending_revert = true,
-            EditorAction::LspGotoDefinition => self.emit_lsp_pos(CM_LSP_GOTO_DEF),
-            EditorAction::LspGotoShow => self.emit_lsp_pos(CM_LSP_GOTO_SHOW),
-            EditorAction::LspFindReferences => self.emit_lsp_pos(CM_LSP_FIND_REFS),
-            EditorAction::LspHover => self.emit_lsp_pos(CM_LSP_HOVER),
+            EditorAction::LspGotoDefinition => self.emit_lsp_pos(CM_LSP_GOTO_DEF, editor),
+            EditorAction::LspGotoShow => self.emit_lsp_pos(CM_LSP_GOTO_SHOW, editor),
+            EditorAction::LspFindReferences => self.emit_lsp_refs(editor),
+            EditorAction::LspHover => self.emit_lsp_pos(CM_LSP_HOVER, editor),
             EditorAction::Split(arg) => self.emit_split(arg, false),
             EditorAction::Vsplit(arg) => self.emit_split(arg, true),
             EditorAction::Only => self.emit(CM_SPLIT_CLOSE, None),
@@ -76,8 +76,33 @@ impl KairnDelegate {
         self.emit(CM_SPLIT, Some(Box::new(req)));
     }
 
-    fn emit_lsp_pos(&mut self, cmd_id: u16) {
-        let data = (self.path.clone(), 0u32, 0u32);
+    fn emit_lsp_pos(&mut self, cmd_id: u16, editor: &Editor) {
+        let line = editor.cursor_line() as u32;
+        let col = editor.cursor_col() as u32;
+        let data = (self.path.clone(), line, col);
         self.emit(cmd_id, Some(Box::new(data)));
+    }
+
+    fn emit_lsp_refs(&mut self, editor: &Editor) {
+        let line = editor.cursor_line() as u32;
+        let col = editor.cursor_col() as u32;
+        let word = Self::word_at_cursor(editor);
+        let data = (self.path.clone(), line, col, word);
+        self.emit(CM_LSP_FIND_REFS, Some(Box::new(data)));
+    }
+
+    fn word_at_cursor(editor: &Editor) -> String {
+        let text = editor.buf().line(editor.cursor_line()).unwrap_or_default();
+        let c = editor.cursor_col().min(text.len());
+        let start = text[..c]
+            .chars()
+            .rev()
+            .take_while(|ch| ch.is_alphanumeric() || *ch == '_')
+            .count();
+        let end = text[c..]
+            .chars()
+            .take_while(|ch| ch.is_alphanumeric() || *ch == '_')
+            .count();
+        text[c - start..c + end].to_string()
     }
 }

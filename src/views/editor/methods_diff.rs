@@ -6,7 +6,10 @@ use super::EditorView;
 use crate::commands::{CM_FILE_CLOSED, CM_FS_CHANGED, CM_TAB_CLOSE};
 
 impl EditorView {
-    pub fn toggle_diff(&mut self, _args: &str) {}
+    pub fn toggle_diff(&mut self, args: &str) {
+        let dm = self.inner.delegate_mut();
+        dm.pending_diff = Some(args.to_string());
+    }
 
     pub fn set_diff_state(&mut self, state: super::diff_model::DiffState) {
         *self.inner.delegate_mut().diff_state_mut() = Some(state);

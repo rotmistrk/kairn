@@ -145,6 +145,7 @@ pub(crate) fn cmd_clipboard(ctx: &mut CommandContext, state: &mut AppState, _arg
 pub(crate) fn cmd_problems(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         focus_tab_by_title(desktop, SlotId::Tools, "Problems");
+        desktop.set_hidden(SlotId::Tools as usize, false);
         desktop.focus_panel(SlotId::Tools as usize);
     }
 }
