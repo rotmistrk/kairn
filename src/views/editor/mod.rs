@@ -125,6 +125,7 @@ impl View for EditorView {
         let old_mode = self.inner.editor().mode();
         let result = self.inner.handle(event);
         self.flush_pending();
+        self.inner.ensure_cursor_visible();
         let new_mode = self.inner.editor().mode();
         if new_mode != old_mode {
             use crate::commands::CM_MODE_CHANGED;

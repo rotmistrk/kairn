@@ -56,7 +56,6 @@ impl KairnDelegate {
                 let target = (line as usize).min(max);
                 editor.set_cursor_line(target);
                 editor.set_cursor_col(col as usize);
-                Self::ensure_line_visible(editor, target);
                 self.dirty = true;
                 return HandleResult::Consumed;
             }
