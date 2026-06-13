@@ -273,7 +273,7 @@ impl AppState {
         let is_light = self
             .theme_state
             .as_ref()
-            .map(|ts| ts.borrow().mode == ThemeMode::Light)
+            .map(|ts| ts.borrow().mode() == ThemeMode::Light)
             .unwrap_or(false);
         self.settings.syntax_theme_for_mode(is_light)
     }

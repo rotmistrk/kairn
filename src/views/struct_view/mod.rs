@@ -96,7 +96,7 @@ impl StructuredView {
     }
 
     pub fn save(&mut self) -> Result<(), String> {
-        let content = self.tree.data_mut().doc.serialize();
+        let content = self.tree.data_mut().doc().serialize();
         fs::write(&self.path, &content).map_err(|e| e.to_string())?;
         self.dirty = false;
         self.sync_title();
@@ -108,7 +108,7 @@ impl StructuredView {
     }
 
     pub(crate) fn sync_scroll(&mut self) {
-        let max = self.tree.data_mut().visible_nodes.len().saturating_sub(1);
+        let max = self.tree.data_mut().visible_nodes().len().saturating_sub(1);
         if self.tree.cursor() > max {
             self.tree.set_cursor(max);
         } else {
@@ -117,7 +117,7 @@ impl StructuredView {
     }
 
     pub(crate) fn clamp_cursor(&mut self) {
-        let max = self.tree.data_mut().visible_nodes.len().saturating_sub(1);
+        let max = self.tree.data_mut().visible_nodes().len().saturating_sub(1);
         if self.tree.cursor() > max {
             self.tree.set_cursor(max);
         }
@@ -129,26 +129,26 @@ impl StructuredView {
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_else(|| "structured".to_string());
-        let filter_mark = if self.tree.data_mut().filter_text.is_empty() {
+        let filter_mark = if self.tree.data_mut().filter_text().is_empty() {
             String::new()
         } else {
-            format!(" [filter: {}]", self.tree.data_mut().filter_text)
+            format!(" [filter: {}]", self.tree.data_mut().filter_text())
         };
         self.display_title = format!("{name}{filter_mark}");
     }
 
     pub(crate) fn save_undo_point(&mut self) {
-        let snapshot = self.tree.data_mut().doc.snapshot();
+        let snapshot = self.tree.data_mut().doc().snapshot();
         self.undo_stack.save_state(&snapshot);
     }
 
     pub(crate) fn apply_undo(&mut self) {
-        let current = self.tree.data_mut().doc.snapshot();
+        let current = self.tree.data_mut().doc().snapshot();
         self.undo_stack.bookmark_current(&current);
         let Some(snapshot) = self.undo_stack.undo().map(|s| s.to_string()) else {
             return;
         };
-        if self.tree.data_mut().doc.restore(&snapshot).is_ok() {
+        if self.tree.data_mut().doc_mut().restore(&snapshot).is_ok() {
             self.rebuild_visible();
             self.clamp_cursor();
             self.tree.state_mut().mark_dirty();
@@ -159,7 +159,7 @@ impl StructuredView {
         let Some(snapshot) = self.undo_stack.redo().map(|s| s.to_string()) else {
             return;
         };
-        if self.tree.data_mut().doc.restore(&snapshot).is_ok() {
+        if self.tree.data_mut().doc_mut().restore(&snapshot).is_ok() {
             self.rebuild_visible();
             self.clamp_cursor();
             self.tree.state_mut().mark_dirty();

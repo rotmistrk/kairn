@@ -9,7 +9,7 @@ impl EditorView {
     pub fn toggle_diff(&mut self, _args: &str) {}
 
     pub fn set_diff_state(&mut self, state: super::diff_model::DiffState) {
-        self.inner.delegate_mut().diff_state = Some(state);
+        *self.inner.delegate_mut().diff_state_mut() = Some(state);
         let status = self.editor().status().to_string();
         if !status.is_empty() {
             let msg = Message::info("editor", status);
@@ -23,7 +23,7 @@ impl EditorView {
 
     pub fn revert_hunk(&mut self) -> Result<String, String> {
         use super::diff_model::is_change;
-        let ds = self.inner.delegate().diff_state.as_ref().ok_or("Not in diff mode")?;
+        let ds = self.inner.delegate().diff_state_ref().as_ref().ok_or("Not in diff mode")?;
         let cursor = ds.cursor;
         if cursor >= ds.lines.len() {
             return Err("Cursor out of range".to_string());
@@ -32,10 +32,10 @@ impl EditorView {
             return Err("Cursor not on a change".to_string());
         }
         let (start, end) = Self::find_hunk_bounds(&ds.lines, cursor);
-        let ds = self.inner.delegate().diff_state.as_ref().ok_or("Not in diff mode")?;
+        let ds = self.inner.delegate().diff_state_ref().as_ref().ok_or("Not in diff mode")?;
         let (buf_lines, deleted_text, insert_line) = Self::collect_hunk_data(ds, start, end);
         self.apply_revert(&buf_lines, &deleted_text, insert_line);
-        self.inner.delegate_mut().diff_state = None;
+        *self.inner.delegate_mut().diff_state_mut() = None;
         self.inner.mark_dirty();
         Ok("Hunk reverted".to_string())
     }
@@ -121,10 +121,10 @@ impl EditorView {
     }
 
     fn flush_force_close(&mut self) {
-        if !self.inner.delegate().force_close {
+        if !self.inner.delegate().is_force_close() {
             return;
         }
-        self.inner.delegate_mut().force_close = false;
+        self.inner.delegate_mut().set_force_close(false);
         self.editor_mut().buf().mark_saved();
         let p = self.path().to_string_lossy().to_string();
         self.inner.put_command(CM_FILE_CLOSED, Some(Box::new(p)));
@@ -132,10 +132,10 @@ impl EditorView {
     }
 
     fn flush_diff(&mut self) {
-        if self.inner.delegate().pending_diff.is_none() {
+        if self.inner.delegate().pending_diff_ref().is_none() {
             return;
         }
-        let args = self.inner.delegate_mut().pending_diff.take().unwrap_or_default();
+        let args = self.inner.delegate_mut().take_pending_diff().unwrap_or_default();
         use crate::diff::git_file_content;
         use crate::views::editor::diff_model::{build_diff_lines, is_change, parse_diff_args, DiffState};
         let d = self.inner.delegate();
@@ -158,29 +158,30 @@ impl EditorView {
             format!("[no changes vs {}]", base_ref)
         };
         self.editor_mut().set_status(status);
-        self.inner.delegate_mut().diff_state = Some(DiffState::new(lines, 0, base_ref, opts.context, opts.ignore_ws));
-        self.inner.delegate_mut().dirty = true;
+        let ds = DiffState::new(lines, 0, base_ref, opts.context, opts.ignore_ws);
+        *self.inner.delegate_mut().diff_state_mut() = Some(ds);
+        self.inner.delegate_mut().set_dirty(true);
     }
 
     fn flush_revert(&mut self) {
-        if self.inner.delegate().pending_revert {
-            self.inner.delegate_mut().pending_revert = false;
+        if self.inner.delegate().is_pending_revert() {
+            self.inner.delegate_mut().set_pending_revert(false);
             let _ = self.revert_hunk();
         }
     }
 
     fn flush_nodiff(&mut self) {
-        if self.inner.delegate().pending_nodiff {
-            self.inner.delegate_mut().pending_nodiff = false;
+        if self.inner.delegate().is_pending_nodiff() {
+            self.inner.delegate_mut().set_pending_nodiff(false);
             self.editor_mut().set_status(String::new());
         }
     }
 
     fn flush_save(&mut self) {
-        if !self.inner.delegate().save_requested {
+        if !self.inner.delegate().is_save_requested() {
             return;
         }
-        self.inner.delegate_mut().save_requested = false;
+        self.inner.delegate_mut().set_save_requested(false);
         if self.save_buffer() {
             self.inner.put_broadcast(CM_FS_CHANGED, None);
             let name = self
@@ -208,16 +209,16 @@ impl EditorView {
     }
 
     fn flush_commands(&mut self) {
-        let cmds: Vec<_> = self.inner.delegate_mut().pending_commands.drain(..).collect();
+        let cmds: Vec<_> = self.inner.delegate_mut().pending_commands_mut().drain(..).collect();
         for (id, data) in cmds {
             self.inner.put_command(id, data);
         }
-        let bcasts: Vec<_> = self.inner.delegate_mut().pending_broadcasts.drain(..).collect();
+        let bcasts: Vec<_> = self.inner.delegate_mut().pending_broadcasts_mut().drain(..).collect();
         for (id, data) in bcasts {
             self.inner.put_broadcast(id, data);
         }
-        if self.inner.delegate().dirty {
-            self.inner.delegate_mut().dirty = false;
+        if self.inner.delegate().is_dirty() {
+            self.inner.delegate_mut().set_dirty(false);
             self.inner.mark_dirty();
         }
     }

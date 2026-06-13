@@ -145,7 +145,7 @@ fn open_in_existing_split(
     };
     open_into_editor(ev, path, line, col, state);
     let word_range = word_cols_at(ev, line as usize, col as usize);
-    ev.delegate_mut().highlight_word = Some((line as usize, word_range.0, word_range.1));
+    ev.delegate_mut().set_highlight_word(Some((line as usize, word_range.0, word_range.1)));
 }
 
 fn create_split_with_file(
@@ -158,7 +158,7 @@ fn create_split_with_file(
     let mut new_pane = open_new_pane(state, path, line, col);
     if let Some(ev) = new_pane.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) {
         let wr = word_cols_at(ev, line as usize, col as usize);
-        ev.delegate_mut().highlight_word = Some((line as usize, wr.0, wr.1));
+        ev.delegate_mut().set_highlight_word(Some((line as usize, wr.0, wr.1)));
     }
 
     let title = desktop

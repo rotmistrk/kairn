@@ -24,7 +24,7 @@ impl TodoTreeView {
         let id = self.inner_mut().data_mut().visible_id(cursor);
         if let Some(path) = self.inner_mut().data_mut().path_at(id) {
             let path = path.clone();
-            if let Some(item) = model::get_item(&self.inner_mut().data_mut().file, &path) {
+            if let Some(item) = model::get_item(self.inner_mut().data_mut().file(), &path) {
                 let note = item.note.clone();
                 self.group
                     .put_command(CM_TODO_NOTE_UPDATE, Some(Box::new((path, note))));
@@ -39,8 +39,8 @@ impl TodoTreeView {
             let id = self.inner_mut().data_mut().visible_id(cursor);
             if let Some(path) = self.inner_mut().data_mut().path_at(id) {
                 let path = path.clone();
-                model::remove_item(&mut self.inner_mut().data_mut().file, &path);
-                model::propagate_completion(&mut self.inner_mut().data_mut().file, &path);
+                model::remove_item(self.inner_mut().data_mut().file_mut(), &path);
+                model::propagate_completion(self.inner_mut().data_mut().file_mut(), &path);
                 self.inner_mut().data_mut().save();
                 self.inner_mut().data_mut().rebuild_flat();
                 self.mark_tree_dirty();
@@ -55,14 +55,14 @@ impl TodoTreeView {
         };
         match pending {
             CryptoPending::Encrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, &path) {
+                if let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), &path) {
                     if let Err(e) = encrypt_item(item, passphrase) {
                         log::warn!("encrypt failed: {e}");
                     }
                 }
             }
             CryptoPending::Decrypt(path) => {
-                if let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, &path) {
+                if let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), &path) {
                     if let Err(e) = decrypt_item(item, passphrase) {
                         log::warn!("decrypt failed: {e}");
                     }
@@ -100,7 +100,7 @@ impl TodoTreeView {
     }
 
     fn toggle_progress(&mut self, path: &model::TreePath) {
-        let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, path) else {
+        let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), path) else {
             return;
         };
         if !item.items.is_empty() {
@@ -113,7 +113,7 @@ impl TodoTreeView {
     }
 
     fn toggle_pause(&mut self, path: &model::TreePath) {
-        let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, path) else {
+        let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), path) else {
             return;
         };
         if !item.items.is_empty() {
@@ -126,7 +126,7 @@ impl TodoTreeView {
     }
 
     fn priority_change(&mut self, path: &model::TreePath, delta: i8) {
-        let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, path) else {
+        let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), path) else {
             return;
         };
         let current = item.priority.unwrap_or(0);
@@ -140,16 +140,16 @@ impl TodoTreeView {
 
     fn loe_change(&mut self, path: &model::TreePath, up: bool) {
         const FIBONACCI: &[u8] = &[0, 1, 2, 3, 5, 8, 13, 21];
-        let Some(item) = model::get_item_mut(&mut self.inner_mut().data_mut().file, path) else {
+        let Some(item) = model::get_item_mut(self.inner_mut().data_mut().file_mut(), path) else {
             return;
         };
         let current = item.effort.unwrap_or(0);
         if !up && current == 0 {
             // Already at 0 and pressing < — toggle LOE column off if no items have effort.
-            if self.inner_mut().data_mut().show_loe
-                && !self.inner_mut().data_mut().loe_strings.iter().any(|s| s.trim() != "")
+            if self.inner_mut().data_mut().show_loe()
+                && !self.inner_mut().data_mut().loe_strings().iter().any(|s| s.trim() != "")
             {
-                self.inner_mut().data_mut().show_loe = false;
+                self.inner_mut().data_mut().set_show_loe(false);
             }
             return;
         }
@@ -165,8 +165,8 @@ impl TodoTreeView {
         } else {
             Some(new_val)
         };
-        if !self.inner_mut().data_mut().show_loe {
-            self.inner_mut().data_mut().show_loe = true;
+        if !self.inner_mut().data_mut().show_loe() {
+            self.inner_mut().data_mut().set_show_loe(true);
         }
     }
     pub(super) fn clipboard_paste(&self) -> Option<String> {

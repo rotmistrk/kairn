@@ -26,32 +26,32 @@ pub static SET_OPTIONS: &[SetOption] = &[
     SetOption {
         name: "wrap",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.wrap = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_wrap(on),
     },
     SetOption {
         name: "list",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.list = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_list(on),
     },
     SetOption {
         name: "number",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.number = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_number(on),
     },
     SetOption {
         name: "rainbow",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.rainbow = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_rainbow(on),
     },
     SetOption {
         name: "guides",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.guides = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_guides(on),
     },
     SetOption {
         name: "gutter-signs",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults.gutter_signs = on,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_gutter_signs(on),
     },
     SetOption {
         name: "tree.icons",
@@ -129,9 +129,9 @@ fn apply_set_to_panel(panel: &mut txv_widgets::tab_panel::TabPanel, cmd: &str) {
         let cn = ev.editor().options().cursor_normal();
         let ci = ev.editor().options().cursor_insert();
         let cc = ev.editor().options().cursor_command();
-        ev.delegate_mut().settings.cursor_normal = cn;
-        ev.delegate_mut().settings.cursor_insert = ci;
-        ev.delegate_mut().settings.cursor_command = cc;
+        ev.delegate_mut().settings_mut().set_cursor_normal(cn);
+        ev.delegate_mut().settings_mut().set_cursor_insert(ci);
+        ev.delegate_mut().settings_mut().set_cursor_command(cc);
     }
 }
 fn toggle_tree_icons(desktop: &mut dyn txv_core::view::View, on: bool) {

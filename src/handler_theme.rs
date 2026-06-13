@@ -48,7 +48,7 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
     let is_light = state
         .theme_state
         .as_ref()
-        .map(|ts| ts.borrow().mode == ThemeMode::Light)
+        .map(|ts| ts.borrow().mode() == ThemeMode::Light)
         .unwrap_or(false);
     if is_light {
         state.settings.theme_syntax_light = name.clone();

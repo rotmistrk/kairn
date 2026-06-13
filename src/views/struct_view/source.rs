@@ -15,6 +15,28 @@ pub struct StructDocSource {
 }
 
 impl StructDocSource {
+    pub fn doc(&self) -> &dyn StructuredDoc {
+        &*self.doc
+    }
+    pub fn doc_mut(&mut self) -> &mut Box<dyn StructuredDoc> {
+        &mut self.doc
+    }
+    pub fn visible_nodes(&self) -> &[NodeId] {
+        &self.visible_nodes
+    }
+    pub fn visible_nodes_mut(&mut self) -> &mut Vec<NodeId> {
+        &mut self.visible_nodes
+    }
+    pub fn filter_text(&self) -> &str {
+        &self.filter_text
+    }
+    pub fn set_filter_text(&mut self, text: String) {
+        self.filter_text = text;
+    }
+    pub fn clear_filter_text(&mut self) {
+        self.filter_text.clear();
+    }
+
     pub fn new(doc: Box<dyn StructuredDoc>) -> Self {
         let mut s = Self {
             doc,

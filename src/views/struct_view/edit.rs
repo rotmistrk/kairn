@@ -11,13 +11,13 @@ impl StructuredView {
     /// Start inline editing for the current cursor position and column focus.
     pub(crate) fn start_edit(&mut self, target: EditTarget) {
         let cursor = self.tree.cursor();
-        let Some(&node_id) = self.tree.data_mut().visible_nodes.get(cursor) else {
+        let Some(&node_id) = self.tree.data_mut().visible_nodes().get(cursor) else {
             return;
         };
         let text = match target {
-            EditTarget::Value => self.tree.data_mut().doc.value_display(node_id).to_owned(),
-            EditTarget::Key => self.tree.data_mut().doc.key(node_id).unwrap_or("").to_owned(),
-            EditTarget::Meta => self.tree.data_mut().doc.meta(node_id).to_owned(),
+            EditTarget::Value => self.tree.data_mut().doc().value_display(node_id).to_owned(),
+            EditTarget::Key => self.tree.data_mut().doc().key(node_id).unwrap_or("").to_owned(),
+            EditTarget::Meta => self.tree.data_mut().doc().meta(node_id).to_owned(),
         };
         self.edit_target = target;
         let mut input = InputLine::new().with_command(CM_OK);
@@ -39,12 +39,12 @@ impl StructuredView {
         let text = self.input_text();
         self.input_line = None;
         let row = self.editing_row.take()?;
-        let &node_id = self.tree.data_mut().visible_nodes.get(row)?;
+        let &node_id = self.tree.data_mut().visible_nodes().get(row)?;
         let result = match self.edit_target {
-            EditTarget::Value => self.tree.data_mut().doc.set_value(node_id, &text),
-            EditTarget::Key => self.tree.data_mut().doc.set_key(node_id, &text),
+            EditTarget::Value => self.tree.data_mut().doc_mut().set_value(node_id, &text),
+            EditTarget::Key => self.tree.data_mut().doc_mut().set_key(node_id, &text),
             EditTarget::Meta => {
-                self.tree.data_mut().doc.set_meta(node_id, &text);
+                self.tree.data_mut().doc_mut().set_meta(node_id, &text);
                 Ok(())
             }
         };

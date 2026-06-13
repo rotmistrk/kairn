@@ -24,6 +24,39 @@ impl EditorSettings {
     pub fn set_autosave(&mut self, v: bool) {
         self.autosave = v;
     }
+    pub fn set_wrap(&mut self, v: bool) {
+        self.wrap = v;
+    }
+    pub fn set_list(&mut self, v: bool) {
+        self.list = v;
+    }
+    pub fn set_number(&mut self, v: bool) {
+        self.number = v;
+    }
+    pub fn set_rainbow(&mut self, v: bool) {
+        self.rainbow = v;
+    }
+    pub fn set_guides(&mut self, v: bool) {
+        self.guides = v;
+    }
+    pub fn set_gutter_signs(&mut self, v: bool) {
+        self.gutter_signs = v;
+    }
+    pub fn set_cursor_normal(&mut self, v: CursorStyle) {
+        self.cursor_normal = v;
+    }
+    pub fn set_cursor_insert(&mut self, v: CursorStyle) {
+        self.cursor_insert = v;
+    }
+    pub fn set_cursor_command(&mut self, v: CursorStyle) {
+        self.cursor_command = v;
+    }
+    pub fn autosave(&self) -> bool {
+        self.autosave
+    }
+    pub fn gutter_signs(&self) -> bool {
+        self.gutter_signs
+    }
 }
 
 impl Default for EditorSettings {

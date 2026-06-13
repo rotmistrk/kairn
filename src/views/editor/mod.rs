@@ -11,6 +11,7 @@
 
 mod build;
 mod delegate;
+mod delegate_accessors;
 mod delegate_diff;
 pub mod diff_model;
 pub mod diff_opts;
@@ -102,19 +103,22 @@ impl View for EditorView {
     }
     fn render(&mut self) -> bool {
         // Sync before render
-        self.inner.delegate_mut().settings.number = self.inner.editor().options().number();
+        let num = self.inner.editor().options().number();
+        self.inner.delegate_mut().settings_mut().set_number(num);
         let rendered = self.inner.render();
         // Post-render: draw completion popup
-        if rendered && self.inner.delegate().completion_popup.visible {
+        if rendered && self.inner.delegate().completion_visible() {
             let d = self.inner.delegate_mut();
             let popup = mem::take(&mut d.completion_popup);
             popup.draw(self.inner.buffer_mut());
-            self.inner.delegate_mut().completion_popup = popup;
+            let d2 = self.inner.delegate_mut();
+            d2.completion_popup = popup;
         }
         rendered
     }
     fn draw(&mut self) {
-        self.inner.delegate_mut().settings.number = self.inner.editor().options().number();
+        let num = self.inner.editor().options().number();
+        self.inner.delegate_mut().settings_mut().set_number(num);
         self.inner.draw();
     }
     fn handle(&mut self, event: &Event) -> HandleResult {

@@ -10,8 +10,8 @@ use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 
 impl TodoTreeView {
     pub(super) fn handle_normal_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
-        if key.code() == KeyCode::Esc && !self.inner_mut().data_mut().filter_text.is_empty() {
-            self.inner_mut().data_mut().filter_text.clear();
+        if key.code() == KeyCode::Esc && !self.inner_mut().data_mut().filter_text().is_empty() {
+            self.inner_mut().data_mut().clear_filter_text();
             self.inner_mut().data_mut().rebuild_flat();
             self.inner_mut().set_cursor(0);
             self.mark_tree_dirty();
@@ -84,8 +84,9 @@ impl TodoTreeView {
     pub(super) fn handle_filter_key(&mut self, key: &KeyEvent, event: &Event) -> HandleResult {
         let result = self.group.dispatch(event);
         self.drain_child_sink();
-        if let Some(input) = self.input_line_mut() {
-            self.inner_mut().data_mut().filter_text = input.text().to_string();
+        let text = self.input_line_mut().map(|input| input.text().to_string());
+        if let Some(text) = text {
+            self.inner_mut().data_mut().set_filter_text(text);
         }
         self.inner_mut().data_mut().rebuild_flat();
         self.inner_mut().set_cursor(0);

@@ -12,11 +12,12 @@ use crate::gutter_signs::compute_gutter_signs;
 impl EditorView {
     pub fn refresh_gutter_signs(&mut self) {
         let d = self.inner.delegate();
-        if !d.settings.gutter_signs {
-            self.inner.delegate_mut().gutter_signs.clear();
+        if !d.settings().gutter_signs() {
+            let dm = self.inner.delegate_mut();
+            dm.gutter_signs.clear();
             return;
         }
-        let root = d.root_dir.clone();
+        let root = d.root_dir().clone();
         let rel = self
             .path()
             .strip_prefix(&root)
@@ -24,7 +25,9 @@ impl EditorView {
             .to_string_lossy()
             .to_string();
         let content = self.editor().buf().content();
-        self.inner.delegate_mut().gutter_signs = compute_gutter_signs(&root, &rel, &content);
+        let signs = compute_gutter_signs(&root, &rel, &content);
+        let dm = self.inner.delegate_mut();
+        dm.gutter_signs = signs;
     }
 
     pub fn save_now(&mut self) -> bool {
@@ -33,9 +36,10 @@ impl EditorView {
 
     pub(crate) fn save_buffer(&mut self) -> bool {
         let content = self.editor().buf().content();
-        if self.inner.delegate_mut().store.save(&content).is_ok() {
+        if self.inner.delegate_mut().store_mut().save(&content).is_ok() {
             self.editor_mut().buf().mark_saved();
-            self.inner.delegate_mut().disk_mtime = metadata(self.path()).and_then(|m| m.modified()).ok();
+            let mtime = metadata(self.path()).and_then(|m| m.modified()).ok();
+            self.inner.delegate_mut().set_disk_mtime(mtime);
             self.refresh_gutter_signs();
             true
         } else {
@@ -45,17 +49,17 @@ impl EditorView {
 
     pub fn save(&mut self) -> Result<(), String> {
         let content = self.editor().buf().content();
-        self.inner.delegate_mut().store.save(&content)?;
+        self.inner.delegate_mut().store_mut().save(&content)?;
         self.editor_mut().buf().mark_saved();
         Ok(())
     }
 
     pub fn language(&self) -> &str {
-        &self.inner.delegate().file_ext
+        self.inner.delegate().file_ext()
     }
 
     pub fn apply_settings(&mut self) {
-        let s = self.inner.delegate().settings.clone();
+        let s = self.inner.delegate().settings().clone();
         let opts = self.editor_mut().options_mut();
         opts.set_wrap(s.wrap);
         opts.set_list(s.list);
@@ -82,17 +86,19 @@ impl EditorView {
     }
 
     pub fn set_store(&mut self, store: Box<dyn crate::buffer_store::BufferStore>) {
-        self.inner.delegate_mut().store = store;
+        let dm = self.inner.delegate_mut();
+        dm.store = store;
     }
 
     pub fn set_root_dir(&mut self, root: PathBuf) {
-        self.inner.delegate_mut().root_dir = root;
+        let dm = self.inner.delegate_mut();
+        dm.root_dir = root;
         self.refresh_gutter_signs();
     }
 
     pub fn request_close(&mut self) {
-        if !self.inner.delegate().settings.autosave {
-            self.inner.delegate_mut().eviction_close = true;
+        if !self.inner.delegate().autosave() {
+            self.inner.delegate_mut().set_eviction_close(true);
         }
         self.inner.mark_dirty();
     }
@@ -145,15 +151,18 @@ impl EditorView {
             .and_then(|n| n.to_str())
             .unwrap_or("untitled")
             .to_string();
-        self.inner.delegate_mut().display_title = name;
+        let dm = self.inner.delegate_mut();
+        dm.display_title = name;
     }
 
     pub fn set_file_ext(&mut self, ext: &str) {
-        self.inner.delegate_mut().file_ext = ext.to_string();
+        let dm = self.inner.delegate_mut();
+        dm.file_ext = ext.to_string();
     }
 
     pub fn set_display_title(&mut self, title: &str) {
-        self.inner.delegate_mut().display_title = title.to_string();
+        let dm = self.inner.delegate_mut();
+        dm.display_title = title.to_string();
     }
 
     pub fn gutter_width(&self) -> u16 {
@@ -167,13 +176,15 @@ impl EditorView {
         } else {
             let root = d.root_dir.clone();
             let rel = self.path().strip_prefix(&root).unwrap_or(self.path()).to_path_buf();
-            self.inner.delegate_mut().blame_state = Some(blame_async(&root, &rel));
+            let dm = self.inner.delegate_mut();
+            dm.blame_state = Some(blame_async(&root, &rel));
         }
         self.inner.mark_dirty();
     }
 
     pub fn set_diagnostics(&mut self, diagnostics: Vec<crate::lsp::diagnostics::Diagnostic>) {
-        self.inner.delegate_mut().diagnostics = Some(diagnostics);
+        let dm = self.inner.delegate_mut();
+        dm.diagnostics = Some(diagnostics);
         self.inner.mark_dirty();
     }
 
@@ -182,7 +193,7 @@ impl EditorView {
     }
 
     pub fn diagnostic_at_cursor(&self) -> Option<&str> {
-        let diags = self.inner.delegate().diagnostics.as_ref()?;
+        let diags = self.inner.delegate().diagnostics_ref().as_ref()?;
         let line = self.editor().cursor_line();
         diags.iter().find(|d| d.line == line).map(|d| d.message.as_str())
     }

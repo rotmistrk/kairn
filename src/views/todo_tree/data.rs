@@ -37,6 +37,24 @@ impl TodoTreeData {
     pub fn file_mut(&mut self) -> &mut TodoFile {
         &mut self.file
     }
+    pub fn filter_text(&self) -> &str {
+        &self.filter_text
+    }
+    pub fn set_filter_text(&mut self, text: String) {
+        self.filter_text = text;
+    }
+    pub fn clear_filter_text(&mut self) {
+        self.filter_text.clear();
+    }
+    pub fn show_loe(&self) -> bool {
+        self.show_loe
+    }
+    pub fn set_show_loe(&mut self, v: bool) {
+        self.show_loe = v;
+    }
+    pub fn loe_strings(&self) -> &[String] {
+        &self.loe_strings
+    }
 
     pub fn new(file_path: &Path) -> Self {
         let file = model::load_todo_file(file_path);

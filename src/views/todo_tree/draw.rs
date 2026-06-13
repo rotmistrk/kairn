@@ -27,7 +27,7 @@ impl TodoTreeView {
             self.inner_mut().state_mut().set_focused(false);
         }
         // Draw filter status row if active
-        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text.is_empty();
+        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text().is_empty();
         if has_filter {
             let filter_row = h.saturating_sub(1);
             self.draw_filter_status(w, filter_row);
@@ -39,7 +39,7 @@ impl TodoTreeView {
         self.group.buffer_mut().hline(0, filter_row, w, ' ', style);
         self.group.buffer_mut().print(0, filter_row, "/", style);
         if !self.filter_active {
-            let ft = self.inner_mut().data_mut().filter_text.clone();
+            let ft = self.inner_mut().data_mut().filter_text().to_string();
             self.group.buffer_mut().print(1, filter_row, &ft, style);
         }
     }

@@ -249,7 +249,7 @@ pub fn sync_root_badges(ctx: &mut CommandContext, state: &AppState) {
                 .view_at_mut(i)
                 .and_then(|v| v.as_any_mut())
                 .and_then(|any| any.downcast_ref::<EditorView>())
-                .map(|ev| state.roots().root_for(ev.path()).color);
+                .map(|ev| state.roots().root_for(ev.path()).color());
             if let Some(c) = color {
                 let style = Style::default().with_fg(c);
                 panel.bar_mut().set_badge_styled(i, Some(" ●".to_string()), Some(style));

@@ -92,7 +92,7 @@ impl View for TodoTreeView {
         // Position TreeTableView (child 0) — fills area minus optional filter row
         let h = r.h();
         let w = r.w();
-        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text.is_empty();
+        let has_filter = self.filter_active || !self.inner_mut().data_mut().filter_text().is_empty();
         let draw_h = if has_filter {
             h.saturating_sub(1)
         } else {

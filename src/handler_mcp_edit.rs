@@ -101,7 +101,7 @@ pub(crate) fn mcp_get_diagnostics(desktop: &mut TiledWorkspace, name: &str) -> R
         let Some(editor) = any.downcast_ref::<EditorView>() else {
             continue;
         };
-        if let Some(diags) = &editor.delegate().diagnostics {
+        if let Some(diags) = editor.delegate().diagnostics_ref() {
             for d in diags {
                 let severity = match d.severity {
                     Severity::Error => "error",

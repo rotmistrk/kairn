@@ -67,7 +67,7 @@ fn evict_and_insert(
     title: String,
     view: Box<dyn View>,
 ) {
-    if state.settings.editor_defaults.autosave {
+    if state.settings.editor_defaults().autosave() {
         autosave_tab(desktop, slot, lru_idx);
     }
     if let Some(panel) = desktop.panel_mut(slot as usize) {

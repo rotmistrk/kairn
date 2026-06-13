@@ -17,6 +17,10 @@ pub struct ThemeState {
 }
 
 impl ThemeState {
+    pub fn mode(&self) -> ThemeMode {
+        self.mode
+    }
+
     pub fn new(mode: ThemeMode) -> Self {
         let resolved = match mode {
             ThemeMode::Auto => detect_system_theme(),

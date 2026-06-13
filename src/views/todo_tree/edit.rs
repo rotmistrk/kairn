@@ -45,7 +45,7 @@ impl TodoTreeView {
     /// Start filter mode.
     pub(super) fn start_filter(&mut self) {
         let mut input = InputLine::new().with_command(CM_OK);
-        input.set_text(&self.inner_mut().data_mut().filter_text.clone());
+        input.set_text(self.inner_mut().data_mut().filter_text());
         let pal = self.filter_palette();
         let sink = self.child_sink.clone();
         self.group.insert(Box::new(input));
@@ -135,7 +135,7 @@ impl TodoTreeView {
     pub(super) fn cancel_filter(&mut self) {
         self.remove_input_line();
         self.filter_active = false;
-        self.inner_mut().data_mut().filter_text.clear();
+        self.inner_mut().data_mut().clear_filter_text();
         self.inner_mut().data_mut().rebuild_flat();
         self.inner_mut().set_cursor(0);
         let b = self.group.bounds();
@@ -177,7 +177,7 @@ impl TodoTreeView {
                 .set_child_bounds(1, Rect::new(1, filter_row, w.saturating_sub(1), 1));
         } else if let Some(row) = self.editing_row {
             let scroll_offset = self.inner_mut().scroll_offset();
-            let has_filter = !self.inner_mut().data_mut().filter_text.is_empty();
+            let has_filter = !self.inner_mut().data_mut().filter_text().is_empty();
             let draw_h = if has_filter {
                 h.saturating_sub(1)
             } else {

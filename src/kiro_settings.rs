@@ -11,6 +11,12 @@ pub struct KiroLaunchSettings {
     pub(crate) resume_rest: Vec<String>,
 }
 
+impl KiroLaunchSettings {
+    pub fn cmd(&self) -> &[String] {
+        &self.cmd
+    }
+}
+
 impl Default for KiroLaunchSettings {
     fn default() -> Self {
         Self {
