@@ -122,8 +122,26 @@ impl View for EditorView {
         self.inner.draw();
     }
     fn handle(&mut self, event: &Event) -> HandleResult {
+        let old_mode = self.inner.editor().mode();
         let result = self.inner.handle(event);
         self.flush_pending();
+        let new_mode = self.inner.editor().mode();
+        if new_mode != old_mode {
+            use crate::commands::CM_MODE_CHANGED;
+            use crate::editor::keymap::EditorMode;
+            let is_cmdline_transition = matches!(old_mode, EditorMode::Command | EditorMode::Search)
+                || matches!(new_mode, EditorMode::Command | EditorMode::Search);
+            if is_cmdline_transition {
+                let name = match new_mode {
+                    EditorMode::Normal => "NOR",
+                    EditorMode::Insert => "INS",
+                    EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => "VIS",
+                    EditorMode::Command | EditorMode::Search => "CMD",
+                };
+                self.inner
+                    .put_command(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
+            }
+        }
         result
     }
 }
