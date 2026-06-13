@@ -36,12 +36,12 @@ fn send_ex(h: &mut TestHarness, cmd: &str) {
         h.inject_key(KeyCode::Char(ch), KeyMod::default());
     }
     h.inject_key(KeyCode::Enter, KeyMod::default());
-    h.run_cycles(2);
+    h.run_cycles(4);
 }
 
 fn press_key(h: &mut TestHarness, code: KeyCode) {
     h.inject_key(code, KeyMod::default());
-    h.run_cycles(1);
+    h.run_cycles(3);
 }
 
 #[test]

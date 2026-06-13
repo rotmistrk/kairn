@@ -14,6 +14,7 @@ pub enum DiffLine {
 }
 
 /// Diff mode state stored in EditorView.
+#[derive(Clone)]
 pub struct DiffState {
     pub(crate) lines: Vec<DiffLine>,
     pub(crate) scroll: usize,

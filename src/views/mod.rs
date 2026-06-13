@@ -2,6 +2,7 @@
 
 pub mod clipboard_viewer;
 pub mod csv_view;
+pub mod diff_view;
 pub mod editor;
 pub mod git_changes;
 pub mod git_log;

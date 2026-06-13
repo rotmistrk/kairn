@@ -1,9 +1,11 @@
 //! EditorView diff mode + flush_pending.
 
+use std::path::PathBuf;
+
 use txv_core::message::Message;
 
 use super::EditorView;
-use crate::commands::{CM_FILE_CLOSED, CM_FS_CHANGED, CM_TAB_CLOSE};
+use crate::commands::{CM_DIFF_OPEN_VIEW, CM_FILE_CLOSED, CM_FS_CHANGED, CM_TAB_CLOSE};
 
 impl EditorView {
     pub fn toggle_diff(&mut self, args: &str) {
@@ -160,20 +162,24 @@ impl EditorView {
             .to_string_lossy()
             .to_string();
         let root = d.root_dir.clone();
+        let path = d.path.clone();
+        let show_numbers = d.settings.number;
         let base_content = git_file_content(&root, &rel, &opts.base).unwrap_or_default();
         let current = self.editor().buf().content();
         let lines = build_diff_lines(&base_content, &current, &opts);
         let has_changes = lines.iter().any(is_change);
         let base_ref = opts.base.clone();
-        let status = if has_changes {
-            format!("[DIFF vs {}]", base_ref)
-        } else {
-            format!("[no changes vs {}]", base_ref)
-        };
-        self.editor_mut().set_status(status);
+        if !has_changes {
+            let msg = format!("[no changes vs {}]", base_ref);
+            self.editor_mut().set_status(msg);
+            self.inner.mark_dirty();
+            return;
+        }
         let ds = DiffState::new(lines, 0, base_ref, opts.context, opts.ignore_ws);
-        *self.inner.delegate_mut().diff_state_mut() = Some(ds);
-        self.inner.delegate_mut().set_dirty(true);
+        // Store on delegate for revert access, and emit view for display
+        *self.inner.delegate_mut().diff_state_mut() = Some(ds.clone());
+        let data: (DiffState, String, PathBuf, bool) = (ds, current, path, show_numbers);
+        self.inner.put_command(CM_DIFF_OPEN_VIEW, Some(Box::new(data)));
     }
 
     fn flush_revert(&mut self) {

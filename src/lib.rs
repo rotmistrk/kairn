@@ -51,6 +51,7 @@ pub mod handler_clipboard;
 pub mod handler_close;
 pub mod handler_confirm;
 pub mod handler_context;
+pub mod handler_diff_view;
 pub mod handler_dired;
 pub mod handler_drain;
 pub mod handler_evict;

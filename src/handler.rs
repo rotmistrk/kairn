@@ -19,6 +19,7 @@ use crate::handler_clipboard::{handle_clipboard_commands, update_problems_view};
 use crate::handler_close::{handle_app_quit, handle_file_closed, handle_save_all, handle_tab_close};
 use crate::handler_confirm::{handle_confirm_response, handle_set_confirm_context};
 use crate::handler_context::{broadcast_context, handle_cursor_moved, update_window_title};
+use crate::handler_diff_view::{handle_diff_exit, handle_diff_open_view, handle_diff_revert};
 use crate::handler_drain::{
     drain_build, drain_grep, handle_todo_action, open_todo_note, refresh_plugins, save_todo_note, update_todo_note,
 };
@@ -179,6 +180,9 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_FOCUS => handle_split_focus(ctx),
         CM_SPLIT_LINKED => handle_split_linked(ctx, state),
         CM_DIFF_SPLIT => handle_diff_split(ctx, state),
+        CM_DIFF_OPEN_VIEW => handle_diff_open_view(ctx),
+        CM_DIFF_EXIT => handle_diff_exit(ctx),
+        CM_DIFF_REVERT => handle_diff_revert(ctx),
         CM_TW_SPLIT_H => handle_split_h(ctx, state),
         CM_TW_SPLIT_V => handle_split_v(ctx, state),
         CM_TOGGLE_THEME => handle_toggle_theme(ctx, state),

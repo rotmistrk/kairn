@@ -112,7 +112,7 @@ pub const CM_EDITOR_REPLACE_WORD: CommandId = CM_APP_BASE + 132;
 pub const CM_EDITOR_SEARCH: CommandId = CM_APP_BASE + 133;
 pub const CM_EDITOR_CLEAR_HIGHLIGHT: CommandId = CM_APP_BASE + 134;
 pub const CM_EDITOR_SET: CommandId = CM_APP_BASE + 135;
-pub const CM_DIFF_REVERT: CommandId = CM_APP_BASE + 135;
+pub const CM_DIFF_REVERT: CommandId = CM_APP_BASE + 136;
 
 // Hook triggers from editor
 pub const CM_CHAR_INSERTED: CommandId = CM_APP_BASE + 140;
@@ -166,3 +166,5 @@ pub const CM_FS_CHANGED: CommandId = CM_APP_BASE + 191;
 pub const CM_OPEN_FILES_CHANGED: CommandId = CM_APP_BASE + 192;
 /// File finder (Ctrl+P) submit — data is the relative path string.
 pub const CM_FILE_FINDER_OPEN: CommandId = CM_APP_BASE + 193;
+pub const CM_DIFF_EXIT: CommandId = CM_APP_BASE + 194;
+pub const CM_DIFF_OPEN_VIEW: CommandId = CM_APP_BASE + 195;

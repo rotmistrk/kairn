@@ -25,13 +25,13 @@ fn diff_does_not_modify_content() {
 
 #[test]
 fn diff_sets_status() {
-    let mut view = EditorView::from_text("hello\nworld\n");
+    let mut view = EditorView::from_text("");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
-    // No git repo → diff against empty base, enters diff mode
+    // Empty content vs empty base (no git) → no changes → status set
     assert!(
-        view.editor().status().contains("DIFF"),
-        "status should mention DIFF: {:?}",
+        view.editor().status().contains("no changes"),
+        "status should mention no changes: {:?}",
         view.editor().status()
     );
 }
