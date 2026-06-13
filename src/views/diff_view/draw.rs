@@ -27,15 +27,15 @@ struct DrawCtx {
 impl DiffView {
     pub(super) fn draw_unified(&mut self) {
         let dc = self.build_draw_ctx();
-        let h = self.height();
+        let draw_h = self.content_height();
 
-        for row in 0..h {
+        for row in 0..draw_h {
             let vi = self.ds.scroll + row;
             let y = row as u16;
-            let is_cursor = vi == self.ds.cursor && self.state.is_focused();
+            let is_cursor = vi == self.ds.cursor;
 
             if vi >= self.ds.lines.len() {
-                self.state.buffer_mut().print_line(0, y, "~", dc.w, dc.context_style);
+                self.group.buffer_mut().print_line(0, y, "~", dc.w, dc.context_style);
                 continue;
             }
             let line = self.ds.lines[vi].clone();
@@ -66,7 +66,7 @@ impl DiffView {
             deleted_style: app.diff().deleted(),
             context_style: Style::default(),
             fold_style: app.diff().fold(),
-            cursor_style: if self.state.is_focused() {
+            cursor_style: if self.group.is_focused() {
                 pal.style(StyleId::CursorFocused)
             } else {
                 pal.style(StyleId::CursorUnfocused)
@@ -84,7 +84,7 @@ impl DiffView {
                 } else {
                     dc.context_style
                 };
-                draw_text(self.state.buffer_mut(), dc.text_x, y, dc.avail, text, st);
+                draw_text(self.group.buffer_mut(), dc.text_x, y, dc.avail, text, st);
             }
             DiffLine::Added { buf_line } => {
                 self.draw_gutter(0, y, dc.dw, None, Some(*buf_line), dc.gutter_style);
@@ -94,7 +94,7 @@ impl DiffView {
                 } else {
                     dc.added_style
                 };
-                draw_text(self.state.buffer_mut(), dc.text_x, y, dc.avail, text, st);
+                draw_text(self.group.buffer_mut(), dc.text_x, y, dc.avail, text, st);
             }
             DiffLine::Deleted { text, base_line } => {
                 self.draw_gutter(0, y, dc.dw, Some(*base_line), None, dc.gutter_style);
@@ -103,7 +103,7 @@ impl DiffView {
                 } else {
                     dc.deleted_style
                 };
-                draw_text(self.state.buffer_mut(), dc.text_x, y, dc.avail, text, st);
+                draw_text(self.group.buffer_mut(), dc.text_x, y, dc.avail, text, st);
             }
             DiffLine::Folded { count } => {
                 let label = format!("--- {count} lines ---");
@@ -112,7 +112,7 @@ impl DiffView {
                 } else {
                     dc.fold_style
                 };
-                self.state.buffer_mut().print_line(0, y, &label, dc.w, st);
+                self.group.buffer_mut().print_line(0, y, &label, dc.w, st);
             }
         }
     }
@@ -130,7 +130,7 @@ impl DiffView {
             None => " ".repeat(dw),
         };
         let gutter = format!("{left} {right} ");
-        self.state.buffer_mut().print(x, y, &gutter, style);
+        self.group.buffer_mut().print(x, y, &gutter, style);
     }
 
     fn max_base_line(&self) -> usize {
