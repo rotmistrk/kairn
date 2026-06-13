@@ -50,7 +50,6 @@ impl View for LspStatusItem {
         if !self.label.is_empty() {
             self.state.buffer_mut().print(1, 0, &self.label, style);
         }
-        self.state.mark_redrawn();
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

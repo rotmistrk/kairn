@@ -31,13 +31,11 @@ pub(super) fn draw(view: &mut ProblemsView) {
 
     if view.entries.is_empty() {
         buf.print(1, 0, "No problems", normal);
-        view.state.mark_redrawn();
         return;
     }
 
     adjust_scroll(view, h);
     draw_entries(view, w, h);
-    view.state.mark_redrawn();
 }
 
 fn adjust_scroll(view: &mut ProblemsView, h: usize) {

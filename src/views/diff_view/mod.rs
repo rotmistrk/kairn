@@ -80,6 +80,9 @@ impl View for DiffView {
     fn buffer(&self) -> &Buffer {
         self.state.buffer()
     }
+    fn needs_redraw(&self) -> bool {
+        self.state.is_dirty()
+    }
     fn draw(&mut self) {
         self.draw_unified();
     }

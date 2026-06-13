@@ -32,7 +32,6 @@ pub(super) fn draw_label(state: &mut ViewState, label: &str) {
     if !label.is_empty() {
         render_styled_text(state.buffer_mut(), label, style, bold_style);
     }
-    state.mark_redrawn();
 }
 
 /// Render text with ~ as style toggle into buffer starting at (1, 0).
