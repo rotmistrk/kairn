@@ -6,12 +6,13 @@ use txv_core::message::Message;
 use txv_core::program::CommandContext;
 
 use crate::desktop::SlotId;
-use crate::handler::downcast_desktop;
+use crate::handler::{downcast_desktop, AppState};
+use crate::handler_evict::try_insert_tab;
 use crate::views::diff_view::DiffView;
 use crate::views::editor::diff_model::DiffState;
 use crate::views::editor::EditorView;
 
-pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext) {
+pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
@@ -26,10 +27,8 @@ pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext) {
     let show_numbers = *show_numbers;
     let sbs = *sbs;
     let base_text = base_text.clone();
+    let sink = ctx.sink().clone();
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
-        return;
-    };
-    let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
         return;
     };
     let title = format!(
@@ -42,9 +41,7 @@ pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext) {
     } else {
         DiffView::new(ds, &content, path, show_numbers)
     };
-    panel.insert_tab(title, Box::new(diff_view));
-    let new_idx = panel.tab_count() - 1;
-    panel.set_active(new_idx);
+    try_insert_tab(desktop, state, &sink, SlotId::Center, title, Box::new(diff_view));
 }
 
 pub(crate) fn handle_diff_exit(ctx: &mut CommandContext) {

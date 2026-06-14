@@ -176,7 +176,7 @@ fn dispatch_extended_cmd(ctx: &mut CommandContext, state: &mut AppState) {
         CM_SPLIT_FOCUS => handle_split_focus(ctx),
         CM_SPLIT_LINKED => handle_split_linked(ctx, state),
         CM_DIFF_SPLIT => handle_diff_split(ctx, state),
-        CM_DIFF_OPEN_VIEW => handle_diff_open_view(ctx),
+        CM_DIFF_OPEN_VIEW => handle_diff_open_view(ctx, state),
         CM_DIFF_EXIT => handle_diff_exit(ctx),
         CM_DIFF_REVERT => handle_diff_revert(ctx),
         CM_TW_SPLIT_H => handle_split_h(ctx, state),
