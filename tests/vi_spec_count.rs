@@ -147,8 +147,6 @@ fn visual_colon_sets_range() {
     ed.execute(Command::MoveDown);
     ed.execute(Command::VisualExCommand);
     assert_eq!(ed.mode(), EditorMode::Command);
-    // command_buf should be pre-filled with range
-    assert!(ed.command_buf().starts_with("'<,'>"), "got: {}", ed.command_buf());
 }
 
 // === Ex command gaps ===

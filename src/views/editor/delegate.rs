@@ -47,6 +47,8 @@ pub struct KairnDelegate {
     pub(crate) pending_diff: Option<String>,
     pub(crate) pending_revert: bool,
     pub(crate) pending_nodiff: bool,
+    pub(crate) search_hist: Option<txv_core::shared_history::SharedHistory>,
+    pub(crate) cmd_hist: Option<txv_core::shared_history::SharedHistory>,
 }
 
 impl KairnDelegate {
@@ -77,6 +79,8 @@ impl KairnDelegate {
             pending_diff: None,
             pending_revert: false,
             pending_nodiff: false,
+            search_hist: None,
+            cmd_hist: None,
         }
     }
 
@@ -255,5 +259,13 @@ impl EditorViewDelegate for KairnDelegate {
             self.root_dir.clone(),
             self.command_list.clone(),
         )))
+    }
+
+    fn search_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
+        self.search_hist.clone()
+    }
+
+    fn command_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
+        self.cmd_hist.clone()
     }
 }
