@@ -5,8 +5,9 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Map, Value};
 
-use super::commands::McpCommandQueue;
+use super::commands::{McpAction, McpCommandQueue};
 use super::log::log as mcp_log;
+use super::permissions::{is_write_tool, Permission, PermissionHandle};
 use super::snapshot::McpSnapshot;
 use super::tools;
 
@@ -30,11 +31,20 @@ fn jsonrpc_result(id: &Value, result: &Value) -> Value {
 pub struct McpServer {
     snapshot: Arc<Mutex<McpSnapshot>>,
     cmd_queue: Option<McpCommandQueue>,
+    permissions: Option<PermissionHandle>,
 }
 
 impl McpServer {
-    pub fn new(snapshot: Arc<Mutex<McpSnapshot>>, cmd_queue: Option<McpCommandQueue>) -> Self {
-        Self { snapshot, cmd_queue }
+    pub fn new(
+        snapshot: Arc<Mutex<McpSnapshot>>,
+        cmd_queue: Option<McpCommandQueue>,
+        permissions: Option<PermissionHandle>,
+    ) -> Self {
+        Self {
+            snapshot,
+            cmd_queue,
+            permissions,
+        }
     }
 
     /// Run the server loop: read JSON-RPC lines, dispatch, write responses.
@@ -102,6 +112,12 @@ impl McpServer {
         let empty_map = Map::new();
         let arguments = params.get("arguments").and_then(Value::as_object).unwrap_or(&empty_map);
 
+        // Permission check
+        if let Err(msg) = self.check_permission(tool_name, arguments) {
+            let r = json!({"isError": true, "content": [{"type": "text", "text": msg}]});
+            return jsonrpc_result(id, &r);
+        }
+
         match tools::handle_tool_call(&self.snapshot, self.cmd_queue.as_ref(), tool_name, arguments) {
             Ok(result) => {
                 let text = if result.is_string() {
@@ -121,4 +137,53 @@ impl McpServer {
             }
         }
     }
+
+    fn check_permission(&self, tool_name: &str, args: &Map<String, Value>) -> Result<(), String> {
+        let Some(ref perms) = self.permissions else {
+            return Ok(());
+        };
+        let perm = if let Ok(table) = perms.lock() {
+            table.get(tool_name, is_write_tool(tool_name))
+        } else {
+            Permission::Allow
+        };
+        match perm {
+            Permission::Allow => Ok(()),
+            Permission::Deny => Err(format!("Tool '{tool_name}' is denied by permission policy")),
+            Permission::Confirm => self.request_confirmation(tool_name, args),
+        }
+    }
+
+    fn request_confirmation(&self, tool_name: &str, args: &Map<String, Value>) -> Result<(), String> {
+        let Some(ref cq) = self.cmd_queue else {
+            return Ok(()); // no queue = headless mode, allow
+        };
+        let summary = summarize_args(args);
+        let action = McpAction::ConfirmTool {
+            tool_name: tool_name.to_string(),
+            args_summary: summary,
+        };
+        let result = cq.send(action)?;
+        if result.as_bool() == Some(true) {
+            Ok(())
+        } else {
+            Err(format!("Tool '{tool_name}' denied by user"))
+        }
+    }
+}
+
+fn summarize_args(args: &Map<String, Value>) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    for (k, v) in args.iter().take(3) {
+        let val = match v {
+            Value::String(s) if s.len() > 40 => format!("{}...", &s[..37]),
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        parts.push(format!("{k}={val}"));
+    }
+    if args.len() > 3 {
+        parts.push(format!("(+{} more)", args.len() - 3));
+    }
+    parts.join(", ")
 }

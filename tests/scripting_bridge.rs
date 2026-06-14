@@ -4,7 +4,7 @@ use kairn::scripting::{ScriptCommand, ScriptEngine};
 
 #[test]
 fn editor_open_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor open test.rs").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -13,7 +13,7 @@ fn editor_open_produces_command() {
 
 #[test]
 fn editor_open_with_line_flag() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor open main.rs -line 42").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -22,7 +22,7 @@ fn editor_open_with_line_flag() {
 
 #[test]
 fn editor_save_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor save").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -31,7 +31,7 @@ fn editor_save_produces_command() {
 
 #[test]
 fn editor_goto_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor goto 10 5").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -40,7 +40,7 @@ fn editor_goto_produces_command() {
 
 #[test]
 fn editor_query_returns_snapshot_data() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let ctx = kairn::commands::ViewContext::builder()
         .file("src/main.rs")
         .line(42)
@@ -58,7 +58,7 @@ fn editor_query_returns_snapshot_data() {
 
 #[test]
 fn view_message_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view message error tcl {something broke}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -68,7 +68,7 @@ fn view_message_produces_command() {
 
 #[test]
 fn view_focus_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view focus left").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -77,14 +77,14 @@ fn view_focus_produces_command() {
 
 #[test]
 fn system_platform_returns_value() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("system platform").unwrap();
     assert!(result == "linux" || result == "macos");
 }
 
 #[test]
 fn system_root_dir_returns_snapshot() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let ctx = kairn::commands::ViewContext::default();
     engine.update_snapshot(&ctx, "/home/user/project", "", "", "none", false);
     assert_eq!(engine.eval("system root-dir").unwrap(), "/home/user/project");
@@ -92,7 +92,7 @@ fn system_root_dir_returns_snapshot() {
 
 #[test]
 fn build_run_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build run").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -101,7 +101,7 @@ fn build_run_produces_command() {
 
 #[test]
 fn build_test_with_arg() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build test {cargo test --lib}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -110,7 +110,7 @@ fn build_test_with_arg() {
 
 #[test]
 fn keymap_bind_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("keymap bind ctrl+s save").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -120,7 +120,7 @@ fn keymap_bind_produces_command() {
 
 #[test]
 fn hook_add_and_list() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("hook add file-save {puts saved}").unwrap();
     let result = engine.eval("hook list file-save").unwrap();
     assert!(result.contains("saved"));
@@ -128,7 +128,7 @@ fn hook_add_and_list() {
 
 #[test]
 fn lsp_rename_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("lsp rename new_name").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -137,7 +137,7 @@ fn lsp_rename_produces_command() {
 
 #[test]
 fn git_commit_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git commit {fix bug}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -146,7 +146,7 @@ fn git_commit_produces_command() {
 
 #[test]
 fn todo_add_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo add {write tests}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -155,7 +155,7 @@ fn todo_add_produces_command() {
 
 #[test]
 fn unknown_subcommand_returns_error() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("editor nonexistent");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("unknown subcommand"));
@@ -163,7 +163,7 @@ fn unknown_subcommand_returns_error() {
 
 #[test]
 fn tcl_script_with_variables() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("set x hello").unwrap();
     let result = engine.eval("set x").unwrap();
     assert_eq!(result, "hello");
@@ -171,7 +171,7 @@ fn tcl_script_with_variables() {
 
 #[test]
 fn multiple_commands_in_script() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor save\neditor close").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 2);

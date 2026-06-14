@@ -1,6 +1,9 @@
 //! MCP-related state extracted from AppState.
 
+use std::sync::mpsc::SyncSender;
 use std::sync::{Arc, Mutex};
+
+use serde_json::Value;
 
 use crate::mcp::commands::McpCommandQueue;
 use crate::mcp::snapshot::McpSnapshot;
@@ -13,4 +16,6 @@ pub struct McpState {
     /// MCP command queue for write operations from MCP tools.
     pub(crate) commands: Option<McpCommandQueue>,
     pub(crate) tick: u16,
+    /// Pending confirm reply channel (for tool permission prompts).
+    pub(crate) pending_confirm_reply: Option<SyncSender<Result<Value, String>>>,
 }

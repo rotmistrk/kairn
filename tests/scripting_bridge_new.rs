@@ -6,7 +6,7 @@ use kairn::scripting::{ScriptCommand, ScriptEngine};
 
 #[test]
 fn build_test_file_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build test-file").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -15,7 +15,7 @@ fn build_test_file_produces_command() {
 
 #[test]
 fn build_test_at_cursor_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build test-at-cursor").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -24,7 +24,7 @@ fn build_test_at_cursor_produces_command() {
 
 #[test]
 fn build_next_error_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build next-error").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -33,7 +33,7 @@ fn build_next_error_produces_command() {
 
 #[test]
 fn build_prev_error_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("build prev-error").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -44,7 +44,7 @@ fn build_prev_error_produces_command() {
 
 #[test]
 fn git_untrack_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git untrack src/old.rs").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -53,7 +53,7 @@ fn git_untrack_produces_command() {
 
 #[test]
 fn git_log_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git log").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -62,7 +62,7 @@ fn git_log_produces_command() {
 
 #[test]
 fn git_diff_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git diff").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -71,7 +71,7 @@ fn git_diff_produces_command() {
 
 #[test]
 fn git_blame_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git blame").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -80,7 +80,7 @@ fn git_blame_produces_command() {
 
 #[test]
 fn git_noblame_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("git noblame").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -91,7 +91,7 @@ fn git_noblame_produces_command() {
 
 #[test]
 fn view_theme_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view theme dark").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -100,7 +100,7 @@ fn view_theme_produces_command() {
 
 #[test]
 fn view_theme_toggle() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view theme toggle").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -109,7 +109,7 @@ fn view_theme_toggle() {
 
 #[test]
 fn view_zoom_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view zoom").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -118,7 +118,7 @@ fn view_zoom_produces_command() {
 
 #[test]
 fn view_toggle_tree_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view toggle-tree").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -127,7 +127,7 @@ fn view_toggle_tree_produces_command() {
 
 #[test]
 fn view_toggle_tools_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view toggle-tools").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -136,7 +136,7 @@ fn view_toggle_tools_produces_command() {
 
 #[test]
 fn view_layout_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("view layout").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -147,7 +147,7 @@ fn view_layout_produces_command() {
 
 #[test]
 fn grep_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("grep TODO").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -156,7 +156,7 @@ fn grep_produces_command() {
 
 #[test]
 fn grep_with_spaces() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("grep {fn main}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -167,7 +167,7 @@ fn grep_with_spaces() {
 
 #[test]
 fn todo_add_with_parent() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo add {subtask} -parent 0.1").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -177,7 +177,7 @@ fn todo_add_with_parent() {
 
 #[test]
 fn todo_toggle_important_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo toggle-important 0").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -186,7 +186,7 @@ fn todo_toggle_important_produces_command() {
 
 #[test]
 fn todo_edit_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo edit 0.1 {new title}").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -196,7 +196,7 @@ fn todo_edit_produces_command() {
 
 #[test]
 fn todo_swap_up_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo swap 2 up").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -206,7 +206,7 @@ fn todo_swap_up_produces_command() {
 
 #[test]
 fn todo_swap_down_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo swap 0 down").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -216,7 +216,7 @@ fn todo_swap_down_produces_command() {
 
 #[test]
 fn todo_promote_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo promote 1.0").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -225,7 +225,7 @@ fn todo_promote_produces_command() {
 
 #[test]
 fn todo_demote_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo demote 1").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -234,7 +234,7 @@ fn todo_demote_produces_command() {
 
 #[test]
 fn todo_list_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("todo list").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);

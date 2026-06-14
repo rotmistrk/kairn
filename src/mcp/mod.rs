@@ -9,6 +9,7 @@ pub mod commands;
 pub mod cursor_pos;
 pub mod listener;
 pub mod log;
+pub mod permissions;
 pub mod selection_range;
 pub mod server;
 pub mod snapshot;

@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use super::commands::McpCommandQueue;
 use super::log;
+use super::permissions::PermissionHandle;
 use super::server::McpServer;
 use super::snapshot::McpSnapshot;
 
@@ -24,6 +25,7 @@ pub type SharedCommandQueue = Arc<Mutex<Option<McpCommandQueue>>>;
 pub fn start_mcp_listener(
     snapshot: Arc<Mutex<McpSnapshot>>,
     cmd_queue: SharedCommandQueue,
+    permissions: Option<PermissionHandle>,
     socket_path: &Path,
 ) -> Result<PathBuf, String> {
     log::log("listener", &format!("binding {}", socket_path.display()));
@@ -33,7 +35,7 @@ pub fn start_mcp_listener(
     log::log("listener", "accepting connections");
 
     let path = socket_path.to_path_buf();
-    thread::spawn(move || accept_loop(listener, snapshot, cmd_queue));
+    thread::spawn(move || accept_loop(listener, snapshot, cmd_queue, permissions));
     Ok(path)
 }
 
@@ -55,7 +57,12 @@ fn bind_listener(socket_path: &Path) -> Result<UnixListener, String> {
     Ok(listener)
 }
 
-fn accept_loop(listener: UnixListener, snapshot: Arc<Mutex<McpSnapshot>>, cmd_queue: SharedCommandQueue) {
+fn accept_loop(
+    listener: UnixListener,
+    snapshot: Arc<Mutex<McpSnapshot>>,
+    cmd_queue: SharedCommandQueue,
+    permissions: Option<PermissionHandle>,
+) {
     for stream in listener.incoming() {
         let Ok(stream) = stream else {
             break;
@@ -72,18 +79,20 @@ fn accept_loop(listener: UnixListener, snapshot: Arc<Mutex<McpSnapshot>>, cmd_qu
 
         let snap = Arc::clone(&snapshot);
         let cq = cmd_queue.lock().ok().and_then(|g| g.clone());
-        thread::spawn(move || handle_connection(snap, cq, reader, writer));
+        let perms = permissions.clone();
+        thread::spawn(move || handle_connection(snap, cq, perms, reader, writer));
     }
 }
 
 fn handle_connection(
     snap: Arc<Mutex<McpSnapshot>>,
     cq: Option<McpCommandQueue>,
+    perms: Option<PermissionHandle>,
     reader: BufReader<UnixStream>,
     writer: BufWriter<UnixStream>,
 ) {
     let result = catch_unwind(AssertUnwindSafe(|| {
-        let server = McpServer::new(snap, cq);
+        let server = McpServer::new(snap, cq, perms);
         server.run(reader, writer)
     }));
     match result {

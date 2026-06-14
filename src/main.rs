@@ -19,6 +19,7 @@ use kairn::init;
 use kairn::mcp::bridge::run_mcp_bridge;
 use kairn::mcp::commands::McpCommandQueue;
 use kairn::mcp::listener::SharedCommandQueue;
+use kairn::mcp::permissions::new_permission_table;
 use kairn::mcp::socket_path::socket_path;
 use kairn::session;
 use kairn::startup;
@@ -64,11 +65,14 @@ fn main() -> anyhow::Result<()> {
     let sock_path = socket_path(&root_dir);
     startup::check_already_running(&sock_path);
 
-    let (mcp_snapshot, mcp_cmd_queue, mcp_socket) = startup::start_mcp(&root_dir, &sock_path);
+    let mcp_permissions = new_permission_table();
+    let (mcp_snapshot, mcp_cmd_queue, mcp_socket) =
+        startup::start_mcp(&root_dir, &sock_path, Some(Arc::clone(&mcp_permissions)));
     startup::init_logging(&cli.log_file, &cli.log_level)?;
 
     let saved_session = session::load_session(&root_dir);
     let (mut program, mut app_state) = build_app(&root_dir);
+    app_state.script_mut().set_permissions(mcp_permissions);
     app_state.set_mcp_snapshot(Arc::clone(&mcp_snapshot));
     let _ = startup::PANIC_MESSAGES.set(app_state.messages().clone());
 

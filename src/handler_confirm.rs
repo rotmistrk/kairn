@@ -43,6 +43,7 @@ pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
         ConfirmContext::TodoDelete => handle_todo_delete(ctx, state, ch),
         ConfirmContext::TodoCrypto => handle_todo_crypto(ctx, state, ch),
         ConfirmContext::CsvDeleteRow => handle_csv_delete(ctx, ch),
+        ConfirmContext::McpToolConfirm => handle_mcp_confirm(state, ch),
     }
 }
 
@@ -235,5 +236,13 @@ fn handle_csv_delete(ctx: &mut CommandContext, ch: char) {
 pub fn handle_set_confirm_context(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(context) = ctx.data().as_ref().and_then(|b| b.downcast_ref::<ConfirmContext>()) {
         state.confirm_context = Some(context.clone());
+    }
+}
+
+fn handle_mcp_confirm(state: &mut AppState, ch: char) {
+    let reply = state.mcp.pending_confirm_reply.take();
+    if let Some(tx) = reply {
+        let allowed = ch == 'y';
+        let _ = tx.send(Ok(serde_json::json!(allowed)));
     }
 }

@@ -9,4 +9,5 @@ pub enum ConfirmContext {
     TodoDelete,
     TodoCrypto,
     CsvDeleteRow,
+    McpToolConfirm,
 }

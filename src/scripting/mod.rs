@@ -6,6 +6,7 @@ mod bridge_git;
 mod bridge_hook;
 mod bridge_keymap;
 mod bridge_lsp;
+mod bridge_mcp_perm;
 mod bridge_split;
 mod bridge_system;
 mod bridge_todo;
@@ -29,6 +30,7 @@ use rusticle::interpreter::Interpreter;
 use rusticle::value::TclValue;
 
 use crate::commands::ViewContext;
+use crate::mcp::permissions::PermissionHandle;
 
 use self::hooks::HookRegistry;
 
@@ -41,7 +43,7 @@ pub struct ScriptEngine {
 }
 
 impl ScriptEngine {
-    pub fn new() -> Self {
+    pub fn new(permissions: Option<PermissionHandle>) -> Self {
         let commands: Arc<Mutex<Vec<ScriptCommand>>> = Arc::new(Mutex::new(Vec::new()));
         let snapshot: Arc<Mutex<StateSnapshot>> = Arc::new(Mutex::new(StateSnapshot::default()));
         let hook_registry: Arc<Mutex<HookRegistry>> = Arc::new(Mutex::new(HookRegistry::new()));
@@ -58,6 +60,9 @@ impl ScriptEngine {
         bridge_git::register(&mut interp, commands.clone());
         bridge_todo::register(&mut interp, commands.clone());
         bridge_split::register(&mut interp, commands.clone(), snapshot.clone());
+        if let Some(perms) = permissions {
+            bridge_mcp_perm::register(&mut interp, perms);
+        }
 
         // Default window title (user config can override)
         interp
@@ -70,6 +75,11 @@ impl ScriptEngine {
             snapshot,
             hook_registry,
         }
+    }
+
+    /// Register the MCP permission table (called after AppState is created).
+    pub fn set_permissions(&mut self, perms: PermissionHandle) {
+        bridge_mcp_perm::register(&mut self.interp, perms);
     }
 
     /// Evaluate a Tcl script. Returns the result or error message.
@@ -220,7 +230,7 @@ impl ScriptEngine {
 
 impl Default for ScriptEngine {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
 

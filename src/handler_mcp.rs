@@ -2,11 +2,13 @@
 
 use std::path::PathBuf;
 
+use txv_core::message::Message;
 use txv_core::program::CommandContext;
 
 use crate::commands::{
-    OpenFileRequest, CM_CODE_ACTION, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE, CM_LSP_FIND_REFS, CM_LSP_FORMAT,
-    CM_LSP_GOTO_DEF, CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS, CM_SPLIT_LINKED,
+    ConfirmContext, OpenFileRequest, CM_CODE_ACTION, CM_CONFIRM, CM_GIT_COMMIT, CM_GIT_STAGE, CM_GIT_UNSTAGE,
+    CM_LSP_FIND_REFS, CM_LSP_FORMAT, CM_LSP_GOTO_DEF, CM_LSP_HOVER, CM_LSP_RENAME, CM_OPEN_IN_SPLIT,
+    CM_SET_CONFIRM_CONTEXT, CM_SPLIT_CLOSE, CM_SPLIT_FOCUS, CM_SPLIT_LINKED,
 };
 use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
@@ -35,8 +37,21 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     for req in requests {
-        let result = dispatch_mcp_action(&req.action, desktop, state, &sink);
-        let _ = req.reply.send(result);
+        if let McpAction::ConfirmTool {
+            ref tool_name,
+            ref args_summary,
+        } = req.action
+        {
+            // Don't reply yet — stash channel, prompt user
+            state.mcp.pending_confirm_reply = Some(req.reply);
+            let prompt = format!("MCP: allow '{tool_name}'? ({args_summary}) [y/n]");
+            let msg = Message::info("mcp", prompt);
+            sink.push_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::McpToolConfirm)));
+            sink.push_command(CM_CONFIRM, Some(Box::new(msg)));
+        } else {
+            let result = dispatch_mcp_action(&req.action, desktop, state, &sink);
+            let _ = req.reply.send(result);
+        }
     }
 }
 

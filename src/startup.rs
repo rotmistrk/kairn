@@ -193,10 +193,16 @@ fn patch_editor_clipboard(desktop: &mut TiledWorkspace, state: &AppState) {
 pub fn start_mcp(
     root_dir: &Path,
     sock_path: &Path,
+    permissions: Option<crate::mcp::permissions::PermissionHandle>,
 ) -> (Arc<Mutex<McpSnapshot>>, SharedCommandQueue, Result<PathBuf, String>) {
     let mcp_snapshot = Arc::new(Mutex::new(McpSnapshot::default()));
     let mcp_cmd_queue: SharedCommandQueue = Arc::new(Mutex::new(None));
-    let mcp_socket = start_mcp_listener(Arc::clone(&mcp_snapshot), Arc::clone(&mcp_cmd_queue), sock_path);
+    let mcp_socket = start_mcp_listener(
+        Arc::clone(&mcp_snapshot),
+        Arc::clone(&mcp_cmd_queue),
+        permissions,
+        sock_path,
+    );
     if let Ok(ref sock) = mcp_socket {
         write_agent_file(root_dir);
         env::set_var("KAIRN_MCP_SOCKET", sock.to_string_lossy().as_ref());

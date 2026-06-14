@@ -6,7 +6,7 @@ use kairn::scripting::{ScriptCommand, ScriptEngine};
 
 #[test]
 fn editor_search_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor search pattern").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -15,7 +15,7 @@ fn editor_search_produces_command() {
 
 #[test]
 fn editor_clear_highlight_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("editor clear-highlight").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -26,7 +26,7 @@ fn editor_clear_highlight_produces_command() {
 
 #[test]
 fn lsp_start_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("lsp start rust-analyzer").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -35,7 +35,7 @@ fn lsp_start_produces_command() {
 
 #[test]
 fn lsp_restart_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("lsp restart *").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -44,7 +44,7 @@ fn lsp_restart_produces_command() {
 
 #[test]
 fn lsp_stop_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("lsp stop typescript").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -53,7 +53,7 @@ fn lsp_stop_produces_command() {
 
 #[test]
 fn lsp_timeout_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("lsp timeout rust-analyzer 30").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -63,7 +63,7 @@ fn lsp_timeout_produces_command() {
 
 #[test]
 fn lsp_args_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine
         .eval("lsp args rust-analyzer {rust-analyzer --log-file /tmp/ra.log}")
         .unwrap();
@@ -77,7 +77,7 @@ fn lsp_args_produces_command() {
 
 #[test]
 fn split_vsplit_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split vsplit").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -86,7 +86,7 @@ fn split_vsplit_produces_command() {
 
 #[test]
 fn split_vsplit_with_file() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split vsplit src/main.rs").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -95,7 +95,7 @@ fn split_vsplit_with_file() {
 
 #[test]
 fn split_hsplit_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split hsplit").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -104,7 +104,7 @@ fn split_hsplit_produces_command() {
 
 #[test]
 fn split_close_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split close").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -113,7 +113,7 @@ fn split_close_produces_command() {
 
 #[test]
 fn split_focus_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split focus").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -122,7 +122,7 @@ fn split_focus_produces_command() {
 
 #[test]
 fn split_open_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split open lib.rs").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -131,7 +131,7 @@ fn split_open_produces_command() {
 
 #[test]
 fn split_linked_produces_command() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("split linked true").unwrap();
     let cmds = engine.drain_commands();
     assert_eq!(cmds.len(), 1);
@@ -142,35 +142,35 @@ fn split_linked_produces_command() {
 
 #[test]
 fn view_unknown_subcommand_errors() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("view nonexistent");
     assert!(result.is_err());
 }
 
 #[test]
 fn git_unknown_subcommand_errors() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("git nonexistent");
     assert!(result.is_err());
 }
 
 #[test]
 fn build_unknown_subcommand_errors() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("build nonexistent");
     assert!(result.is_err());
 }
 
 #[test]
 fn todo_unknown_subcommand_errors() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("todo nonexistent");
     assert!(result.is_err());
 }
 
 #[test]
 fn split_unknown_subcommand_errors() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.eval("split nonexistent");
     assert!(result.is_err());
 }
@@ -179,7 +179,7 @@ fn split_unknown_subcommand_errors() {
 
 #[test]
 fn build_command_proc_override() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("proc build-command {} { return {make -j8} }").unwrap();
     assert!(engine.has_command("build-command"));
     let result = engine.eval("build-command").unwrap();
@@ -188,7 +188,7 @@ fn build_command_proc_override() {
 
 #[test]
 fn test_command_proc_override() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine
         .eval("proc test-command {} { return {cargo test --workspace} }")
         .unwrap();
@@ -198,7 +198,7 @@ fn test_command_proc_override() {
 
 #[test]
 fn run_command_proc_override() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine
         .eval("proc run-command {} { return {./target/debug/myapp} }")
         .unwrap();
@@ -208,7 +208,7 @@ fn run_command_proc_override() {
 
 #[test]
 fn build_command_proc_empty_falls_through() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("proc build-command {} { return {} }").unwrap();
     let result = engine.eval("build-command").unwrap();
     assert_eq!(result, "");

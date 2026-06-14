@@ -9,14 +9,14 @@ use kairn::scripting::ScriptEngine;
 
 #[test]
 fn subst_plain_text() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.subst("hello world").unwrap();
     assert_eq!(result, "hello world");
 }
 
 #[test]
 fn subst_command_substitution() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     engine.eval("set x hello").unwrap();
     let result = engine.subst("$x world").unwrap();
     assert_eq!(result, "hello world");
@@ -24,7 +24,7 @@ fn subst_command_substitution() {
 
 #[test]
 fn subst_system_user() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let user = std::env::var("USER").unwrap_or_default();
     let result = engine.subst("kairn:[system user]").unwrap();
     assert_eq!(result, format!("kairn:{user}"));
@@ -32,7 +32,7 @@ fn subst_system_user() {
 
 #[test]
 fn subst_multiple_commands() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let user = std::env::var("USER").unwrap_or_default();
     let result = engine.subst("[system user]@[system hostname 0]").unwrap();
     assert!(result.starts_with(&format!("{user}@")), "got: {result}");
@@ -40,14 +40,14 @@ fn subst_multiple_commands() {
 
 #[test]
 fn subst_preserves_special_chars() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.subst("path/to/file.rs").unwrap();
     assert_eq!(result, "path/to/file.rs");
 }
 
 #[test]
 fn subst_error_reports_message() {
-    let mut engine = ScriptEngine::new();
+    let mut engine = ScriptEngine::new(None);
     let result = engine.subst("[system bad_subcommand]");
     assert!(result.is_err(), "expected error, got: {:?}", result);
 }

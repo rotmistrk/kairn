@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn refresh_commands_includes_builtins_and_tcl_bridge() {
         let list = new_command_list();
-        let script = ScriptEngine::new();
+        let script = ScriptEngine::new(None);
         refresh_commands(&list, &script);
         let cmds = list.lock().unwrap();
         assert!(cmds.contains(&"build".to_string()), "should contain builtin 'build'");

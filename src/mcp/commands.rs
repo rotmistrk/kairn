@@ -232,6 +232,11 @@ pub enum McpAction {
     RemoveRoot {
         path: String,
     },
+    /// Confirm a tool invocation (prompt user, block until response).
+    ConfirmTool {
+        tool_name: String,
+        args_summary: String,
+    },
 }
 
 pub use super::command_queue::McpCommandQueue;

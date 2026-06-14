@@ -248,7 +248,7 @@ impl AppState {
             build_pending: None,
             pending_tab: None,
             confirm_context: None,
-            script: ScriptEngine::new(),
+            script: ScriptEngine::new(None),
             pending_hooks: Vec::new(),
             command_list: new_command_list(),
             lsp_languages: Arc::new(Mutex::new(Vec::new())),
