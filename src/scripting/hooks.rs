@@ -3,6 +3,7 @@
 /// Events that can trigger hooks.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum HookEvent {
+    PreSave,
     FileSave,
     FileOpen,
     FileClose,
@@ -22,6 +23,7 @@ pub enum HookEvent {
 impl HookEvent {
     pub fn parse_name(s: &str) -> Option<Self> {
         match s {
+            "pre-save" => Some(Self::PreSave),
             "file-save" => Some(Self::FileSave),
             "file-open" => Some(Self::FileOpen),
             "file-close" => Some(Self::FileClose),
@@ -42,6 +44,7 @@ impl HookEvent {
 
     pub fn as_str(&self) -> &'static str {
         match self {
+            Self::PreSave => "pre-save",
             Self::FileSave => "file-save",
             Self::FileOpen => "file-open",
             Self::FileClose => "file-close",

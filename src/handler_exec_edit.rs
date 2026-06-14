@@ -12,7 +12,9 @@ use crate::handler_evict::try_insert_tab;
 use crate::handler_log::open_git_log;
 use crate::handler_lsp_cmd::handle_lsp_command as handle_lsp_cmd;
 use crate::handler_open::{handle_edit_file, open_as_csv, toggle_view_mode};
+use crate::handler_script_util::fire_hooks_for_event;
 use crate::lsp::config_commands::format_lsp_status;
+use crate::scripting::hooks::HookEvent;
 use crate::views::help::HelpView;
 use crate::views::problems::ProblemsView;
 use crate::views::results::ResultsView;
@@ -190,9 +192,11 @@ pub(crate) fn cmd_run(ctx: &mut CommandContext, _state: &mut AppState, _arg: &st
     ctx.sink().push_command(CM_RUN, None);
 }
 
-pub(crate) fn cmd_save(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
+pub(crate) fn cmd_save(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
+    fire_hooks_for_event(state, &HookEvent::PreSave, "", ctx);
     ctx.sink().push_command(CM_SAVE, None);
     ctx.sink().push_broadcast(CM_FS_CHANGED, None);
+    fire_hooks_for_event(state, &HookEvent::FileSave, "", ctx);
 }
 
 pub(crate) fn cmd_shell(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {

@@ -182,6 +182,7 @@ fn dispatch_open_file(ctx: &mut CommandContext, state: &mut AppState, path: &str
 }
 
 fn dispatch_save(ctx: &mut CommandContext, state: &mut AppState) {
+    fire_hooks_for_event(state, &HookEvent::PreSave, "", ctx);
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let slot = desktop.focused_panel();
@@ -199,7 +200,7 @@ fn dispatch_save(ctx: &mut CommandContext, state: &mut AppState) {
     }
     sink.push_command(CM_SAVE, None);
     sink.push_broadcast(CM_FS_CHANGED, None);
-    let _ = state;
+    fire_hooks_for_event(state, &HookEvent::FileSave, "", ctx);
 }
 
 fn dispatch_goto(ctx: &mut CommandContext, line: u32, col: u32) {
