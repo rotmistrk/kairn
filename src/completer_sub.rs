@@ -5,6 +5,7 @@ use txv_core::complete::CompletionVisitor;
 use super::path;
 use crate::completer::LspLanguageList;
 use crate::completer_entry::Entry;
+use crate::help_topics;
 use crate::highlight::Highlighter;
 
 /// Theme sub-argument completions.
@@ -139,6 +140,11 @@ pub(crate) fn complete_set_options(
         }
     }
     Ok(())
+}
+
+/// Help topic completions.
+pub(crate) fn complete_help(sub: &str, visitor: &mut CompletionVisitor<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    complete_options(help_topics::topic_names(), "help", sub, "topic", visitor)
 }
 
 fn offer_option(

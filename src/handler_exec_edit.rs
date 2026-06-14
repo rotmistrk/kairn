@@ -94,19 +94,15 @@ pub(crate) fn cmd_replace(ctx: &mut CommandContext, state: &mut AppState, arg: &
     handler_replace::cmd_replace(ctx, state, arg);
 }
 
-pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
+pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let topic = arg.trim();
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
-            try_insert_tab(
-                desktop,
-                state,
-                &sink,
-                SlotId::Center,
-                "Help".into(),
-                Box::new(HelpView::new()),
-            );
+        if topic.is_empty() && focus_tab_by_title(desktop, SlotId::Center, "Help") {
+            return;
         }
+        let help = HelpView::new(topic);
+        try_insert_tab(desktop, state, &sink, SlotId::Center, "Help".into(), Box::new(help));
     }
 }
 

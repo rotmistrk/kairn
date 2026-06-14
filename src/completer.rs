@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use txv_core::complete::{Completer, CompletionVisitor};
 
 pub(crate) use crate::completer_entry::Entry;
-use sub::{complete_lsp, complete_set_options, complete_split, complete_theme};
+use sub::{complete_help, complete_lsp, complete_set_options, complete_split, complete_theme};
 
 /// Built-in commands (always available).
 pub const BUILTIN_COMMANDS: &[&str] = &["dir", "file", "only"];
@@ -100,6 +100,9 @@ impl AppCompleter {
         trimmed: &str,
         visitor: &mut CompletionVisitor<'_>,
     ) -> Option<Result<(), Box<dyn std::error::Error>>> {
+        if let Some(sub) = trimmed.strip_prefix("help ") {
+            return Some(complete_help(sub, visitor));
+        }
         if let Some(sub) = trimmed.strip_prefix("theme ") {
             return Some(complete_theme(sub, visitor));
         }

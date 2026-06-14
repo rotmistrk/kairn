@@ -1,19 +1,8 @@
-//! Help text generator for kairn.
+//! Help text generator for kairn (legacy — delegates to help_topics).
 
-use crate::help_editor::help_editor;
-use crate::help_global::help_global;
+use crate::help_topics::generate_topic;
 
-/// Generate the full help text listing all key bindings.
+/// Generate the full help text (overview topic).
 pub fn help_text() -> String {
-    format!(
-        "\
-╦╔═╔═╗╦╦═╗╔╗╔  Help
-╠╩╗╠═╣║╠╦╝║║║
-╩ ╩╩ ╩╩╩╚═╝╚╝
-
-{}\
-{}",
-        help_global(),
-        help_editor()
-    )
+    generate_topic("")
 }

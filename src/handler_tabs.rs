@@ -15,7 +15,7 @@ pub fn handle_show_help(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         if !focus_tab_by_title(desktop, SlotId::Center, "Help") {
-            let help = HelpView::new();
+            let help = HelpView::new("");
             try_insert_tab(desktop, state, &sink, SlotId::Center, "Help".into(), Box::new(help));
         }
     }
