@@ -118,10 +118,12 @@ impl KairnDelegate {
         }
         // Common prefix equals typed prefix — accept selected item
         let text = self.completion_popup.selected_text().map(|s| s.to_string());
+        let edits = self.completion_popup.selected_additional_edits().to_vec();
         self.completion_popup.hide();
         if let Some(text) = text {
             self.replace_word_with_completion(editor, &text);
         }
+        self.apply_additional_edits(editor, &edits);
         self.clear_diagnostics();
         self.dirty = true;
     }
@@ -179,5 +181,27 @@ impl KairnDelegate {
         editor.buf().insert(start_offset, text);
         editor.set_cursor_col(word_start + text.len());
         self.last_edit_tick = u64::MAX;
+    }
+
+    fn apply_additional_edits(&self, editor: &mut Editor, edits: &[crate::lsp::text_edit::TextEdit]) {
+        // Apply edits in reverse order (bottom to top) to preserve offsets
+        let mut sorted: Vec<_> = edits.to_vec();
+        sorted.sort_by(|a, b| (b.start_line, b.start_col).cmp(&(a.start_line, a.start_col)));
+        for edit in &sorted {
+            let start = editor
+                .buf()
+                .line_col_to_offset(edit.start_line as usize, edit.start_col as usize)
+                .unwrap_or(0);
+            let end = editor
+                .buf()
+                .line_col_to_offset(edit.end_line as usize, edit.end_col as usize)
+                .unwrap_or(start);
+            if end > start {
+                editor.buf().delete(start, end);
+            }
+            if !edit.new_text.is_empty() {
+                editor.buf().insert(start, &edit.new_text);
+            }
+        }
     }
 }

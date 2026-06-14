@@ -198,6 +198,10 @@ impl CompletionPopup {
 
     fn draw_detail(&self, buf: &mut Buffer, item: &CompletionItem, x: u16, row: u16, avail: u16, style: Style) {
         if let Some(ref detail) = item.detail {
+            // Skip if label already contains the detail text (avoids duplication)
+            if item.label.contains(detail.as_str()) {
+                return;
+            }
             let max = avail.saturating_sub(1) as usize;
             let d = if detail.len() > max {
                 &detail[..max]

@@ -4,6 +4,7 @@ use std::any::Any;
 
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
+use txv_widgets::tiled_workspace::commands::CM_TW_CLOSE_SUBPANEL;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::app_state::AppState;
@@ -99,6 +100,10 @@ fn close_active_tab(ctx: &mut CommandContext, panel_id: usize) {
     let title = desktop.panel(panel_id).and_then(|p| p.active_title().map(String::from));
     if let Some(panel) = desktop.panel_mut(panel_id) {
         panel.close_active();
+        // If subpanel is now empty, close it
+        if panel.tab_count() == 0 {
+            sink.push_command(CM_TW_CLOSE_SUBPANEL, None);
+        }
     }
     sink.push_command(CM_FILE_CLOSED, title.map(|t| Box::new(t) as Box<dyn Any + Send>));
 }
