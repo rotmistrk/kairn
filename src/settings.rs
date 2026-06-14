@@ -95,6 +95,9 @@ impl AppSettings {
     pub fn set_max_tabs(&mut self, v: u16) {
         self.max_tabs = v;
     }
+    pub fn max_tabs(&self) -> u16 {
+        self.max_tabs
+    }
     pub fn syntax_theme_for_mode(&self, is_light: bool) -> &str {
         if is_light {
             &self.theme_syntax_light

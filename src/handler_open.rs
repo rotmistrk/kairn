@@ -13,7 +13,6 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::handler_open_titles::sync_titles_immediate;
 use crate::views::results::{ResultEntry, ResultsView};
-
 /// Initial tab label — just the filename. `sync_tab_titles` will disambiguate.
 fn initial_title(path: &Path) -> String {
     path.file_name()
@@ -21,11 +20,9 @@ fn initial_title(path: &Path) -> String {
         .unwrap_or("untitled")
         .to_string()
 }
-pub(crate) use crate::handler_open_view::open_as_csv;
-use crate::handler_open_view::{open_editor, open_editor_view, try_open_structured};
-use crate::views::csv_view::CsvView;
+pub(crate) use crate::handler_open_diff::{activate_diff_on_focused, open_as_csv, toggle_view_mode};
+use crate::handler_open_view::{open_editor, try_open_structured};
 use crate::views::editor::EditorView;
-use crate::views::struct_view::StructuredView;
 
 /// Handle Ctrl+P file finder submit — convert relative path to OpenFileRequest.
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
@@ -82,7 +79,7 @@ fn handle_already_open(
         desktop.focus_panel(SlotId::Center as usize);
     }
     if req.diff {
-        sink.push_command(CM_DIFF, Some(Box::new(String::new())));
+        activate_diff_on_focused(desktop);
     }
 }
 
@@ -219,42 +216,4 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
         try_insert_tab(desktop, state, &sink, SlotId::Tools, title, Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
-}
-
-/// Toggle the active center tab between structured and text view.
-/// `to_structured`: true = switch to structured, false = switch to text.
-pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, to_structured: bool) {
-    let Some(d) = downcast_desktop(desktop) else {
-        return;
-    };
-    let abs_path = d
-        .panel_mut(SlotId::Center as usize)
-        .and_then(|p| p.active_view_mut())
-        .and_then(|v| v.as_any_mut())
-        .and_then(|a| {
-            a.downcast_ref::<EditorView>()
-                .map(|ev| ev.path().to_path_buf())
-                .or_else(|| a.downcast_ref::<StructuredView>().map(|sv| sv.path.clone()))
-                .or_else(|| a.downcast_ref::<CsvView>().map(|cv| cv.path().to_path_buf()))
-        });
-    let Some(path) = abs_path else {
-        return;
-    };
-    if !path.is_file() {
-        return;
-    }
-    let abs_key = path.to_string_lossy().to_string();
-    let title = initial_title(&path);
-    let panel = d.panel_mut(SlotId::Center as usize);
-    if let Some(p) = panel {
-        p.close_active();
-    }
-    state.broker.close(&abs_key);
-    let _ = state.broker.open(&abs_key, SlotId::Center, 0);
-    let view: Box<dyn View> = if to_structured {
-        try_open_structured(&path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor_view(&path, state))
-    } else {
-        open_editor_view(&path, state)
-    };
-    try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

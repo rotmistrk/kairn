@@ -114,7 +114,7 @@ fn session_restore_rejects_relative_paths() {
 
     let mut desktop = kairn::build_desktop::build_workspace(&PathBuf::from("."), kairn::settings::GitKeys::default());
     let defaults = EditorSettings::default();
-    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
+    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark", 0);
 
     // Relative path should be rejected — no tabs opened
     assert_eq!(

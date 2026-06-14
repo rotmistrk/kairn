@@ -61,7 +61,7 @@ fn session_save_restore_preserves_cursor_positions() {
 
     // Restore into a fresh desktop
     let mut desktop2 = build_desktop::build_workspace(&root, git_keys);
-    session::restore_tabs(&mut desktop2, &loaded, &root, &defaults, "base16-eighties.dark");
+    session::restore_tabs(&mut desktop2, &loaded, &root, &defaults, "base16-eighties.dark", 0);
 
     // Verify both files are open
     let panel = desktop2.panel(SlotId::Center as usize).unwrap();

@@ -150,6 +150,7 @@ pub fn restore_saved_session(
         root_dir,
         app_state.settings().editor_defaults(),
         app_state.current_syntax_theme(),
+        app_state.settings().max_tabs() as usize,
     );
     for tab in sess.editor_tabs() {
         let p = Path::new(tab.path());

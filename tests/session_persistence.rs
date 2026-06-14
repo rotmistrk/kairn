@@ -87,7 +87,7 @@ fn restore_tabs_opens_editors() {
     let mut desktop =
         kairn::build_desktop::build_workspace(&std::path::PathBuf::from("."), kairn::settings::GitKeys::default());
     let defaults = EditorSettings::default();
-    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
+    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark", 0);
 
     assert_eq!(desktop.panel(SlotId::Center as usize).unwrap().tab_count(), 1);
     assert_eq!(
@@ -112,7 +112,7 @@ fn restore_skips_missing_files() {
     let mut desktop =
         kairn::build_desktop::build_workspace(&std::path::PathBuf::from("."), kairn::settings::GitKeys::default());
     let defaults = EditorSettings::default();
-    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark");
+    session::restore_tabs(&mut desktop, &state, &root, &defaults, "base16-eighties.dark", 0);
 
     // No tabs opened since file doesn't exist
     assert_eq!(desktop.panel(SlotId::Center as usize).unwrap().tab_count(), 0);

@@ -22,7 +22,7 @@ pub fn try_insert_tab(
 ) -> bool {
     state.pending_tab = None;
 
-    let max = state.settings.max_tabs as usize;
+    let max = state.settings.max_tabs() as usize;
     let Some(panel) = desktop.panel(slot as usize) else {
         return false;
     };

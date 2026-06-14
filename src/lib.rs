@@ -72,6 +72,7 @@ pub mod handler_mcp_clipboard;
 pub mod handler_mcp_edit;
 pub mod handler_mcp_helpers;
 pub mod handler_open;
+pub mod handler_open_diff;
 mod handler_open_titles;
 pub mod handler_open_view;
 pub mod handler_replace;

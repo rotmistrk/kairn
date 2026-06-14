@@ -3,6 +3,7 @@
 mod editor_tab_state;
 mod kiro_session_state;
 mod restore;
+mod restore_split;
 mod save;
 pub mod schema;
 mod session_state_builder;
