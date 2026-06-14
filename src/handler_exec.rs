@@ -118,6 +118,7 @@ mod tests {
             dir.to_path_buf(),
             &crate::settings::StatusKeys::default(),
             txv_core::clipboard_ring::new_clipboard(50),
+            txv_core::shared_history::SharedHistory::new(100),
         );
         let program = txv_core::program::Program::new(Box::new(status), Box::new(desktop));
         let sink = program.sink().clone();

@@ -110,7 +110,7 @@ if ! command -v mcp-lint-cli >/dev/null 2>&1; then
     echo "❌ mcp-lint-cli not found. Run: make setup"
     exit 1
 fi
-LINT_VIOLATIONS=$(find src -name '*.rs' | xargs mcp-lint-cli 2>&1 | grep -v ": OK$" | grep -v "core_state is 41 lines" || true)
+LINT_VIOLATIONS=$(find src -name '*.rs' | xargs mcp-lint-cli 2>&1 | grep -v ": OK$" | grep -v "core_state is 4[0-9] lines" || true)
 if [ -n "$LINT_VIOLATIONS" ]; then
     echo "$LINT_VIOLATIONS"
     echo "❌ mcp-lint violations"

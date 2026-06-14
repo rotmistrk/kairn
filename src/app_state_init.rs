@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use txv_core::clipboard_ring::new_clipboard;
 use txv_core::palette::ThemeMode;
+use txv_core::shared_history::SharedHistory;
 
 use crate::completer::new_command_list;
 use crate::lsp::pending::PendingRequests;
@@ -45,6 +46,8 @@ impl AppState {
         let mut s = Self::core_state();
         s.tty_file = open_tty_for_title();
         s.clipboard = new_clipboard(50);
+        s.command_history = SharedHistory::new(100);
+        s.lsp_status = LspStatusTracker::new();
         s.script.set_clipboard(s.clipboard.clone());
         s.messages = Arc::new(Mutex::new(MessageRing::new()));
         s
@@ -80,11 +83,12 @@ impl AppState {
             completer_roots: Arc::new(Mutex::new(Vec::new())),
             plugins: PluginManager::new(),
             deferred_lsp: Vec::new(),
-            lsp_status: LspStatusTracker::new(),
             todo_note_path: None,
             linked_scroll: false,
             shared_register: Arc::default(),
             clipboard: new_clipboard(1),
+            command_history: SharedHistory::new(1),
+            lsp_status: LspStatusTracker::new(),
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: None,

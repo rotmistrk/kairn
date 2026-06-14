@@ -23,6 +23,7 @@ pub fn build_status_bar(
     root_dir: PathBuf,
     status_keys: &StatusKeys,
     clipboard: txv_core::clipboard_ring::ClipboardHandle,
+    command_history: txv_core::shared_history::SharedHistory,
 ) -> StatusBar {
     let mut bar = StatusBar::new();
     keys::add_workspace_bindings(&mut bar, desktop);
@@ -32,7 +33,7 @@ pub fn build_status_bar(
     keys::add_tab_digit_bindings(&mut bar);
     add_file_finder(&mut bar, root_dir.clone(), clipboard.clone());
     add_todo_group(&mut bar);
-    add_command_items(&mut bar, completer, clipboard);
+    add_command_items(&mut bar, completer, clipboard, command_history);
     add_right_side(&mut bar, root_dir, clock_interval);
     bar
 }
@@ -41,12 +42,14 @@ fn add_command_items(
     bar: &mut StatusBar,
     completer: Box<dyn Completer>,
     clipboard: txv_core::clipboard_ring::ClipboardHandle,
+    command_history: txv_core::shared_history::SharedHistory,
 ) {
     bar.add(StatusSlot::new(Box::new(ConfirmView::new(CM_CONFIRM, CM_CONFIRM_RESPONSE))).priority(10));
     let input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_EXECUTE_COMMAND)
         .with_prefill_command(CM_COMMAND_PREFILL)
+        .with_history(command_history)
         .with_completer(completer);
     let command_line = ModalKey::new("M-x", ":")
         .trigger_key(ALT_X)

@@ -87,6 +87,7 @@ pub struct AppState {
     /// Shared yank register for cross-editor paste.
     pub(crate) shared_register: RegisterHandle,
     pub(crate) clipboard: ClipboardHandle,
+    pub(crate) command_history: txv_core::shared_history::SharedHistory,
     /// Last output timestamp per terminal tab index (for activity badges).
     pub(crate) pty_last_output: HashMap<usize, Instant>,
     /// Last emitted window title (to avoid redundant OSC 2 writes).
