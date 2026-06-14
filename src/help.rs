@@ -4,5 +4,5 @@ use crate::help_topics::generate_topic;
 
 /// Generate the full help text (overview topic).
 pub fn help_text() -> String {
-    generate_topic("")
+    generate_topic("", &[])
 }

@@ -94,8 +94,8 @@ fn diff_tab_title_shows_diff() {
 
     let text = h.screen_text();
     assert!(
-        text.contains("[diff]"),
-        "Tab should show [diff] in title. Screen:\n{text}"
+        text.contains("[HEAD]"),
+        "Tab should show [HEAD] in title. Screen:\n{text}"
     );
 }
 
@@ -149,15 +149,15 @@ fn diff_exit_returns_to_editor() {
 
     // Verify we're in diff mode
     let in_diff = h.screen_text();
-    assert!(in_diff.contains("[diff]"), "Should be in diff mode");
+    assert!(in_diff.contains("[HEAD]"), "Should be in diff mode");
 
     // Press Esc to exit
     press_key(&mut h, KeyCode::Esc);
 
-    // Should be back in normal editor — no more [diff] in tab title
+    // Should be back in normal editor — no more [HEAD] in tab title
     let after = h.screen_text();
     assert!(
-        !after.contains("[diff]"),
+        !after.contains("[HEAD]"),
         "Should have exited diff mode. Screen:\n{after}"
     );
 }
@@ -180,9 +180,9 @@ fn diff_no_changes_shows_message() {
     send_ex(&mut h, "diff");
 
     let text = h.screen_text();
-    // No DiffView tab should open; no [diff] in title
+    // No DiffView tab should open; no [HEAD] in title
     assert!(
-        !text.contains("[diff]"),
+        !text.contains("[HEAD]"),
         "No diff tab should open for unmodified file. Screen:\n{text}"
     );
 }

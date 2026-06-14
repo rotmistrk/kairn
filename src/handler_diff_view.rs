@@ -32,7 +32,11 @@ pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext) {
     let Some(panel) = desktop.panel_mut(SlotId::Center as usize) else {
         return;
     };
-    let title = format!("[diff] {}", path.file_name().unwrap_or_default().to_string_lossy());
+    let title = format!(
+        "[{}] {}",
+        ds.base_ref,
+        path.file_name().unwrap_or_default().to_string_lossy()
+    );
     let diff_view = if sbs {
         DiffView::new_sbs(ds, &content, &base_text, path, show_numbers)
     } else {

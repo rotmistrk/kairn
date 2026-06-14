@@ -1,61 +1,41 @@
-//! Help topic: key bindings reference.
+//! :help keys — generated from live status bar bindings and dispatch table.
 
-pub(crate) fn help_keys() -> String {
-    let mut s = help_keys_global();
-    s.push_str(help_keys_panels());
+use txv_core::key_help::KeyHelpEntry;
+
+use crate::handler_exec::dispatch_table;
+
+/// Generate help text from live binding entries + dispatch table.
+pub fn help_keys_from_bindings(bindings: &[KeyHelpEntry]) -> String {
+    let mut s = String::new();
+    let mut last_group = String::new();
+    for entry in bindings {
+        if entry.group() != last_group {
+            if !last_group.is_empty() {
+                s.push('\n');
+            }
+            let g = entry.group();
+            s.push_str(&format!("─── {g} ────────────────────\n"));
+            last_group = entry.group().to_string();
+        }
+        let k = entry.key();
+        let a = entry.action();
+        s.push_str(&format!("  {k:<16}{a}\n"));
+    }
+    s.push_str("\n─── M-x Commands ──────────────────────\n");
+    for entry in dispatch_table() {
+        let name = entry.names[0];
+        let aliases = if entry.names.len() > 1 {
+            format!(" ({})", entry.names[1..].join(", "))
+        } else {
+            String::new()
+        };
+        s.push_str(&format!("  :{name}{aliases}\n"));
+    }
+    s.push_str("\n─── Per-View Keys ─────────────────────\n");
+    s.push_str("  → :help editor    Editor (vim) keys\n");
+    s.push_str("  → :help tree      File tree keys\n");
+    s.push_str("  → :help csv       CSV view keys\n");
+    s.push_str("  → :help struct    Structured view keys\n");
+    s.push_str("  → :help todo      Todo tree keys\n");
     s
-}
-
-fn help_keys_global() -> String {
-    "\
-─── Global Keys ──────────────────────────────
-  F1              Help
-  F2 / F3 / F4   Focus: Tree / Editor / Terminal
-  F5              Zoom (maximize focused panel)
-  F6              Messages
-  Ctrl-Q          Quit
-  Ctrl-Z          Suspend to shell
-  Ctrl-O          Peek (show terminal underneath)
-  Ctrl-D          Diff current file vs HEAD
-  Ctrl-L          Repaint screen
-  M-x (Alt-x)    Command mode
-
-─── Tabs ──────────────────────────────────
-  Alt-0           Tab dropdown (list all tabs)
-  Alt-1..9        Select tab by number
-  Alt-;           Next tab
-  Alt-'           Previous tab
-  Alt-w           Close active tab
-"
-    .to_string()
-}
-
-fn help_keys_panels() -> &'static str {
-    "\
-─── Panel Navigation ────────────────────────
-  Ctrl-Shift-←/→   Focus prev/next panel
-  Alt-,             Toggle tree panel
-  Alt-.             Toggle tools panel
-  Alt-/             Zoom toggle
-  Alt-\\             Cycle layout mode
-
-─── Panel Resize ────────────────────────────
-  Alt-Shift-←/→    Resize horizontally
-  Alt-Shift-↑/↓    Resize vertically
-  Alt-= / Alt--    Grow / shrink subpanel
-
-─── Splits ──────────────────────────────────
-  Ctrl-W s/v       Split horizontal/vertical
-  Ctrl-W c/o       Close split / close others
-  Ctrl-W w         Cycle focus
-  Ctrl-W m         Move tab to other
-  Ctrl-W +/-/=     Grow/shrink/equalize
-
-See also:
-  → :help editor      Vim editor keys
-  → :help tree        File tree keys
-  → :help csv         CSV view keys
-  → :help struct      Structured view keys
-  → :help todo        Todo panel keys
-"
 }

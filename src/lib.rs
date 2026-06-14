@@ -5,6 +5,7 @@
 pub mod app_init;
 pub mod app_palette;
 pub mod app_state;
+mod app_state_init;
 pub mod blame;
 pub mod broker;
 pub mod buffer;

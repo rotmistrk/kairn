@@ -1,8 +1,10 @@
 //! Help topic registry and content generation.
 
+use txv_core::key_help::KeyHelpEntry;
+
 use crate::help_topic_commands::help_commands;
 use crate::help_topic_hooks::help_hooks;
-use crate::help_topic_keys::help_keys;
+use crate::help_topic_keys::help_keys_from_bindings;
 use crate::help_topic_mcp::help_mcp;
 use crate::help_topic_tcl::help_tcl;
 use crate::help_topic_views::{help_csv, help_editor, help_struct, help_todo, help_tree};
@@ -15,10 +17,10 @@ pub fn topic_names() -> &'static [&'static str] {
 }
 
 /// Generate content for a help topic. Empty string means overview.
-pub fn generate_topic(topic: &str) -> String {
+pub fn generate_topic(topic: &str, bindings: &[KeyHelpEntry]) -> String {
     match topic {
         "" => overview(),
-        "keys" => help_keys(),
+        "keys" => help_keys_from_bindings(bindings),
         "tcl" => help_tcl(),
         "mcp" => help_mcp(),
         "hooks" => help_hooks(),

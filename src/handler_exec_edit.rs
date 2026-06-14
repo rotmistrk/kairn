@@ -101,7 +101,7 @@ pub(crate) fn cmd_help(ctx: &mut CommandContext, state: &mut AppState, arg: &str
         if topic.is_empty() && focus_tab_by_title(desktop, SlotId::Center, "Help") {
             return;
         }
-        let help = HelpView::new(topic);
+        let help = HelpView::new(topic, state.key_bindings());
         try_insert_tab(desktop, state, &sink, SlotId::Center, "Help".into(), Box::new(help));
     }
 }

@@ -48,7 +48,7 @@ fn right_arrow_on_modified_file_opens_diff() {
 
     // Verify diff view is visible ([diff] in tab title or DIF mode indicator)
     let screen = h.screen_text();
-    let has_diff = screen.contains("[diff]") || screen.contains("DIF");
+    let has_diff = screen.contains("[HEAD]") || screen.contains("DIF");
     assert!(
         has_diff,
         "Right on modified file should open diff view, screen:\n{}",

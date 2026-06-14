@@ -40,6 +40,9 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));
+    // Collect live key binding descriptions for :help keys
+    let bindings = program.status_bar().key_help();
+    app_state.set_key_bindings(bindings);
 
     (program, app_state)
 }

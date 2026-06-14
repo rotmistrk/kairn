@@ -40,7 +40,7 @@ impl DiffView {
             .file_name()
             .map(|f| f.to_string_lossy().to_string())
             .unwrap_or_default();
-        let display_title = format!("[diff] {name}");
+        let display_title = format!("[{}] {name}", ds.base_ref);
         let mut group = GroupState::new(ViewOptions::default());
         let il = InputLine::new().with_completer(Box::new(DiffCompleter));
         group.insert(Box::new(il));

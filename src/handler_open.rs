@@ -77,9 +77,9 @@ fn handle_already_open(
         );
     } else {
         goto_in_active_editor(desktop, req);
-        if focus_center {
-            desktop.focus_panel(SlotId::Center as usize);
-        }
+    }
+    if req.diff || focus_center {
+        desktop.focus_panel(SlotId::Center as usize);
     }
     if req.diff {
         sink.push_command(CM_DIFF, Some(Box::new(String::new())));

@@ -1,6 +1,7 @@
 //! HelpView — topic-based help with cross-reference navigation.
 
 use txv_core::cell::Style;
+use txv_core::key_help::KeyHelpEntry;
 use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
@@ -12,11 +13,12 @@ pub struct HelpView {
     cursor: usize,
     scroll: usize,
     topic: String,
+    bindings: Vec<KeyHelpEntry>,
 }
 
 impl HelpView {
-    pub fn new(topic: &str) -> Self {
-        let content = generate_topic(topic);
+    pub fn new(topic: &str, bindings: &[KeyHelpEntry]) -> Self {
+        let content = generate_topic(topic, bindings);
         let lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
         Self {
             state: ViewState::default(),
@@ -24,11 +26,12 @@ impl HelpView {
             cursor: 0,
             scroll: 0,
             topic: topic.to_string(),
+            bindings: bindings.to_vec(),
         }
     }
 
     fn navigate_to(&mut self, topic: &str) {
-        let content = generate_topic(topic);
+        let content = generate_topic(topic, &self.bindings);
         self.lines = content.lines().map(|l| l.to_string()).collect();
         self.cursor = 0;
         self.scroll = 0;
