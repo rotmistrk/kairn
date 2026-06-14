@@ -14,6 +14,7 @@ use crate::handler_lsp_cmd::handle_lsp_command as handle_lsp_cmd;
 use crate::handler_open::{handle_edit_file, open_as_csv, toggle_view_mode};
 use crate::lsp::config_commands::format_lsp_status;
 use crate::views::help::HelpView;
+use crate::views::problems::ProblemsView;
 use crate::views::results::ResultsView;
 use crate::views::terminal::new_shell_terminal;
 
@@ -142,9 +143,20 @@ pub(crate) fn cmd_clipboard(ctx: &mut CommandContext, state: &mut AppState, _arg
     }
 }
 
-pub(crate) fn cmd_problems(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
+pub(crate) fn cmd_problems(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
+    let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        focus_tab_by_title(desktop, SlotId::Tools, "Problems");
+        if !focus_tab_by_title(desktop, SlotId::Tools, "Problems") {
+            let problems = ProblemsView::new(&state.root_dir);
+            try_insert_tab(
+                desktop,
+                state,
+                &sink,
+                SlotId::Tools,
+                "Problems".into(),
+                Box::new(problems),
+            );
+        }
         desktop.set_hidden(SlotId::Tools as usize, false);
         desktop.focus_panel(SlotId::Tools as usize);
     }
