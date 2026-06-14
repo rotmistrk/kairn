@@ -73,7 +73,6 @@ fn welcome_view_closed_after_opening_file() {
 // ─── Feature 3: Layout auto-detect (Wide vs Tall) ──────────────────────────
 
 #[test]
-#[test]
 fn wide_layout_three_columns_at_200_width() {
     let dir = temp_project(&[("a.rs", "fn main() {}")]);
     let mut h = TestHarness::with_size(dir.path(), 200, 50);

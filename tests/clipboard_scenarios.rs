@@ -25,6 +25,7 @@ fn open_file(h: &mut TestHarness, name: &str) {
     h.run_cycles(3);
 }
 
+#[allow(dead_code)]
 fn open_clipboard_viewer(h: &mut TestHarness) {
     h.inject_key(alt('x').0, alt('x').1);
     h.run_cycles(3);

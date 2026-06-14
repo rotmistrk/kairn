@@ -1,6 +1,7 @@
 //! Vi spec: paste, insert mode, keymap integration, entry variants.
 use kairn::editor::command::Command;
 use kairn::editor::keymap::EditorMode;
+#[allow(unused_imports)]
 use kairn::editor::{Editor, EditorAction};
 
 // === Paste undo ===

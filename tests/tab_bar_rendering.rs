@@ -7,6 +7,7 @@ use helpers::{temp_project, TestHarness};
 use txv_core::cell::Color;
 use txv_core::event::{KeyCode, KeyMod};
 
+#[allow(dead_code)]
 const ALT: KeyMod = KeyMod::ALT;
 const CTRL_SHIFT: KeyMod = KeyMod::CTRL.with_shift();
 

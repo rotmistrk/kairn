@@ -93,8 +93,6 @@ mod tests {
     /// (not producing "Unknown command").
     #[test]
     fn dispatch_table_all_recognized() {
-        use txv_core::program::Program;
-
         let dir = std::env::temp_dir();
         let (mut program, sink, mut state) = setup_test_program(&dir);
 
@@ -121,7 +119,7 @@ mod tests {
             &crate::settings::StatusKeys::default(),
             txv_core::clipboard_ring::new_clipboard(50),
         );
-        let mut program = txv_core::program::Program::new(Box::new(status), Box::new(desktop));
+        let program = txv_core::program::Program::new(Box::new(status), Box::new(desktop));
         let sink = program.sink().clone();
         (program, sink, state)
     }

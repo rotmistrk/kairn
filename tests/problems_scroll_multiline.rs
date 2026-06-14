@@ -6,6 +6,7 @@ mod helpers;
 use helpers::{temp_project, TestHarness};
 use txv_core::event::{KeyCode, KeyMod};
 
+#[allow(dead_code)]
 fn push_diagnostic(h: &mut TestHarness, uri: &str, line: usize, msg: &str) {
     use kairn::commands::CM_DIAGNOSTIC;
     use kairn::lsp::diagnostics::{Diagnostic, Severity};
@@ -14,6 +15,7 @@ fn push_diagnostic(h: &mut TestHarness, uri: &str, line: usize, msg: &str) {
     h.run_cycles(2);
 }
 
+#[allow(dead_code)]
 fn push_diagnostics(h: &mut TestHarness, uri: &str, diags: Vec<(usize, &str)>) {
     use kairn::commands::CM_DIAGNOSTIC;
     use kairn::lsp::diagnostics::{Diagnostic, Severity};

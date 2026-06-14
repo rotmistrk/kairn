@@ -3,6 +3,7 @@
 mod helpers;
 
 use helpers::{temp_project, TestHarness};
+#[allow(unused_imports)]
 use txv_core::event::{KeyCode, KeyMod};
 
 #[test]

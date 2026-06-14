@@ -4,6 +4,7 @@ mod helpers;
 
 use helpers::{temp_project, TestHarness};
 use kairn::commands::{OpenFileRequest, CM_OPEN_FILE_FOCUS};
+#[allow(unused_imports)]
 use txv_core::event::KeyCode;
 
 #[test]

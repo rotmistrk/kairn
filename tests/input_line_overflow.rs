@@ -4,6 +4,7 @@ mod helpers;
 
 use txv_core::event::{Event, KeyCode, KeyEvent, KeyMod};
 use txv_core::geometry::Rect;
+#[allow(unused_imports)]
 use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::View;
 use txv_widgets::input_line::InputLine;

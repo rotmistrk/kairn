@@ -1,6 +1,8 @@
 //! Test harness — uses Program (same code path as real app).
 //! Test harness — uses the SAME initialization path as main().
 
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use tempfile::TempDir;

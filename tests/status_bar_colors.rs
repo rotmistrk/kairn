@@ -20,6 +20,7 @@ fn modal_bg() -> Color {
 }
 
 /// Status bar row is the last row.
+#[allow(dead_code)]
 fn status_row(h: &TestHarness) -> u16 {
     let buf = h.backend.buffer().expect("no buffer");
     buf.height() - 1

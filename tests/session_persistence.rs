@@ -27,7 +27,7 @@ fn save_and_load_session_roundtrip() {
     desktop.set_layout_mode(LayoutMode::Wide);
 
     // Save
-    session::save_session(&mut desktop, &root, &KiroTabRegistry::default(), &[]);
+    let _ = session::save_session(&mut desktop, &root, &KiroTabRegistry::default(), &[]);
 
     // Verify file exists
     let state_path = root.join(".kairn.state");

@@ -5,6 +5,7 @@ mod helpers;
 use helpers::{temp_project, TestHarness};
 use kairn::commands::CM_SHOW_RESULTS;
 use kairn::views::results::ResultEntry;
+#[allow(unused_imports)]
 use txv_core::event::{KeyCode, KeyMod};
 
 #[test]

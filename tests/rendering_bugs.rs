@@ -113,7 +113,7 @@ fn cursor_visible_on_tab_in_nolist_mode() {
     // It must be at the FIRST column of text (right after gutter), not displaced.
     let buf = h.backend.buffer().expect("buffer should exist");
     let mut cursor_x: Option<u16> = None;
-    let mut cursor_y: Option<u16> = None;
+    let mut _cursor_y: Option<u16> = None;
     for y in 1..23u16 {
         for x in 0..80u16 {
             let cell = buf.cell(x, y);
@@ -121,7 +121,7 @@ fn cursor_visible_on_tab_in_nolist_mode() {
                 && cell.style().fg() == txv_core::cell::Color::Ansi(0)
             {
                 cursor_x = Some(x);
-                cursor_y = Some(y);
+                _cursor_y = Some(y);
                 break;
             }
         }
