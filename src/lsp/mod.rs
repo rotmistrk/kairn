@@ -1,6 +1,7 @@
 //! LSP integration — Language Server Protocol client.
 
 pub mod client;
+pub mod completion_parse;
 pub mod completion_source;
 pub mod config_commands;
 pub mod diagnostic_store;

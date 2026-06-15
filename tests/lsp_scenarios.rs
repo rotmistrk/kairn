@@ -141,10 +141,11 @@ fn lsp_completion_parses_items_array() {
     });
     let items = requests::parse_completion(&result);
     assert_eq!(items.len(), 2);
-    assert_eq!(items[0].label(), "println!");
-    assert_eq!(items[0].insert_text(), Some("println!($0)"));
-    assert_eq!(items[1].detail(), Some("macro"));
-    assert!(items[1].insert_text().is_none());
+    // Sorted by label: print! < println!
+    assert_eq!(items[0].label(), "print!");
+    assert_eq!(items[0].detail(), Some("macro"));
+    assert_eq!(items[1].label(), "println!");
+    assert_eq!(items[1].insert_text(), Some("println!($0)"));
 }
 
 #[test]
@@ -155,7 +156,9 @@ fn lsp_completion_parses_flat_array() {
     ]);
     let items = requests::parse_completion(&result);
     assert_eq!(items.len(), 2);
-    assert_eq!(items[1].label(), "bar");
+    // Sorted: bar < foo
+    assert_eq!(items[0].label(), "bar");
+    assert_eq!(items[1].label(), "foo");
 }
 
 #[test]

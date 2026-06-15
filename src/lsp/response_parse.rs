@@ -1,7 +1,8 @@
-//! LSP response parsing — completion, locations, hover, code actions.
+//! LSP response parsing — locations, hover, code actions.
 
 use serde_json::Value;
 
+pub use super::completion_parse::parse_completion;
 use super::text_edit::TextEdit;
 
 /// A completion item from the server.
@@ -12,6 +13,7 @@ pub struct CompletionItem {
     pub(crate) insert_text: Option<String>,
     pub(crate) kind: CompletionKind,
     pub(crate) additional_edits: Vec<TextEdit>,
+    pub(crate) sort_key: String,
 }
 
 impl CompletionItem {
@@ -21,12 +23,15 @@ impl CompletionItem {
         insert_text: Option<String>,
         kind: CompletionKind,
     ) -> Self {
+        let l = label.into();
+        let sort_key = l.clone();
         Self {
-            label: label.into(),
+            label: l,
             detail,
             insert_text,
             kind,
             additional_edits: Vec::new(),
+            sort_key,
         }
     }
     pub fn label(&self) -> &str {
@@ -57,66 +62,6 @@ pub enum CompletionKind {
 pub use super::location::Location;
 
 /// Parse a completion response into items.
-pub fn parse_completion(result: &Value) -> Vec<CompletionItem> {
-    let items = if let Some(arr) = result.as_array() {
-        arr
-    } else if let Some(arr) = result.get("items").and_then(|v| v.as_array()) {
-        arr
-    } else {
-        return Vec::new();
-    };
-    items.iter().filter_map(parse_one_completion).collect()
-}
-
-fn parse_one_completion(val: &Value) -> Option<CompletionItem> {
-    let label_val = val.get("label")?;
-    let label_str = label_val.as_str()?;
-    let label = label_str.to_string();
-    let detail = val.get("detail").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let insert_text = val.get("insertText").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let kind = match val.get("kind").and_then(|v| v.as_u64()) {
-        Some(2) => CompletionKind::Method,
-        Some(3) => CompletionKind::Function,
-        _ => CompletionKind::Other,
-    };
-    let additional_edits = parse_additional_edits(val);
-    Some(CompletionItem {
-        label,
-        detail,
-        insert_text,
-        kind,
-        additional_edits,
-    })
-}
-
-fn parse_additional_edits(val: &Value) -> Vec<TextEdit> {
-    val.get("additionalTextEdits")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|e| {
-                    let range = e.get("range")?;
-                    let start = range.get("start")?;
-                    let end = range.get("end")?;
-                    let sl = start.get("line")?;
-                    let sc = start.get("character")?;
-                    let el = end.get("line")?;
-                    let ec = end.get("character")?;
-                    let new_text_val = e.get("newText")?;
-                    let new_text_str = new_text_val.as_str()?;
-                    Some(TextEdit {
-                        start_line: sl.as_u64()? as u32,
-                        start_col: sc.as_u64()? as u32,
-                        end_line: el.as_u64()? as u32,
-                        end_col: ec.as_u64()? as u32,
-                        new_text: new_text_str.to_string(),
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 /// Parse a definition/references response into locations.
 pub fn parse_locations(result: &Value) -> Vec<Location> {
     if let Some(obj) = result.as_object() {
@@ -246,9 +191,11 @@ mod tests {
         ]);
         let items = parse_completion(&result);
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0].label, "println!");
-        assert_eq!(items[0].detail, Some("macro".to_string()));
-        assert_eq!(items[1].insert_text, Some("print!($0)".to_string()));
+        // Sorted by label (no sortText provided)
+        assert_eq!(items[0].label, "print!");
+        assert_eq!(items[0].insert_text, Some("print!($0)".to_string()));
+        assert_eq!(items[1].label, "println!");
+        assert_eq!(items[1].detail, Some("macro".to_string()));
     }
 
     #[test]

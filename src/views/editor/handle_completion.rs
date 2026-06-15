@@ -82,7 +82,19 @@ impl KairnDelegate {
         use txv_widgets::sidekick::SidekickRequest;
 
         let count = items.len();
-        let max_w = items.iter().map(|i| i.label.len()).max().unwrap_or(10);
+        let max_label = items.iter().map(|i| i.label.len()).max().unwrap_or(10);
+        let max_detail = items
+            .iter()
+            .filter_map(|i| i.detail.as_ref())
+            .map(|d| d.len())
+            .max()
+            .unwrap_or(0);
+        let w = if max_detail > 0 {
+            (max_label + max_detail + 4) as u16
+        } else {
+            max_label as u16 + 4
+        }
+        .clamp(20, 60);
         let source = LspCompletionSource::new(items);
         let menu = DropdownMenu::new(source)
             .with_numbers(NumberMode::None)
@@ -90,7 +102,6 @@ impl KairnDelegate {
             .with_open_side(OpenSide::None);
         let content_h = count.min(8) as u16;
         let h = content_h + 2;
-        let w = (max_w as u16 + 6).clamp(14, 50);
         let gw = compute_gutter_width(editor, self);
         let scroll = editor.viewport_scroll();
         let cx = gw + editor.cursor_col().saturating_sub(editor.h_scroll()) as u16;
