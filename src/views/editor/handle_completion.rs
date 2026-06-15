@@ -72,11 +72,12 @@ impl KairnDelegate {
         }
         self.completion_items = filtered.clone();
         self.completion_visible = true;
-        self.show_sidekick(filtered);
+        self.show_sidekick(filtered, editor);
         self.dirty = true;
     }
 
-    fn show_sidekick(&mut self, items: Vec<CompletionItem>) {
+    fn show_sidekick(&mut self, items: Vec<CompletionItem>, editor: &Editor) {
+        use txv_edit::view::draw::compute_gutter_width;
         use txv_widgets::dropdown_menu::{DropdownMenu, FilterMode, NumberMode, OpenSide};
         use txv_widgets::sidekick::SidekickRequest;
 
@@ -90,7 +91,11 @@ impl KairnDelegate {
         let content_h = count.min(8) as u16;
         let h = content_h + 2;
         let w = (max_w as u16 + 6).clamp(14, 50);
-        let rect = Rect::new(0, 0, w, h);
+        let gw = compute_gutter_width(editor, self);
+        let scroll = editor.viewport_scroll();
+        let cx = gw + editor.cursor_col().saturating_sub(editor.h_scroll()) as u16;
+        let cy = editor.cursor_line().saturating_sub(scroll) as u16;
+        let rect = Rect::new(cx, cy, w, h);
         let data = SidekickRequest::new(Box::new(menu), rect, self.view_id);
         self.emit(CM_SIDEKICK_SHOW, Some(Box::new(data)));
     }
