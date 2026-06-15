@@ -107,12 +107,41 @@ impl KairnDelegate {
         let content_h = count.min(8) as u16;
         let h = content_h + 2;
         let gw = compute_gutter_width(editor, self);
-        let scroll = editor.viewport_scroll();
         let cx = gw + editor.cursor_col().saturating_sub(editor.h_scroll()) as u16;
-        let cy = editor.cursor_line().saturating_sub(scroll) as u16;
+        let cy = self.visual_cursor_row(editor, gw);
         let rect = Rect::new(cx, cy, w, h);
         let data = SidekickRequest::new(Box::new(menu), rect, self.view_id);
         self.emit(CM_SIDEKICK_SHOW, Some(Box::new(data)));
+    }
+
+    /// Compute visual row of cursor accounting for wrapping and sticky lines.
+    fn visual_cursor_row(&self, editor: &Editor, gw: u16) -> u16 {
+        use txv_core::text::display_width;
+        use txv_edit::view::draw::sticky::sticky_line_count;
+
+        let scroll = editor.viewport_scroll();
+        let line = editor.cursor_line();
+        let sticky_h = sticky_line_count(editor);
+
+        if !editor.options().wrap() {
+            return (line.saturating_sub(scroll) as u16) + sticky_h;
+        }
+        let avail = (editor.viewport_width() as u16).saturating_sub(gw) as usize;
+        if avail == 0 {
+            return sticky_h;
+        }
+        let tw = editor.options().tab_width();
+        let mut vrow = 0u16;
+        for i in scroll..line {
+            let l = editor.buf().line(i).unwrap_or_default();
+            let w = display_width(&l, tw) as usize;
+            vrow += if w == 0 {
+                1
+            } else {
+                w.div_ceil(avail) as u16
+            };
+        }
+        vrow + sticky_h
     }
 
     fn hide_completion(&mut self) {
@@ -165,81 +194,5 @@ impl KairnDelegate {
         self.apply_additional_edits(editor, &edits);
         self.clear_diagnostics();
         self.dirty = true;
-    }
-
-    fn common_completion_prefix(&self, typed: &str) -> Option<String> {
-        if self.completion_items.is_empty() {
-            return None;
-        }
-        let lower_typed = typed.to_lowercase();
-        let matching: Vec<&str> = self
-            .completion_items
-            .iter()
-            .map(|i| i.insert_text.as_deref().unwrap_or(&i.label))
-            .filter(|t| t.to_lowercase().starts_with(&lower_typed))
-            .collect();
-        if matching.is_empty() {
-            return None;
-        }
-        let first = matching[0];
-        let common_len = (0..first.len())
-            .take_while(|&i| {
-                let ch = first.as_bytes().get(i);
-                matching.iter().all(|m| m.as_bytes().get(i) == ch)
-            })
-            .count();
-        Some(first[..common_len].to_string())
-    }
-
-    fn replace_word_with_completion(&mut self, editor: &mut Editor, text: &str) {
-        let line = editor.buf().line(editor.cursor_line()).unwrap_or_default();
-        let col = editor.cursor_col();
-        let chars: Vec<char> = line.chars().collect();
-        let prefix_len = chars[..col]
-            .iter()
-            .rev()
-            .take_while(|c| c.is_alphanumeric() || **c == '_')
-            .count();
-        let word_start = col - prefix_len;
-        let suffix_len = chars[col..]
-            .iter()
-            .take_while(|c| c.is_alphanumeric() || **c == '_')
-            .count();
-        let word_end = col + suffix_len;
-        let start_offset = editor
-            .buf()
-            .line_col_to_offset(editor.cursor_line(), word_start)
-            .unwrap_or(0);
-        let end_offset = editor
-            .buf()
-            .line_col_to_offset(editor.cursor_line(), word_end)
-            .unwrap_or(start_offset);
-        if end_offset > start_offset {
-            editor.buf().delete(start_offset, end_offset);
-        }
-        editor.buf().insert(start_offset, text);
-        editor.set_cursor_col(word_start + text.len());
-        self.last_edit_tick = u64::MAX;
-    }
-
-    fn apply_additional_edits(&self, editor: &mut Editor, edits: &[crate::lsp::text_edit::TextEdit]) {
-        let mut sorted: Vec<_> = edits.to_vec();
-        sorted.sort_by(|a, b| (b.start_line, b.start_col).cmp(&(a.start_line, a.start_col)));
-        for edit in &sorted {
-            let start = editor
-                .buf()
-                .line_col_to_offset(edit.start_line as usize, edit.start_col as usize)
-                .unwrap_or(0);
-            let end = editor
-                .buf()
-                .line_col_to_offset(edit.end_line as usize, edit.end_col as usize)
-                .unwrap_or(start);
-            if end > start {
-                editor.buf().delete(start, end);
-            }
-            if !edit.new_text.is_empty() {
-                editor.buf().insert(start, &edit.new_text);
-            }
-        }
     }
 }

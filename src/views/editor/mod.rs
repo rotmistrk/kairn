@@ -18,6 +18,7 @@ pub mod diff_opts;
 mod handle_action;
 mod handle_command_event;
 mod handle_completion;
+mod handle_completion_accept;
 mod handle_deferred;
 mod handle_signature;
 mod handle_tick;
