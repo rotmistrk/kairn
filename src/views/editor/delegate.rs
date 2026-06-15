@@ -38,6 +38,7 @@ pub struct KairnDelegate {
     pub(crate) blame_state: Option<SharedBlame>,
     pub(crate) completion_items: Vec<CompletionItem>,
     pub(crate) completion_visible: bool,
+    pub(crate) completion_selected: usize,
     pub(crate) gutter_signs: Vec<(usize, GutterSign)>,
     pub(crate) highlight_word: Option<(usize, usize, usize)>,
     pub(crate) diff_state: Option<super::diff_model::DiffState>,

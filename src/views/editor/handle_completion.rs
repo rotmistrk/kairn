@@ -2,7 +2,7 @@
 
 use txv_core::event::{KeyCode, KeyEvent};
 use txv_core::prelude::*;
-use txv_widgets::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_SHOW};
+use txv_widgets::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
 
 use super::delegate::KairnDelegate;
 use crate::commands::CM_LSP_COMPLETION;
@@ -15,14 +15,17 @@ impl KairnDelegate {
         if self.completion_visible {
             match (key.code(), key.modifiers().ctrl()) {
                 (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
-                    self.emit(CM_SIDEKICK_NEXT, None);
+                    self.completion_selected = (self.completion_selected + 1) % self.completion_items.len();
+                    self.show_sidekick(self.completion_items.clone(), editor);
                     return Some(HandleResult::Consumed);
                 }
                 (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
-                    self.emit(CM_SIDEKICK_PREV, None);
+                    let len = self.completion_items.len();
+                    self.completion_selected = (self.completion_selected + len - 1) % len;
+                    self.show_sidekick(self.completion_items.clone(), editor);
                     return Some(HandleResult::Consumed);
                 }
-                (KeyCode::Tab, _) => {
+                (KeyCode::Tab, _) | (KeyCode::Right, _) => {
                     self.accept_completion(editor);
                     return Some(HandleResult::Consumed);
                 }
@@ -72,6 +75,7 @@ impl KairnDelegate {
         }
         self.completion_items = filtered.clone();
         self.completion_visible = true;
+        self.completion_selected = 0;
         self.show_sidekick(filtered, editor);
         self.dirty = true;
     }
@@ -114,6 +118,7 @@ impl KairnDelegate {
     fn hide_completion(&mut self) {
         if self.completion_visible {
             self.completion_visible = false;
+            self.completion_selected = 0;
             self.completion_items.clear();
             self.emit(CM_SIDEKICK_HIDE, None);
             self.dirty = true;
@@ -142,14 +147,15 @@ impl KairnDelegate {
                 return;
             }
         }
-        // Common prefix equals typed prefix — accept first item (or selected)
+        // Common prefix equals typed prefix — accept selected item
+        let idx = self.completion_selected;
         let text = self
             .completion_items
-            .first()
+            .get(idx)
             .map(|i| i.insert_text.as_deref().unwrap_or(&i.label).to_string());
         let edits = self
             .completion_items
-            .first()
+            .get(idx)
             .map(|i| i.additional_edits.clone())
             .unwrap_or_default();
         self.hide_completion();

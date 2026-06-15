@@ -29,6 +29,7 @@ impl KairnDelegate {
             blame_state: None,
             completion_items: Vec::new(),
             completion_visible: false,
+            completion_selected: 0,
             gutter_signs: Vec::new(),
             highlight_word: None,
             diff_state: None,
