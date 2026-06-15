@@ -74,7 +74,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .trigger_key(ctrl_p)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(input));
-    bar.add(StatusSlot::new(Box::new(finder)).priority(5));
+    bar.add(StatusSlot::new(Box::new(finder)).priority(5).stretch(1));
 
     let ctrl_t = KeyEvent::new(KeyCode::Char('t'), KeyMod::CTRL);
     let sym_input = InputLine::new()
@@ -85,7 +85,7 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
         .trigger_key(ctrl_t)
         .terminal_command(CM_FILE_FINDER_OPEN)
         .add_child(Box::new(sym_input));
-    bar.add(StatusSlot::new(Box::new(sym_finder)).priority(5));
+    bar.add(StatusSlot::new(Box::new(sym_finder)).priority(5).stretch(1));
 }
 fn add_todo_group(bar: &mut StatusBar) {
     use txv_widgets::KeyLabelView;
