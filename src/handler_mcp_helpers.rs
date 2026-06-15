@@ -11,7 +11,7 @@ use crate::commands::{RootsChangedData, SplitRequest, CM_ROOTS_CHANGED, CM_SPLIT
 use crate::desktop::{close_tab_by_title, focus_editor_by_path, SlotId};
 use crate::handler::AppState;
 use crate::handler_evict::try_insert_tab;
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorView, EditorViewDiffExt, EditorViewExt};
 use crate::views::terminal::TerminalView;
 
 pub(crate) fn mcp_open_file(
@@ -33,14 +33,14 @@ pub(crate) fn mcp_open_file(
         OpenResult::Opened => {
             let defaults = &state.settings.editor_defaults;
             let theme = state.current_syntax_theme();
-            let view: Box<dyn View> = match EditorView::open_with_theme(&path, defaults, theme) {
+            let view: Box<dyn View> = match editor_build::open_with_theme(&path, defaults, theme) {
                 Ok(mut ed) => {
                     ed.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
                     ed.editor_mut()
                         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
                     Box::new(ed)
                 }
-                Err(_) => Box::new(EditorView::new_file(&path, defaults)),
+                Err(_) => Box::new(editor_build::new_file(&path, defaults)),
             };
             try_insert_tab(desktop, state, sink, SlotId::Center, title, view);
         }

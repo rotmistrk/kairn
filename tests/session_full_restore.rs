@@ -7,7 +7,7 @@ use kairn::session;
 use kairn::session::schema::SESSION_VERSION;
 use kairn::settings::EditorSettings;
 use kairn::slots::SlotId;
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 
 #[test]
 fn session_save_restore_preserves_cursor_positions() {
@@ -23,12 +23,12 @@ fn session_save_restore_preserves_cursor_positions() {
 
     // Build desktop, open 2 files with specific cursor positions
     let mut desktop = build_desktop::build_workspace(&root, git_keys.clone());
-    let mut ed_a = EditorView::open(&root.join("a.rs"), &defaults).unwrap();
+    let mut ed_a = kairn::views::editor::build::open(&root.join("a.rs"), &defaults).unwrap();
     ed_a.set_root_dir(root.clone());
     ed_a.goto(3, 2); // line 3, col 2
     desktop.insert_tab(SlotId::Center as usize, "a.rs", Box::new(ed_a));
 
-    let mut ed_b = EditorView::open(&root.join("b.rs"), &defaults).unwrap();
+    let mut ed_b = kairn::views::editor::build::open(&root.join("b.rs"), &defaults).unwrap();
     ed_b.set_root_dir(root.clone());
     ed_b.goto(1, 8); // line 1, col 8
     desktop.insert_tab(SlotId::Center as usize, "b.rs", Box::new(ed_b));

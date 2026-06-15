@@ -11,7 +11,7 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 use crate::desktop::{close_tab_by_title, insert_tab, LayoutMode, SlotId};
 use crate::kiro_registry::KiroTabRegistry;
 use crate::settings::EditorSettings;
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorViewExt};
 use crate::views::terminal::new_kiro_terminal_argv;
 use crate::views::tree::FileTreeView;
 
@@ -143,8 +143,8 @@ fn open_tab_in_panel(
         return;
     }
     let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
-    let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
+    let mut editor = editor_build::open_with_theme(&path, editor_defaults, syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(&path, editor_defaults));
     editor.set_root_dir(discover_root_for(&path, root_dir));
     editor.goto(tab.line, tab.col);
     insert_tab(desktop, SlotId::Center, title, Box::new(editor));

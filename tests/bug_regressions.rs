@@ -40,10 +40,10 @@ fn mx_problems_opens_when_tools_hidden() {
 /// :diff command (via toggle_diff) sets pending_diff and flush_diff processes it.
 #[test]
 fn colon_diff_activates_diff_mode() {
-    use kairn::views::editor::EditorView;
+    use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
     use txv_core::prelude::*;
 
-    let mut view = EditorView::from_text("hello\nworld\n");
+    let mut view = kairn::views::editor::build::from_text("hello\nworld\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     // Use toggle_diff — since no git repo, diff compares against empty base
     view.toggle_diff("");

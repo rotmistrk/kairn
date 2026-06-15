@@ -14,7 +14,7 @@ use crate::handler::downcast_desktop;
 use crate::handler_close::save_all_dirty;
 use crate::handler_evict::complete_pending_insert;
 use crate::views::csv_view::CsvView;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 use crate::views::todo_tree::TodoTreeView;
 
 pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {

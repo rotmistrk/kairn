@@ -11,7 +11,7 @@ use crate::app_state::AppState;
 use crate::commands::*;
 use crate::handler::downcast_desktop;
 use crate::slots::SlotId;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 
 /// Handle CM_APP_QUIT: always confirm before quitting.
 pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {

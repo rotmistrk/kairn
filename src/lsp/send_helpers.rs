@@ -28,7 +28,7 @@ pub(super) fn defer(
             format!("Waiting for LSP ({lang})..."),
         ))),
     );
-    state.deferred_lsp.push(DeferredLspRequest {
+    state.lsp_state.deferred.push(DeferredLspRequest {
         command,
         data,
         language: lang.to_string(),

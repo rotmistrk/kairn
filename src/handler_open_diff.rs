@@ -7,7 +7,7 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::handler_open_view::{open_editor_view, try_open_structured};
 use crate::views::csv_view::CsvView;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewDiffExt};
 use crate::views::struct_view::StructuredView;
 use txv_widgets::tiled_workspace::TiledWorkspace;
 

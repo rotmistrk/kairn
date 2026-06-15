@@ -1,7 +1,7 @@
 //! Test: visual block mode operations.
 
 use kairn::editor::keymap::EditorMode;
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 use txv_core::prelude::*;
 
 fn inject_keys(view: &mut EditorView, keys: &[KeyEvent]) {
@@ -20,7 +20,7 @@ fn ctrl(ch: char) -> KeyEvent {
 
 #[test]
 fn enter_visual_block_mode() {
-    let mut view = EditorView::from_text("abc\ndef\nghi\n");
+    let mut view = kairn::views::editor::build::from_text("abc\ndef\nghi\n");
     view.set_bounds(Rect::new(0, 0, 40, 5));
     inject_keys(&mut view, &[ctrl('v')]);
     assert_eq!(view.editor().mode(), EditorMode::VisualBlock);
@@ -28,7 +28,7 @@ fn enter_visual_block_mode() {
 
 #[test]
 fn block_delete_removes_columns() {
-    let mut view = EditorView::from_text("abcde\nfghij\nklmno\n");
+    let mut view = kairn::views::editor::build::from_text("abcde\nfghij\nklmno\n");
     view.set_bounds(Rect::new(0, 0, 40, 5));
     // Enter visual block, move right 2, down 2, delete
     inject_keys(
@@ -49,7 +49,7 @@ fn block_delete_removes_columns() {
 
 #[test]
 fn block_yank_and_paste_with_padding() {
-    let mut view = EditorView::from_text("abcdef\ngh\nij\n");
+    let mut view = kairn::views::editor::build::from_text("abcdef\ngh\nij\n");
     view.set_bounds(Rect::new(0, 0, 40, 5));
     // Yank block: col 0..=1, lines 0..=2
     inject_keys(
@@ -86,7 +86,7 @@ fn block_yank_and_paste_with_padding() {
 
 #[test]
 fn block_replace_chars() {
-    let mut view = EditorView::from_text("abcde\nfghij\nklmno\n");
+    let mut view = kairn::views::editor::build::from_text("abcde\nfghij\nklmno\n");
     view.set_bounds(Rect::new(0, 0, 40, 5));
     // Select block col 1..=2, lines 0..=1, replace with 'X'
     inject_keys(

@@ -62,7 +62,7 @@ fn lsp_restart(pattern: &str, state: &mut AppState) -> String {
     }
     for lang in &langs {
         state.lsp.restart(lang);
-        state.lsp_status.remove(lang);
+        state.lsp_state.status.remove(lang);
     }
     let root = state.root_dir.clone();
     let mut restarted = Vec::new();
@@ -84,7 +84,7 @@ fn lsp_stop(pattern: &str, state: &mut AppState) -> String {
     let mut stopped = Vec::new();
     for lang in &langs {
         if state.lsp.stop(lang) {
-            state.lsp_status.remove(lang);
+            state.lsp_state.status.remove(lang);
             stopped.push(lang.as_str());
         }
     }

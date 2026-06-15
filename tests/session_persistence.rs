@@ -5,7 +5,7 @@ use kairn::session;
 use kairn::session::schema::{EditorTabState, SessionState, SESSION_VERSION};
 use kairn::settings::EditorSettings;
 use kairn::slots::{LayoutMode, SlotId};
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 
 #[test]
 fn save_and_load_session_roundtrip() {
@@ -20,7 +20,7 @@ fn save_and_load_session_roundtrip() {
         kairn::build_desktop::build_workspace(&std::path::PathBuf::from("."), kairn::settings::GitKeys::default());
     let defaults = EditorSettings::default();
     let path = root.join("hello.rs");
-    let mut editor = EditorView::open(&path, &defaults).unwrap();
+    let mut editor = kairn::views::editor::build::open(&path, &defaults).unwrap();
     editor.set_root_dir(root.clone());
     editor.goto(0, 5);
     desktop.insert_tab(SlotId::Center as usize, "hello.rs", Box::new(editor));

@@ -34,10 +34,10 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let key = path.to_string_lossy().to_string();
-    if state.lsp_opened_files.contains(&key) {
+    if state.lsp_state.opened_files.contains(&key) {
         return;
     }
-    state.lsp_opened_files.insert(key);
+    state.lsp_state.opened_files.insert(key);
 
     let uri = protocol::path_to_uri(path);
     let text = match fs::read_to_string(path) {
@@ -77,7 +77,7 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
 
     let uri = protocol::path_to_uri(&changed.path);
     let key = changed.path.to_string_lossy().to_string();
-    let version = state.doc_versions.entry(key).or_insert(1);
+    let version = state.lsp_state.doc_versions.entry(key).or_insert(1);
     *version += 1;
     protocol::did_change(client, &uri, *version, &changed.content);
 }

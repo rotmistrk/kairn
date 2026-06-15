@@ -20,7 +20,7 @@ use crate::handler_script_edit::{
 use crate::handler_script_util::fire_hooks_for_event;
 use crate::scripting::hooks::HookEvent;
 use crate::scripting::ScriptCommand;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 
 /// Dispatch a list of script commands to the event queue.
 pub fn dispatch_script_commands(commands: Vec<ScriptCommand>, ctx: &mut CommandContext, state: &mut AppState) {

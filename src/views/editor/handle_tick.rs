@@ -45,7 +45,17 @@ impl KairnDelegate {
             }
         }
         self.check_autosave(editor, tick);
+        self.sync_settings(editor);
+        self.process_deferred(editor);
         HandleResult::Ignored
+    }
+
+    fn sync_settings(&mut self, editor: &Editor) {
+        let opts = editor.options();
+        self.settings.cursor_normal = opts.cursor_normal();
+        self.settings.cursor_insert = opts.cursor_insert();
+        self.settings.cursor_command = opts.cursor_command();
+        self.settings.number = opts.number();
     }
 
     fn check_autosave(&mut self, editor: &mut Editor, tick: u64) {

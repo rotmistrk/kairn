@@ -13,14 +13,14 @@ use crate::handler_evict::try_insert_tab;
 use crate::structured::json_doc::JsonDoc;
 use crate::structured::jsonl_doc::JsonlDoc;
 use crate::views::csv_view::CsvView;
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorViewDiffExt, EditorViewExt};
 use crate::views::struct_view::StructuredView;
 
 pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let mut ed = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    let mut ed = editor_build::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     ed.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     let cl = state.command_list.clone();
     let dm = ed.delegate_mut();
@@ -30,7 +30,7 @@ pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn Vie
     ed.editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    ed.buffer_id = Some(state.buffers.register(Some(canon)));
+    ed.set_buffer_id(Some(state.buffers.register(Some(canon))));
     Box::new(ed)
 }
 
@@ -75,8 +75,8 @@ pub(crate) fn try_open_structured(path: &Path, clipboard: Option<ClipboardHandle
 pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileRequest) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let mut editor = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    let mut editor = editor_build::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     let dm = editor.delegate_mut();
     dm.command_list = state.command_list.clone();
@@ -93,7 +93,7 @@ pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileReque
     }
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let buf_id = state.buffers.register(Some(canon));
-    editor.buffer_id = Some(buf_id);
+    editor.set_buffer_id(Some(buf_id));
     Box::new(editor)
 }
 

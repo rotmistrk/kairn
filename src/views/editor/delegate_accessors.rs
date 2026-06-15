@@ -1,16 +1,59 @@
-//! Accessor methods for KairnDelegate.
+//! Accessor methods and constructor for KairnDelegate.
 
 use std::path::PathBuf;
 
 use crate::blame::SharedBlame;
 use crate::buffer_store::BufferStore;
-use crate::lsp::completion::CompletionPopup;
+use crate::completer::new_command_list;
 use crate::lsp::diagnostics::Diagnostic;
 use crate::settings::EditorSettings;
 
 use super::delegate::KairnDelegate;
 
 impl KairnDelegate {
+    pub(crate) fn new(settings: EditorSettings, store: Box<dyn BufferStore>) -> Self {
+        Self {
+            settings,
+            root_dir: PathBuf::from("."),
+            path: PathBuf::new(),
+            file_ext: String::new(),
+            display_title: String::new(),
+            store,
+            disk_mtime: None,
+            last_edit_tick: 0,
+            current_tick: 0,
+            eviction_close: false,
+            buffer_id: None,
+            view_id: 0,
+            diagnostics: None,
+            blame_state: None,
+            completion_items: Vec::new(),
+            completion_visible: false,
+            gutter_signs: Vec::new(),
+            highlight_word: None,
+            diff_state: None,
+            command_list: new_command_list(),
+            pending_commands: Vec::new(),
+            pending_broadcasts: Vec::new(),
+            dirty: false,
+            save_requested: false,
+            force_close: false,
+            pending_diff: None,
+            pending_revert: false,
+            pending_nodiff: false,
+            search_hist: None,
+            cmd_hist: None,
+        }
+    }
+
+    pub(crate) fn emit(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.pending_commands.push((id, data));
+    }
+
+    pub(crate) fn emit_broadcast(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
+        self.pending_broadcasts.push((id, data));
+    }
+
     pub(crate) fn settings(&self) -> &EditorSettings {
         &self.settings
     }
@@ -37,9 +80,6 @@ impl KairnDelegate {
     }
     pub(crate) fn set_highlight_word(&mut self, v: Option<(usize, usize, usize)>) {
         self.highlight_word = v;
-    }
-    pub(crate) fn completion_popup_ref(&self) -> &CompletionPopup {
-        &self.completion_popup
     }
     pub(crate) fn diff_state_ref(&self) -> &Option<super::diff_model::DiffState> {
         &self.diff_state
@@ -77,6 +117,9 @@ impl KairnDelegate {
     pub(crate) fn take_pending_diff(&mut self) -> Option<String> {
         self.pending_diff.take()
     }
+    pub(crate) fn set_pending_diff(&mut self, v: String) {
+        self.pending_diff = Some(v);
+    }
     pub(crate) fn is_pending_revert(&self) -> bool {
         self.pending_revert
     }
@@ -105,6 +148,33 @@ impl KairnDelegate {
         &mut self.store
     }
     pub(crate) fn completion_visible(&self) -> bool {
-        self.completion_popup.visible
+        self.completion_visible
+    }
+    pub(crate) fn set_buffer_id(&mut self, id: Option<crate::buffer_registry::BufferId>) {
+        self.buffer_id = id;
+    }
+    pub(crate) fn buffer_id(&self) -> Option<crate::buffer_registry::BufferId> {
+        self.buffer_id
+    }
+    pub(crate) fn set_store(&mut self, store: Box<dyn BufferStore>) {
+        self.store = store;
+    }
+    pub(crate) fn set_root_dir(&mut self, root: PathBuf) {
+        self.root_dir = root;
+    }
+    pub(crate) fn set_display_title(&mut self, title: String) {
+        self.display_title = title;
+    }
+    pub(crate) fn set_file_ext(&mut self, ext: String) {
+        self.file_ext = ext;
+    }
+    pub(crate) fn set_diagnostics(&mut self, diags: Vec<Diagnostic>) {
+        self.diagnostics = Some(diags);
+    }
+    pub(crate) fn set_gutter_signs(&mut self, signs: Vec<(usize, crate::gutter_signs::GutterSign)>) {
+        self.gutter_signs = signs;
+    }
+    pub(crate) fn set_view_id(&mut self, id: txv_core::view::ViewId) {
+        self.view_id = id;
     }
 }

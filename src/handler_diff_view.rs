@@ -10,7 +10,7 @@ use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::views::diff_view::DiffView;
 use crate::views::editor::diff_model::DiffState;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 
 pub(crate) fn handle_diff_open_view(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(boxed) = ctx.data().as_ref() else {

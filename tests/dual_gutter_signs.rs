@@ -4,11 +4,11 @@ mod helpers;
 
 use kairn::gutter_signs::GutterSign;
 use kairn::lsp::diagnostics::{Diagnostic, Severity};
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewExt};
 use txv_core::prelude::*;
 
 fn make_view(text: &str) -> EditorView {
-    let mut view = EditorView::from_text(text);
+    let mut view = kairn::views::editor::build::from_text(text);
     view.editor_mut().options_mut().set_number(true);
     view.editor_mut().options_mut().set_gutter_signs(true);
     view.set_bounds(Rect::new(0, 0, 40, 5));

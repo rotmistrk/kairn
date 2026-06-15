@@ -14,7 +14,7 @@ use crate::commands::{ViewContext, CM_CONTEXT_UPDATE};
 use crate::desktop::{active_tab_title, slot_from, SlotId};
 use crate::editor::keymap::Keymap;
 use crate::handler::downcast_desktop;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 
 /// Collect context from the focused view and broadcast it.
 pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {

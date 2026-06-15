@@ -1,7 +1,7 @@
 //! Tests for diff revert hunk feature (R hotkey / :revert).
 
 use kairn::views::editor::diff_model::{DiffLine, DiffState};
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 use txv_core::event::{KeyCode, KeyEvent, KeyMod};
 use txv_core::prelude::*;
 
@@ -11,7 +11,7 @@ fn make_diff_state(lines: Vec<DiffLine>, cursor: usize) -> DiffState {
 
 #[test]
 fn revert_added_lines() {
-    let mut view = EditorView::from_text("aaa\nbbb\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nbbb\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(
@@ -36,7 +36,7 @@ fn revert_added_lines() {
 
 #[test]
 fn revert_deleted_lines() {
-    let mut view = EditorView::from_text("aaa\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(
@@ -64,7 +64,7 @@ fn revert_deleted_lines() {
 
 #[test]
 fn revert_replaced_lines() {
-    let mut view = EditorView::from_text("aaa\nXXX\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nXXX\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(
@@ -93,7 +93,7 @@ fn revert_replaced_lines() {
 
 #[test]
 fn revert_on_context_line_errors() {
-    let mut view = EditorView::from_text("aaa\nbbb\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nbbb\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(
@@ -117,7 +117,7 @@ fn revert_on_context_line_errors() {
 
 #[test]
 fn revert_not_in_diff_mode_errors() {
-    let mut view = EditorView::from_text("aaa\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     let result = view.revert_hunk();
@@ -127,7 +127,7 @@ fn revert_not_in_diff_mode_errors() {
 
 #[test]
 fn revert_via_r_hotkey() {
-    let mut view = EditorView::from_text("aaa\nbbb\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nbbb\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     let sink = EventSink::new();
@@ -150,13 +150,14 @@ fn revert_via_r_hotkey() {
 
     let key = Event::Key(KeyEvent::new(KeyCode::Char('R'), KeyMod::default()));
     view.handle(&key);
+    view.handle(&Event::Tick);
 
     assert_eq!(view.editor().buf().content(), "aaa\nccc\n");
 }
 
 #[test]
 fn revert_multi_line_added() {
-    let mut view = EditorView::from_text("aaa\nb1\nb2\nb3\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nb1\nb2\nb3\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(
@@ -183,7 +184,7 @@ fn revert_multi_line_added() {
 
 #[test]
 fn revert_multi_line_replacement() {
-    let mut view = EditorView::from_text("aaa\nX1\nX2\nccc\n");
+    let mut view = kairn::views::editor::build::from_text("aaa\nX1\nX2\nccc\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     view.set_diff_state(make_diff_state(

@@ -1,11 +1,11 @@
 //! Tests for goto scroll behavior — target line should be visible with margin.
 
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 use txv_core::prelude::*;
 
 fn make_view(lines: usize) -> EditorView {
     let content: String = (1..=lines).map(|i| format!("line{i}\n")).collect();
-    let mut view = EditorView::from_text(&content);
+    let mut view = kairn::views::editor::build::from_text(&content);
     view.set_bounds(Rect::new(0, 0, 40, 15));
     view
 }

@@ -1,5 +1,6 @@
 //! KairnDelegate — EditorViewDelegate for kairn IDE integration.
 
+use std::mem;
 use std::path::PathBuf;
 
 use txv_core::event::{CommandId, KeyEvent};
@@ -10,10 +11,10 @@ use txv_edit::view::delegate::{EditorViewDelegate, LineDecoration};
 use crate::app_palette::app_palette;
 use crate::blame::SharedBlame;
 use crate::buffer_store::BufferStore;
-use crate::completer::{new_command_list, AppCompleter};
+use crate::completer::AppCompleter;
 use crate::gutter_signs::GutterSign;
-use crate::lsp::completion::CompletionPopup;
 use crate::lsp::diagnostics::Diagnostic;
+use crate::lsp::requests::CompletionItem;
 use crate::settings::EditorSettings;
 
 use super::delegate_diff::{diag_marker_style, diag_underline_style};
@@ -30,10 +31,13 @@ pub struct KairnDelegate {
     pub(crate) last_edit_tick: u64,
     pub(crate) current_tick: u64,
     pub(crate) eviction_close: bool,
+    pub(crate) buffer_id: Option<crate::buffer_registry::BufferId>,
+    pub(crate) view_id: txv_core::view::ViewId,
     // IDE state
     pub(crate) diagnostics: Option<Vec<Diagnostic>>,
     pub(crate) blame_state: Option<SharedBlame>,
-    pub(crate) completion_popup: CompletionPopup,
+    pub(crate) completion_items: Vec<CompletionItem>,
+    pub(crate) completion_visible: bool,
     pub(crate) gutter_signs: Vec<(usize, GutterSign)>,
     pub(crate) highlight_word: Option<(usize, usize, usize)>,
     pub(crate) diff_state: Option<super::diff_model::DiffState>,
@@ -49,48 +53,6 @@ pub struct KairnDelegate {
     pub(crate) pending_nodiff: bool,
     pub(crate) search_hist: Option<txv_core::shared_history::SharedHistory>,
     pub(crate) cmd_hist: Option<txv_core::shared_history::SharedHistory>,
-}
-
-impl KairnDelegate {
-    pub(crate) fn new(settings: EditorSettings, store: Box<dyn BufferStore>) -> Self {
-        Self {
-            settings,
-            root_dir: PathBuf::from("."),
-            path: PathBuf::new(),
-            file_ext: String::new(),
-            display_title: String::new(),
-            store,
-            disk_mtime: None,
-            last_edit_tick: 0,
-            current_tick: 0,
-            eviction_close: false,
-            diagnostics: None,
-            blame_state: None,
-            completion_popup: CompletionPopup::new(),
-            gutter_signs: Vec::new(),
-            highlight_word: None,
-            diff_state: None,
-            command_list: new_command_list(),
-            pending_commands: Vec::new(),
-            pending_broadcasts: Vec::new(),
-            dirty: false,
-            save_requested: false,
-            force_close: false,
-            pending_diff: None,
-            pending_revert: false,
-            pending_nodiff: false,
-            search_hist: None,
-            cmd_hist: None,
-        }
-    }
-
-    pub(crate) fn emit(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
-        self.pending_commands.push((id, data));
-    }
-
-    pub(crate) fn emit_broadcast(&mut self, id: u16, data: Option<Box<dyn std::any::Any + Send>>) {
-        self.pending_broadcasts.push((id, data));
-    }
 }
 
 impl EditorViewDelegate for KairnDelegate {
@@ -247,7 +209,7 @@ impl EditorViewDelegate for KairnDelegate {
     }
 
     fn needs_redraw(&self, _editor: &Editor) -> bool {
-        self.dirty || self.completion_popup.visible
+        self.dirty
     }
 
     fn supports_downcast() -> bool {
@@ -267,5 +229,13 @@ impl EditorViewDelegate for KairnDelegate {
 
     fn command_history(&self) -> Option<txv_core::shared_history::SharedHistory> {
         self.cmd_hist.clone()
+    }
+
+    fn drain_commands(&mut self) -> Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
+        mem::take(&mut self.pending_commands)
+    }
+
+    fn drain_broadcasts(&mut self) -> Vec<(u16, Option<Box<dyn std::any::Any + Send>>)> {
+        mem::take(&mut self.pending_broadcasts)
     }
 }

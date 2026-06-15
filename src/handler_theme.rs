@@ -6,7 +6,7 @@ use txv_core::program::CommandContext;
 use crate::app_state::AppState;
 use crate::desktop::SlotId;
 use crate::handler::downcast_desktop;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 
 pub fn handle_toggle_theme(ctx: &mut CommandContext, state: &mut AppState) {
     let arg = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();

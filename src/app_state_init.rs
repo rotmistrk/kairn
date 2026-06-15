@@ -1,6 +1,6 @@
 //! AppState constructors.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -11,6 +11,7 @@ use txv_core::shared_history::SharedHistory;
 use crate::completer::new_command_list;
 use crate::lsp::pending::PendingRequests;
 use crate::lsp::registry::LspRegistry;
+use crate::lsp_state::LspState;
 use crate::mcp_state::McpState;
 use crate::message_ring::MessageRing;
 use crate::scripting::plugins::PluginManager;
@@ -22,7 +23,6 @@ use crate::broker::FileBroker;
 use crate::buffer_registry::BufferRegistry;
 use crate::handler_context::open_tty_for_title;
 use crate::kiro_registry::KiroTabRegistry;
-use crate::lsp::progress::LspStatusTracker;
 use crate::workspace_roots::WorkspaceRoots;
 
 impl AppState {
@@ -48,7 +48,6 @@ impl AppState {
         s.clipboard = new_clipboard(50);
         s.command_history = SharedHistory::new(100);
         s.search_history = SharedHistory::new(50);
-        s.lsp_status = LspStatusTracker::new();
         s.script.set_clipboard(s.clipboard.clone());
         s.messages = Arc::new(Mutex::new(MessageRing::new()));
         s
@@ -68,8 +67,7 @@ impl AppState {
             cursor_pos: (0, 0),
             messages: Arc::new(Mutex::new(MessageRing::new())),
             kiro_registry: KiroTabRegistry::default(),
-            doc_versions: HashMap::new(),
-            lsp_opened_files: HashSet::new(),
+            lsp_state: LspState::new(),
             mcp: McpState::default(),
             waker: None,
             theme_state: None,
@@ -83,14 +81,12 @@ impl AppState {
             lsp_languages: Arc::new(Mutex::new(Vec::new())),
             completer_roots: Arc::new(Mutex::new(Vec::new())),
             plugins: PluginManager::new(),
-            deferred_lsp: Vec::new(),
             todo_note_path: None,
             linked_scroll: false,
             shared_register: Arc::default(),
             clipboard: new_clipboard(1),
             command_history: SharedHistory::new(1),
             search_history: SharedHistory::new(1),
-            lsp_status: LspStatusTracker::new(),
             pty_last_output: HashMap::new(),
             last_window_title: String::new(),
             tty_file: None,

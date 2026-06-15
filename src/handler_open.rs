@@ -22,7 +22,7 @@ fn initial_title(path: &Path) -> String {
 }
 pub(crate) use crate::handler_open_diff::{activate_diff_on_focused, open_as_csv, toggle_view_mode};
 use crate::handler_open_view::{open_editor, try_open_structured};
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorView, EditorViewExt};
 
 /// Handle Ctrl+P file finder submit — convert relative path to OpenFileRequest.
 pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, focus_center: bool) {
@@ -164,15 +164,15 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
 fn create_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let mut editor = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    let mut editor = editor_build::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     editor
         .editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let buf_id = state.buffers.register(Some(canon));
-    editor.buffer_id = Some(buf_id);
+    editor.set_buffer_id(Some(buf_id));
     Box::new(editor)
 }
 
@@ -188,7 +188,7 @@ pub(crate) fn handle_shell_output(ctx: &mut CommandContext, state: &mut AppState
     };
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        let view = EditorView::from_text(&output);
+        let view = editor_build::from_text(&output);
         try_insert_tab(
             desktop,
             state,

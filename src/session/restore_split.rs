@@ -8,7 +8,7 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 
 use crate::desktop::SlotId;
 use crate::settings::EditorSettings;
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorView, EditorViewExt};
 
 use super::schema::SessionState;
 
@@ -56,8 +56,8 @@ fn open_second_panel_tabs(
             continue;
         }
         let title = path.file_name().and_then(|n| n.to_str()).unwrap_or("untitled");
-        let mut editor = EditorView::open_with_theme(&path, editor_defaults, syntax_theme)
-            .unwrap_or_else(|_| EditorView::new_file(&path, editor_defaults));
+        let mut editor = editor_build::open_with_theme(&path, editor_defaults, syntax_theme)
+            .unwrap_or_else(|_| editor_build::new_file(&path, editor_defaults));
         editor.set_root_dir(discover_root_for(&path, root_dir));
         editor.goto(tab.line, tab.col);
         insert_into_second_panel(desktop, editor, title);

@@ -2,7 +2,7 @@
 
 use crate::desktop::SlotId;
 use crate::lsp::diagnostics::Severity;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 /// Find an editor view by tab name in the center panel.

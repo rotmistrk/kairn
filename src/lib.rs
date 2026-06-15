@@ -104,6 +104,7 @@ pub mod kiro_registry;
 pub mod kiro_session;
 pub mod kiro_settings;
 pub mod lsp;
+pub mod lsp_state;
 pub mod mcp;
 pub mod mcp_state;
 pub mod message_ring;

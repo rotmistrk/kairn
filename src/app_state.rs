@@ -1,7 +1,7 @@
 //! Application state shared across command handler invocations.
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -14,13 +14,12 @@ use crate::buffer_registry::BufferRegistry;
 use crate::build::ErrorLocation;
 use crate::commands::ConfirmContext;
 use crate::completer::{CommandList, LspLanguageList, RootsList};
-use crate::deferred_lsp_request::DeferredLspRequest;
 use crate::desktop::SlotId;
 use crate::eviction::PendingTab;
 use crate::grep::GrepState;
 use crate::kiro_registry::KiroTabRegistry;
-use crate::lsp::progress::LspStatusTracker;
 use crate::lsp::registry::LspRegistry;
+use crate::lsp_state::LspState;
 use crate::mcp::commands::McpCommandQueue;
 use crate::mcp::snapshot::McpSnapshot;
 use crate::mcp_state::McpState;
@@ -52,9 +51,7 @@ pub struct AppState {
     pub(crate) messages: Arc<Mutex<MessageRing>>,
     /// Registry of active kiro tabs for session persistence.
     pub(crate) kiro_registry: KiroTabRegistry,
-    /// LSP document version counters (keyed by file path string).
-    pub(crate) doc_versions: HashMap<String, i64>,
-    pub(crate) lsp_opened_files: HashSet<String>,
+    pub(crate) lsp_state: LspState,
     /// MCP state (snapshot, command queue, tick counter).
     pub(crate) mcp: McpState,
     pub(crate) waker: Option<Waker>,
@@ -76,10 +73,6 @@ pub struct AppState {
     pub(crate) completer_roots: RootsList,
     /// Plugin hot-reload manager.
     pub(crate) plugins: PluginManager,
-    /// Deferred LSP requests waiting for server initialization.
-    pub(crate) deferred_lsp: Vec<DeferredLspRequest>,
-    /// LSP server status tracker (per-language state for status bar).
-    pub(crate) lsp_status: LspStatusTracker,
     /// Path of the todo item whose note is currently open in the Notes tab.
     pub(crate) todo_note_path: Option<Vec<usize>>,
     /// Whether the center panel's split has linked scrolling enabled.

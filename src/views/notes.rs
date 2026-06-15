@@ -2,7 +2,7 @@
 
 use txv_core::prelude::*;
 
-use super::editor::EditorView;
+use super::editor::{build as editor_build, EditorView, EditorViewExt};
 
 /// A notes editor, identifiable by type for lookup via `as_any_mut`.
 pub struct NotesView {
@@ -11,7 +11,7 @@ pub struct NotesView {
 
 impl NotesView {
     pub fn new(content: &str) -> Self {
-        let mut editor = EditorView::from_text(content);
+        let mut editor = editor_build::from_text(content);
         editor.set_file_ext("md");
         editor.set_display_title("Notes");
         Self { editor }
@@ -19,7 +19,7 @@ impl NotesView {
 
     pub fn replace_content(&mut self, content: &str) {
         self.editor.editor_mut().replace_content(content);
-        self.editor.inner.mark_dirty();
+        self.editor.mark_dirty();
     }
 
     pub fn content(&self) -> String {

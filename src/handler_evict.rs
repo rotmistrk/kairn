@@ -6,7 +6,7 @@ use crate::app_state::AppState;
 use crate::commands::{ConfirmContext, CM_CONFIRM, CM_SET_CONFIRM_CONTEXT};
 use crate::desktop::SlotId;
 use crate::eviction::PendingTab;
-use crate::views::editor::EditorView;
+use crate::views::editor::{EditorView, EditorViewExt};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 
 /// Try to insert a tab, handling eviction if at capacity.

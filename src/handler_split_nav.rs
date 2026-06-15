@@ -14,7 +14,7 @@ use crate::desktop::SlotId;
 use crate::handler::{downcast_desktop, AppState};
 use crate::views::editor::diff_model::{build_diff_lines, DiffLine, DiffOpts, DiffState};
 use crate::views::editor::sbs_model::{split_for_side_by_side, SbsDiffState};
-use crate::views::editor::EditorView;
+use crate::views::editor::{build as editor_build, EditorView, EditorViewDiffExt, EditorViewExt};
 
 pub(crate) fn handle_diff_split(ctx: &mut CommandContext, _state: &mut AppState) {
     let Some(boxed) = ctx.data().as_ref() else {
@@ -63,8 +63,7 @@ fn set_identical_diff(panel: &mut txv_widgets::tab_panel::TabPanel, base_content
             });
             ev.editor_mut().set_status(format!("[no changes vs {}]", base_ref));
             let msg = Message::info("editor", format!("[no changes vs {}]", base_ref));
-            ev.inner
-                .put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            ev.put_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
         }
     }
 }
@@ -180,8 +179,8 @@ pub(crate) fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line
     let bounds = ev.bounds();
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let new_ev = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    let new_ev = editor_build::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     *ev = new_ev;
     ev.set_bounds(bounds);
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
@@ -193,8 +192,8 @@ pub(crate) fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line
 fn open_new_pane(state: &mut AppState, path: &std::path::Path, line: u32, col: u32) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
     let defaults = state.settings.editor_defaults.clone();
-    let mut ev = EditorView::open_with_theme(path, &defaults, &syntax_theme)
-        .unwrap_or_else(|_| EditorView::new_file(path, &defaults));
+    let mut ev = editor_build::open_with_theme(path, &defaults, &syntax_theme)
+        .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     ev.editor_mut()
         .set_shared_state(state.shared_register.clone(), state.clipboard.clone());

@@ -1,28 +1,25 @@
-//! Completion popup handling in on_key_pre.
-
-use std::path::PathBuf;
+//! Completion handling via DropdownMenu sidekick.
 
 use txv_core::event::{KeyCode, KeyEvent};
-use txv_core::prelude::HandleResult;
-use txv_edit::view::draw::compute_gutter_width;
+use txv_core::prelude::*;
+use txv_widgets::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_SHOW};
 
 use super::delegate::KairnDelegate;
 use crate::commands::CM_LSP_COMPLETION;
 use crate::editor::Editor;
+use crate::lsp::completion_source::LspCompletionSource;
 use crate::lsp::requests::CompletionItem;
 
 impl KairnDelegate {
     pub(crate) fn handle_completion_key(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
-        if self.completion_popup.visible {
+        if self.completion_visible {
             match (key.code(), key.modifiers().ctrl()) {
                 (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
-                    self.completion_popup.next();
-                    self.dirty = true;
+                    self.emit(CM_SIDEKICK_NEXT, None);
                     return Some(HandleResult::Consumed);
                 }
                 (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
-                    self.completion_popup.prev();
-                    self.dirty = true;
+                    self.emit(CM_SIDEKICK_PREV, None);
                     return Some(HandleResult::Consumed);
                 }
                 (KeyCode::Tab, _) => {
@@ -30,22 +27,21 @@ impl KairnDelegate {
                     return Some(HandleResult::Consumed);
                 }
                 (KeyCode::Enter, _) => {
-                    self.completion_popup.hide();
+                    self.hide_completion();
                 }
                 (KeyCode::Esc, _) => {
-                    self.completion_popup.hide();
-                    self.dirty = true;
+                    self.hide_completion();
                     return Some(HandleResult::Consumed);
                 }
                 _ => {
-                    self.completion_popup.hide();
+                    self.hide_completion();
                 }
             }
         } else if key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
             self.emit(
                 CM_LSP_COMPLETION,
                 Some(Box::new((
-                    PathBuf::new(), // will be filled by flush_pending
+                    self.path.clone(),
                     editor.cursor_line() as u32,
                     editor.cursor_col() as u32,
                 ))),
@@ -71,12 +67,41 @@ impl KairnDelegate {
                 .collect()
         };
         if filtered.is_empty() {
-            self.completion_popup.hide();
-        } else {
-            let (x, y) = self.popup_position(editor, &prefix);
-            self.completion_popup.show(filtered, x, y);
+            self.hide_completion();
+            return;
         }
+        self.completion_items = filtered.clone();
+        self.completion_visible = true;
+        self.show_sidekick(filtered);
         self.dirty = true;
+    }
+
+    fn show_sidekick(&mut self, items: Vec<CompletionItem>) {
+        use txv_widgets::dropdown_menu::{DropdownMenu, FilterMode, NumberMode, OpenSide};
+        use txv_widgets::sidekick::SidekickRequest;
+
+        let count = items.len();
+        let max_w = items.iter().map(|i| i.label.len()).max().unwrap_or(10);
+        let source = LspCompletionSource::new(items);
+        let menu = DropdownMenu::new(source)
+            .with_numbers(NumberMode::None)
+            .with_filter(FilterMode::None)
+            .with_open_side(OpenSide::None);
+        let content_h = count.min(8) as u16;
+        let h = content_h + 2;
+        let w = (max_w as u16 + 6).clamp(14, 50);
+        let rect = Rect::new(0, 0, w, h);
+        let data = SidekickRequest::new(Box::new(menu), rect, self.view_id);
+        self.emit(CM_SIDEKICK_SHOW, Some(Box::new(data)));
+    }
+
+    fn hide_completion(&mut self) {
+        if self.completion_visible {
+            self.completion_visible = false;
+            self.completion_items.clear();
+            self.emit(CM_SIDEKICK_HIDE, None);
+            self.dirty = true;
+        }
     }
 
     fn word_prefix(editor: &Editor) -> String {
@@ -92,34 +117,26 @@ impl KairnDelegate {
             .collect()
     }
 
-    fn popup_position(&self, editor: &Editor, prefix: &str) -> (u16, u16) {
-        let scroll = editor.viewport_scroll();
-        let line = editor.cursor_line();
-        let y = if line >= scroll {
-            (line - scroll) as u16
-        } else {
-            0
-        };
-        let gw = compute_gutter_width(editor, self);
-        let col = editor.cursor_col().saturating_sub(prefix.len());
-        let x = gw + col as u16;
-        (x, y)
-    }
-
     fn accept_completion(&mut self, editor: &mut Editor) {
         let prefix = Self::word_prefix(editor);
         if let Some(common) = self.common_completion_prefix(&prefix) {
             if common.len() > prefix.len() {
-                // Extend to common prefix without accepting any single item
                 self.replace_word_with_completion(editor, &common);
                 self.dirty = true;
                 return;
             }
         }
-        // Common prefix equals typed prefix — accept selected item
-        let text = self.completion_popup.selected_text().map(|s| s.to_string());
-        let edits = self.completion_popup.selected_additional_edits().to_vec();
-        self.completion_popup.hide();
+        // Common prefix equals typed prefix — accept first item (or selected)
+        let text = self
+            .completion_items
+            .first()
+            .map(|i| i.insert_text.as_deref().unwrap_or(&i.label).to_string());
+        let edits = self
+            .completion_items
+            .first()
+            .map(|i| i.additional_edits.clone())
+            .unwrap_or_default();
+        self.hide_completion();
         if let Some(text) = text {
             self.replace_word_with_completion(editor, &text);
         }
@@ -129,12 +146,12 @@ impl KairnDelegate {
     }
 
     fn common_completion_prefix(&self, typed: &str) -> Option<String> {
-        let items = &self.completion_popup.items;
-        if items.is_empty() {
+        if self.completion_items.is_empty() {
             return None;
         }
         let lower_typed = typed.to_lowercase();
-        let matching: Vec<&str> = items
+        let matching: Vec<&str> = self
+            .completion_items
             .iter()
             .map(|i| i.insert_text.as_deref().unwrap_or(&i.label))
             .filter(|t| t.to_lowercase().starts_with(&lower_typed))
@@ -184,7 +201,6 @@ impl KairnDelegate {
     }
 
     fn apply_additional_edits(&self, editor: &mut Editor, edits: &[crate::lsp::text_edit::TextEdit]) {
-        // Apply edits in reverse order (bottom to top) to preserve offsets
         let mut sorted: Vec<_> = edits.to_vec();
         sorted.sort_by(|a, b| (b.start_line, b.start_col).cmp(&(a.start_line, a.start_col)));
         for edit in &sorted {

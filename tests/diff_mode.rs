@@ -1,6 +1,6 @@
 //! Tests for :diff / :nodiff editor mode.
 
-use kairn::views::editor::EditorView;
+use kairn::views::editor::{EditorView, EditorViewDiffExt, EditorViewExt};
 use txv_core::event::{KeyCode, KeyMod};
 use txv_core::prelude::*;
 
@@ -13,11 +13,13 @@ fn send_ex(view: &mut EditorView, cmd: &str) {
     }
     let enter = Event::Key(txv_core::event::KeyEvent::new(KeyCode::Enter, KeyMod::default()));
     view.handle(&enter);
+    // Process deferred actions (pending_diff, etc.)
+    view.handle(&Event::Tick);
 }
 
 #[test]
 fn diff_does_not_modify_content() {
-    let mut view = EditorView::from_text("hello\nworld\n");
+    let mut view = kairn::views::editor::build::from_text("hello\nworld\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
     assert_eq!(view.editor().buf().content(), "hello\nworld\n");
@@ -25,7 +27,7 @@ fn diff_does_not_modify_content() {
 
 #[test]
 fn diff_sets_status() {
-    let mut view = EditorView::from_text("");
+    let mut view = kairn::views::editor::build::from_text("");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     send_ex(&mut view, "diff");
     // Empty content vs empty base (no git) → no changes → status set
@@ -38,7 +40,7 @@ fn diff_sets_status() {
 
 #[test]
 fn nodiff_clears_diff_mode() {
-    let mut view = EditorView::from_text("hello\n");
+    let mut view = kairn::views::editor::build::from_text("hello\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
     // Force diff_lines to simulate being in diff mode
     send_ex(&mut view, "diff");
@@ -48,7 +50,7 @@ fn nodiff_clears_diff_mode() {
 
 #[test]
 fn toggle_diff_via_command() {
-    let mut view = EditorView::from_text("hello\n");
+    let mut view = kairn::views::editor::build::from_text("hello\n");
     view.set_bounds(Rect::new(0, 0, 80, 24));
 
     let sink = EventSink::new();

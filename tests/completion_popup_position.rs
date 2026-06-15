@@ -43,6 +43,7 @@ fn inject_completion(h: &mut TestHarness, labels: &[&str]) {
 }
 
 /// Popup appears near cursor in nowrap mode with h_scroll > 0.
+
 #[test]
 fn popup_position_with_hscroll() {
     // Line long enough to force h_scroll, with a space before the prefix word
@@ -66,6 +67,7 @@ fn popup_position_with_hscroll() {
 }
 
 /// Popup appears on wrapped line (cursor on second visual row).
+
 #[test]
 fn popup_position_on_wrapped_line() {
     // Line that wraps: content wider than editor, with word boundary before prefix
@@ -88,6 +90,7 @@ fn popup_position_on_wrapped_line() {
 }
 
 /// Popup near left edge with h_scroll (cursor moved back after scrolling right).
+
 #[test]
 fn popup_near_left_with_hscroll() {
     // Long line with a word near the end
