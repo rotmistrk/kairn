@@ -24,6 +24,7 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
 
     let mut desktop = build_workspace(root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
+    desktop.set_focus_subpanels(true);
     apply_tree_icons(&mut desktop, &app_state);
     apply_tree_connectors(&mut desktop, &app_state);
     apply_todo_clipboard(&mut desktop, &app_state);
@@ -52,6 +53,7 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
 pub fn build_app_with(root_dir: &Path, git_keys: GitKeys, app_state: &mut AppState) -> Program {
     let mut desktop = build_workspace(root_dir, git_keys);
     desktop.set_wide_threshold(app_state.settings().layout_wide_threshold());
+    desktop.set_focus_subpanels(true);
     apply_tree_icons(&mut desktop, app_state);
     apply_tree_connectors(&mut desktop, app_state);
 

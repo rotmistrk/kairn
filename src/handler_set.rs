@@ -69,6 +69,15 @@ pub static SET_OPTIONS: &[SetOption] = &[
             toggle_tree_connectors(ctx.desktop_mut(), on);
         },
     },
+    SetOption {
+        name: "focus-subpanels",
+        is_toggle: true,
+        apply: |ctx, _, on| {
+            if let Some(d) = downcast_desktop(ctx.desktop_mut()) {
+                d.set_focus_subpanels(on);
+            }
+        },
+    },
 ];
 
 /// Handle :set options — dispatches from the single SET_OPTIONS registry.
