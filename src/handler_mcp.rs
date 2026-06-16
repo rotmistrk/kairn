@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use txv_core::message::Message;
 use txv_core::program::CommandContext;
 
 use crate::commands::{
@@ -45,9 +44,8 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
             // Don't reply yet — stash channel, prompt user
             state.mcp.pending_confirm_reply = Some(req.reply);
             let prompt = format!("MCP: allow '{tool_name}'? ({args_summary}) [y/n]");
-            let msg = Message::info("mcp", prompt);
             sink.push_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::McpToolConfirm)));
-            sink.push_command(CM_CONFIRM, Some(Box::new(msg)));
+            sink.push_command(CM_CONFIRM, Some(Box::new(prompt)));
         } else {
             let result = dispatch_mcp_action(&req.action, desktop, state, &sink);
             let _ = req.reply.send(result);
