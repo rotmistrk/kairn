@@ -32,7 +32,7 @@ impl NotesView {
 }
 
 impl View for NotesView {
-    delegate_view!(editor, override { title, as_any_mut, cursor });
+    delegate_view!(editor, override { title, as_any_mut, cursor, group_state });
 
     fn title(&self) -> &str {
         "Notes"
@@ -44,5 +44,9 @@ impl View for NotesView {
 
     fn cursor(&self) -> Option<txv_core::cursor::CursorRequest> {
         self.editor.cursor()
+    }
+
+    fn group_state(&self) -> Option<&txv_core::group::GroupState> {
+        self.editor.group_state()
     }
 }
