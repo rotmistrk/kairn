@@ -78,8 +78,6 @@ pub fn is_write_tool(name: &str) -> bool {
             | "send_terminal_input"
             | "git_ops"
             | "eval_tcl"
-            | "update_todo"
-            | "add_subtree"
             | "undo_redo"
             | "lsp_control"
             | "clipboard_copy"
