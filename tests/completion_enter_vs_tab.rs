@@ -33,7 +33,7 @@ fn inject_completion(h: &mut TestHarness, items: Vec<CompletionItem>) {
 
 /// Enter dismisses the completion popup and inserts a newline (does NOT accept).
 #[test]
-fn enter_does_not_accept_completion() {
+fn enter_accepts_completion() {
     let dir = temp_project(&[("f.rs", "fn f() { hel }\n")]);
     let mut h = TestHarness::new(dir.path());
     h.run_cycles(2);
@@ -55,12 +55,11 @@ fn enter_does_not_accept_completion() {
         )],
     );
 
-    // Press Enter — should NOT accept "hello_world"
+    // Press Enter — accepts selected completion item
     h.inject_key(KeyCode::Enter, none());
     h.run_cycles(2);
 
-    // "hello_world" should NOT appear — "hel" should remain with a newline inserted
-    assert!(!h.content_contains("hello_world"), "Enter must not accept completion");
+    assert!(h.content_contains("hello_world"), "Enter accepts completion");
     assert!(h.content_contains("hel"), "original text 'hel' should remain");
 }
 
@@ -92,4 +91,34 @@ fn tab_accepts_completion() {
     h.run_cycles(2);
 
     assert!(h.content_contains("hello_world"), "Tab must accept completion");
+}
+
+#[test]
+fn down_arrow_selects_next_completion() {
+    let dir = temp_project(&[("f.rs", "fn f() { hel }\n")]);
+    let mut h = TestHarness::new(dir.path());
+    h.run_cycles(2);
+    open_and_focus(&mut h, dir.path(), "f.rs");
+
+    h.inject_str("12l");
+    h.run_cycles(1);
+    h.inject_key(KeyCode::Char('i'), none());
+    h.run_cycles(1);
+
+    inject_completion(
+        &mut h,
+        vec![
+            CompletionItem::new("hello", None, Some("hello".into()), CompletionKind::Other),
+            CompletionItem::new("help", None, Some("help".into()), CompletionKind::Other),
+        ],
+    );
+    h.run_cycles(2);
+
+    // Press Down to select "help", then Tab to accept
+    h.inject_key(KeyCode::Down, none());
+    h.run_cycles(2);
+    h.inject_key(KeyCode::Tab, none());
+    h.run_cycles(2);
+
+    assert!(h.content_contains("help"), "Down+Tab must accept second item 'help'");
 }

@@ -31,8 +31,8 @@ fn inject_completion(h: &mut TestHarness, items: Vec<CompletionItem>) {
 }
 
 fn accept(h: &mut TestHarness) {
-    h.inject_key(KeyCode::Tab, none());
-    h.run_cycles(2);
+    h.inject_key(KeyCode::Enter, none());
+    h.run_cycles(6);
 }
 
 /// Cursor in middle of word: GetLo|gGroup → accept GetLogLevel → replaces entire word.
@@ -148,6 +148,7 @@ fn cursor_at_end_after_completion() {
             kairn::lsp::requests::CompletionKind::Other,
         )],
     );
+    h.run_cycles(3);
     accept(&mut h);
 
     // Type a char — it should appear right after "hello_world"

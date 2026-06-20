@@ -191,6 +191,7 @@ impl EditorViewDelegate for KairnDelegate {
             EditorMode::Insert => "INS",
             EditorMode::Visual | EditorMode::VisualLine | EditorMode::VisualBlock => "VIS",
             EditorMode::Command | EditorMode::Search => "CMD",
+            _ => "REP",
         };
         self.emit(CM_MODE_CHANGED, Some(Box::new(name.to_string())));
     }

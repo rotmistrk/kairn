@@ -12,35 +12,7 @@ use crate::lsp::requests::CompletionItem;
 
 impl KairnDelegate {
     pub(crate) fn handle_completion_key(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
-        if self.completion_visible {
-            match (key.code(), key.modifiers().ctrl()) {
-                (KeyCode::Down, _) | (KeyCode::Char('n'), true) => {
-                    self.completion_selected = (self.completion_selected + 1) % self.completion_items.len();
-                    self.show_sidekick(self.completion_items.clone(), editor);
-                    return Some(HandleResult::Consumed);
-                }
-                (KeyCode::Up, _) | (KeyCode::Char('p'), true) => {
-                    let len = self.completion_items.len();
-                    self.completion_selected = (self.completion_selected + len - 1) % len;
-                    self.show_sidekick(self.completion_items.clone(), editor);
-                    return Some(HandleResult::Consumed);
-                }
-                (KeyCode::Tab, _) | (KeyCode::Right, _) => {
-                    self.accept_completion(editor);
-                    return Some(HandleResult::Consumed);
-                }
-                (KeyCode::Enter, _) => {
-                    self.hide_completion();
-                }
-                (KeyCode::Esc, _) => {
-                    self.hide_completion();
-                    return Some(HandleResult::Consumed);
-                }
-                _ => {
-                    self.hide_completion();
-                }
-            }
-        } else if key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
+        if !self.completion_visible && key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
             self.emit(
                 CM_LSP_COMPLETION,
                 Some(Box::new((
@@ -102,7 +74,7 @@ impl KairnDelegate {
         let source = LspCompletionSource::new(items);
         let menu = DropdownMenu::new(source)
             .with_numbers(NumberMode::None)
-            .with_filter(FilterMode::None)
+            .with_filter(FilterMode::Prefix)
             .with_open_side(OpenSide::None);
         let content_h = count.min(8) as u16;
         let h = content_h + 2;
@@ -167,7 +139,7 @@ impl KairnDelegate {
             .collect()
     }
 
-    fn accept_completion(&mut self, editor: &mut Editor) {
+    pub(crate) fn accept_completion(&mut self, editor: &mut Editor) {
         let prefix = Self::word_prefix(editor);
         if let Some(common) = self.common_completion_prefix(&prefix) {
             if common.len() > prefix.len() {

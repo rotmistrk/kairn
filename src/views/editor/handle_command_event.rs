@@ -11,6 +11,7 @@ use crate::commands::{
 use crate::editor::Editor;
 use crate::lsp::diagnostics::Diagnostic;
 use crate::lsp::requests::CompletionItem;
+use txv_widgets::sidekick::CM_SIDEKICK_RESULT;
 
 impl KairnDelegate {
     pub(crate) fn handle_command_event(
@@ -45,6 +46,9 @@ impl KairnDelegate {
         }
         if id == CM_LSP_FORMAT_RESULT {
             return self.handle_format_result(data, editor);
+        }
+        if id == CM_SIDEKICK_RESULT {
+            return self.handle_completion_selected(data, editor);
         }
         HandleResult::Ignored
     }
@@ -183,6 +187,21 @@ fn parse_format_edits(edits: &[serde_json::Value]) -> Vec<(usize, usize, usize, 
 }
 
 impl KairnDelegate {
+    fn handle_completion_selected(
+        &mut self,
+        data: &Option<Box<dyn std::any::Any + Send>>,
+        editor: &mut Editor,
+    ) -> HandleResult {
+        let idx = data
+            .as_ref()
+            .and_then(|d| d.downcast_ref::<usize>())
+            .copied()
+            .unwrap_or(0);
+        self.completion_selected = idx;
+        self.accept_completion(editor);
+        HandleResult::Consumed
+    }
+
     pub(super) fn toggle_blame_state(&mut self) {
         use crate::blame::blame_async;
         self.blame_state = if self.blame_state.is_some() {
