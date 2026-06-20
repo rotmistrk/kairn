@@ -2,7 +2,7 @@
 
 use txv_core::event::{KeyCode, KeyEvent};
 use txv_core::prelude::*;
-use txv_widgets::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_SHOW};
+use txv_widgets::sidekick::{CM_SIDEKICK_HIDE, CM_SIDEKICK_NEXT, CM_SIDEKICK_PREV, CM_SIDEKICK_SHOW};
 
 use super::delegate::KairnDelegate;
 use crate::commands::CM_LSP_COMPLETION;
@@ -12,18 +12,88 @@ use crate::lsp::requests::CompletionItem;
 
 impl KairnDelegate {
     pub(crate) fn handle_completion_key(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
-        if !self.completion_visible && key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
-            self.emit(
-                CM_LSP_COMPLETION,
-                Some(Box::new((
-                    self.path.clone(),
-                    editor.cursor_line() as u32,
-                    editor.cursor_col() as u32,
-                ))),
-            );
+        if self.completion_visible {
+            return self.handle_active_completion(key, editor);
+        }
+        if key.modifiers().ctrl() && key.code() == KeyCode::Char('n') {
+            self.trigger_completion(editor);
             return Some(HandleResult::Consumed);
         }
         None
+    }
+
+    fn handle_active_completion(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
+        match key.code() {
+            KeyCode::Down => {
+                self.completion_selected = (self.completion_selected + 1) % self.completion_items.len();
+                self.emit(CM_SIDEKICK_NEXT, None);
+                Some(HandleResult::Consumed)
+            }
+            KeyCode::Up => {
+                let len = self.completion_items.len();
+                self.completion_selected = (self.completion_selected + len - 1) % len;
+                self.emit(CM_SIDEKICK_PREV, None);
+                Some(HandleResult::Consumed)
+            }
+            KeyCode::Tab | KeyCode::Right | KeyCode::Enter => {
+                self.accept_completion(editor);
+                Some(HandleResult::Consumed)
+            }
+            KeyCode::Esc => {
+                self.hide_completion();
+                Some(HandleResult::Consumed)
+            }
+            KeyCode::Char('n') if key.modifiers().ctrl() => {
+                self.completion_selected = (self.completion_selected + 1) % self.completion_items.len();
+                self.emit(CM_SIDEKICK_NEXT, None);
+                Some(HandleResult::Consumed)
+            }
+            KeyCode::Char('p') if key.modifiers().ctrl() => {
+                let len = self.completion_items.len();
+                self.completion_selected = (self.completion_selected + len - 1) % len;
+                self.emit(CM_SIDEKICK_PREV, None);
+                Some(HandleResult::Consumed)
+            }
+            _ => None, // pass through to editor
+        }
+    }
+
+    fn trigger_completion(&mut self, editor: &Editor) {
+        self.emit(
+            CM_LSP_COMPLETION,
+            Some(Box::new((
+                self.path.clone(),
+                editor.cursor_line() as u32,
+                editor.cursor_col() as u32,
+            ))),
+        );
+    }
+
+    /// Re-filter completion based on current word prefix. Auto-hide if 0 matches.
+    pub(crate) fn refilter_completion(&mut self, editor: &Editor) {
+        if !self.completion_visible {
+            return;
+        }
+        let prefix = Self::word_prefix(editor);
+        let lp = prefix.to_lowercase();
+        let filtered: Vec<_> = self
+            .completion_items
+            .iter()
+            .enumerate()
+            .filter(|(_, i)| {
+                let t = i.insert_text.as_deref().unwrap_or(&i.label);
+                t.to_lowercase().starts_with(&lp)
+            })
+            .map(|(idx, _)| idx)
+            .collect();
+        if filtered.is_empty() {
+            self.hide_completion();
+        } else {
+            // Update the sidekick dropdown with filtered view
+            let items: Vec<_> = filtered.iter().map(|&i| self.completion_items[i].clone()).collect();
+            self.completion_selected = 0;
+            self.show_sidekick(items, editor);
+        }
     }
 
     pub(crate) fn show_completion_items(&mut self, items: &[CompletionItem], editor: &Editor) {

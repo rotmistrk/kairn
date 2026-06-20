@@ -162,15 +162,15 @@ fn up_wraps_to_last_item() {
 
     inject_completion(&mut h, make_items(&["alpha", "beta", "gamma"]));
 
-    // Up from first item stays at first (no wrap), Enter accepts "alpha"
+    // Up from first item wraps to last ("gamma"), Enter accepts
     h.inject_key(KeyCode::Up, none());
     h.run_cycles(2);
     h.inject_key(KeyCode::Enter, none());
     h.run_cycles(6);
 
     assert!(
-        h.content_contains("alpha"),
-        "first item 'alpha' should be inserted (no wrap on Up)"
+        h.content_contains("gamma"),
+        "last item 'gamma' should be inserted (Up wraps)"
     );
 }
 

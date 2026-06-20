@@ -14,6 +14,7 @@ impl KairnDelegate {
             EditorAction::ContentChanged => {
                 self.last_edit_tick = u64::MAX;
                 self.clear_diagnostics();
+                self.refilter_completion(editor);
             }
             EditorAction::SaveRequested => self.save_requested = true,
             EditorAction::CloseRequested => self.emit(CM_TAB_CLOSE, None),

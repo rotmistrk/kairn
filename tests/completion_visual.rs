@@ -76,7 +76,7 @@ fn down_changes_visual_highlight() {
 
     // Press Down — "beta" becomes selected
     h.inject_key(KeyCode::Down, none());
-    h.run_cycles(2);
+    h.run_cycles(6);
 
     let alpha_bg_after = row_bg_of(&h, "alpha");
     let beta_bg_after = row_bg_of(&h, "beta");
