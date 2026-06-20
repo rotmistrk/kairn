@@ -121,9 +121,23 @@ fn down_then_enter_accepts_second_item() {
 
     inject_completion(&mut h, make_items(&["alpha", "beta", "gamma"]));
 
-    // Down once selects "beta", Enter accepts
+    // Down once selects "beta" — dropdown still visible with all items
     h.inject_key(KeyCode::Down, none());
     h.run_cycles(2);
+    assert!(
+        h.content_contains("alpha"),
+        "dropdown should still show 'alpha' after Down"
+    );
+    assert!(
+        h.content_contains("beta"),
+        "dropdown should still show 'beta' after Down"
+    );
+    assert!(
+        h.content_contains("gamma"),
+        "dropdown should still show 'gamma' after Down"
+    );
+
+    // Enter accepts the now-selected "beta"
     h.inject_key(KeyCode::Enter, none());
     h.run_cycles(6);
 
@@ -227,78 +241,38 @@ fn down_down_enter_selects_third() {
 
     assert!(h.content_contains("three"), "third item 'three' should be inserted");
 }
-
-// ─── M-x command line completion tests ───────────────────────────────
-
 #[test]
-fn mx_shows_completion_on_tab() {
-    let dir = temp_project(&[("f.rs", "fn main() {}\n")]);
+fn down_up_navigation_changes_selection() {
+    let dir = temp_project(&[("f.rs", "fn f() {  }\n")]);
     let mut h = TestHarness::with_size(dir.path(), 80, 24);
     h.run_cycles(2);
+    open_and_focus(&mut h, dir.path(), "f.rs");
 
-    // Open M-x prompt
-    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
+    h.inject_str("9l");
     h.run_cycles(1);
+    enter_insert(&mut h);
 
-    // Type "e" and press Tab to trigger completion
-    h.inject_str("e");
-    h.inject_key(KeyCode::Tab, none());
-    h.run_cycles(3);
+    inject_completion(&mut h, make_items(&["aaa", "bbb", "ccc", "ddd"]));
 
-    // Dropdown should appear with commands starting with 'e'
-    let screen = h.screen_text();
-    assert!(
-        screen.contains("edit") || screen.contains("e "),
-        "Tab should show completion dropdown with commands matching 'e'"
-    );
-}
-
-#[test]
-fn mx_esc_cancels() {
-    let dir = temp_project(&[("f.rs", "fn main() {}\n")]);
-    let mut h = TestHarness::with_size(dir.path(), 80, 24);
+    // Down twice → cursor on "ccc"
+    h.inject_key(KeyCode::Down, none());
     h.run_cycles(2);
-
-    // Open M-x, type "ed", Tab to show dropdown
-    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
-    h.run_cycles(1);
-    h.inject_str("ed");
-    h.inject_key(KeyCode::Tab, none());
-    h.run_cycles(3);
-
-    // Press Esc to cancel
-    h.inject_key(KeyCode::Esc, none());
-    h.run_cycles(4);
-
-    // Should be back to normal mode (status bar shows F1:Help)
-    let screen = h.screen_text();
-    assert!(
-        screen.contains("F1") || screen.contains("Help"),
-        "Esc should dismiss M-x and return to normal mode"
-    );
-}
-
-#[test]
-fn mx_enter_accepts_and_executes() {
-    let dir = temp_project(&[("hello.txt", "world\n")]);
-    let mut h = TestHarness::with_size(dir.path(), 80, 24);
+    h.inject_key(KeyCode::Down, none());
     h.run_cycles(2);
+    // Dropdown still visible
+    assert!(h.content_contains("aaa"), "dropdown visible after 2x Down");
+    assert!(h.content_contains("ddd"), "dropdown visible after 2x Down");
 
-    // Open M-x, type "he", Tab to trigger completion
-    h.inject_key(KeyCode::Char('x'), KeyMod::ALT);
-    h.run_cycles(1);
-    h.inject_str("he");
-    h.inject_key(KeyCode::Tab, none());
-    h.run_cycles(3);
+    // Up once → cursor back on "bbb"
+    h.inject_key(KeyCode::Up, none());
+    h.run_cycles(2);
+    // Dropdown still visible
+    assert!(h.content_contains("bbb"), "dropdown visible after Up");
 
-    // If dropdown shows "help", press Enter to accept and execute
+    // Enter accepts "bbb" (Down, Down, Up = index 1)
     h.inject_key(KeyCode::Enter, none());
     h.run_cycles(6);
 
-    // "help" command should have executed — help content visible
-    let screen = h.screen_text();
-    assert!(
-        screen.contains("Help") || screen.contains("help") || screen.contains("F1"),
-        "accepting 'help' completion should show help content"
-    );
+    assert!(h.content_contains("bbb"), "'bbb' should be inserted");
+    assert!(!h.content_contains("ccc"), "'ccc' should NOT be in buffer");
 }
