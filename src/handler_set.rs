@@ -78,6 +78,11 @@ pub static SET_OPTIONS: &[SetOption] = &[
             }
         },
     },
+    SetOption {
+        name: "autocomplete",
+        is_toggle: true,
+        apply: |_, s, on| s.settings.editor_defaults_mut().set_autocomplete(on),
+    },
 ];
 
 /// Handle :set options — dispatches from the single SET_OPTIONS registry.

@@ -7,7 +7,8 @@ use txv_core::prelude::HandleResult;
 
 use super::delegate::KairnDelegate;
 use crate::commands::{
-    ConfirmContext, ContentChanged, CM_CONFIRM, CM_CONTENT_CHANGED, CM_LSP_SIGNATURE_HELP, CM_SET_CONFIRM_CONTEXT,
+    ConfirmContext, ContentChanged, CM_CONFIRM, CM_CONTENT_CHANGED, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP,
+    CM_SET_CONFIRM_CONTEXT,
 };
 use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
@@ -31,19 +32,7 @@ impl KairnDelegate {
             self.emit(CM_CONTENT_CHANGED, Some(Box::new(changed)));
             self.refresh_gutter_signs_from(editor);
         }
-        // Signature help: 5 ticks after last edit inside a function call
-        if editor.mode() == EditorMode::Insert
-            && self.last_edit_tick > 0
-            && tick - self.last_edit_tick == 5
-            && self.is_inside_call(editor)
-        {
-            let pos = (
-                self.path.clone(),
-                editor.cursor_line() as u32,
-                editor.cursor_col() as u32,
-            );
-            self.emit(CM_LSP_SIGNATURE_HELP, Some(Box::new(pos)));
-        }
+        self.check_lsp_triggers(editor, tick);
         self.check_autosave(editor, tick);
         self.sync_settings(editor);
         self.process_deferred(editor);
@@ -56,6 +45,23 @@ impl KairnDelegate {
         self.settings.cursor_insert = opts.cursor_insert();
         self.settings.cursor_command = opts.cursor_command();
         self.settings.number = opts.number();
+    }
+
+    fn check_lsp_triggers(&mut self, editor: &Editor, tick: u64) {
+        if editor.mode() != EditorMode::Insert || self.last_edit_tick == 0 || tick - self.last_edit_tick != 5 {
+            return;
+        }
+        let pos = (
+            self.path.clone(),
+            editor.cursor_line() as u32,
+            editor.cursor_col() as u32,
+        );
+        if self.settings.autocomplete {
+            self.emit(CM_LSP_COMPLETION, Some(Box::new(pos.clone())));
+        }
+        if self.is_inside_call(editor) {
+            self.emit(CM_LSP_SIGNATURE_HELP, Some(Box::new(pos)));
+        }
     }
 
     fn check_autosave(&mut self, editor: &mut Editor, tick: u64) {

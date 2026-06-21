@@ -11,6 +11,7 @@ pub struct EditorSettings {
     pub(crate) number: bool,
     pub(crate) autosave: bool,
     pub(crate) autosave_delay: u16,
+    pub(crate) autocomplete: bool,
     pub(crate) rainbow: bool,
     pub(crate) guides: bool,
     pub(crate) gutter_signs: bool,
@@ -54,6 +55,12 @@ impl EditorSettings {
     pub fn autosave(&self) -> bool {
         self.autosave
     }
+    pub fn autocomplete(&self) -> bool {
+        self.autocomplete
+    }
+    pub fn set_autocomplete(&mut self, v: bool) {
+        self.autocomplete = v;
+    }
     pub fn gutter_signs(&self) -> bool {
         self.gutter_signs
     }
@@ -68,6 +75,7 @@ impl Default for EditorSettings {
             number: true,
             autosave: true,
             autosave_delay: 5,
+            autocomplete: false,
             rainbow: true,
             guides: true,
             gutter_signs: true,
