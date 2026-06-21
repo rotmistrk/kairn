@@ -322,6 +322,36 @@ The `eval_tcl` MCP tool allows AI agents to execute any Tcl command:
 
 This makes the entire Tcl API available to AI without needing dedicated MCP tools for every operation.
 
+## Completion
+
+### LSP Completion (Editor)
+
+| Key | Action |
+|-----|--------|
+| Ctrl+N | Trigger completion popup |
+| ↓ / ↑ | Navigate items |
+| Enter / Tab / → | Accept selected item |
+| Esc | Dismiss popup |
+| Typing | Filters items by prefix; auto-hides on 0 matches |
+
+Enable auto-trigger (popup appears as you type):
+```tcl
+set autocomplete true
+```
+Or interactively: `:set autocomplete` / `:set noautocomplete`
+
+### Command Line Completion
+
+Both `:` and M-x command lines support Tab completion:
+- Tab: auto-complete or show dropdown if multiple matches
+- In dropdown: type to filter, Enter to accept, Esc to cancel
+
+### File Finder (Ctrl+P / Ctrl+T)
+
+- Ctrl+P: fuzzy file search
+- Ctrl+T: symbol search
+- Type to filter, Enter to open
+
 ## LSP Preamble
 
 The Tcl LSP (`rusticle-lsp`) needs to know which commands exist to avoid false

@@ -29,6 +29,9 @@ set editor.cursor_insert bar
 set editor.cursor_normal software
 set editor.cursor_command software
 
+# Auto-completion: trigger LSP completion as you type (default: off)
+# set autocomplete true
+
 # NOTE: editor.autosave and editor.autosave_delay are not yet configurable via Tcl.
 
 
