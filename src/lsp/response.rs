@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+use txv_core::message::Message;
 use txv_core::prelude::*;
 
 use crate::commands::*;
@@ -110,7 +111,8 @@ fn handle_references(result: &serde_json::Value, sink: &EventSink, symbol: &str)
 fn handle_hover(result: &serde_json::Value, sink: &EventSink) {
     if let Some(text) = requests::parse_hover(result) {
         log::info!("LSP: hover -> {} chars", text.len());
-        sink.push_command(CM_DIAGNOSTIC, Some(Box::new(("hover".to_string(), text))));
+        let msg = Message::info("hover", text);
+        sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
 }
 
