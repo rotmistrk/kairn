@@ -252,6 +252,7 @@ impl TreeData for TodoTreeData {
                 item.folded = !item.folded;
             }
         }
+        self.save();
         self.rebuild_flat();
     }
 
