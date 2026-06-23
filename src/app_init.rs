@@ -28,17 +28,17 @@ pub fn build_app(root_dir: &Path) -> (Program, AppState) {
     apply_tree_icons(&mut desktop, &app_state);
     apply_tree_connectors(&mut desktop, &app_state);
     apply_todo_clipboard(&mut desktop, &app_state);
-    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
+    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.scripting().command_list().clone());
     completer.set_lsp_languages(app_state.lsp_languages().clone());
-    completer.set_roots(app_state.completer_roots().clone());
+    completer.set_roots(app_state.scripting().completer_roots().clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),
         app_state.settings().clock_interval(),
         root_dir.to_path_buf(),
         app_state.settings().status_keys(),
-        app_state.clipboard.clone(),
-        app_state.command_history.clone(),
+        app_state.editor().clipboard().clone(),
+        app_state.editor().command_history().clone(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));
@@ -57,17 +57,17 @@ pub fn build_app_with(root_dir: &Path, git_keys: GitKeys, app_state: &mut AppSta
     apply_tree_icons(&mut desktop, app_state);
     apply_tree_connectors(&mut desktop, app_state);
 
-    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.command_list().clone());
+    let mut completer = AppCompleter::new(root_dir.to_path_buf(), app_state.scripting().command_list().clone());
     completer.set_lsp_languages(app_state.lsp_languages().clone());
-    completer.set_roots(app_state.completer_roots().clone());
+    completer.set_roots(app_state.scripting().completer_roots().clone());
     let status = build_status_bar(
         &desktop,
         Box::new(completer),
         app_state.settings().clock_interval(),
         root_dir.to_path_buf(),
         app_state.settings().status_keys(),
-        app_state.clipboard.clone(),
-        app_state.command_history.clone(),
+        app_state.editor().clipboard().clone(),
+        app_state.editor().command_history().clone(),
     );
     let mut program = Program::new(Box::new(status), Box::new(desktop));
     program.insert_named("sidekick", Box::new(SidekickManager::new()));
@@ -90,7 +90,7 @@ fn apply_tree_icons(desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace, 
 }
 
 fn apply_tree_connectors(desktop: &mut txv_widgets::tiled_workspace::TiledWorkspace, state: &AppState) {
-    if !state.settings.tree_connectors {
+    if !state.settings().tree_connectors() {
         return;
     }
     let Some(panel) = desktop.panel_mut(0) else {
@@ -114,7 +114,7 @@ fn apply_todo_clipboard(desktop: &mut txv_widgets::tiled_workspace::TiledWorkspa
             continue;
         };
         if let Some(todo) = view.as_any_mut().and_then(|a| a.downcast_mut::<TodoTreeView>()) {
-            todo.clipboard = Some(state.clipboard.clone());
+            todo.clipboard = Some(state.editor().clipboard().clone());
         }
     }
 }

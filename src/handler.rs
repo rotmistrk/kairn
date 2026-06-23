@@ -26,7 +26,8 @@ use crate::handler_drain::{
 use crate::handler_exec::handle_execute_command;
 use crate::handler_exec_nav::handle_file_finder_open;
 use crate::handler_git::{
-    handle_git_commit, handle_git_commit_prompt, handle_git_stage, handle_git_unstage, handle_git_untrack,
+    handle_git_commit, handle_git_commit_prompt, handle_git_set_base, handle_git_stage, handle_git_unstage,
+    handle_git_untrack,
 };
 use crate::handler_log::open_git_log;
 use crate::handler_mcp::drain_mcp;
@@ -87,13 +88,13 @@ fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
-    state.mcp.tick = state.mcp.tick.wrapping_add(1);
-    if state.mcp.snapshot.is_some() && state.mcp.tick.is_multiple_of(20) {
+    state.mcp_mut().increment_tick();
+    if state.mcp().snapshot().is_some() && state.mcp().tick().is_multiple_of(20) {
         if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
             let mut snap = collect_snapshot(desktop);
             snap.terminals = collect_terminal_content(desktop);
             snap.messages = collect_messages(&state.messages);
-            let Some(ref arc) = state.mcp.snapshot else {
+            let Some(ref arc) = state.mcp().snapshot() else {
                 return;
             };
             match arc.lock() {
@@ -102,7 +103,7 @@ fn update_mcp_snapshot(ctx: &mut CommandContext, state: &mut AppState) {
             }
         }
     }
-    if state.mcp.tick.is_multiple_of(100) {
+    if state.mcp().tick().is_multiple_of(100) {
         refresh_plugins(ctx, state);
     }
 }
@@ -145,14 +146,15 @@ fn dispatch_core(ctx: &mut CommandContext, state: &mut AppState) -> bool {
         CM_GIT_COMMIT => handle_git_commit(ctx, state),
         CM_GIT_COMMIT_PROMPT => handle_git_commit_prompt(ctx, state),
         CM_GIT_LOG => open_git_log(ctx, state, ""),
+        CM_GIT_SET_BASE => handle_git_set_base(ctx, state),
         _ => return false,
     }
     true
 }
 
 fn handle_tick(ctx: &mut CommandContext, state: &mut AppState) {
-    if state.show_messages_on_start {
-        state.show_messages_on_start = false;
+    if state.ui().show_messages_on_start() {
+        state.ui_mut().set_show_messages_on_start(false);
         handle_show_messages(ctx, state);
     }
     broadcast_context(ctx, state);

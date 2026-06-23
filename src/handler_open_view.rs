@@ -18,19 +18,21 @@ use crate::views::struct_view::StructuredView;
 
 pub(crate) fn open_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let mut ed = editor_build::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     ed.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    let cl = state.command_list.clone();
+    let cl = state.scripting().command_list().clone();
     let dm = ed.delegate_mut();
     dm.command_list = cl;
-    dm.search_hist = Some(state.search_history.clone());
-    dm.cmd_hist = Some(state.command_history.clone());
-    ed.editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    dm.search_hist = Some(state.editor().search_history().clone());
+    dm.cmd_hist = Some(state.editor().command_history().clone());
+    ed.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    ed.set_buffer_id(Some(state.buffers.register(Some(canon))));
+    ed.set_buffer_id(Some(state.workspace_mut().buffers_mut().register(Some(canon))));
     Box::new(ed)
 }
 
@@ -74,25 +76,27 @@ pub(crate) fn try_open_structured(path: &Path, clipboard: Option<ClipboardHandle
 /// Open a file as an EditorView with optional goto/diff.
 pub(crate) fn open_editor(path: &Path, state: &mut AppState, req: &OpenFileRequest) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let mut editor = editor_build::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
     let dm = editor.delegate_mut();
-    dm.command_list = state.command_list.clone();
-    dm.search_hist = Some(state.search_history.clone());
-    dm.cmd_hist = Some(state.command_history.clone());
-    editor
-        .editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    dm.command_list = state.scripting().command_list().clone();
+    dm.search_hist = Some(state.editor().search_history().clone());
+    dm.cmd_hist = Some(state.editor().command_history().clone());
+    editor.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     if let Some(line) = req.line {
         editor.goto(line, req.col.unwrap_or(0));
     }
     if req.diff {
-        editor.toggle_diff("");
+        let args = req.diff_base().unwrap_or("");
+        editor.toggle_diff(args);
     }
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let buf_id = state.buffers.register(Some(canon));
+    let buf_id = state.workspace_mut().buffers_mut().register(Some(canon));
     editor.set_buffer_id(Some(buf_id));
     Box::new(editor)
 }
@@ -128,10 +132,10 @@ pub(crate) fn open_as_csv(desktop: &mut dyn View, sink: &EventSink, state: &mut 
     if let Some(p) = panel {
         p.close_active();
     }
-    state.broker.close(&abs_key);
-    let _ = state.broker.open(&abs_key, SlotId::Center, 0);
+    state.workspace_mut().broker_mut().close(&abs_key);
+    let _ = state.workspace_mut().broker_mut().open(&abs_key, SlotId::Center, 0);
     let mut csv = CsvView::new(&path, &content);
-    csv.set_clipboard(state.clipboard.clone());
+    csv.set_clipboard(state.editor().clipboard().clone());
     let view: Box<dyn View> = Box::new(csv);
     try_insert_tab(d, state, sink, SlotId::Center, title, view);
 }

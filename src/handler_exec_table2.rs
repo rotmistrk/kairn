@@ -229,7 +229,7 @@ fn cmd_remove_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
 }
 pub(crate) fn refresh_completer_roots(state: &AppState) {
     let paths: Vec<String> = state.roots().paths().iter().map(|p| p.display().to_string()).collect();
-    if let Ok(mut guard) = state.completer_roots.lock() {
+    if let Ok(mut guard) = state.scripting().completer_roots().lock() {
         *guard = paths;
     }
 }

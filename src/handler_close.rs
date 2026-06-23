@@ -22,7 +22,7 @@ pub(crate) fn handle_app_quit(ctx: &mut CommandContext, state: &mut AppState) {
         } else {
             "Quit?"
         };
-        state.confirm_context = Some(ConfirmContext::Quit);
+        state.pending_mut().set_confirm_context(Some(ConfirmContext::Quit));
         sink.push_command(CM_CONFIRM, Some(Box::new(msg.to_string())));
     }
 }
@@ -43,7 +43,9 @@ pub(crate) fn handle_tab_close(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if can_close != CloseResult::Ok {
         if let Some(path) = active_editor_path(ctx, focused) {
-            state.confirm_context = Some(ConfirmContext::EditorClose(path));
+            state
+                .pending_mut()
+                .set_confirm_context(Some(ConfirmContext::EditorClose(path)));
             sink.push_command(
                 CM_CONFIRM,
                 Some(Box::new("Save changes? [y]es [n]o [Esc]cancel".to_string())),
@@ -158,12 +160,16 @@ pub(crate) fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState)
 
     if let Some(boxed) = ctx.data().as_ref() {
         if let Some(path) = boxed.downcast_ref::<String>() {
-            state.broker.close(path);
+            state.workspace_mut().broker_mut().close(path);
             state.kiro_registry.remove(path);
-            state.tab_titles_dirty = true;
-            let full = state.root_dir.join(path);
-            if let Some(id) = state.buffers.find_by_path(&full.canonicalize().unwrap_or(full)) {
-                state.buffers.release(id);
+            state.ui_mut().set_tab_titles_dirty(true);
+            let full = state.root_dir().join(path);
+            if let Some(id) = state
+                .workspace_mut()
+                .buffers_mut()
+                .find_by_path(&full.canonicalize().unwrap_or(full))
+            {
+                state.workspace_mut().buffers_mut().release(id);
             }
         }
     }
@@ -177,7 +183,7 @@ pub(crate) fn handle_file_closed(ctx: &mut CommandContext, state: &mut AppState)
                 desktop,
                 SlotId::Center,
                 "Welcome",
-                Box::new(WelcomeView::new(state.root_dir.clone())),
+                Box::new(WelcomeView::new(state.root_dir().clone())),
             );
         }
     }

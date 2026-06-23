@@ -107,6 +107,7 @@ fn help_ex_commands() -> &'static str {
   :fmt             Format file via LSP
   V:fmt            Format selected range via LSP
   :fmt!            Format file using built-in formatter (JSON/JSONC)
+  :fmt! --indent 4 --sort-keys
 "
 }
 

@@ -178,25 +178,29 @@ fn create_split_with_file(
 pub(crate) fn open_into_editor(ev: &mut EditorView, path: &std::path::Path, line: u32, col: u32, state: &mut AppState) {
     let bounds = ev.bounds();
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let new_ev = editor_build::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     *ev = new_ev;
     ev.set_bounds(bounds);
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    ev.editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    ev.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     ev.goto(line, col);
 }
 
 fn open_new_pane(state: &mut AppState, path: &std::path::Path, line: u32, col: u32) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let mut ev = editor_build::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     ev.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    ev.editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    ev.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     ev.goto(line, col);
     Box::new(ev)
 }

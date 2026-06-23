@@ -14,7 +14,8 @@ use crate::handler::AppState;
 
 pub fn mcp_get_build_errors(state: &AppState) -> Result<serde_json::Value, String> {
     let errors: Vec<serde_json::Value> = state
-        .build_errors
+        .build()
+        .errors()
         .iter()
         .map(|e| {
             serde_json::json!({
@@ -37,7 +38,7 @@ pub fn mcp_search_project(state: &AppState, pattern: &str, all_roots: bool) -> R
     let dirs: Vec<&Path> = if all_roots && state.roots().len() > 1 {
         state.roots().all().iter().map(|r| r.path.as_path()).collect()
     } else {
-        vec![state.root_dir.as_path()]
+        vec![state.root_dir().as_path()]
     };
     for dir in dirs {
         let walker = WalkBuilder::new(dir).hidden(true).git_ignore(true).build();
@@ -83,15 +84,16 @@ fn search_file_lines(
 
 pub fn mcp_run_build(state: &mut AppState, sink: &EventSink, command: &str) -> Result<serde_json::Value, String> {
     let cmd = if command.is_empty() {
-        detect(&state.root_dir)
+        detect(state.root_dir())
             .map(|bs| bs.build.to_string())
             .unwrap_or_else(|| "make".to_string())
     } else {
         command.to_string()
     };
-    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
-    let task = run_async(&cmd, &state.root_dir, waker);
-    state.build_pending = Some((cmd.clone(), task, state.root_dir.clone()));
+    let waker = state.ui().waker().clone().unwrap_or_else(Waker::noop);
+    let task = run_async(&cmd, state.root_dir(), waker);
+    let root = state.root_dir().clone();
+    state.build_mut().set_pending(Some((cmd.clone(), task, root)));
     sink.push_command(
         txv_widgets::CM_STATUS_MESSAGE,
         Some(Box::new(Message::info("build", format!("Running: {cmd}")))),

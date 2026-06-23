@@ -17,7 +17,7 @@ pub fn handle_lsp_command(arg: &str, state: &mut AppState) -> String {
         "stop" => lsp_stop(pattern, state),
         "timeout" => lsp_timeout(pattern, value, state),
         "args" => lsp_args(pattern, value, state),
-        "status" => format_lsp_status(&state.lsp),
+        "status" => format_lsp_status(state.lsp_sub().registry()),
         _ => format!("lsp: unknown subcommand '{sub}' (start|restart|stop|timeout|args|status)"),
     };
     refresh_lsp_languages(state);
@@ -26,25 +26,25 @@ pub fn handle_lsp_command(arg: &str, state: &mut AppState) -> String {
 
 /// Sync the shared language list from registry configs + active servers.
 pub fn refresh_lsp_languages(state: &AppState) {
-    let langs = state.lsp.matching_languages("*");
-    if let Ok(mut guard) = state.lsp_languages.lock() {
+    let langs = state.lsp_sub().registry().matching_languages("*");
+    if let Ok(mut guard) = state.lsp_languages().lock() {
         *guard = langs;
     }
 }
 
 fn lsp_start(pattern: &str, state: &mut AppState) -> String {
-    let langs = state.lsp.matching_languages(pattern);
+    let langs = state.lsp_sub_mut().registry_mut().matching_languages(pattern);
     if langs.is_empty() {
         return format!("No languages matching '{pattern}'");
     }
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     let mut started = Vec::new();
     for lang in &langs {
-        if state.lsp.take_start_hook(lang) {
+        if state.lsp_sub_mut().registry_mut().take_start_hook(lang) {
             fire_lsp_start_hook(state, lang);
         }
-        state.lsp.ensure_started(lang, &root);
-        if !state.lsp.is_initializing(lang) {
+        state.lsp_sub_mut().registry_mut().ensure_started(lang, &root);
+        if !state.lsp_sub_mut().registry_mut().is_initializing(lang) {
             started.push(lang.as_str());
         }
     }
@@ -56,35 +56,35 @@ fn lsp_start(pattern: &str, state: &mut AppState) -> String {
 }
 
 fn lsp_restart(pattern: &str, state: &mut AppState) -> String {
-    let langs = state.lsp.matching_languages(pattern);
+    let langs = state.lsp_sub_mut().registry_mut().matching_languages(pattern);
     if langs.is_empty() {
         return format!("No languages matching '{pattern}'");
     }
     for lang in &langs {
-        state.lsp.restart(lang);
-        state.lsp_state.status.remove(lang);
+        state.lsp_sub_mut().registry_mut().restart(lang);
+        state.lsp_sub_mut().state_mut().status_mut().remove(lang);
     }
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     let mut restarted = Vec::new();
     for lang in &langs {
-        if state.lsp.take_start_hook(lang) {
+        if state.lsp_sub_mut().registry_mut().take_start_hook(lang) {
             fire_lsp_start_hook(state, lang);
         }
-        state.lsp.ensure_started(lang, &root);
+        state.lsp_sub_mut().registry_mut().ensure_started(lang, &root);
         restarted.push(lang.as_str());
     }
     format!("LSP restarted: {}", restarted.join(", "))
 }
 
 fn lsp_stop(pattern: &str, state: &mut AppState) -> String {
-    let langs = state.lsp.matching_languages(pattern);
+    let langs = state.lsp_sub_mut().registry_mut().matching_languages(pattern);
     if langs.is_empty() {
         return format!("No languages matching '{pattern}'");
     }
     let mut stopped = Vec::new();
     for lang in &langs {
-        if state.lsp.stop(lang) {
-            state.lsp_state.status.remove(lang);
+        if state.lsp_sub_mut().registry_mut().stop(lang) {
+            state.lsp_sub_mut().state_mut().status_mut().remove(lang);
             stopped.push(lang.as_str());
         }
     }
@@ -96,7 +96,7 @@ fn lsp_stop(pattern: &str, state: &mut AppState) -> String {
 }
 
 fn lsp_timeout(pattern: &str, value: &str, state: &mut AppState) -> String {
-    let langs = state.lsp.matching_languages(pattern);
+    let langs = state.lsp_sub_mut().registry_mut().matching_languages(pattern);
     if langs.is_empty() {
         return format!("No languages matching '{pattern}'");
     }
@@ -105,7 +105,11 @@ fn lsp_timeout(pattern: &str, value: &str, state: &mut AppState) -> String {
         let info: Vec<String> = langs
             .iter()
             .map(|l| {
-                let t = state.lsp.timeout(l).unwrap_or(state.lsp_pending.timeout_secs);
+                let t = state
+                    .lsp_sub_mut()
+                    .registry_mut()
+                    .timeout(l)
+                    .unwrap_or(state.lsp_sub_mut().pending_mut().timeout_secs());
                 format!("{l}: {t}s")
             })
             .collect();
@@ -115,13 +119,13 @@ fn lsp_timeout(pattern: &str, value: &str, state: &mut AppState) -> String {
         return format!("Invalid timeout: '{value}' (expected seconds)");
     };
     for lang in &langs {
-        state.lsp.set_timeout(lang, secs);
+        state.lsp_sub_mut().registry_mut().set_timeout(lang, secs);
     }
     format!("Timeout set to {secs}s for: {}", langs.join(", "))
 }
 
 fn lsp_args(pattern: &str, value: &str, state: &mut AppState) -> String {
-    let langs = state.lsp.matching_languages(pattern);
+    let langs = state.lsp_sub_mut().registry_mut().matching_languages(pattern);
     if langs.is_empty() {
         return format!("No languages matching '{pattern}'");
     }
@@ -136,7 +140,7 @@ fn lsp_args(pattern: &str, value: &str, state: &mut AppState) -> String {
         Vec::new()
     };
     for lang in &langs {
-        state.lsp.set_config(lang, cmd, &args);
+        state.lsp_sub_mut().registry_mut().set_config(lang, cmd, &args);
     }
     format!("Config updated for: {}", langs.join(", "))
 }

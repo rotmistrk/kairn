@@ -41,7 +41,7 @@ pub(crate) fn handle_open_file(ctx: &mut CommandContext, state: &mut AppState, f
     let abs_key = path.to_string_lossy().to_string();
     log::info!("Open file: {abs_key} (broker check)");
 
-    match state.broker.open(&abs_key, SlotId::Center, 0) {
+    match state.workspace_mut().broker_mut().open(&abs_key, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => handle_already_open(ctx, state, &req, &abs_key, focus_center),
         OpenResult::Opened => handle_fresh_open(ctx, state, &req, &abs_key, focus_center),
     }
@@ -59,11 +59,11 @@ fn handle_already_open(
         return;
     };
     if !focus_editor_by_path(desktop, abs_key) {
-        state.broker.close(abs_key);
+        state.workspace_mut().broker_mut().close(abs_key);
         let path = &req.path;
         let title = initial_title(path);
-        let view: Box<dyn View> =
-            try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
+        let view: Box<dyn View> = try_open_structured(path, Some(state.editor().clipboard().clone()))
+            .unwrap_or_else(|| open_editor(path, state, req));
         try_insert_tab(desktop, state, &sink, SlotId::Center, title, view);
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
@@ -79,7 +79,7 @@ fn handle_already_open(
         desktop.focus_panel(SlotId::Center as usize);
     }
     if req.diff {
-        activate_diff_on_focused(desktop);
+        activate_diff_on_focused(desktop, req.diff_base());
     }
 }
 
@@ -113,10 +113,10 @@ fn handle_fresh_open(
         close_tab_by_title(desktop, SlotId::Center, "Welcome");
         let path = &req.path;
         let title = initial_title(path);
-        let view: Box<dyn View> =
-            try_open_structured(path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor(path, state, req));
+        let view: Box<dyn View> = try_open_structured(path, Some(state.editor().clipboard().clone()))
+            .unwrap_or_else(|| open_editor(path, state, req));
         try_insert_tab(desktop, state, &sink, SlotId::Center, title.clone(), view);
-        state.tab_titles_dirty = true;
+        state.ui_mut().set_tab_titles_dirty(true);
         if focus_center {
             desktop.focus_panel(SlotId::Center as usize);
         }
@@ -128,7 +128,7 @@ fn handle_fresh_open(
 }
 
 pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: &mut AppState, arg: &str) {
-    let path = state.root_dir.join(arg);
+    let path = state.root_dir().join(arg);
     if path.is_dir() || (path.exists() && File::open(&path).is_err()) {
         let msg = Message::warn("edit", format!("Cannot open: {arg}"));
         sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
@@ -136,42 +136,43 @@ pub(crate) fn handle_edit_file(desktop: &mut dyn View, sink: &EventSink, state: 
     }
     let abs_key = path.to_string_lossy().to_string();
     let title = initial_title(&path);
-    match state.broker.open(&abs_key, SlotId::Center, 0) {
+    match state.workspace_mut().broker_mut().open(&abs_key, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
             if let Some(d) = downcast_desktop(desktop) {
                 focus_editor_by_path(d, &abs_key);
             }
         }
         OpenResult::Opened => {
-            let view: Box<dyn View> = try_open_structured(&path, Some(state.clipboard.clone()))
+            let view: Box<dyn View> = try_open_structured(&path, Some(state.editor().clipboard().clone()))
                 .unwrap_or_else(|| create_editor_view(&path, state));
             if let Some(d) = downcast_desktop(desktop) {
                 try_insert_tab(d, state, sink, SlotId::Center, title, view);
                 d.focus_panel(SlotId::Center as usize);
-                state.tab_titles_dirty = true;
+                state.ui_mut().set_tab_titles_dirty(true);
             }
         }
     }
     // Sync titles immediately (don't wait for next tick)
-    if state.tab_titles_dirty {
+    if state.ui().tab_titles_dirty() {
         if let Some(d) = downcast_desktop(desktop) {
-            sync_titles_immediate(d, &state.root_dir);
-            state.tab_titles_dirty = false;
+            sync_titles_immediate(d, state.root_dir());
+            state.ui_mut().set_tab_titles_dirty(false);
         }
     }
 }
 
 fn create_editor_view(path: &Path, state: &mut AppState) -> Box<dyn View> {
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let mut editor = editor_build::open_with_theme(path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(path, &defaults));
     editor.set_root_dir(state.roots().root_for(path).path().to_path_buf());
-    editor
-        .editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    editor.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     let canon = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let buf_id = state.buffers.register(Some(canon));
+    let buf_id = state.workspace_mut().buffers_mut().register(Some(canon));
     editor.set_buffer_id(Some(buf_id));
     Box::new(editor)
 }
@@ -212,7 +213,7 @@ pub(crate) fn handle_show_results(ctx: &mut CommandContext, state: &mut AppState
     };
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
-        let view = ResultsView::new(&title, entries).with_root(&state.root_dir);
+        let view = ResultsView::new(&title, entries).with_root(state.root_dir());
         try_insert_tab(desktop, state, &sink, SlotId::Tools, title, Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }

@@ -13,7 +13,8 @@ use crate::views::terminal::new_shell_with_command;
 
 /// Handle :build — spawn async build, show results in right panel.
 pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
-    let cmd = tcl_override(&mut state.script, "build-command").or_else(|| build::resolve_build_cmd(&state.root_dir));
+    let cmd = tcl_override(state.scripting_mut().script_mut(), "build-command")
+        .or_else(|| build::resolve_build_cmd(state.root_dir()));
     let Some(cmd) = cmd else {
         report_no_cmd(ctx, "build");
         return;
@@ -24,13 +25,13 @@ pub fn handle_build(ctx: &mut CommandContext, state: &mut AppState) {
 /// Handle :run — run project in a shell tab.
 pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
-    let cmd = tcl_override(&mut state.script, "run-command").or_else(|| {
+    let cmd = tcl_override(state.scripting_mut().script_mut(), "run-command").or_else(|| {
         Some(
             state
-                .settings
-                .run_command
+                .settings()
+                .run_command()
                 .clone()
-                .unwrap_or_else(|| detect_run_command(&state.root_dir)),
+                .unwrap_or_else(|| detect_run_command(state.root_dir())),
         )
     });
     let Some(cmd) = cmd else {
@@ -38,7 +39,7 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
     };
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         close_tab_by_title(desktop, SlotId::Tools, "Run");
-        let term = new_shell_with_command(&cmd, &state.root_dir);
+        let term = new_shell_with_command(&cmd, state.root_dir());
         try_insert_tab(desktop, state, &sink, SlotId::Tools, "Run".into(), term);
         desktop.focus_panel(SlotId::Tools as usize);
     }
@@ -46,7 +47,8 @@ pub fn handle_run(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Handle :test — spawn async test, show results.
 pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
-    let cmd = tcl_override(&mut state.script, "test-command").or_else(|| build::resolve_test_cmd(&state.root_dir));
+    let cmd = tcl_override(state.scripting_mut().script_mut(), "test-command")
+        .or_else(|| build::resolve_test_cmd(state.root_dir()));
     let Some(cmd) = cmd else {
         report_no_cmd(ctx, "test");
         return;
@@ -56,8 +58,13 @@ pub fn handle_test(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Handle :test-file — test current file.
 pub fn handle_test_file(ctx: &mut CommandContext, state: &mut AppState) {
-    let file = state.broker.last_opened().unwrap_or("").to_string();
-    let Some(cmd) = build::resolve_test_file_cmd(&state.root_dir, &file) else {
+    let file = state
+        .workspace_mut()
+        .broker_mut()
+        .last_opened()
+        .unwrap_or("")
+        .to_string();
+    let Some(cmd) = build::resolve_test_file_cmd(state.root_dir(), &file) else {
         report_no_cmd(ctx, "test-file");
         return;
     };
@@ -67,7 +74,7 @@ pub fn handle_test_file(ctx: &mut CommandContext, state: &mut AppState) {
 /// Handle :test-at-cursor — test function at cursor.
 pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
     let test_name = detect_test_name(ctx, state);
-    let Some(cmd) = build::resolve_test_at_cursor_cmd(&state.root_dir, &test_name) else {
+    let Some(cmd) = build::resolve_test_at_cursor_cmd(state.root_dir(), &test_name) else {
         report_no_cmd(ctx, "test-at-cursor");
         return;
     };
@@ -77,18 +84,18 @@ pub fn handle_test_at_cursor(ctx: &mut CommandContext, state: &mut AppState) {
 /// Spawn an async build/test task and open a ResultsView.
 fn spawn_task(ctx: &mut CommandContext, state: &mut AppState, cmd: &str, title: &str) {
     let sink = ctx.sink().clone();
-    let Some(waker) = state.waker.clone() else {
+    let Some(waker) = state.ui().waker().clone() else {
         return;
     };
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     let task = build::run_async(cmd, &root, waker);
-    state.build_pending = Some((title.to_string(), task, root));
-    state.build_errors.clear();
-    state.build_error_idx = 0;
+    state.build_mut().set_pending(Some((title.to_string(), task, root)));
+    state.build_mut().errors_mut().clear();
+    state.build_mut().set_error_idx(0);
 
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         close_tab_by_title(desktop, SlotId::Tools, title);
-        let view = ResultsView::searching(title, &state.root_dir);
+        let view = ResultsView::searching(title, state.root_dir());
         try_insert_tab(desktop, state, &sink, SlotId::Tools, title.to_string(), Box::new(view));
         desktop.focus_panel(SlotId::Tools as usize);
     }
@@ -150,29 +157,32 @@ fn extract_test_fn_name(line: &str) -> Option<String> {
 
 /// Handle :next-error — jump to next error location.
 pub fn handle_next_error(ctx: &mut CommandContext, state: &mut AppState) {
-    if state.build_errors.is_empty() {
+    if state.build().errors().is_empty() {
         return;
     }
-    if state.build_error_idx < state.build_errors.len() - 1 {
-        state.build_error_idx += 1;
+    if state.build().error_idx() < state.build().errors().len() - 1 {
+        let new_idx = state.build().error_idx() + 1;
+        state.build_mut().set_error_idx(new_idx);
     }
     jump_to_error(ctx, state);
 }
 
 /// Handle :prev-error — jump to previous error location.
 pub fn handle_prev_error(ctx: &mut CommandContext, state: &mut AppState) {
-    if state.build_errors.is_empty() {
+    if state.build().errors().is_empty() {
         return;
     }
-    if state.build_error_idx > 0 {
-        state.build_error_idx -= 1;
+    if state.build().error_idx() > 0 {
+        let new_idx = state.build().error_idx() - 1;
+        state.build_mut().set_error_idx(new_idx);
     }
     jump_to_error(ctx, state);
 }
 
 fn jump_to_error(ctx: &mut CommandContext, state: &mut AppState) {
-    let err = &state.build_errors[state.build_error_idx];
-    let path = state.root_dir.join(&err.file);
+    let idx = state.build().error_idx();
+    let err = &state.build().errors()[idx];
+    let path = state.root_dir().join(&err.file);
     let req = OpenFileRequest::at(path, err.line.saturating_sub(1), err.col.saturating_sub(1));
     ctx.sink().push_command(CM_OPEN_FILE_FOCUS, Some(Box::new(req)));
 }

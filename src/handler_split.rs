@@ -122,7 +122,7 @@ pub(crate) fn handle_split_linked(ctx: &mut CommandContext, state: &mut AppState
     let Some(&on) = boxed.downcast_ref::<bool>() else {
         return;
     };
-    state.linked_scroll = on;
+    state.editor_mut().set_linked_scroll(on);
 }
 
 fn open_in_other_subpanel(
@@ -146,7 +146,7 @@ fn open_in_other_subpanel(
     let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return;
     };
-    open_into_editor(ev, &state.root_dir.join(filename), 0, 0, state);
+    open_into_editor(ev, &state.root_dir().join(filename), 0, 0, state);
 }
 
 fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn View> {
@@ -156,7 +156,7 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
     let Some(ev) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
         return Box::new(editor_build::from_text(""));
     };
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let syntax_theme = state.current_syntax_theme().to_string();
     let buf_id = ev.buffer_id();
     let shared_buf = ev.editor().buffer_arc();
@@ -167,8 +167,10 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
     let ev_path = ev.path().to_path_buf();
     let mut ed = editor_build::from_arc_buffer(shared_buf, file_path, &defaults, &syntax_theme);
     ed.set_root_dir(state.roots().root_for(&ev_path).path().to_path_buf());
-    ed.editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    ed.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     ed.set_buffer_id(buf_id);
     ed.editor_mut().set_cursor_line(cursor_line);
     ed.editor_mut().set_cursor_col(cursor_col);
@@ -177,16 +179,18 @@ fn create_shared_pane(panel: &mut TabPanel, state: &mut AppState) -> Box<dyn Vie
 }
 
 fn open_second_file(state: &mut AppState, filename: &str) -> Box<dyn View> {
-    let path = state.root_dir.join(filename);
+    let path = state.root_dir().join(filename);
     let syntax_theme = state.current_syntax_theme().to_string();
-    let defaults = state.settings.editor_defaults.clone();
+    let defaults = state.settings().editor_defaults().clone();
     let mut ed = editor_build::open_with_theme(&path, &defaults, &syntax_theme)
         .unwrap_or_else(|_| editor_build::new_file(&path, &defaults));
     ed.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
-    ed.editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    ed.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     let canon = path.canonicalize().unwrap_or(path);
-    ed.set_buffer_id(Some(state.buffers.register(Some(canon))));
+    ed.set_buffer_id(Some(state.workspace_mut().buffers_mut().register(Some(canon))));
     Box::new(ed)
 }
 

@@ -13,7 +13,7 @@ use txv_widgets::tiled_workspace::TiledWorkspace;
 
 pub(crate) use crate::handler_open_view::open_as_csv;
 
-pub(crate) fn activate_diff_on_focused(desktop: &mut TiledWorkspace) {
+pub(crate) fn activate_diff_on_focused(desktop: &mut TiledWorkspace, diff_base: Option<&str>) {
     let slot = SlotId::Center as usize;
     let editor = desktop
         .panel_mut(slot)
@@ -21,7 +21,8 @@ pub(crate) fn activate_diff_on_focused(desktop: &mut TiledWorkspace) {
         .and_then(|v| v.as_any_mut())
         .and_then(|a| a.downcast_mut::<EditorView>());
     if let Some(ed) = editor {
-        ed.toggle_diff("");
+        let args = diff_base.unwrap_or("");
+        ed.toggle_diff(args);
         ed.flush_pending();
     }
 }
@@ -61,10 +62,11 @@ pub(crate) fn toggle_view_mode(desktop: &mut dyn View, sink: &EventSink, state: 
     if let Some(p) = panel {
         p.close_active();
     }
-    state.broker.close(&abs_key);
-    let _ = state.broker.open(&abs_key, SlotId::Center, 0);
+    state.workspace_mut().broker_mut().close(&abs_key);
+    let _ = state.workspace_mut().broker_mut().open(&abs_key, SlotId::Center, 0);
     let view: Box<dyn View> = if to_structured {
-        try_open_structured(&path, Some(state.clipboard.clone())).unwrap_or_else(|| open_editor_view(&path, state))
+        try_open_structured(&path, Some(state.editor().clipboard().clone()))
+            .unwrap_or_else(|| open_editor_view(&path, state))
     } else {
         open_editor_view(&path, state)
     };

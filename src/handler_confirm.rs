@@ -19,7 +19,7 @@ use crate::views::todo_tree::TodoTreeView;
 
 pub fn handle_confirm_response(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
-    let Some(context) = state.confirm_context.take() else {
+    let Some(context) = state.pending_mut().take_confirm_context() else {
         return;
     };
     let ch = ctx
@@ -95,7 +95,7 @@ fn emit_save_result(sink: &txv_core::prelude::EventSink, result: std::io::Result
     match result {
         Ok(()) => {
             sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
-            if state.pending_tab.is_none() {
+            if state.pending().pending_tab().is_none() {
                 sink.push_command(CM_TAB_CLOSE, None);
             }
         }
@@ -129,7 +129,7 @@ fn discard_and_close(ctx: &mut CommandContext, state: &mut AppState, path: &str)
         }
         editor.editor().buf().mark_saved();
         sink.push_command(CM_FILE_CLOSED, Some(Box::new(path.to_string())));
-        if state.pending_tab.is_none() {
+        if state.pending().pending_tab().is_none() {
             sink.push_command(CM_TAB_CLOSE, None);
         }
         break;
@@ -235,12 +235,12 @@ fn handle_csv_delete(ctx: &mut CommandContext, ch: char) {
 
 pub fn handle_set_confirm_context(ctx: &mut CommandContext, state: &mut AppState) {
     if let Some(context) = ctx.data().as_ref().and_then(|b| b.downcast_ref::<ConfirmContext>()) {
-        state.confirm_context = Some(context.clone());
+        state.pending_mut().set_confirm_context(Some(context.clone()));
     }
 }
 
 fn handle_mcp_confirm(state: &mut AppState, ch: char) {
-    let reply = state.mcp.pending_confirm_reply.take();
+    let reply = state.mcp_mut().take_confirm_reply();
     if let Some(tx) = reply {
         let allowed = ch == 'y';
         let _ = tx.send(Ok(serde_json::json!(allowed)));

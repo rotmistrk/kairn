@@ -20,8 +20,8 @@ pub(crate) fn cmd_replace(ctx: &mut CommandContext, state: &mut AppState, arg: &
         push_status(ctx, Message::warn("replace", "Usage: :replace /pattern/replacement/"));
         return;
     };
-    let root = state.root_dir.clone();
-    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
+    let root = state.root_dir().clone();
+    let waker = state.ui().waker().clone().unwrap_or_else(Waker::noop);
     let grep_state = grep_async(&pattern, &root, waker);
     thread::sleep(Duration::from_millis(500));
     let entries = grep_state.take_entries();

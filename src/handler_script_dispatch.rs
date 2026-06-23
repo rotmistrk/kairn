@@ -25,7 +25,8 @@ pub(crate) fn dispatch_extended(cmd: ScriptCommand, ctx: &mut CommandContext, st
         | ScriptCommand::GitNoBlame
         | ScriptCommand::GitUntrack { .. }
         | ScriptCommand::GitLog
-        | ScriptCommand::GitDiff => dispatch_git(cmd, ctx),
+        | ScriptCommand::GitDiff
+        | ScriptCommand::GitSetBase { .. } => dispatch_git(cmd, ctx, state),
         ScriptCommand::TodoAdd { .. }
         | ScriptCommand::TodoRemove { .. }
         | ScriptCommand::TodoComplete { .. }
@@ -58,21 +59,21 @@ pub(crate) fn dispatch_extended(cmd: ScriptCommand, ctx: &mut CommandContext, st
 fn dispatch_root(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mut AppState) -> bool {
     let changed = match cmd {
         ScriptCommand::AddRoot { path } => {
-            let full = resolve_root_path(&path, &state.root_dir);
-            let added = state.roots.add(full);
+            let full = resolve_root_path(&path, state.root_dir());
+            let added = state.roots_mut().add(full);
             refresh_completer_roots(state);
             added
         }
         ScriptCommand::RemoveRoot { path } => {
-            let full = resolve_root_path(&path, &state.root_dir);
-            let removed = state.roots.remove(&full);
+            let full = resolve_root_path(&path, state.root_dir());
+            let removed = state.roots_mut().remove(&full);
             refresh_completer_roots(state);
             removed
         }
         _ => return false,
     };
     if changed {
-        let data = RootsChangedData::from_roots(&state.roots);
+        let data = RootsChangedData::from_roots(state.roots());
         ctx.sink().push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
     }
     true
@@ -84,15 +85,17 @@ fn dispatch_grep(state: &mut AppState, pattern: &str) -> bool {
     } else {
         (false, pattern)
     };
-    let root = state.root_dir.clone();
-    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
-    let grep_state = if all && state.roots.len() > 1 {
-        let roots: Vec<_> = state.roots.all().iter().map(|r| r.path.clone()).collect();
+    let root = state.root_dir().clone();
+    let waker = state.ui().waker().clone().unwrap_or_else(Waker::noop);
+    let grep_state = if all && state.roots().len() > 1 {
+        let roots: Vec<_> = state.roots().all().iter().map(|r| r.path.clone()).collect();
         grep::grep_async_roots(pat, &roots, waker)
     } else {
         grep::grep_async(pat, &root, waker)
     };
-    state.grep_pending = Some((format!("grep:{pat}"), grep_state, root));
+    state
+        .pending_mut()
+        .set_grep_pending(Some((format!("grep:{pat}"), grep_state, root)));
     true
 }
 
@@ -122,8 +125,11 @@ fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mu
             lsp_cmd(ctx, state, &format!("args {pattern} {command}"));
         }
         ScriptCommand::LspEnv { pattern, key, value } => {
-            for lang in state.lsp.matching_languages(&pattern) {
-                state.lsp.set_env(&lang, key.clone(), value.clone());
+            for lang in state.lsp_sub_mut().registry_mut().matching_languages(&pattern) {
+                state
+                    .lsp_sub_mut()
+                    .registry_mut()
+                    .set_env(&lang, key.clone(), value.clone());
             }
         }
         ScriptCommand::LspServerConfig { args } => {
@@ -131,7 +137,7 @@ fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mu
                 let lang = &args[0];
                 let cmd = &args[1];
                 let extra: Vec<String> = args[2..].to_vec();
-                state.lsp.set_config(lang, cmd, &extra);
+                state.lsp_sub_mut().registry_mut().set_config(lang, cmd, &extra);
             }
             // Single arg (e.g. "lsp clangd") is ambiguous — ignore silently
         }
@@ -140,7 +146,7 @@ fn dispatch_lsp_control(cmd: ScriptCommand, ctx: &mut CommandContext, state: &mu
     true
 }
 
-fn dispatch_git(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
+fn dispatch_git(cmd: ScriptCommand, ctx: &mut CommandContext, state: &AppState) -> bool {
     match cmd {
         ScriptCommand::GitStage { file } => ctx.sink().push_command(CM_GIT_STAGE, Some(Box::new(file))),
         ScriptCommand::GitUnstage { file } => ctx.sink().push_command(CM_GIT_UNSTAGE, Some(Box::new(file))),
@@ -150,6 +156,13 @@ fn dispatch_git(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
         ScriptCommand::GitUntrack { file } => ctx.sink().push_command(CM_GIT_UNTRACK, Some(Box::new(file))),
         ScriptCommand::GitLog => ctx.sink().push_command(CM_GIT_LOG, None),
         ScriptCommand::GitDiff => ctx.sink().push_command(CM_DIFF, None),
+        ScriptCommand::GitSetBase { base, root } => {
+            let payload: Option<(PathBuf, String)> = base.map(|b| {
+                let r = root.map(PathBuf::from).unwrap_or_else(|| state.root_dir().clone());
+                (r, b)
+            });
+            ctx.sink().push_command(CM_GIT_SET_BASE, Some(Box::new(payload)));
+        }
         _ => {}
     }
     true
@@ -213,6 +226,7 @@ fn dispatch_split(cmd: ScriptCommand, ctx: &mut CommandContext) -> bool {
                 line: None,
                 col: None,
                 diff: false,
+                diff_base: None,
             };
             ctx.sink().push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
         }

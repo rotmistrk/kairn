@@ -12,10 +12,44 @@ use crate::mcp::snapshot::McpSnapshot;
 #[derive(Default)]
 pub struct McpState {
     /// MCP snapshot (updated periodically for MCP server reads).
-    pub(crate) snapshot: Option<Arc<Mutex<McpSnapshot>>>,
+    snapshot: Option<Arc<Mutex<McpSnapshot>>>,
     /// MCP command queue for write operations from MCP tools.
-    pub(crate) commands: Option<McpCommandQueue>,
-    pub(crate) tick: u16,
+    commands: Option<McpCommandQueue>,
+    tick: u16,
     /// Pending confirm reply channel (for tool permission prompts).
-    pub(crate) pending_confirm_reply: Option<SyncSender<Result<Value, String>>>,
+    pending_confirm_reply: Option<SyncSender<Result<Value, String>>>,
+}
+
+impl McpState {
+    pub(crate) fn snapshot(&self) -> &Option<Arc<Mutex<McpSnapshot>>> {
+        &self.snapshot
+    }
+
+    pub(crate) fn set_snapshot(&mut self, s: Arc<Mutex<McpSnapshot>>) {
+        self.snapshot = Some(s);
+    }
+
+    pub(crate) fn commands(&self) -> &Option<McpCommandQueue> {
+        &self.commands
+    }
+
+    pub(crate) fn set_commands(&mut self, q: McpCommandQueue) {
+        self.commands = Some(q);
+    }
+
+    pub(crate) fn tick(&self) -> u16 {
+        self.tick
+    }
+
+    pub(crate) fn increment_tick(&mut self) {
+        self.tick = self.tick.wrapping_add(1);
+    }
+
+    pub(crate) fn take_confirm_reply(&mut self) -> Option<SyncSender<Result<Value, String>>> {
+        self.pending_confirm_reply.take()
+    }
+
+    pub(crate) fn set_confirm_reply(&mut self, reply: SyncSender<Result<Value, String>>) {
+        self.pending_confirm_reply = Some(reply);
+    }
 }

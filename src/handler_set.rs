@@ -26,38 +26,38 @@ pub static SET_OPTIONS: &[SetOption] = &[
     SetOption {
         name: "wrap",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_wrap(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_wrap(on),
     },
     SetOption {
         name: "list",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_list(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_list(on),
     },
     SetOption {
         name: "number",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_number(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_number(on),
     },
     SetOption {
         name: "rainbow",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_rainbow(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_rainbow(on),
     },
     SetOption {
         name: "guides",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_guides(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_guides(on),
     },
     SetOption {
         name: "gutter-signs",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_gutter_signs(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_gutter_signs(on),
     },
     SetOption {
         name: "tree.icons",
         is_toggle: true,
         apply: |ctx, s, on| {
-            s.settings.tree_icons = on;
+            s.settings_mut().set_tree_icons(on);
             toggle_tree_icons(ctx.desktop_mut(), on);
         },
     },
@@ -65,7 +65,7 @@ pub static SET_OPTIONS: &[SetOption] = &[
         name: "tree.connectors",
         is_toggle: true,
         apply: |ctx, s, on| {
-            s.settings.tree_connectors = on;
+            s.settings_mut().set_tree_connectors(on);
             toggle_tree_connectors(ctx.desktop_mut(), on);
         },
     },
@@ -81,7 +81,7 @@ pub static SET_OPTIONS: &[SetOption] = &[
     SetOption {
         name: "autocomplete",
         is_toggle: true,
-        apply: |_, s, on| s.settings.editor_defaults_mut().set_autocomplete(on),
+        apply: |_, s, on| s.settings_mut().editor_defaults_mut().set_autocomplete(on),
     },
 ];
 

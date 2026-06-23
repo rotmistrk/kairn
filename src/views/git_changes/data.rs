@@ -1,7 +1,7 @@
 //! GitChangesData — tree data provider for git changes panel.
 //! Groups changed files by status category, optionally per-root.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use txv_core::cell::{Color, Style};
@@ -10,7 +10,7 @@ use txv_widgets::tree_view::TreeData;
 use crate::app_palette::app_palette;
 use crate::git_status::FileStatus;
 
-use super::builders::{build_category_nodes, collect_statuses_flat, discover_git_roots};
+use super::builders::{build_category_nodes, collect_diff_base_statuses, collect_statuses_flat, discover_git_roots};
 use super::change_node::ChangeNode;
 
 /// Data provider for the git changes tree.
@@ -21,6 +21,8 @@ pub struct GitChangesData {
     root_badge_colors: Vec<Color>,
     /// Disambiguated display labels for root headers.
     root_labels: Vec<String>,
+    /// Git diff base commits per root. When set, shows diff vs these commits.
+    diff_base: HashMap<PathBuf, String>,
 }
 
 impl GitChangesData {
@@ -30,6 +32,7 @@ impl GitChangesData {
             visible: Vec::new(),
             root_badge_colors: Vec::new(),
             root_labels: Vec::new(),
+            diff_base: HashMap::new(),
         };
         data.rebuild(root);
         data
@@ -48,6 +51,42 @@ impl GitChangesData {
     /// Set disambiguated display labels for root headers.
     pub fn set_root_labels(&mut self, labels: Vec<String>) {
         self.root_labels = labels;
+    }
+
+    /// Set the diff base commit hashes per root.
+    pub fn set_diff_base(&mut self, base: HashMap<PathBuf, String>) {
+        self.diff_base = base;
+    }
+
+    /// Get current badge colors.
+    pub fn badge_colors(&self) -> &[Color] {
+        &self.root_badge_colors
+    }
+
+    /// Get current root labels.
+    pub fn labels(&self) -> &[String] {
+        &self.root_labels
+    }
+
+    /// Get the set of collapsed node keys.
+    pub fn collapsed_keys(&self) -> HashSet<String> {
+        self.nodes
+            .iter()
+            .filter(|n| n.expandable && !n.expanded)
+            .filter_map(|n| n.key.clone())
+            .collect()
+    }
+
+    /// Replace nodes with precomputed results from async task.
+    pub(crate) fn apply_nodes(&mut self, nodes: Vec<ChangeNode>) {
+        let collapsed = self.collapsed_keys();
+        self.nodes = nodes;
+        for node in &mut self.nodes {
+            if node.expandable && node.key.as_ref().is_some_and(|k| collapsed.contains(k)) {
+                node.expanded = false;
+            }
+        }
+        self.rebuild_visible();
     }
 
     /// Rebuild from multiple workspace roots.
@@ -81,7 +120,12 @@ impl GitChangesData {
     fn rebuild_single_root(&mut self, roots: &[PathBuf]) {
         let git_roots: Vec<PathBuf> = roots.iter().flat_map(|r| discover_git_roots(r)).collect();
         let parent = roots.first().map(|r| r.as_path()).unwrap_or(Path::new("."));
-        let by_status = collect_statuses_flat(parent, &git_roots);
+        let base = self.diff_base.get(parent).map(|s| s.as_str());
+        let by_status = if let Some(base) = base {
+            collect_diff_base_statuses(parent, &git_roots, base)
+        } else {
+            collect_statuses_flat(parent, &git_roots)
+        };
         let root = roots.first().cloned().unwrap_or_default();
         build_category_nodes(&mut self.nodes, &by_status, 0, 1, &root);
     }
@@ -93,15 +137,16 @@ impl GitChangesData {
             if git_roots.is_empty() {
                 continue;
             }
-            let by_status = collect_statuses_flat(root, &git_roots);
+            let base = self.diff_base.get(root).map(|s| s.as_str());
+            let by_status = if let Some(base) = base {
+                collect_diff_base_statuses(root, &git_roots, base)
+            } else {
+                collect_statuses_flat(root, &git_roots)
+            };
             if by_status.is_empty() {
                 continue;
             }
-            let root_name = self.root_labels.get(root_idx).cloned().unwrap_or_else(|| {
-                root.file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| root.to_string_lossy().to_string())
-            });
+            let label = self.root_header_label(root_idx, root, base);
             let color = self
                 .root_badge_colors
                 .get(root_idx)
@@ -109,7 +154,7 @@ impl GitChangesData {
                 .unwrap_or(app.git().modified().fg());
             // Root header node
             self.nodes.push(ChangeNode {
-                label: root_name,
+                label,
                 depth: 0,
                 expandable: true,
                 expanded: true,
@@ -122,6 +167,17 @@ impl GitChangesData {
         }
     }
 
+    fn root_header_label(&self, idx: usize, root: &Path, base: Option<&str>) -> String {
+        let mut name = self.root_labels.get(idx).cloned().unwrap_or_else(|| {
+            root.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| root.to_string_lossy().to_string())
+        });
+        if let Some(hash) = base {
+            name.push_str(&format!(" [{hash}]"));
+        }
+        name
+    }
     fn rebuild_visible(&mut self) {
         self.visible.clear();
         let mut skip_depth: Option<usize> = None;

@@ -38,6 +38,11 @@ fn handle_git_cmd(cmds: &Arc<Mutex<Vec<ScriptCommand>>>, args: &[TclValue], sub:
         }
         "log" => push(cmds, ScriptCommand::GitLog),
         "diff" => push(cmds, ScriptCommand::GitDiff),
+        "base" => {
+            let base = args.get(2).map(|v| v.to_string()).filter(|s| !s.is_empty());
+            let root = args.get(3).map(|v| v.to_string()).filter(|s| !s.is_empty());
+            push(cmds, ScriptCommand::GitSetBase { base, root });
+        }
         other => return Err(TclError::new(format!("git: unknown subcommand '{other}'"))),
     }
     Ok(TclValue::Str(String::new()))

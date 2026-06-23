@@ -94,6 +94,10 @@ pub enum ScriptCommand {
     },
     GitLog,
     GitDiff,
+    GitSetBase {
+        base: Option<String>,
+        root: Option<String>,
+    },
     TodoAdd {
         text: String,
         parent: Option<String>,

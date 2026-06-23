@@ -3,7 +3,7 @@
 use crate::handler::AppState;
 
 pub(crate) fn mcp_clipboard_copy(state: &mut AppState, text: &str, source: &str) -> Result<serde_json::Value, String> {
-    if let Ok(mut ring) = state.clipboard.lock() {
+    if let Ok(mut ring) = state.editor().clipboard().lock() {
         ring.push(text, source);
     }
     Ok(serde_json::json!({"ok": true}))
@@ -11,7 +11,8 @@ pub(crate) fn mcp_clipboard_copy(state: &mut AppState, text: &str, source: &str)
 
 pub(crate) fn mcp_clipboard_paste(state: &mut AppState) -> Result<serde_json::Value, String> {
     let text = state
-        .clipboard
+        .editor
+        .clipboard()
         .lock()
         .ok()
         .and_then(|mut r| r.paste())
@@ -21,7 +22,8 @@ pub(crate) fn mcp_clipboard_paste(state: &mut AppState) -> Result<serde_json::Va
 
 pub(crate) fn mcp_clipboard_list(state: &mut AppState) -> Result<serde_json::Value, String> {
     let entries: Vec<serde_json::Value> = state
-        .clipboard
+        .editor
+        .clipboard()
         .lock()
         .map(|r| {
             r.entries()

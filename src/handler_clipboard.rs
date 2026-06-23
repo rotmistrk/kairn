@@ -13,13 +13,13 @@ pub(crate) fn handle_clipboard_commands(ctx: &mut CommandContext, state: &mut Ap
     match ctx.command() {
         CM_COPY_TO_CLIPBOARD => {
             if let Some(text) = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()) {
-                if let Ok(mut ring) = state.clipboard.lock() {
+                if let Ok(mut ring) = state.editor().clipboard().lock() {
                     ring.push(text, "input");
                 }
             }
         }
         CM_PASTE_REQUEST => {
-            if let Ok(mut ring) = state.clipboard.lock() {
+            if let Ok(mut ring) = state.editor().clipboard().lock() {
                 if let Some(text) = ring.paste() {
                     ctx.sink().push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
                 }

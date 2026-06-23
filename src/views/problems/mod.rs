@@ -81,6 +81,7 @@ impl ProblemsView {
             line: Some(entry.line as u32),
             col: None,
             diff: false,
+            diff_base: None,
         };
         self.state.put_command(CM_OPEN_FILE, Some(Box::new(req)));
     }

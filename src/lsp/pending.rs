@@ -44,6 +44,14 @@ pub(crate) enum PendingKind {
 }
 
 impl PendingRequests {
+    pub(crate) fn timeout_secs(&self) -> u64 {
+        self.timeout_secs
+    }
+
+    pub(crate) fn set_timeout_secs(&mut self, v: u64) {
+        self.timeout_secs = v;
+    }
+
     pub(crate) fn insert(&mut self, id: u64, kind: PendingKind) {
         self.insert_with_lang(id, kind, "");
     }

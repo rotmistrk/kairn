@@ -158,6 +158,11 @@ pub const CM_TODO_PRIORITY_DOWN: CommandId = CM_APP_BASE + 183;
 pub const CM_TODO_LOE_UP: CommandId = CM_APP_BASE + 184;
 pub const CM_TODO_LOE_DOWN: CommandId = CM_APP_BASE + 185;
 
+// Git diff base
+pub const CM_GIT_SET_BASE: CommandId = CM_APP_BASE + 186;
+/// Broadcast: diff base map changed (views should update). NOT in handler dispatch.
+pub const CM_GIT_BASE_CHANGED: CommandId = CM_APP_BASE + 187;
+
 // Workspace roots changed (data: Vec<PathBuf>)
 pub const CM_ROOTS_CHANGED: CommandId = CM_APP_BASE + 190;
 /// Filesystem changed — broadcast to refresh tree, git status, etc.

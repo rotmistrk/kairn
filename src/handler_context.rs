@@ -27,7 +27,7 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
 
     let mut vc = ViewContext {
         title,
-        git_branch: read_branch(&state.root_dir),
+        git_branch: read_branch(state.root_dir()),
         ..Default::default()
     };
 
@@ -39,21 +39,47 @@ pub fn broadcast_context(ctx: &mut CommandContext, state: &mut AppState) {
 
     let (split_dir, split_linked) = collect_split_state(desktop, state);
 
-    let root = state.root_dir.to_string_lossy().to_string();
+    let root = state.root_dir().to_string_lossy().to_string();
+    update_script_snapshot(
+        state,
+        &vc,
+        &root,
+        &selection_text,
+        &current_line_text,
+        split_dir,
+        split_linked,
+    );
+
+    sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
+}
+
+fn update_script_snapshot(
+    state: &mut AppState,
+    vc: &ViewContext,
+    root: &str,
+    selection_text: &str,
+    current_line_text: &str,
+    split_dir: &str,
+    split_linked: bool,
+) {
     let busy_count = state.kiro_registry().count();
-    state
-        .script
-        .update_snapshot(&vc, &root, &selection_text, &current_line_text, split_dir, split_linked);
-    state.script.set_busy_count(busy_count);
-    let root_paths: Vec<&str> = state
+    state.scripting_mut().script_mut().update_snapshot(
+        vc,
+        root,
+        selection_text,
+        current_line_text,
+        split_dir,
+        split_linked,
+    );
+    state.scripting_mut().script_mut().set_busy_count(busy_count);
+    let root_paths: Vec<String> = state
         .roots()
         .all()
         .iter()
-        .map(|r| r.path.to_str().unwrap_or(""))
+        .map(|r| r.path.to_str().unwrap_or("").to_string())
         .collect();
-    state.script.set_roots(&root_paths);
-
-    sink.push_command(CM_CONTEXT_UPDATE, Some(Box::new(vc)));
+    let refs: Vec<&str> = root_paths.iter().map(|s| s.as_str()).collect();
+    state.scripting_mut().script_mut().set_roots(&refs);
 }
 
 fn collect_editor_context(
@@ -103,7 +129,7 @@ fn collect_split_state(
                 SplitDir::Vertical => "vertical",
             })
             .unwrap_or("none");
-        (dir, state.linked_scroll)
+        (dir, state.editor().linked_scroll())
     } else {
         ("none", false)
     }
@@ -120,7 +146,7 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
     vc.file = Some(
         editor
             .path()
-            .strip_prefix(&state.root_dir)
+            .strip_prefix(state.root_dir())
             .unwrap_or(editor.path())
             .to_string_lossy()
             .into_owned(),
@@ -136,7 +162,7 @@ fn fill_from_editor(editor: &EditorView, state: &AppState, vc: &mut ViewContext)
         }
     }
     let lang = editor.language();
-    if state.lsp.has_config(lang) {
+    if state.lsp_sub().registry().has_config(lang) {
         vc.lsp_status = "ready".to_string();
     }
 }
@@ -173,8 +199,9 @@ pub(crate) fn handle_cursor_moved(ctx: &mut CommandContext, state: &mut AppState
 
 /// Evaluate window.title-expr and emit OSC 2 if the title changed.
 pub(crate) fn update_window_title(state: &mut AppState, sink: &EventSink) {
-    let expr = state
-        .script
+    let expr: Option<String> = state
+        .scripting
+        .script()
         .interpreter()
         .get_var("window.title-expr")
         .map(|v| v.to_string());
@@ -184,7 +211,7 @@ pub(crate) fn update_window_title(state: &mut AppState, sink: &EventSink) {
     if expr.is_empty() {
         return;
     }
-    let title = match state.script.subst(&expr) {
+    let title = match state.scripting_mut().script_mut().subst(&expr) {
         Ok(t) => t,
         Err(e) => {
             let msg = Message::new(MsgLevel::Error, "title", format!("eval: {e}"));
@@ -192,9 +219,9 @@ pub(crate) fn update_window_title(state: &mut AppState, sink: &EventSink) {
             return;
         }
     };
-    if title != state.last_window_title {
-        state.last_window_title = title.clone();
-        if let Some(tty) = state.tty_file.as_mut() {
+    if title != state.ui().last_window_title() {
+        state.ui_mut().set_last_window_title(title.clone());
+        if let Some(tty) = state.ui_mut().tty_file_mut().as_mut() {
             let _ = write!(tty, "\x1b]2;{}\x07", title);
         }
     }

@@ -1,5 +1,7 @@
 //! Edit/action handler functions for M-x dispatch.
 
+use std::path::PathBuf;
+
 use txv_core::message::Message;
 use txv_core::program::CommandContext;
 use txv_core::run::Waker;
@@ -49,6 +51,20 @@ pub(crate) fn cmd_git_commit(ctx: &mut CommandContext, _state: &mut AppState, ar
     ctx.sink().push_command(CM_GIT_COMMIT, Some(Box::new(arg.to_string())));
 }
 
+pub(crate) fn cmd_git_base(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let payload: Option<(PathBuf, String)> = if arg.is_empty() {
+        None
+    } else {
+        let parts: Vec<&str> = arg.splitn(2, ' ').collect();
+        if parts.len() == 2 {
+            Some((PathBuf::from(parts[0]), parts[1].to_string()))
+        } else {
+            Some((state.root_dir().clone(), parts[0].to_string()))
+        }
+    };
+    ctx.sink().push_command(CM_GIT_SET_BASE, Some(Box::new(payload)));
+}
+
 pub(crate) fn cmd_git_stage(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
     ctx.sink().push_command(CM_GIT_STAGE, Some(Box::new(arg.to_string())));
 }
@@ -72,15 +88,17 @@ pub(crate) fn cmd_grep(ctx: &mut CommandContext, state: &mut AppState, arg: &str
     } else {
         (false, arg)
     };
-    let root = state.root_dir.clone();
-    let waker = state.waker.clone().unwrap_or_else(Waker::noop);
+    let root = state.root_dir().clone();
+    let waker = state.ui().waker().clone().unwrap_or_else(Waker::noop);
     let grep_state = if all_roots && state.roots().len() > 1 {
         let roots: Vec<_> = state.roots().all().iter().map(|r| r.path.clone()).collect();
         grep_async_roots(pattern, &roots, waker)
     } else {
         grep_async(pattern, &root, waker)
     };
-    state.grep_pending = Some((format!("grep:{pattern}"), grep_state, root.clone()));
+    state
+        .pending_mut()
+        .set_grep_pending(Some((format!("grep:{pattern}"), grep_state, root.clone())));
     let title = format!("grep:{pattern}");
     let view = ResultsView::searching(&title, &root);
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
@@ -120,7 +138,7 @@ pub(crate) fn cmd_lsp_rename(ctx: &mut CommandContext, _state: &mut AppState, ar
 }
 
 pub(crate) fn cmd_lsp_status(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    let status = format_lsp_status(&state.lsp);
+    let status = format_lsp_status(state.lsp_sub().registry());
     ctx.sink().push_command(CM_SHELL_OUTPUT, Some(Box::new(status)));
 }
 
@@ -135,7 +153,7 @@ pub(crate) fn cmd_clipboard(ctx: &mut CommandContext, state: &mut AppState, _arg
     use crate::handler_evict::try_insert_tab;
     use crate::views::clipboard_viewer::ClipboardViewer;
     if let Some(d) = downcast_desktop(ctx.desktop_mut()) {
-        let view = ClipboardViewer::new(state.clipboard.clone());
+        let view = ClipboardViewer::new(state.editor().clipboard().clone());
         try_insert_tab(d, state, &sink, SlotId::Tools, "Clipboard".into(), Box::new(view));
         d.focus_panel(SlotId::Tools as usize);
     }
@@ -145,7 +163,7 @@ pub(crate) fn cmd_problems(ctx: &mut CommandContext, state: &mut AppState, _arg:
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         if !focus_tab_by_title(desktop, SlotId::Tools, "Problems") {
-            let problems = ProblemsView::new(&state.root_dir);
+            let problems = ProblemsView::new(state.root_dir());
             try_insert_tab(
                 desktop,
                 state,
@@ -169,7 +187,7 @@ pub(crate) fn cmd_noblame(ctx: &mut CommandContext, _state: &mut AppState, _arg:
 }
 
 pub(crate) fn cmd_paste(ctx: &mut CommandContext, state: &mut AppState, _arg: &str) {
-    if let Ok(mut ring) = state.clipboard.lock() {
+    if let Ok(mut ring) = state.editor().clipboard().lock() {
         if let Some(text) = ring.paste() {
             ctx.sink().push_command(CM_CLIPBOARD_PASTE, Some(Box::new(text)));
         }

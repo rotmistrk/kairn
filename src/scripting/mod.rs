@@ -157,6 +157,10 @@ impl ScriptEngine {
         }
     }
 
+    pub fn hook_registry(&self) -> &Arc<Mutex<HookRegistry>> {
+        &self.hook_registry
+    }
+
     /// Update the state snapshot (called each tick from handler).
     pub fn update_snapshot(
         &self,

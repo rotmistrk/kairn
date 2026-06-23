@@ -25,8 +25,14 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
         KeyCode::Left | KeyCode::Char('h') => handle_nav_left(view),
         KeyCode::Char('g') => handle_jump_top(view),
         KeyCode::Char('G') => handle_jump_bottom(view),
-        KeyCode::Char('0') => view.cursor_col = 0,
-        KeyCode::Char('$') => view.cursor_col = view.ncols().saturating_sub(1),
+        KeyCode::Char('0') => {
+            view.cursor_col = 0;
+            ensure_col_visible(view);
+        }
+        KeyCode::Char('$') => {
+            view.cursor_col = view.ncols().saturating_sub(1);
+            ensure_col_visible(view);
+        }
         KeyCode::Enter => view.start_edit(),
         KeyCode::Char('s') => handle_sort(view),
         KeyCode::Char('f') if key.modifiers().ctrl() => handle_clear_all_filters(view),
@@ -175,11 +181,13 @@ fn handle_nav_up(view: &mut CsvView) {
 fn handle_nav_right(view: &mut CsvView) {
     if view.cursor_col + 1 < view.ncols() {
         view.cursor_col += 1;
+        ensure_col_visible(view);
     }
 }
 
 fn handle_nav_left(view: &mut CsvView) {
     view.cursor_col = view.cursor_col.saturating_sub(1);
+    ensure_col_visible(view);
 }
 
 fn handle_sort(view: &mut CsvView) {
@@ -219,11 +227,7 @@ fn handle_sort(view: &mut CsvView) {
 
 pub(super) fn ensure_visible(view: &mut CsvView) {
     let h = view.group.bounds().h() as usize;
-    let data_h = h.saturating_sub(if view.headers.is_some() {
-        1
-    } else {
-        0
-    });
+    let data_h = h.saturating_sub(usize::from(view.headers.is_some()));
     if data_h == 0 {
         return;
     }
@@ -231,5 +235,29 @@ pub(super) fn ensure_visible(view: &mut CsvView) {
         view.scroll_row = view.cursor_row;
     } else if view.cursor_row >= view.scroll_row + data_h {
         view.scroll_row = view.cursor_row - data_h + 1;
+    }
+}
+
+pub(super) fn ensure_col_visible(view: &mut CsvView) {
+    let vp_w = view.group.bounds().w();
+    if vp_w == 0 {
+        return;
+    }
+    // If cursor is left of scroll, snap scroll to cursor col
+    if view.cursor_col < view.scroll_col {
+        view.scroll_col = view.cursor_col;
+        return;
+    }
+    // Compute pixel offset of cursor col's right edge from scroll_col
+    let mut x: u16 = 0;
+    for col in view.scroll_col..=view.cursor_col {
+        let w = view.col_widths.get(col).copied().unwrap_or(0);
+        x += w + 1; // +1 for separator
+    }
+    // If cursor col extends beyond viewport, advance scroll_col
+    while x > vp_w && view.scroll_col < view.cursor_col {
+        let w = view.col_widths.get(view.scroll_col).copied().unwrap_or(0);
+        x -= w + 1;
+        view.scroll_col += 1;
     }
 }

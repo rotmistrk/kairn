@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 
 use txv_core::program::CommandContext;
 
-use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_FORMAT, CM_LSP_GOTO_DEF};
+use crate::commands::{CM_LSP_FIND_REFS, CM_LSP_GOTO_DEF};
 use crate::handler::AppState;
 
-use super::pending::{JdtRequest, PendingKind};
+use super::pending::PendingKind;
 use super::{protocol, requests, send_helpers};
 
 pub(super) use super::send_sync::{send_did_change, send_did_open};
@@ -21,22 +21,23 @@ pub(super) fn send_goto_def(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
 
-    if state.lsp.is_initializing(lang) {
+    if state.lsp_sub_mut().registry_mut().is_initializing(lang) {
         defer(ctx, state, CM_LSP_GOTO_DEF, lang, Box::new((path.clone(), *line, *col)));
         return;
     }
 
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::goto_definition(client, &uri, *line, *col);
     state
-        .lsp_pending
+        .lsp
+        .pending_mut()
         .insert_with_lang(id, PendingKind::GotoDefinition, lang);
 }
 
@@ -48,14 +49,17 @@ pub(super) fn send_goto_show(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     };
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::goto_definition(client, &uri, *line, *col);
-    state.lsp_pending.insert_with_lang(id, PendingKind::GotoShow, lang);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::GotoShow, lang);
 }
 
 pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
@@ -67,10 +71,10 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
 
-    if state.lsp.is_initializing(lang) {
+    if state.lsp_sub_mut().registry_mut().is_initializing(lang) {
         defer(
             ctx,
             state,
@@ -81,14 +85,15 @@ pub(super) fn send_find_refs(ctx: &mut CommandContext, state: &mut AppState) {
         return;
     }
 
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::find_references(client, &uri, *line, *col);
     state
-        .lsp_pending
+        .lsp
+        .pending_mut()
         .insert(id, PendingKind::FindReferences { symbol: symbol.clone() });
 }
 
@@ -101,15 +106,18 @@ pub(super) fn send_hover(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::hover(client, &uri, *line, *col);
-    state.lsp_pending.insert_with_lang(id, PendingKind::Hover, lang);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::Hover, lang);
 }
 
 pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
@@ -121,15 +129,18 @@ pub(super) fn send_completion(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         emit_last_error(ctx, state);
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::completion(client, &uri, *line, *col);
-    state.lsp_pending.insert_with_lang(id, PendingKind::Completion, lang);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::Completion, lang);
 }
 
 pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState) {
@@ -140,14 +151,17 @@ pub(super) fn send_signature_help(ctx: &mut CommandContext, state: &mut AppState
         return;
     };
     let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) else {
         return;
     };
     let uri = protocol::path_to_uri(path);
     let id = requests::signature_help(client, &uri, *line, *col);
-    state.lsp_pending.insert_with_lang(id, PendingKind::SignatureHelp, lang);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::SignatureHelp, lang);
 }
 
 pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
@@ -159,99 +173,37 @@ pub(super) fn send_rename(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, &lang, &root);
-    let Some(client) = state.lsp.get_client_mut(&lang) else {
+    let (line, col) = state.cursor_pos;
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(&lang) else {
         emit_last_error(ctx, state);
         return;
     };
-    let (line, col) = state.cursor_pos;
     let id = requests::rename(client, &uri, line, col, new_name);
-    state.lsp_pending.insert_with_lang(id, PendingKind::Rename, &lang);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::Rename, &lang);
 }
 
 pub(super) fn send_code_action(ctx: &mut CommandContext, state: &mut AppState) {
     let (uri, lang) = current_file_info(state);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, &lang, &root);
-    let Some(client) = state.lsp.get_client_mut(&lang) else {
-        emit_last_error(ctx, state);
-        return;
-    };
     let (line, col) = state.cursor_pos;
-    let id = requests::code_action(client, &uri, line, col);
-    state.lsp_pending.insert_with_lang(id, PendingKind::CodeAction, &lang);
-}
-
-/// Data: (PathBuf, Option<(u32, u32)>, u32) = (path, optional range, tab_size)
-/// If no data provided, uses current file info.
-pub(super) fn send_format(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some((path, range, tab_size)) = extract_format_params(ctx, state) else {
-        return;
-    };
-
-    let lang = protocol::language_id(&path);
-    let root = state.root_dir.clone();
-    start_lsp(state, lang, &root);
-
-    if state.lsp.is_initializing(lang) {
-        defer(
-            ctx,
-            state,
-            CM_LSP_FORMAT,
-            lang,
-            Box::new((path.clone(), range, tab_size)),
-        );
-        return;
-    }
-
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(&lang) else {
         emit_last_error(ctx, state);
         return;
     };
-    let uri = protocol::path_to_uri(&path);
-    let id = if let Some((start, end)) = range {
-        requests::range_formatting(client, &uri, start, end, tab_size)
-    } else {
-        requests::formatting(client, &uri, tab_size)
-    };
-    state.lsp_pending.insert_with_lang(id, PendingKind::Format, lang);
+    let id = requests::code_action(client, &uri, line, col);
+    state
+        .lsp_sub_mut()
+        .pending_mut()
+        .insert_with_lang(id, PendingKind::CodeAction, &lang);
 }
 
-type FormatParams = (PathBuf, Option<(u32, u32)>, u32);
-
-fn extract_format_params(ctx: &mut CommandContext, state: &mut AppState) -> Option<FormatParams> {
-    if let Some(boxed) = ctx.data().as_ref() {
-        boxed
-            .downcast_ref::<FormatParams>()
-            .map(|(p, r, t)| (p.clone(), *r, *t))
-    } else {
-        let (_, lang_str) = current_file_info(state);
-        if lang_str.is_empty() {
-            return None;
-        }
-        let path = state.broker.last_opened().map(PathBuf::from).unwrap_or_default();
-        Some((path, None, 4))
-    }
-}
-
-pub(super) fn send_jdt_class_contents(jdt: &JdtRequest, state: &mut AppState) {
-    let root = state.root_dir.clone();
-    start_lsp(state, "java", &root);
-    let Some(client) = state.lsp.get_client_mut("java") else {
-        return;
-    };
-    let params = serde_json::json!({ "uri": jdt.uri });
-    let id = client.send_request("java/classFileContents", params);
-    state.lsp_pending.insert_with_lang(
-        id,
-        PendingKind::JdtClassContents {
-            line: jdt.line,
-            character: jdt.character,
-        },
-        "java",
-    );
-}
+pub(super) use super::send_format::{send_format, send_jdt_class_contents};
 
 fn defer(
     ctx: &mut CommandContext,

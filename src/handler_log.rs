@@ -3,7 +3,7 @@
 use txv_core::program::CommandContext;
 
 use crate::desktop::{close_tab_by_title, SlotId};
-use crate::git_log::log_async;
+use crate::git_log::log_async_roots;
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
 use crate::views::editor::EditorView;
@@ -23,7 +23,12 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
             .and_then(|p| p.active_view_mut())
             .and_then(|v| v.as_any_mut())
             .and_then(|a| a.downcast_ref::<EditorView>())
-            .map(|e| e.path().strip_prefix(&state.root_dir).unwrap_or(e.path()).to_path_buf())
+            .map(|e| {
+                e.path()
+                    .strip_prefix(state.root_dir())
+                    .unwrap_or(e.path())
+                    .to_path_buf()
+            })
     } else {
         None
     };
@@ -33,8 +38,15 @@ pub fn open_git_log(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
         Some(arg)
     };
 
-    let shared = log_async(&state.root_dir, branch, filter_path.as_deref());
-    let view = GitLogView::new(shared);
+    let roots: Vec<_> = state
+        .roots()
+        .all()
+        .iter()
+        .map(|r| (r.path().to_path_buf(), r.color()))
+        .collect();
+    let shared = log_async_roots(&roots, branch, filter_path.as_deref());
+    let mut view = GitLogView::new(shared);
+    view.set_current_base(state.diff_base.clone());
     try_insert_tab(desktop, state, &sink, SlotId::Tools, "Log".to_string(), Box::new(view));
     desktop.focus_panel(SlotId::Tools as usize);
 }

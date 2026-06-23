@@ -20,9 +20,9 @@ pub fn try_insert_tab(
     title: String,
     view: Box<dyn View>,
 ) -> bool {
-    state.pending_tab = None;
+    state.pending_mut().set_pending_tab(None);
 
-    let max = state.settings.max_tabs() as usize;
+    let max = state.settings().max_tabs() as usize;
     let Some(panel) = desktop.panel(slot as usize) else {
         return false;
     };
@@ -49,7 +49,9 @@ pub fn try_insert_tab(
         panel.set_active(lru_idx);
     }
     trigger_close_prompt(desktop, sink, slot, lru_idx);
-    state.pending_tab = Some(PendingTab { slot, title, view });
+    state
+        .pending_mut()
+        .set_pending_tab(Some(PendingTab { slot, title, view }));
     false
 }
 
@@ -67,7 +69,7 @@ fn evict_and_insert(
     title: String,
     view: Box<dyn View>,
 ) {
-    if state.settings.editor_defaults().autosave() {
+    if state.settings().editor_defaults().autosave() {
         autosave_tab(desktop, slot, lru_idx);
     }
     if let Some(panel) = desktop.panel_mut(slot as usize) {
@@ -77,7 +79,7 @@ fn evict_and_insert(
             .and_then(|a| a.downcast_ref::<EditorView>())
             .map(|ev| ev.path().to_string_lossy().to_string());
         if let Some(p) = abs_path {
-            state.broker.close(&p);
+            state.workspace_mut().broker_mut().close(&p);
         }
         panel.remove_tab(lru_idx);
     }
@@ -121,7 +123,7 @@ fn trigger_close_prompt(desktop: &mut TiledWorkspace, sink: &EventSink, slot: Sl
 
 /// Called from CM_FILE_CLOSED handler.
 pub fn complete_pending_insert(desktop: &mut TiledWorkspace, state: &mut AppState) {
-    let Some(pending) = state.pending_tab.take() else {
+    let Some(pending) = state.pending_mut().take_pending_tab() else {
         return;
     };
     let slot = pending.slot;

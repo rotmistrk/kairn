@@ -18,6 +18,8 @@ use super::protocol::{did_open, language_id, path_to_uri};
 use super::response::handle_response;
 use super::send;
 
+use super::handler_lifecycle;
+
 pub use super::pending::PendingRequests;
 
 /// Handle LSP-related commands. Called before main dispatch.
@@ -48,29 +50,33 @@ pub fn handle_lsp_command(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Poll all LSP servers and dispatch notifications/responses.
 pub fn poll_lsp(state: &mut AppState, sink: &EventSink) {
-    state.lsp_pending.remove_timed_out(sink, &state.lsp);
+    state.lsp_sub_mut().remove_timed_out(sink);
     poll_track_starting(state, sink);
     poll_expire_deferred(state, sink);
     poll_advance_warming_up(state, sink);
     poll_messages(state, sink);
-    poll_detect_dead(state, sink);
+    handler_lifecycle::poll_detect_dead(state, sink);
 }
 
 fn poll_track_starting(state: &mut AppState, sink: &EventSink) {
-    for lang in state.lsp.starting_languages() {
-        if state.lsp_state.status.get(&lang).is_none() {
-            state.lsp_state.status.set_state(&lang, LspServerState::Starting);
+    for lang in state.lsp_sub_mut().registry_mut().starting_languages() {
+        if state.lsp_sub_mut().state_mut().status_mut().get(&lang).is_none() {
+            state
+                .lsp_sub_mut()
+                .state_mut()
+                .status_mut()
+                .set_state(&lang, LspServerState::Starting);
         }
     }
-    if state.lsp_state.status.has_starting() {
-        let snapshot = state.lsp_state.status.snapshot();
+    if state.lsp_sub_mut().state_mut().status_mut().has_starting() {
+        let snapshot = state.lsp_sub_mut().state_mut().status_mut().snapshot();
         sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
 }
 
 fn poll_expire_deferred(state: &mut AppState, sink: &EventSink) {
     let timeout = Duration::from_secs(10);
-    state.lsp_state.deferred.retain(|r| {
+    state.lsp_sub_mut().state_mut().deferred_mut().retain(|r| {
         if r.created.elapsed() > timeout {
             let msg = Message::error("lsp", "LSP not ready \u{2014} request timed out");
             sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
@@ -82,12 +88,25 @@ fn poll_expire_deferred(state: &mut AppState, sink: &EventSink) {
 }
 
 fn poll_advance_warming_up(state: &mut AppState, sink: &EventSink) {
-    let ready_langs = state.lsp.advance_warming_up();
+    let ready_langs = state.lsp_sub_mut().registry_mut().advance_warming_up();
     for lang in &ready_langs {
         send_pending_did_opens(state, lang);
-        state.lsp.pending_opens.retain(|(l, _)| l != lang);
-        let had_deferred = state.lsp_state.deferred.iter().any(|r| r.language == *lang);
-        state.lsp_state.deferred.retain(|r| r.language != *lang);
+        state
+            .lsp_sub_mut()
+            .registry_mut()
+            .pending_opens_mut()
+            .retain(|(l, _)| l != lang);
+        let had_deferred = state
+            .lsp_sub_mut()
+            .state_mut()
+            .deferred_mut()
+            .iter()
+            .any(|r| r.language == *lang);
+        state
+            .lsp_sub_mut()
+            .state_mut()
+            .deferred_mut()
+            .retain(|r| r.language != *lang);
         let msg = if had_deferred {
             Message::info("lsp", format!("LSP ready ({lang}) — retry when ✓ appears"))
         } else {
@@ -96,14 +115,15 @@ fn poll_advance_warming_up(state: &mut AppState, sink: &EventSink) {
         sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     if !ready_langs.is_empty() {
-        let snapshot = state.lsp_state.status.snapshot();
+        let snapshot = state.lsp_sub_mut().state_mut().status_mut().snapshot();
         sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
 }
 
 fn send_pending_did_opens(state: &mut AppState, lang: &str) {
     let paths: Vec<PathBuf> = state
-        .broker
+        .workspace()
+        .broker()
         .open_paths()
         .iter()
         .map(|p| PathBuf::from(*p))
@@ -111,25 +131,25 @@ fn send_pending_did_opens(state: &mut AppState, lang: &str) {
         .collect();
     for path in &paths {
         let key = path.to_string_lossy().to_string();
-        if state.lsp_state.opened_files.contains(&key) {
+        if state.lsp_sub_mut().state_mut().opened_files_mut().contains(&key) {
             continue;
         }
-        if let Some(client) = state.lsp.get_client_mut(lang) {
+        if let Some(client) = state.lsp_sub_mut().registry_mut().get_client_mut(lang) {
             let uri = path_to_uri(path);
             let lid = language_id(path);
             let text = fs::read_to_string(path).unwrap_or_default();
             did_open(client, &uri, lid, &text);
-            state.lsp_state.opened_files.insert(key);
+            state.lsp_sub_mut().state_mut().opened_files_mut().insert(key);
         }
     }
 }
 
 fn poll_messages(state: &mut AppState, sink: &EventSink) {
-    for (lang, msg) in state.lsp.poll_all() {
+    for (lang, msg) in state.lsp_sub_mut().registry_mut().poll_all() {
         match msg {
             LspMessage::ServerRequest { id, method } => {
                 log::debug!("LSP server request: {method} (id={id})");
-                if let Some(client) = state.lsp.get_client_any_mut(&lang) {
+                if let Some(client) = state.lsp_sub_mut().registry_mut().get_client_any_mut(&lang) {
                     client.send_raw(encode_response(id));
                 }
             }
@@ -152,8 +172,13 @@ fn handle_notification(state: &mut AppState, sink: &EventSink, lang: &str, metho
             }
         }
         "$/progress" => {
-            if state.lsp_state.status.handle_progress(lang, params) {
-                let snapshot = state.lsp_state.status.snapshot();
+            if state
+                .lsp_sub_mut()
+                .state_mut()
+                .status_mut()
+                .handle_progress(lang, params)
+            {
+                let snapshot = state.lsp_sub_mut().state_mut().status_mut().snapshot();
                 sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
             }
         }
@@ -169,11 +194,11 @@ fn handle_lsp_response(
     result: Option<serde_json::Value>,
     error: Option<super::messages::RpcError>,
 ) {
-    if let Some(ready_lang) = state.lsp.is_init_response(id) {
-        handle_init_response(state, sink, &ready_lang, error);
+    if let Some(ready_lang) = state.lsp_sub_mut().registry_mut().is_init_response(id) {
+        handler_lifecycle::handle_init_response(state, sink, &ready_lang, error);
         return;
     }
-    if let Some(kind) = state.lsp_pending.take(id) {
+    if let Some(kind) = state.lsp_sub_mut().pending_mut().take(id) {
         if let Some(result) = result {
             handle_response(kind, &result, sink);
         } else if let Some(err) = error {
@@ -184,55 +209,5 @@ fn handle_lsp_response(
                 Some(Box::new(Message::error("lsp", msg))),
             );
         }
-    }
-}
-
-fn handle_init_response(
-    state: &mut AppState,
-    sink: &EventSink,
-    ready_lang: &str,
-    error: Option<super::messages::RpcError>,
-) {
-    if let Some(err) = error {
-        state.lsp.fail_init(ready_lang);
-        let msg = format!("LSP init failed for {ready_lang}: {}", err.message);
-        log::error!("{msg}");
-        state.lsp_state.status.set_state(ready_lang, LspServerState::Error);
-        sink.push_command(
-            txv_widgets::CM_STATUS_MESSAGE,
-            Some(Box::new(Message::error("lsp", msg))),
-        );
-        state.lsp_state.deferred.retain(|r| r.language != ready_lang);
-        state.lsp.pending_opens.retain(|(l, _)| l != ready_lang);
-    } else {
-        state.lsp.complete_init(ready_lang);
-        log::info!("LSP initialized for {ready_lang}");
-        state.lsp_state.status.set_state(
-            ready_lang,
-            LspServerState::Indexing {
-                percent: None,
-                message: None,
-            },
-        );
-    }
-    let snapshot = state.lsp_state.status.snapshot();
-    sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
-}
-
-fn poll_detect_dead(state: &mut AppState, sink: &EventSink) {
-    let dead_langs = state.lsp.detect_dead();
-    for lang in &dead_langs {
-        state.lsp_state.status.set_state(lang, LspServerState::Error);
-        let msg = Message::error(
-            "lsp",
-            format!("LSP server for {lang} died \u{2014} disabled until restart"),
-        );
-        sink.push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        state.lsp_state.deferred.retain(|r| r.language != *lang);
-        state.lsp.pending_opens.retain(|(l, _)| l != lang);
-    }
-    if !dead_langs.is_empty() {
-        let snapshot = state.lsp_state.status.snapshot();
-        sink.push_command(CM_LSP_STATUS_UPDATE, Some(Box::new(snapshot)));
     }
 }

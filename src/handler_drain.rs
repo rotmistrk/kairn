@@ -17,7 +17,7 @@ use crate::views::todo_tree::TodoTreeView;
 
 /// Drain grep results from background thread into the ResultsView.
 pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some((title, gs, root)) = state.grep_pending.take() else {
+    let Some((title, gs, root)) = state.pending_mut().take_grep_pending() else {
         return;
     };
     if let Some(err) = gs.take_error() {
@@ -31,13 +31,13 @@ pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
         append_to_active_results(ctx, entries, done);
     }
     if !done {
-        state.grep_pending = Some((title, gs, root));
+        state.pending_mut().set_grep_pending(Some((title, gs, root)));
     }
 }
 
 /// Drain build/test results from background thread into the ResultsView.
 pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some((title, task, root)) = state.build_pending.take() else {
+    let Some((title, task, root)) = state.build_mut().take_pending() else {
         return;
     };
     if let Some(err) = task.take_error() {
@@ -52,14 +52,14 @@ pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
         append_to_results_view(ctx, entries, done);
     }
     if !done {
-        state.build_pending = Some((title, task, root));
+        state.build_mut().set_pending(Some((title, task, root)));
     }
 }
 
 fn collect_build_errors(entries: &[crate::views::results::ResultEntry], root: &std::path::Path, state: &mut AppState) {
     for e in entries {
         if !e.path.as_os_str().is_empty() {
-            state.build_errors.push(ErrorLocation {
+            state.build_mut().errors_mut().push(ErrorLocation {
                 file: e
                     .path
                     .strip_prefix(root)
@@ -94,9 +94,9 @@ fn append_to_results_view(ctx: &mut CommandContext, entries: Vec<crate::views::r
 
 /// Refresh plugins: scan dirs, reload changed, unload removed.
 pub fn refresh_plugins(ctx: &mut CommandContext, state: &mut AppState) {
-    let warnings = state.plugins.refresh(&mut state.script);
+    let warnings = state.scripting_mut().refresh_plugins();
     if !warnings.is_empty() {
-        refresh_commands(&state.command_list, &state.script);
+        refresh_commands(state.scripting().command_list(), state.scripting().script());
         for w in warnings {
             let msg = Message::warn("plugin", w);
             ctx.sink()
@@ -117,7 +117,7 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         };
         (tp.clone(), n.clone(), *f)
     };
-    state.todo_note_path = Some(tree_path);
+    state.pending_mut().set_todo_note_path(Some(tree_path));
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
@@ -138,9 +138,10 @@ pub fn open_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
 fn create_notes_tab(desktop: &mut TiledWorkspace, state: &mut AppState, sink: &txv_core::view::EventSink, note: &str) {
     use crate::views::notes::NotesView;
     let mut nv = NotesView::new(note);
-    nv.editor
-        .editor_mut()
-        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+    nv.editor.editor_mut().set_shared_state(
+        state.editor().shared_register().clone(),
+        state.editor().clipboard().clone(),
+    );
     let store = CommandStore::new(CM_TODO_NOTE_SAVE, sink.clone());
     nv.set_store(Box::new(store));
     let view: Box<dyn View> = Box::new(nv);
@@ -159,7 +160,7 @@ pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
         };
         (tp.clone(), n.clone())
     };
-    state.todo_note_path = Some(tree_path);
+    state.pending_mut().set_todo_note_path(Some(tree_path));
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
@@ -171,7 +172,7 @@ pub fn update_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
 
 /// Handle CM_TODO_NOTE_SAVE — content arrives via command data from CommandStore.
 pub fn save_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some(ref path) = state.todo_note_path else {
+    let Some(ref path) = state.pending().todo_note_path() else {
         return;
     };
     let Some(boxed) = ctx.data().as_ref() else {
@@ -180,7 +181,7 @@ pub fn save_todo_note(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(content) = boxed.downcast_ref::<String>() else {
         return;
     };
-    let todo_path = state.root_dir.join(".kairn.todo");
+    let todo_path = state.root_dir().join(".kairn.todo");
     let mut file = load_todo_file(&todo_path);
     if let Some(item) = get_item_mut(&mut file, path) {
         item.note.clone_from(content);

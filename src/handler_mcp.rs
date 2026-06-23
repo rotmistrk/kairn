@@ -22,7 +22,7 @@ use crate::views::todo_tree::TodoTreeView;
 /// Drain MCP write commands and execute them on the live app state.
 pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
-    let Some(ref queue) = state.mcp.commands else {
+    let Some(ref queue) = state.mcp().commands() else {
         return;
     };
     let requests = queue.drain();
@@ -42,7 +42,7 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
         } = req.action
         {
             // Don't reply yet — stash channel, prompt user
-            state.mcp.pending_confirm_reply = Some(req.reply);
+            state.mcp_mut().set_confirm_reply(req.reply);
             let prompt = format!("MCP: allow '{tool_name}'? ({args_summary}) [y/n]");
             sink.push_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::McpToolConfirm)));
             sink.push_command(CM_CONFIRM, Some(Box::new(prompt)));
@@ -140,6 +140,7 @@ fn dispatch_mcp_split(action: &McpAction, sink: &txv_core::prelude::EventSink) -
                 line: None,
                 col: None,
                 diff: false,
+                diff_base: None,
             };
             sink.push_command(CM_OPEN_IN_SPLIT, Some(Box::new(req)));
             Ok(serde_json::json!({"split": "opened"}))

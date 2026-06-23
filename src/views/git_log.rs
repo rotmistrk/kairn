@@ -1,22 +1,25 @@
 //! GitLogView — scrollable commit history in the tool panel.
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
-use txv_core::cell::Style;
+use txv_core::cell::Color;
 use txv_core::palette::{palette, StyleId};
 use txv_core::prelude::*;
 
-use crate::commands::CM_TAB_CLOSE;
+use crate::commands::{CM_GIT_BASE_CHANGED, CM_GIT_SET_BASE, CM_TAB_CLOSE};
 use crate::git_log::{CommitEntry, LogState, SharedLog};
 
 /// Scrollable git commit log view.
 pub struct GitLogView {
-    state: ViewState,
-    shared: SharedLog,
-    entries: Vec<CommitEntry>,
-    cursor: usize,
-    scroll: usize,
-    done: bool,
+    pub(super) state: ViewState,
+    pub(super) shared: SharedLog,
+    pub(super) entries: Vec<CommitEntry>,
+    pub(super) cursor: usize,
+    pub(super) scroll: usize,
+    pub(super) done: bool,
+    /// Currently active diff base hashes per root.
+    pub(super) current_base: HashMap<PathBuf, String>,
 }
 
 impl GitLogView {
@@ -28,7 +31,14 @@ impl GitLogView {
             cursor: 0,
             scroll: 0,
             done: false,
+            current_base: HashMap::new(),
         }
+    }
+
+    /// Set the current diff base map (shown with indicators).
+    pub fn set_current_base(&mut self, base: HashMap<PathBuf, String>) {
+        self.current_base = base;
+        self.state.mark_dirty();
     }
 
     fn sync_from_shared(&mut self) {
@@ -52,6 +62,8 @@ impl GitLogView {
                     author: String::new(),
                     time_secs: 0,
                     decorations: Vec::new(),
+                    root: PathBuf::new(),
+                    root_color: Color::Reset,
                 }];
                 self.done = true;
                 self.state.mark_dirty();
@@ -75,22 +87,8 @@ impl GitLogView {
         self.state.bounds().h() as usize
     }
 
-    fn format_entry(e: &CommitEntry, width: usize) -> String {
-        let decor = if e.decorations.is_empty() {
-            String::new()
-        } else {
-            format!(" ({})", e.decorations.join(", "))
-        };
-        let age = format_relative_time(e.time_secs);
-        let prefix = format!("* {}{} {}", e.hash, decor, e.summary);
-        let suffix = format!("{} {}", e.author, age);
-        let gap = width.saturating_sub(prefix.len() + suffix.len() + 1);
-        if gap > 0 {
-            format!("{}{:>pad$} {}", prefix, "", suffix, pad = gap)
-        } else {
-            let max_prefix = width.saturating_sub(suffix.len() + 2);
-            format!("{:.w$} {}", prefix, suffix, w = max_prefix)
-        }
+    pub(super) fn is_base_row(&self, entry: &CommitEntry) -> bool {
+        self.current_base.get(&entry.root).is_some_and(|b| *b == entry.hash)
     }
 }
 
@@ -108,36 +106,14 @@ impl View for GitLogView {
             return;
         }
         let pal = palette();
-        let normal = Style::default();
         let dim = pal.style(StyleId::Dim);
-        let cursor_style = if self.state.is_focused() {
-            pal.style(StyleId::CursorFocused)
-        } else {
-            pal.style(StyleId::CursorUnfocused)
-        };
 
         if !self.done {
             self.state.buffer_mut().print(0, 0, "Loading...", dim);
             return;
         }
 
-        let rows = h as usize;
-        for row in 0..rows {
-            let idx = self.scroll + row;
-            let y = row as u16;
-            if idx >= self.entries.len() {
-                self.state.buffer_mut().hline(0, y, w, ' ', normal);
-                continue;
-            }
-            let style = if idx == self.cursor {
-                cursor_style
-            } else {
-                normal
-            };
-            let line = Self::format_entry(&self.entries[idx], w as usize);
-            self.state.buffer_mut().hline(0, y, w, ' ', style);
-            self.state.buffer_mut().print(0, y, &line, style);
-        }
+        self.draw_rows(w, h);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
@@ -145,9 +121,29 @@ impl View for GitLogView {
             self.sync_from_shared();
             return HandleResult::Ignored;
         }
+        if let Event::Command {
+            id,
+            data,
+            broadcast: true,
+        } = event
+        {
+            if *id == CM_GIT_BASE_CHANGED {
+                if let Some(map) = data.as_ref().and_then(|d| d.downcast_ref::<HashMap<PathBuf, String>>()) {
+                    self.current_base = map.clone();
+                    self.state.mark_dirty();
+                }
+                return HandleResult::Consumed;
+            }
+        }
         let Event::Key(key) = event else {
             return HandleResult::Ignored;
         };
+        self.handle_key(key)
+    }
+}
+
+impl GitLogView {
+    fn handle_key(&mut self, key: &KeyEvent) -> HandleResult {
         match key.code() {
             KeyCode::Char('j') | KeyCode::Down => {
                 if self.cursor + 1 < self.entries.len() {
@@ -167,28 +163,26 @@ impl View for GitLogView {
                 self.state.put_command(CM_TAB_CLOSE, None);
                 HandleResult::Consumed
             }
+            KeyCode::Char('b') => {
+                self.handle_set_base();
+                HandleResult::Consumed
+            }
             _ => HandleResult::Ignored,
         }
     }
-}
 
-fn format_relative_time(epoch_secs: i64) -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-    let diff = (now - epoch_secs).max(0);
-    if diff < 60 {
-        "just now".to_string()
-    } else if diff < 3600 {
-        format!("{}m ago", diff / 60)
-    } else if diff < 86400 {
-        format!("{}h ago", diff / 3600)
-    } else if diff < 604800 {
-        format!("{}d ago", diff / 86400)
-    } else if diff < 2592000 {
-        format!("{}w ago", diff / 604800)
-    } else {
-        format!("{}mo ago", diff / 2592000)
+    fn handle_set_base(&mut self) {
+        if let Some(entry) = self.entries.get(self.cursor).cloned() {
+            let is_current = self.current_base.get(&entry.root).is_some_and(|b| *b == entry.hash);
+            let payload: Option<(PathBuf, String)> = if is_current {
+                self.current_base.remove(&entry.root);
+                None
+            } else {
+                self.current_base.insert(entry.root.clone(), entry.hash.clone());
+                Some((entry.root, entry.hash))
+            };
+            self.state.put_command(CM_GIT_SET_BASE, Some(Box::new(payload)));
+            self.state.mark_dirty();
+        }
     }
 }

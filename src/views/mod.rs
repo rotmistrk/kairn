@@ -6,6 +6,7 @@ pub mod diff_view;
 pub mod editor;
 pub mod git_changes;
 pub mod git_log;
+mod git_log_draw;
 pub mod help;
 pub mod messages;
 pub mod notes;

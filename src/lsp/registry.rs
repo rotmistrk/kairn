@@ -233,6 +233,14 @@ impl LspRegistry {
         }
         all
     }
+
+    pub fn pending_opens_mut(&mut self) -> &mut Vec<(String, PathBuf)> {
+        &mut self.pending_opens
+    }
+
+    pub fn take_last_error(&mut self) -> Option<String> {
+        self.last_error.take()
+    }
 }
 
 impl Default for LspRegistry {

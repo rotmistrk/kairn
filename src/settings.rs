@@ -108,4 +108,40 @@ impl AppSettings {
     pub fn kiro(&self) -> &KiroLaunchSettings {
         &self.kiro
     }
+    pub fn terminal_auto_close(&self) -> bool {
+        self.terminal_auto_close
+    }
+    pub fn terminal_idle_timeout(&self) -> u64 {
+        self.terminal_idle_timeout
+    }
+    pub fn run_command(&self) -> &Option<String> {
+        &self.run_command
+    }
+    pub fn tree_connectors(&self) -> bool {
+        self.tree_connectors
+    }
+    pub fn theme_syntax_light(&self) -> &str {
+        &self.theme_syntax_light
+    }
+    pub fn set_theme_syntax_light(&mut self, v: String) {
+        self.theme_syntax_light = v;
+    }
+    pub fn theme_syntax_dark(&self) -> &str {
+        &self.theme_syntax_dark
+    }
+    pub fn set_theme_syntax_dark(&mut self, v: String) {
+        self.theme_syntax_dark = v;
+    }
+    pub fn set_tree_icons(&mut self, v: bool) {
+        self.tree_icons = v;
+    }
+    pub fn set_tree_connectors(&mut self, v: bool) {
+        self.tree_connectors = v;
+    }
+    pub fn layout_tall_threshold(&self) -> u16 {
+        self.layout_tall_threshold
+    }
+    pub fn set_theme_glyphs(&mut self, v: String) {
+        self.theme_glyphs = v;
+    }
 }

@@ -101,9 +101,9 @@ pub fn configure_app_state(app_state: &mut AppState, root_dir: &Path) {
         }
     }
     if !config_warnings.is_empty() || !plugin_warnings.is_empty() {
-        app_state.show_messages_on_start = true;
+        app_state.ui_mut().set_show_messages_on_start(true);
     }
-    refresh_commands(app_state.command_list(), app_state.script());
+    refresh_commands(app_state.scripting().command_list(), app_state.script());
     refresh_lsp_languages(app_state);
     refresh_completer_roots(app_state);
 
@@ -184,8 +184,10 @@ fn patch_editor_clipboard(desktop: &mut TiledWorkspace, state: &AppState) {
                 continue;
             };
             if let Some(ev) = any.downcast_mut::<EditorView>() {
-                ev.editor_mut()
-                    .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+                ev.editor_mut().set_shared_state(
+                    state.editor().shared_register().clone(),
+                    state.editor().clipboard().clone(),
+                );
             }
         }
     }

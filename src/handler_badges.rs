@@ -49,7 +49,7 @@ pub fn sync_dirty_badges(ctx: &mut CommandContext) {
 
 /// Auto-close exited terminal tabs in the tools panel.
 pub fn auto_close_exited_terminals(ctx: &mut CommandContext, state: &mut AppState) {
-    if !state.settings.terminal_auto_close {
+    if !state.settings().terminal_auto_close() {
         return;
     }
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
@@ -82,10 +82,10 @@ const SPINNER: &[char] = &['◐', '◑', '◒', '◓'];
 /// Sync PTY activity badges on terminal tabs in the tools panel.
 /// Running: animated spinner (green), Idle: ○ (yellow), Exited: ● (red).
 pub fn sync_pty_badges(ctx: &mut CommandContext, state: &mut AppState) {
-    let idle_secs = state.settings.terminal_idle_timeout;
+    let idle_secs = state.settings().terminal_idle_timeout();
     let now = Instant::now();
     let idle_dur = Duration::from_secs(idle_secs);
-    let frame = (state.mcp.tick / 16) as usize % SPINNER.len();
+    let frame = (state.mcp().tick() / 16) as usize % SPINNER.len();
 
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
@@ -115,7 +115,7 @@ fn update_pty_output_timestamp(
             fresh
         });
     if has_output {
-        state.pty_last_output.insert(i, now);
+        state.ui_mut().record_pty_output(i, now);
     }
 }
 
@@ -135,7 +135,8 @@ fn apply_pty_badge(
             .set_badge_styled(i, Some(" ●".to_string()), Some(palette.badge().exited()));
     } else {
         let is_busy = state
-            .pty_last_output
+            .ui()
+            .pty_last_output()
             .get(&i)
             .is_some_and(|&last| now.duration_since(last) <= idle_dur);
         if is_busy {
@@ -143,7 +144,7 @@ fn apply_pty_badge(
             panel
                 .bar_mut()
                 .set_badge_styled(i, Some(format!(" {ch}")), Some(palette.badge().busy()));
-        } else if state.pty_last_output.contains_key(&i) {
+        } else if state.ui().pty_last_output().contains_key(&i) {
             panel
                 .bar_mut()
                 .set_badge_styled(i, Some(" ○".to_string()), Some(palette.badge().idle()));
@@ -154,12 +155,12 @@ fn apply_pty_badge(
 /// Recompute disambiguated tab titles when the set of open files changes.
 pub fn sync_tab_titles(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
-    if !state.tab_titles_dirty {
+    if !state.ui().tab_titles_dirty() {
         return;
     }
-    state.tab_titles_dirty = false;
+    state.ui_mut().set_tab_titles_dirty(false);
 
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };

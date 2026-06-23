@@ -17,7 +17,7 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
     let extra_args = shell_words(arg);
     let agent_name = extract_agent_name(&extra_args).unwrap_or("kairn");
 
-    let patched_agent = match ensure_agent_patched(&state.root_dir, agent_name) {
+    let patched_agent = match ensure_agent_patched(state.root_dir(), agent_name) {
         Ok(name) => name,
         Err(e) => {
             sink.push_command(
@@ -28,9 +28,9 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
         }
     };
 
-    let argv = build_kiro_argv(state.settings.kiro().cmd(), &patched_agent, &extra_args);
+    let argv = build_kiro_argv(state.settings().kiro().cmd(), &patched_agent, &extra_args);
     let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
-    let term = new_kiro_terminal_argv(&argv, &state.root_dir);
+    let term = new_kiro_terminal_argv(&argv, state.root_dir());
     try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
     state.kiro_registry.register(&name);
     sink.push_command(

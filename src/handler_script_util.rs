@@ -23,14 +23,14 @@ pub fn slot_from_name(name: &str) -> Option<SlotId> {
 
 /// Fire hooks for an event, eval resulting scripts, and dispatch their commands.
 pub fn fire_hooks_for_event(state: &mut AppState, event: &HookEvent, context: &str, ctx: &mut CommandContext) {
-    let scripts = if let Ok(reg) = state.script.hook_registry.lock() {
+    let scripts = if let Ok(reg) = state.scripting_mut().script_mut().hook_registry().lock() {
         reg.fire(event, context)
     } else {
         return;
     };
     for script in scripts {
-        if let Ok(_result) = state.script.eval(&script) {
-            let cmds = state.script.drain_commands();
+        if let Ok(_result) = state.scripting_mut().script_mut().eval(&script) {
+            let cmds = state.scripting_mut().script_mut().drain_commands();
             dispatch_script_commands(cmds, ctx, state);
         }
     }
@@ -44,14 +44,14 @@ pub fn lsp_cmd(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
 
 /// Fire lsp-start hook for a language. Runs synchronously (no CommandContext needed).
 pub fn fire_lsp_start_hook(state: &mut AppState, language_id: &str) {
-    let scripts = if let Ok(reg) = state.script.hook_registry.lock() {
+    let scripts = if let Ok(reg) = state.scripting_mut().script_mut().hook_registry().lock() {
         reg.fire(&HookEvent::LspStart, language_id)
     } else {
         return;
     };
     for script in scripts {
-        let _ = state.script.eval(&script);
-        let cmds = state.script.drain_commands();
+        let _ = state.scripting_mut().script_mut().eval(&script);
+        let cmds = state.scripting_mut().script_mut().drain_commands();
         apply_lsp_env_commands(cmds, state, language_id);
     }
 }
@@ -62,7 +62,7 @@ fn apply_lsp_env_commands(cmds: Vec<ScriptCommand>, state: &mut AppState, langua
             continue;
         };
         if glob_match(&pattern, language_id) {
-            state.lsp.set_env(language_id, key, value);
+            state.lsp_sub_mut().registry_mut().set_env(language_id, key, value);
         }
     }
 }

@@ -54,15 +54,15 @@ pub fn handle_execute_command(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn execute_as_tcl(ctx: &mut CommandContext, state: &mut AppState, text: &str) {
-    if is_bare_word(text) && !state.script.has_command(text) {
+    if is_bare_word(text) && !state.scripting_mut().script_mut().has_command(text) {
         let msg = txv_core::message::Message::error("cmd", format!("Unknown command: {text}"));
         ctx.sink()
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     } else {
-        match state.script.eval(text) {
+        match state.scripting_mut().script_mut().eval(text) {
             Ok(result) => {
-                crate::completer::refresh_commands(&state.command_list, &state.script);
-                let cmds = state.script.drain_commands();
+                crate::completer::refresh_commands(state.scripting().command_list(), state.scripting().script());
+                let cmds = state.scripting_mut().script_mut().drain_commands();
                 crate::handler_script::dispatch_script_commands(cmds, ctx, state);
                 if !result.is_empty() {
                     let msg = txv_core::message::Message::info("tcl", result);

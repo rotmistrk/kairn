@@ -20,24 +20,26 @@ pub(crate) fn mcp_open_file(
     sink: &EventSink,
     rel_path: &str,
 ) -> Result<serde_json::Value, String> {
-    let path = state.root_dir.join(rel_path);
+    let path = state.root_dir().join(rel_path);
     if !path.is_file() {
         return Err(format!("File not found: {rel_path}"));
     }
     let path_str = path.to_string_lossy().to_string();
     let title = rel_path.to_string();
-    match state.broker.open(&path_str, SlotId::Center, 0) {
+    match state.workspace_mut().broker_mut().open(&path_str, SlotId::Center, 0) {
         OpenResult::AlreadyOpen { .. } => {
             focus_editor_by_path(desktop, &path_str);
         }
         OpenResult::Opened => {
-            let defaults = &state.settings.editor_defaults;
+            let defaults = state.settings().editor_defaults();
             let theme = state.current_syntax_theme();
             let view: Box<dyn View> = match editor_build::open_with_theme(&path, defaults, theme) {
                 Ok(mut ed) => {
                     ed.set_root_dir(state.roots().root_for(&path).path().to_path_buf());
-                    ed.editor_mut()
-                        .set_shared_state(state.shared_register.clone(), state.clipboard.clone());
+                    ed.editor_mut().set_shared_state(
+                        state.editor().shared_register().clone(),
+                        state.editor().clipboard().clone(),
+                    );
                     Box::new(ed)
                 }
                 Err(_) => Box::new(editor_build::new_file(&path, defaults)),
@@ -80,7 +82,7 @@ pub(crate) fn mcp_create_file(
     rel_path: &str,
     content: &str,
 ) -> Result<serde_json::Value, String> {
-    let path = state.root_dir.join(rel_path);
+    let path = state.root_dir().join(rel_path);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("Cannot create dirs: {e}"))?;
     }
@@ -95,7 +97,8 @@ pub(crate) fn mcp_close_tab(
     name: &str,
 ) -> Result<serde_json::Value, String> {
     if close_tab_by_title(desktop, SlotId::Center, name) {
-        state.broker.close(&state.root_dir.join(name).to_string_lossy());
+        let p = state.root_dir().join(name).to_string_lossy().to_string();
+        state.workspace_mut().broker_mut().close(&p);
         Ok(serde_json::json!({"closed": name}))
     } else {
         Err(format!("Tab not found: {name}"))
@@ -190,7 +193,7 @@ pub(crate) fn mcp_undo_redo(desktop: &mut TiledWorkspace, name: &str, undo: bool
 }
 
 pub(crate) fn mcp_eval_tcl(state: &mut AppState, script: &str) -> Result<serde_json::Value, String> {
-    match state.script.eval(script) {
+    match state.scripting_mut().script_mut().eval(script) {
         Ok(result) => Ok(serde_json::json!({"result": result})),
         Err(e) => Err(format!("Tcl error: {e}")),
     }

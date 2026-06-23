@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use git2::Repository;
+use git2::{Delta, Repository};
 use txv_core::cell::Color;
 
 use crate::app_palette::app_palette;
@@ -12,7 +12,70 @@ use crate::git_status::{collect_git_status, FileStatus};
 
 use super::change_node::ChangeNode;
 
-pub(super) fn collect_statuses_flat(root: &Path, git_roots: &[PathBuf]) -> HashMap<FileStatus, Vec<(String, PathBuf)>> {
+/// Collect files changed between `base` commit and HEAD using git2 diff-tree.
+pub(crate) fn collect_diff_base_statuses(
+    root: &Path,
+    git_roots: &[PathBuf],
+    base: &str,
+) -> HashMap<FileStatus, Vec<(String, PathBuf)>> {
+    let mut by_status: HashMap<FileStatus, Vec<(String, PathBuf)>> = HashMap::new();
+    for git_root in git_roots {
+        let Ok(repo) = Repository::discover(git_root) else {
+            continue;
+        };
+        let files = diff_tree_files(&repo, base);
+        for (rel_path, status) in files {
+            let abs_path = git_root.join(&rel_path);
+            let label = abs_path
+                .strip_prefix(root)
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or(rel_path);
+            by_status.entry(status).or_default().push((label, abs_path));
+        }
+    }
+    by_status
+}
+
+/// Get list of changed files between a base ref and HEAD.
+fn diff_tree_files(repo: &Repository, base_ref: &str) -> Vec<(String, FileStatus)> {
+    let Ok(base_obj) = repo.revparse_single(base_ref) else {
+        return Vec::new();
+    };
+    let Ok(base_commit) = base_obj.peel_to_commit() else {
+        return Vec::new();
+    };
+    let Ok(base_tree) = base_commit.tree() else {
+        return Vec::new();
+    };
+    let head_tree = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .and_then(|c| c.tree().ok());
+    let Ok(diff) = repo.diff_tree_to_tree(Some(&base_tree), head_tree.as_ref(), None) else {
+        return Vec::new();
+    };
+    let mut result = Vec::new();
+    for delta in diff.deltas() {
+        let path = delta
+            .new_file()
+            .path()
+            .or_else(|| delta.old_file().path())
+            .map(|p| p.to_string_lossy().to_string());
+        let Some(path) = path else {
+            continue;
+        };
+        let status = match delta.status() {
+            Delta::Added | Delta::Copied => FileStatus::Added,
+            Delta::Deleted => FileStatus::Modified, // show as modified (file was removed)
+            _ => FileStatus::Modified,
+        };
+        result.push((path, status));
+    }
+    result
+}
+
+pub(crate) fn collect_statuses_flat(root: &Path, git_roots: &[PathBuf]) -> HashMap<FileStatus, Vec<(String, PathBuf)>> {
     let mut by_status: HashMap<FileStatus, Vec<(String, PathBuf)>> = HashMap::new();
     for git_root in git_roots {
         let statuses = collect_git_status(git_root);
@@ -31,7 +94,7 @@ pub(super) fn collect_statuses_flat(root: &Path, git_roots: &[PathBuf]) -> HashM
     by_status
 }
 
-pub(super) fn build_category_nodes(
+pub(crate) fn build_category_nodes(
     nodes: &mut Vec<ChangeNode>,
     by_status: &HashMap<FileStatus, Vec<(String, PathBuf)>>,
     cat_depth: usize,
@@ -92,7 +155,7 @@ fn push_file_nodes(
 }
 
 /// Discover all git roots under the workspace root.
-pub(super) fn discover_git_roots(root: &Path) -> Vec<PathBuf> {
+pub(crate) fn discover_git_roots(root: &Path) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if root.join(".git").exists() {
         roots.push(root.to_path_buf());

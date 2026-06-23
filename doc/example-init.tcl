@@ -203,6 +203,9 @@ set keys.subpanel_shrink "Ctrl-Alt--"
 # Syntax: hook add <event> ?-filter <pattern>? { body }
 #
 # Examples:
+# hook add file-save -filter "*.rs" { lsp format }
+# hook add file-save -filter "*.json" { lsp format }   ;# LSP formatter
+# hook add file-save -filter "*.json" { fmt! }         ;# built-in (no LSP needed)
 # hook add file-save { build run }
 # hook add file-open -filter "*.rs" { lsp start }
 # hook add build-done { view message info build "Build finished" }

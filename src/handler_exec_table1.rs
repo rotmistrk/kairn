@@ -69,6 +69,16 @@ pub static TABLE_PART1: &[ExecEntry] = &[
         handler: crate::handler_exec_nav::cmd_focus_up,
     },
     ExecEntry {
+        names: &["fmt!"],
+        requires_arg: false,
+        handler: crate::handler_format_builtin::cmd_format_builtin,
+    },
+    ExecEntry {
+        names: &["git-base"],
+        requires_arg: false,
+        handler: crate::handler_exec_edit::cmd_git_base,
+    },
+    ExecEntry {
         names: &["git-commit"],
         requires_arg: true,
         handler: crate::handler_exec_edit::cmd_git_commit,

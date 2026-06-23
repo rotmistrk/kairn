@@ -1,19 +1,25 @@
 //! GitChangesView — non-closeable tab showing changed files grouped by status.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use txv_core::prelude::*;
+use txv_core::run::Waker;
 use txv_widgets::tree_view::TreeData;
 use txv_widgets::TreeView;
 
 use crate::commands::*;
+use crate::git_status_async::{git_status_async, GitStatusTask};
+use crate::git_status_params::GitStatusParams;
 use crate::git_watcher::WatchHandle;
 use crate::settings::GitKeys;
 
 pub use self::data::GitChangesData;
-mod builders;
-mod change_node;
+pub(crate) mod builders;
+pub(crate) mod change_node;
 mod data;
+mod handle;
 
 /// The git changes view — wraps TreeView<GitChangesData>.
 pub struct GitChangesView {
@@ -27,6 +33,14 @@ pub struct GitChangesView {
     tick_counter: u16,
     /// Cooldown ticks after rebuild to avoid feedback loop (status read triggers watcher).
     cooldown: u16,
+    /// Git diff base commits per root.
+    diff_base: HashMap<PathBuf, String>,
+    /// Dynamic title.
+    display_title: String,
+    /// In-flight async git status task.
+    task: Option<Arc<GitStatusTask>>,
+    /// Waker for async notification.
+    waker: Waker,
 }
 
 impl GitChangesView {
@@ -42,6 +56,10 @@ impl GitChangesView {
             needs_rebuild: true,
             tick_counter: 0,
             cooldown: 0,
+            diff_base: HashMap::new(),
+            display_title: "Git".to_string(),
+            task: None,
+            waker: Waker::noop(),
         }
     }
 
@@ -59,7 +77,16 @@ impl GitChangesView {
             needs_rebuild: true,
             tick_counter: 0,
             cooldown: 0,
+            diff_base: HashMap::new(),
+            display_title: "Git".to_string(),
+            task: None,
+            waker: Waker::noop(),
         }
+    }
+
+    /// Set the waker for async notifications.
+    pub fn set_waker(&mut self, waker: Waker) {
+        self.waker = waker;
     }
 
     /// Get the relative path of the currently selected file (for git operations).
@@ -83,7 +110,7 @@ impl View for GitChangesView {
     delegate_view!(inner, override { title, handle, cursor });
 
     fn title(&self) -> &str {
-        "Git"
+        &self.display_title
     }
 
     fn cursor(&self) -> Option<CursorRequest> {
@@ -113,6 +140,10 @@ impl View for GitChangesView {
                 }
                 return HandleResult::Ignored;
             }
+            if *id == CM_GIT_BASE_CHANGED {
+                self.apply_diff_base(data);
+                return HandleResult::Consumed;
+            }
         }
         if let Event::Command { id, data, .. } = event {
             if *id == CM_OK {
@@ -130,8 +161,31 @@ impl View for GitChangesView {
 }
 
 impl GitChangesView {
+    fn apply_diff_base(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) {
+        let new_base = data
+            .as_ref()
+            .and_then(|d| d.downcast_ref::<HashMap<PathBuf, String>>())
+            .cloned()
+            .unwrap_or_default();
+        self.diff_base = new_base;
+        self.display_title = format_git_title(&self.diff_base);
+        self.inner.data_mut().set_diff_base(self.diff_base.clone());
+        self.needs_rebuild = true;
+    }
+
     fn handle_tick(&mut self) -> HandleResult {
         self.tick_counter = self.tick_counter.wrapping_add(1);
+        // Check if async task completed
+        if let Some(task) = &self.task {
+            if task.is_done() {
+                let nodes = task.take_nodes();
+                self.task = None;
+                self.inner.data_mut().apply_nodes(nodes);
+                self.inner.mark_dirty();
+                self.cooldown = 4;
+                return HandleResult::Ignored;
+            }
+        }
         if self.cooldown > 0 {
             self.cooldown -= 1;
             if self.cooldown == 0 {
@@ -143,62 +197,29 @@ impl GitChangesView {
         }
         let poll = self.tick_counter.is_multiple_of(60);
         let changed = self.needs_rebuild || poll || self.watcher.as_mut().is_some_and(|w| w.has_changes());
-        if changed {
+        if changed && self.task.is_none() {
             self.needs_rebuild = false;
-            self.inner.data_mut().rebuild_roots(&self.roots);
-            self.inner.mark_dirty();
-            self.cooldown = 4;
+            self.spawn_rebuild();
         }
         HandleResult::Ignored
     }
 
-    fn handle_cm_ok(&mut self, data: &Option<Box<dyn std::any::Any + Send>>) -> HandleResult {
-        if let Some(boxed) = data.as_ref() {
-            if let Some(&node_id) = boxed.downcast_ref::<usize>() {
-                let path = self.inner.data_mut().file_path(node_id).map(|p| p.to_path_buf());
-                if let Some(path) = path {
-                    let untracked = self.inner.data_mut().is_untracked(node_id);
-                    let cmd = if self.last_key_was_right {
-                        CM_OPEN_FILE_FOCUS
-                    } else {
-                        CM_OPEN_FILE
-                    };
-                    let req = if untracked {
-                        OpenFileRequest::new(path)
-                    } else {
-                        OpenFileRequest::with_diff(path)
-                    };
-                    self.inner.state_mut().put_command(cmd, Some(Box::new(req)));
-                }
-                return HandleResult::Consumed;
-            }
+    fn spawn_rebuild(&mut self) {
+        if let Some(old) = self.task.take() {
+            old.cancel();
         }
-        HandleResult::Ignored
+        let collapsed = self.inner.data_mut().collapsed_keys();
+        let params = GitStatusParams {
+            roots: self.roots.clone(),
+            diff_base: self.diff_base.clone(),
+            root_badge_colors: self.inner.data_mut().badge_colors().to_vec(),
+            root_labels: self.inner.data_mut().labels().to_vec(),
+            collapsed,
+        };
+        self.task = Some(git_status_async(params, self.waker.clone()));
     }
+}
 
-    fn handle_git_key(&mut self, key: &KeyEvent) -> Option<HandleResult> {
-        if *key == self.keys.stage {
-            if let Some(rel) = self.selected_rel_path() {
-                self.inner.state_mut().put_command(CM_GIT_STAGE, Some(Box::new(rel)));
-            }
-            return Some(HandleResult::Consumed);
-        }
-        if *key == self.keys.unstage {
-            if let Some(rel) = self.selected_rel_path() {
-                self.inner.state_mut().put_command(CM_GIT_UNSTAGE, Some(Box::new(rel)));
-            }
-            return Some(HandleResult::Consumed);
-        }
-        if *key == self.keys.untrack {
-            if let Some(rel) = self.selected_rel_path() {
-                self.inner.state_mut().put_command(CM_GIT_UNTRACK, Some(Box::new(rel)));
-            }
-            return Some(HandleResult::Consumed);
-        }
-        if *key == self.keys.commit {
-            self.inner.state_mut().put_command(CM_GIT_COMMIT_PROMPT, None);
-            return Some(HandleResult::Consumed);
-        }
-        None
-    }
+fn format_git_title(_base: &HashMap<PathBuf, String>) -> String {
+    "Git".to_string()
 }

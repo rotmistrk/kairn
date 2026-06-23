@@ -8,6 +8,8 @@ pub struct OpenFileRequest {
     pub(crate) line: Option<u32>,
     pub(crate) col: Option<u32>,
     pub(crate) diff: bool,
+    /// Custom diff base ref (e.g. a commit hash). Used when opening from git pane with a base set.
+    pub(crate) diff_base: Option<String>,
 }
 
 impl OpenFileRequest {
@@ -17,6 +19,7 @@ impl OpenFileRequest {
             line: None,
             col: None,
             diff: false,
+            diff_base: None,
         }
     }
     pub fn at(path: PathBuf, line: u32, col: u32) -> Self {
@@ -25,6 +28,7 @@ impl OpenFileRequest {
             line: Some(line),
             col: Some(col),
             diff: false,
+            diff_base: None,
         }
     }
     pub fn with_diff(path: PathBuf) -> Self {
@@ -33,6 +37,16 @@ impl OpenFileRequest {
             line: None,
             col: None,
             diff: true,
+            diff_base: None,
+        }
+    }
+    pub fn with_diff_base(path: PathBuf, base: String) -> Self {
+        Self {
+            path,
+            line: None,
+            col: None,
+            diff: true,
+            diff_base: Some(base),
         }
     }
     pub fn path(&self) -> &PathBuf {
@@ -46,5 +60,8 @@ impl OpenFileRequest {
     }
     pub fn diff(&self) -> bool {
         self.diff
+    }
+    pub fn diff_base(&self) -> Option<&str> {
+        self.diff_base.as_deref()
     }
 }

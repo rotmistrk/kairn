@@ -10,7 +10,7 @@ use crate::views::editor::{EditorView, EditorViewExt};
 
 pub fn handle_toggle_theme(ctx: &mut CommandContext, state: &mut AppState) {
     let arg = ctx.data().as_ref().and_then(|d| d.downcast_ref::<String>()).cloned();
-    let Some(ref ts) = state.theme_state else {
+    let Some(ref ts) = state.ui().theme_state() else {
         return;
     };
     let mut ts = ts.borrow_mut();
@@ -46,14 +46,15 @@ pub fn handle_set_syntax_theme(ctx: &mut CommandContext, state: &mut AppState) {
         n.clone()
     };
     let is_light = state
-        .theme_state
+        .ui()
+        .theme_state()
         .as_ref()
         .map(|ts| ts.borrow().mode() == ThemeMode::Light)
         .unwrap_or(false);
     if is_light {
-        state.settings.theme_syntax_light = name.clone();
+        state.settings_mut().set_theme_syntax_light(name.clone());
     } else {
-        state.settings.theme_syntax_dark = name.clone();
+        state.settings_mut().set_theme_syntax_dark(name.clone());
     }
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
@@ -86,5 +87,5 @@ pub fn handle_set_glyphs(ctx: &mut CommandContext, state: &mut AppState) {
         _ => return,
     };
     set_glyphs(GlyphSet::from_tier(tier));
-    state.settings.theme_glyphs = g.clone();
+    state.settings_mut().set_theme_glyphs(g.clone());
 }

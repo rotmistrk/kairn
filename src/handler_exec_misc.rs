@@ -42,7 +42,7 @@ pub(crate) fn cmd_welcome(ctx: &mut CommandContext, state: &mut AppState, _arg: 
                 &sink,
                 SlotId::Center,
                 "Welcome".into(),
-                Box::new(WelcomeView::new(state.root_dir.clone())),
+                Box::new(WelcomeView::new(state.root_dir().clone())),
             );
         }
     }

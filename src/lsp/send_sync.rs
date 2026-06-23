@@ -1,6 +1,7 @@
 //! LSP document sync senders — didOpen, didChange notifications.
 
 use std::fs;
+use std::path::PathBuf;
 
 use txv_core::program::CommandContext;
 
@@ -17,27 +18,35 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
     let Some(req) = boxed.downcast_ref::<OpenFileRequest>() else {
         return;
     };
-    let path = &req.path;
+    let path = req.path.clone();
+    let lang = protocol::language_id(&path).to_string();
+    let root = state.root_dir().clone();
+    start_lsp(state, &lang, &root);
 
-    let lang = protocol::language_id(path);
-    let root = state.root_dir.clone();
-    start_lsp(state, lang, &root);
-
-    if state.lsp.is_initializing(lang) {
-        state.lsp.pending_opens.push((lang.to_string(), path.clone()));
+    if state.lsp_sub_mut().registry_mut().is_initializing(&lang) {
+        state
+            .lsp_sub_mut()
+            .registry_mut()
+            .pending_opens_mut()
+            .push((lang.to_string(), path.clone()));
         return;
     }
 
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    do_send_did_open(ctx, state, &path, &lang);
+}
+
+fn do_send_did_open(ctx: &mut CommandContext, state: &mut AppState, path: &PathBuf, lang: &str) {
+    let (reg, lsp_st) = state.lsp_sub_mut().registry_and_state();
+    let Some(client) = reg.get_client_mut(lang) else {
         report_lsp_error(ctx, state);
         return;
     };
 
     let key = path.to_string_lossy().to_string();
-    if state.lsp_state.opened_files.contains(&key) {
+    if lsp_st.opened_files().contains(&key) {
         return;
     }
-    state.lsp_state.opened_files.insert(key);
+    lsp_st.opened_files_mut().insert(key);
 
     let uri = protocol::path_to_uri(path);
     let text = match fs::read_to_string(path) {
@@ -51,7 +60,7 @@ pub(super) fn send_did_open(ctx: &mut CommandContext, state: &mut AppState) {
 }
 
 fn report_lsp_error(ctx: &mut CommandContext, state: &mut AppState) {
-    if let Some(err) = state.lsp.last_error.take() {
+    if let Some(err) = state.lsp_sub_mut().registry_mut().take_last_error() {
         use txv_core::message::{Message, MsgLevel};
         ctx.sink().push_command(
             txv_widgets::CM_STATUS_MESSAGE,
@@ -69,15 +78,16 @@ pub(super) fn send_did_change(ctx: &mut CommandContext, state: &mut AppState) {
     };
 
     let lang = protocol::language_id(&changed.path);
-    let root = state.root_dir.clone();
+    let root = state.root_dir().clone();
     start_lsp(state, lang, &root);
-    let Some(client) = state.lsp.get_client_mut(lang) else {
+    let (reg, lsp_st) = state.lsp_sub_mut().registry_and_state();
+    let Some(client) = reg.get_client_mut(lang) else {
         return;
     };
 
     let uri = protocol::path_to_uri(&changed.path);
     let key = changed.path.to_string_lossy().to_string();
-    let version = state.lsp_state.doc_versions.entry(key).or_insert(1);
+    let version = lsp_st.doc_versions_mut().entry(key).or_insert(1);
     *version += 1;
     protocol::did_change(client, &uri, *version, &changed.content);
 }
