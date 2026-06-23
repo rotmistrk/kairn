@@ -121,3 +121,45 @@ pub(super) fn handle_paste(view: &mut CsvView) {
     ensure_visible(view);
     view.group.mark_dirty();
 }
+
+pub(super) fn handle_sort(view: &mut CsvView) {
+    use crate::csv_parse::ColType;
+
+    let col = view.cursor_col;
+    if view.sort_col == Some(col) {
+        view.sort_asc = !view.sort_asc;
+    } else {
+        view.sort_col = Some(col);
+        view.sort_asc = true;
+    }
+    let asc = view.sort_asc;
+    let is_numeric = matches!(view.col_types.get(col), Some(ColType::Numeric { .. }));
+    view.visible_rows.sort_by(|&a, &b| {
+        let va = view.rows[a].get(col).map(|s| s.as_str()).unwrap_or("");
+        let vb = view.rows[b].get(col).map(|s| s.as_str()).unwrap_or("");
+        let ord = if is_numeric {
+            compare_numeric(va, vb)
+        } else {
+            va.to_lowercase().cmp(&vb.to_lowercase())
+        };
+        if asc {
+            ord
+        } else {
+            ord.reverse()
+        }
+    });
+    view.cursor_row = 0;
+    view.group.mark_dirty();
+}
+
+fn compare_numeric(va: &str, vb: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let na = va.trim().parse::<f64>().ok();
+    let nb = vb.trim().parse::<f64>().ok();
+    match (na, nb) {
+        (Some(a), Some(b)) => a.partial_cmp(&b).unwrap_or(Ordering::Equal),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => va.cmp(vb),
+    }
+}

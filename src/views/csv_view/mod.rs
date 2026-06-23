@@ -3,6 +3,7 @@
 mod draw;
 mod format;
 pub(crate) mod handle;
+pub(crate) mod numeric_scale;
 pub(crate) mod row_ops;
 
 use std::fs;
@@ -44,6 +45,8 @@ pub struct CsvView {
     pub(crate) yanked_rows: Vec<Vec<String>>,
     /// Clipboard handle (shared with app).
     pub(crate) clipboard: Option<ClipboardHandle>,
+    /// Per-column numeric display scale.
+    pub(crate) col_scales: Vec<numeric_scale::NumericScale>,
 }
 
 impl CsvView {
@@ -84,6 +87,7 @@ impl CsvView {
             visual_anchor: None,
             yanked_rows: Vec::new(),
             clipboard: None,
+            col_scales: vec![numeric_scale::NumericScale::default(); ncols],
         }
     }
 
@@ -97,6 +101,10 @@ impl CsvView {
 
     pub(crate) fn ncols(&self) -> usize {
         self.col_widths.len()
+    }
+
+    pub(crate) fn is_numeric_col(&self) -> bool {
+        matches!(self.col_types.get(self.cursor_col), Some(ColType::Numeric { .. }))
     }
 
     pub(crate) fn refilter(&mut self) {

@@ -2,9 +2,12 @@
 
 use crate::csv_parse::ColType;
 
+use super::numeric_scale::NumericScale;
+
 pub(super) struct RowContext<'a> {
     pub(super) col_widths: &'a [u16],
     pub(super) col_types: &'a [ColType],
+    pub(super) col_scales: &'a [NumericScale],
     pub(super) cells: &'a [String],
     pub(super) base: txv_core::cell::Style,
     pub(super) scroll_col: usize,
@@ -25,7 +28,41 @@ pub(super) fn format_cell(text: &str, width: usize, right_align: bool) -> String
 }
 
 /// Dot-aligned formatting for numeric columns.
-pub(super) fn format_numeric_cell(text: &str, width: usize, col_type: &ColType) -> String {
+pub(super) fn format_numeric_cell(text: &str, width: usize, col_type: &ColType, scale: &NumericScale) -> String {
+    if !scale.is_active() {
+        return format_numeric_raw(text, width, col_type);
+    }
+    let trimmed = text.trim();
+    let Ok(val) = trimmed.parse::<f64>() else {
+        return format_cell(text, width, true);
+    };
+    let (scaled, suffix) = scale.apply(val);
+    let formatted = format_scaled_value(scaled, suffix, width);
+    pad_to_width(&formatted, width)
+}
+
+fn format_scaled_value(val: f64, suffix: &str, width: usize) -> String {
+    let avail = width.saturating_sub(suffix.len());
+    if val.abs() >= 100.0 {
+        let s = format!("{:.0}{}", val, suffix);
+        if s.len() <= width {
+            return s;
+        }
+    }
+    if val.abs() >= 10.0 {
+        let s = format!("{:.1}{}", val, suffix);
+        if s.len() <= width {
+            return s;
+        }
+    }
+    let s = format!("{:.2}{}", val, suffix);
+    if s.len() <= width {
+        return s;
+    }
+    format!("{:.prec$}{}", val, suffix, prec = avail.saturating_sub(4))
+}
+
+fn format_numeric_raw(text: &str, width: usize, col_type: &ColType) -> String {
     let ColType::Numeric {
         max_before_dot,
         max_after_dot,

@@ -45,6 +45,7 @@ pub fn draw_csv_view(view: &mut CsvView) {
         let row_ctx = RowContext {
             col_widths: &view.col_widths,
             col_types: &view.col_types,
+            col_scales: &view.col_scales,
             cells: &hdrs,
             base: styles.header,
             scroll_col: view.scroll_col,
@@ -89,6 +90,7 @@ fn draw_data_rows(view: &mut CsvView, w: u16, h: u16, y: u16, styles: &DrawStyle
         let row_ctx = RowContext {
             col_widths: &view.col_widths,
             col_types: &view.col_types,
+            col_scales: &view.col_scales,
             cells: &row_data,
             base,
             scroll_col: view.scroll_col,
@@ -117,7 +119,8 @@ fn draw_row(buf: &mut Buffer, y: u16, max_w: u16, row: &RowContext, styles: &Dra
         };
         let cell_text = row.cells.get(col_idx).map(|s| s.as_str()).unwrap_or("");
         let formatted = if matches!(row.col_types.get(col_idx), Some(ColType::Numeric { .. })) {
-            format_numeric_cell(cell_text, col_w, &row.col_types[col_idx])
+            let scale = row.col_scales.get(col_idx).cloned().unwrap_or_default();
+            format_numeric_cell(cell_text, col_w, &row.col_types[col_idx], &scale)
         } else {
             format_cell(cell_text, col_w, false)
         };

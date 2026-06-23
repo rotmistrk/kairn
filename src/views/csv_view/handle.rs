@@ -1,13 +1,10 @@
 //! Key handling for CsvView — navigation, sort, filter, edit, row ops.
 
-use std::cmp::Ordering;
-
 use txv_core::prelude::*;
 
 use super::row_ops;
 use super::CsvView;
 use crate::commands::CM_COMMAND_MODE;
-use crate::csv_parse::ColType;
 
 pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
     let Event::Key(key) = event else {
@@ -18,6 +15,22 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
             return r;
         }
     }
+    match key.code() {
+        KeyCode::Char('k') if key.modifiers().ctrl() => handle_scale_key(view, 'k'),
+        KeyCode::Char('K') if key.modifiers().ctrl() => handle_scale_key(view, 'K'),
+        KeyCode::Char('f') if key.modifiers().ctrl() => handle_clear_all_filters(view),
+        _ => {
+            if let Some(r) = handle_csv_nav_or_action(view, key) {
+                return r;
+            }
+            return HandleResult::Ignored;
+        }
+    }
+    view.group.mark_dirty();
+    HandleResult::Consumed
+}
+
+fn handle_csv_nav_or_action(view: &mut CsvView, key: &KeyEvent) -> Option<HandleResult> {
     match key.code() {
         KeyCode::Down | KeyCode::Char('j') => handle_nav_down(view),
         KeyCode::Up | KeyCode::Char('k') => handle_nav_up(view),
@@ -34,21 +47,22 @@ pub fn handle_csv_event(view: &mut CsvView, event: &Event) -> HandleResult {
             ensure_col_visible(view);
         }
         KeyCode::Enter => view.start_edit(),
-        KeyCode::Char('s') => handle_sort(view),
-        KeyCode::Char('f') if key.modifiers().ctrl() => handle_clear_all_filters(view),
+        KeyCode::Char('s') => row_ops::handle_sort(view),
         KeyCode::Char('f') => view.start_filter_edit(),
         KeyCode::Char('F') => handle_clear_col_filter(view),
+        KeyCode::Char(ch @ ('m' | 'M' | 't' | 'T' | 'e' | 'E')) => handle_scale_key(view, ch),
+        KeyCode::Char('-') => handle_scale_direction(view),
         KeyCode::Char('a') => row_ops::handle_add_row(view),
         KeyCode::Char('d') => row_ops::handle_delete_row(view),
         KeyCode::Char('v') => row_ops::handle_toggle_visual(view),
         KeyCode::Char('y') => row_ops::handle_yank(view),
         KeyCode::Char('p') => row_ops::handle_paste(view),
-        KeyCode::Esc => return handle_esc(view),
+        KeyCode::Esc => return Some(handle_esc(view)),
         KeyCode::Char(':') => view.group.put_command(CM_COMMAND_MODE, None),
-        _ => return HandleResult::Ignored,
+        _ => return None,
     }
     view.group.mark_dirty();
-    HandleResult::Consumed
+    Some(HandleResult::Consumed)
 }
 
 fn handle_shift_motion(view: &mut CsvView, code: KeyCode) -> Option<HandleResult> {
@@ -190,41 +204,6 @@ fn handle_nav_left(view: &mut CsvView) {
     ensure_col_visible(view);
 }
 
-fn handle_sort(view: &mut CsvView) {
-    let col = view.cursor_col;
-    if view.sort_col == Some(col) {
-        view.sort_asc = !view.sort_asc;
-    } else {
-        view.sort_col = Some(col);
-        view.sort_asc = true;
-    }
-    let asc = view.sort_asc;
-    let is_numeric = matches!(view.col_types.get(col), Some(ColType::Numeric { .. }));
-    view.visible_rows.sort_by(|&a, &b| {
-        let va = view.rows[a].get(col).map(|s| s.as_str()).unwrap_or("");
-        let vb = view.rows[b].get(col).map(|s| s.as_str()).unwrap_or("");
-        let ord = if is_numeric {
-            let na = va.trim().parse::<f64>().ok();
-            let nb = vb.trim().parse::<f64>().ok();
-            match (na, nb) {
-                (Some(a), Some(b)) => a.partial_cmp(&b).unwrap_or(Ordering::Equal),
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
-                (None, None) => va.cmp(vb),
-            }
-        } else {
-            va.to_lowercase().cmp(&vb.to_lowercase())
-        };
-        if asc {
-            ord
-        } else {
-            ord.reverse()
-        }
-    });
-    view.cursor_row = 0;
-    view.group.mark_dirty();
-}
-
 pub(super) fn ensure_visible(view: &mut CsvView) {
     let h = view.group.bounds().h() as usize;
     let data_h = h.saturating_sub(usize::from(view.headers.is_some()));
@@ -259,5 +238,26 @@ pub(super) fn ensure_col_visible(view: &mut CsvView) {
         let w = view.col_widths.get(view.scroll_col).copied().unwrap_or(0);
         x -= w + 1;
         view.scroll_col += 1;
+    }
+}
+
+fn handle_scale_key(view: &mut CsvView, ch: char) {
+    use super::numeric_scale::key_to_unit;
+    if !view.is_numeric_col() {
+        return;
+    }
+    if let Some(unit) = key_to_unit(ch) {
+        if let Some(scale) = view.col_scales.get_mut(view.cursor_col) {
+            scale.toggle_unit(unit);
+        }
+    }
+}
+
+fn handle_scale_direction(view: &mut CsvView) {
+    if !view.is_numeric_col() {
+        return;
+    }
+    if let Some(scale) = view.col_scales.get_mut(view.cursor_col) {
+        scale.toggle_direction();
     }
 }
