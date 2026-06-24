@@ -108,7 +108,9 @@ impl View for WelcomeView {
                 self.state.buffer_mut().print_line(0, row, "", w, Style::default());
             }
         }
-        self.place_logo(w, start_y);
+        // Logo disabled: terminal rendering issues (hang + bleed-through)
+        // TODO: re-enable after fixing txv image layer
+        // self.place_logo(w, start_y);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {

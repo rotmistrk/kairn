@@ -1,0 +1,7 @@
+# Local development: override git deps with local checkouts.
+# This file is gitignored — each developer sets their own paths.
+[patch."https://github.com/rotmistrk/txv.git"]
+txv-core = { path = "../txv/txv-core" }
+txv-render = { path = "../txv/txv-render" }
+txv-widgets = { path = "../txv/txv-widgets" }
+txv-edit = { path = "../txv/txv-edit" }
