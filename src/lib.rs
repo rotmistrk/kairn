@@ -99,6 +99,7 @@ pub mod help_topic_hooks;
 pub mod help_topic_keys;
 pub mod help_topic_mcp;
 pub mod help_topic_tcl;
+pub mod help_topic_tutorial;
 pub mod help_topic_views;
 pub mod help_topics;
 pub mod highlight;

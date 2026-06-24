@@ -7,12 +7,13 @@ use crate::help_topic_hooks::help_hooks;
 use crate::help_topic_keys::help_keys_from_bindings;
 use crate::help_topic_mcp::help_mcp;
 use crate::help_topic_tcl::help_tcl;
+use crate::help_topic_tutorial::help_tutorial;
 use crate::help_topic_views::{help_csv, help_editor, help_struct, help_todo, help_tree};
 
 /// All available help topic names.
 pub fn topic_names() -> &'static [&'static str] {
     &[
-        "commands", "csv", "editor", "hooks", "keys", "mcp", "struct", "tcl", "todo", "tree",
+        "commands", "csv", "editor", "hooks", "keys", "mcp", "struct", "tcl", "todo", "tree", "tutorial",
     ]
 }
 
@@ -30,6 +31,7 @@ pub fn generate_topic(topic: &str, bindings: &[KeyHelpEntry]) -> String {
         "csv" => help_csv(),
         "struct" => help_struct(),
         "todo" => help_todo(),
+        "tutorial" => help_tutorial(),
         _ => unknown_topic(topic),
     }
 }

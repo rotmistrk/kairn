@@ -42,6 +42,7 @@ impl WelcomeView {
             (":q  close tab   :w  save".into(), dim),
             (String::new(), dim),
             ("F1:Help  F5:Zoom  M-x:Command  Ctrl-Q:Quit".into(), dim),
+            (":help tutorial  for quick start guide".into(), dim),
         ];
 
         if let Some(tools) = &self.tools {
