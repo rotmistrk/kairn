@@ -18,6 +18,7 @@ pub mod build_desktop;
 pub mod build_detect;
 pub mod build_parse;
 pub mod build_state;
+mod cairn_logo;
 pub mod clipboard;
 pub mod command_store;
 pub mod commands;

@@ -1,11 +1,13 @@
 //! WelcomeView — shown when center slot has no tabs.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use txv_core::cell::Style;
-use txv_core::palette::{palette, StyleId};
+use txv_core::image::{ImageData, ImageTransform};
 use txv_core::prelude::*;
 
+use crate::cairn_logo::generate_cairn_logo;
 use crate::commands::CM_COMMAND_MODE;
 use crate::glyphs::glyphs;
 use crate::tool_check::{self, ToolStatus};
@@ -31,6 +33,16 @@ impl WelcomeView {
         }
     }
 
+    fn place_logo(&mut self, view_w: u16, text_start: u16) {
+        let (iw, ih, pixels) = generate_cairn_logo();
+        let img = Arc::new(ImageData::new(iw, ih, pixels));
+        let img_cells_h: u16 = 4;
+        let img_cells_w: u16 = 8;
+        let y = text_start.saturating_sub(img_cells_h + 1);
+        let x = view_w.saturating_sub(img_cells_w) / 2;
+        let rect = Rect::new(x, y, img_cells_w, img_cells_h);
+        self.state.buffer_mut().place_image(rect, img, ImageTransform::Fit);
+    }
     fn build_lines(&self, dim: Style, bright: Style) -> Vec<(String, Style)> {
         let mut lines: Vec<(String, Style)> = vec![
             ("╦╔═╔═╗╦╦═╗╔╗╔".into(), bright),
@@ -96,6 +108,7 @@ impl View for WelcomeView {
                 self.state.buffer_mut().print_line(0, row, "", w, Style::default());
             }
         }
+        self.place_logo(w, start_y);
     }
 
     fn handle(&mut self, event: &Event) -> HandleResult {
