@@ -7,4 +7,4 @@ rusticle-tk/target
 .kairn.*
 .idea/
 .kiro/agents/
-.cargo/*.avif
+*.avif
