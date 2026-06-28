@@ -159,3 +159,11 @@ fn offer_option(
     };
     visitor(&e)
 }
+
+pub(crate) fn complete_layout(
+    sub: &str,
+    visitor: &mut CompletionVisitor<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    const LAYOUT_OPTS: &[&str] = &["auto", "tall", "wide"];
+    complete_options(LAYOUT_OPTS, "layout", sub, "mode", visitor)
+}

@@ -3,10 +3,11 @@
 use txv_core::program::CommandContext;
 use txv_widgets::tiled_workspace::commands::{
     CM_TW_CYCLE_SUBPANEL, CM_TW_FOCUS_DOWN, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_RIGHT, CM_TW_FOCUS_UP, CM_TW_GROW_H,
-    CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_H,
+    CM_TW_GROW_SUBPANEL, CM_TW_GROW_V, CM_TW_LAYOUT_CYCLE, CM_TW_LAYOUT_SET, CM_TW_MOVE_TAB_SUBPANEL, CM_TW_SHRINK_H,
     CM_TW_SHRINK_SUBPANEL, CM_TW_SHRINK_V, CM_TW_TAB_NEXT, CM_TW_TAB_PREV, CM_TW_TOGGLE_TOOLS, CM_TW_TOGGLE_TREE,
     CM_TW_ZOOM,
 };
+use txv_widgets::tiled_workspace::types::LayoutMode;
 
 use crate::handler::{downcast_desktop, AppState};
 
@@ -42,8 +43,30 @@ pub(crate) fn cmd_grow_v(ctx: &mut CommandContext, _state: &mut AppState, _arg: 
     ctx.sink().push_command(CM_TW_GROW_V, None);
 }
 
-pub(crate) fn cmd_layout(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
-    ctx.sink().push_command(CM_TW_LAYOUT_CYCLE, None);
+pub(crate) fn cmd_layout(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
+    if arg.is_empty() {
+        ctx.sink().push_command(CM_TW_LAYOUT_CYCLE, None);
+        return;
+    }
+    let mode = parse_layout_mode(arg);
+    if let Some(m) = mode {
+        ctx.sink().push_command(CM_TW_LAYOUT_SET, Some(Box::new(m)));
+    } else {
+        ctx.sink().push_command(CM_TW_LAYOUT_CYCLE, None);
+    }
+}
+
+fn parse_layout_mode(arg: &str) -> Option<LayoutMode> {
+    let s = arg.trim().to_lowercase();
+    if "auto".starts_with(&s) {
+        Some(LayoutMode::Auto)
+    } else if "wide".starts_with(&s) {
+        Some(LayoutMode::Wide)
+    } else if "tall".starts_with(&s) || "narrow".starts_with(&s) {
+        Some(LayoutMode::Narrow)
+    } else {
+        None
+    }
 }
 
 pub(crate) fn cmd_move_tab(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
