@@ -97,7 +97,7 @@ lint: clippy
 
 # ── Install (all to ~/.local/bin) ───────────────────────
 
-install-local: sync-deps test-fast purge-cargo-bin install-kairn install-rusticle-lsp 
+install-local: sync-deps test-fast purge-cargo-bin install-kairn install-syntaxes install-rusticle-lsp 
 	@echo "✅ Installed rusticle, rusticle-lsp, kairn, and demos to $(LOCAL_PREFIX)"
 
 # Pull local dependency overrides (txv) if present, or update git dep
@@ -119,6 +119,11 @@ install-kairn: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin
 	install -m 755 $(BINARY) $(LOCAL_PREFIX)/bin/kairn
 	@echo "  ✅ kairn → $(LOCAL_PREFIX)/bin/kairn"
+
+install-syntaxes:
+	install -d $(HOME)/.config/kairn/syntaxes
+	install -m 644 syntaxes/*.sublime-syntax $(HOME)/.config/kairn/syntaxes/
+	@echo "  ✅ syntaxes → ~/.config/kairn/syntaxes/"
 
 install-rusticle-lsp: $(BINARY)
 	install -d $(LOCAL_PREFIX)/bin

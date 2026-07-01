@@ -1,0 +1,175 @@
+%YAML 1.2
+---
+# Rill programming language syntax highlighting
+# https://github.com/rotmistrk/rill
+name: Rill
+file_extensions:
+  - rill
+scope: source.rill
+
+variables:
+  identifier: '[a-zA-Z_]\w*'
+  type_identifier: '[A-Z]\w*'
+
+contexts:
+  main:
+    - include: comments
+    - include: strings
+    - include: numbers
+    - include: keywords
+    - include: types
+    - include: annotations
+    - include: operators
+    - include: functions
+    - include: constants
+
+  comments:
+    - match: '//.*$'
+      scope: comment.line.double-slash.rill
+    - match: '/\*'
+      push: block_comment
+
+  block_comment:
+    - meta_scope: comment.block.rill
+    - match: '\*/'
+      pop: true
+    - match: '/\*'
+      push: block_comment
+
+  strings:
+    - match: 'c"'
+      scope: punctuation.definition.string.begin.rill
+      push: cstring
+    - match: '`'
+      scope: punctuation.definition.string.begin.rill
+      push: raw_string
+    - match: '"'
+      scope: punctuation.definition.string.begin.rill
+      push: double_string
+    - match: "'"
+      scope: punctuation.definition.string.begin.rill
+      push: char_literal
+
+  double_string:
+    - meta_scope: string.quoted.double.rill
+    - match: '\\[nrt\\"\x0/]'
+      scope: constant.character.escape.rill
+    - match: '\\u[0-9a-fA-F]{4}'
+      scope: constant.character.escape.rill
+    - match: '\\U[0-9a-fA-F]{8}'
+      scope: constant.character.escape.rill
+    - match: '\\x[0-9a-fA-F]{2}'
+      scope: constant.character.escape.rill
+    - match: '"'
+      scope: punctuation.definition.string.end.rill
+      pop: true
+
+  cstring:
+    - meta_scope: string.quoted.double.c.rill
+    - match: '\\[nrt\\"\x0/]'
+      scope: constant.character.escape.rill
+    - match: '"'
+      scope: punctuation.definition.string.end.rill
+      pop: true
+
+  raw_string:
+    - meta_scope: string.quoted.other.raw.rill
+    - match: '`'
+      scope: punctuation.definition.string.end.rill
+      pop: true
+
+  char_literal:
+    - meta_scope: string.quoted.single.rill
+    - match: '\\[nrt\\''\x0/]'
+      scope: constant.character.escape.rill
+    - match: '\\u[0-9a-fA-F]{4}'
+      scope: constant.character.escape.rill
+    - match: "'"
+      scope: punctuation.definition.string.end.rill
+      pop: true
+
+  numbers:
+    - match: '\b0x[0-9a-fA-F_]+\b'
+      scope: constant.numeric.hex.rill
+    - match: '\b0b[01_]+\b'
+      scope: constant.numeric.binary.rill
+    - match: '\b0o[0-7_]+\b'
+      scope: constant.numeric.octal.rill
+    - match: '\b[0-9][0-9_]*\.[0-9][0-9_]*([eE][+-]?[0-9]+)?\b'
+      scope: constant.numeric.float.rill
+    - match: '\b[0-9][0-9_]*\b'
+      scope: constant.numeric.integer.rill
+
+  keywords:
+    - match: '\b(func|type|struct|interface|impl|enum|union)\b'
+      scope: keyword.declaration.rill
+    - match: '\b(for|if|else|switch|case|default|select|break|continue|return|go)\b'
+      scope: keyword.control.rill
+    - match: '\b(var|const|package|import|defer|with|derive|export|extern|move|own)\b'
+      scope: keyword.other.rill
+    - match: '\b(range|in)\b'
+      scope: keyword.operator.rill
+    - match: '\bvia\b'
+      scope: keyword.other.rill
+
+  types:
+    - match: '\b(int|uint|int8|int16|int32|int64|uint8|uint16|uint32|uint64)\b'
+      scope: storage.type.numeric.rill
+    - match: '\b(float32|float64)\b'
+      scope: storage.type.float.rill
+    - match: '\b(bool|string|cstring|byte|rune|error|any)\b'
+      scope: storage.type.builtin.rill
+    - match: '\b(Allocator|PersistentAllocator|Destroyable|ErrorSink)\b'
+      scope: storage.type.interface.rill
+    - match: '\b{{type_identifier}}\b'
+      scope: entity.name.type.rill
+
+  annotations:
+    - match: '@{{identifier}}'
+      scope: entity.name.annotation.rill
+      push: annotation_body
+
+  annotation_body:
+    - match: '\{'
+      scope: punctuation.section.annotation.begin.rill
+      set: annotation_contents
+    - match: '(?=\S)'
+      pop: true
+
+  annotation_contents:
+    - meta_scope: meta.annotation.rill
+    - match: '\}'
+      scope: punctuation.section.annotation.end.rill
+      pop: true
+    - include: strings
+    - include: numbers
+    - include: constants
+
+  operators:
+    - match: '\?\>'
+      scope: keyword.operator.error-accumulate.rill
+    - match: '\?'
+      scope: keyword.operator.error-propagate.rill
+    - match: '<-|->|:='
+      scope: keyword.operator.rill
+    - match: '&&|\|\||!'
+      scope: keyword.operator.logical.rill
+    - match: '==|!=|<=|>=|<|>'
+      scope: keyword.operator.comparison.rill
+    - match: '[+\-*/%&|^~]='
+      scope: keyword.operator.assignment.rill
+    - match: '<<|>>'
+      scope: keyword.operator.bitwise.rill
+
+  functions:
+    - match: '\b(println|print|len|cap|make|append|copy|close|delete|panic|recover)\b'
+      scope: support.function.builtin.rill
+    - match: '\b({{identifier}})\s*(?=\()'
+      captures:
+        1: entity.name.function.rill
+
+  constants:
+    - match: '\b(true|false)\b'
+      scope: constant.language.boolean.rill
+    - match: '\bnil\b'
+      scope: constant.language.null.rill
