@@ -102,6 +102,16 @@ mod tests {
     }
 
     #[test]
+    fn parse_rill_error() {
+        let root = PathBuf::from("/project");
+        let entry = parse_line("main.rill:7:12: error: undeclared variable 'x'", &root).unwrap();
+        assert_eq!(entry.path, PathBuf::from("/project/main.rill"));
+        assert_eq!(entry.line, 6);
+        assert_eq!(entry.col, 11);
+        assert!(entry.text.contains("error"));
+    }
+
+    #[test]
     fn parse_file_line_only() {
         let root = PathBuf::from("/project");
         let entry = parse_line("test.py:42: SyntaxError", &root).unwrap();

@@ -28,6 +28,14 @@ pub fn detect(root: &Path) -> Option<BuildSystem> {
 
 const PRIMARY_MARKERS: &[(&[&str], BuildSystem)] = &[
     (
+        &["rill.toml"],
+        BuildSystem {
+            build: "make rillc",
+            test: "make test",
+            test_file: None,
+        },
+    ),
+    (
         &["Makefile", "GNUmakefile"],
         BuildSystem {
             build: "make",
@@ -140,6 +148,24 @@ mod tests {
         let bs = detect(dir.path()).unwrap();
         assert_eq!(bs.build, "cargo build");
         assert_eq!(bs.test, "cargo test --workspace");
+    }
+
+    #[test]
+    fn detect_rill() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("rill.toml"), "[project]").unwrap();
+        let bs = detect(dir.path()).unwrap();
+        assert_eq!(bs.build, "make rillc");
+        assert_eq!(bs.test, "make test");
+    }
+
+    #[test]
+    fn detect_rill_over_makefile() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("rill.toml"), "[project]").unwrap();
+        std::fs::write(dir.path().join("Makefile"), "").unwrap();
+        let bs = detect(dir.path()).unwrap();
+        assert_eq!(bs.build, "make rillc");
     }
 
     #[test]

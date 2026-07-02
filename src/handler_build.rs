@@ -109,7 +109,9 @@ fn report_no_cmd(ctx: &mut CommandContext, what: &str) {
 }
 
 fn detect_run_command(root: &std::path::Path) -> String {
-    if root.join("Cargo.toml").exists() {
+    if root.join("rill.toml").exists() {
+        "make run".to_string()
+    } else if root.join("Cargo.toml").exists() {
         "cargo run".to_string()
     } else if root.join("go.mod").exists() {
         "go run .".to_string()
