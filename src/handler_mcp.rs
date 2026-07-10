@@ -43,7 +43,8 @@ pub fn drain_mcp(ctx: &mut CommandContext, state: &mut AppState) {
         {
             // Don't reply yet — stash channel, prompt user
             state.mcp_mut().set_confirm_reply(req.reply);
-            let prompt = format!("MCP: allow '{tool_name}'? ({args_summary}) [y/n]");
+            let prompt = format!("MCP: allow '{tool_name}'? ({args_summary})");
+            log::debug!("MCP confirm: pushing CM_CONFIRM for {tool_name}");
             sink.push_command(CM_SET_CONFIRM_CONTEXT, Some(Box::new(ConfirmContext::McpToolConfirm)));
             sink.push_command(CM_CONFIRM, Some(Box::new(prompt)));
         } else {
