@@ -1,5 +1,8 @@
 //! Background task drain — polls grep and build tasks for results.
 
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use txv_core::prelude::*;
 use txv_core::program::CommandContext;
 use txv_widgets::tiled_workspace::TiledWorkspace;
@@ -11,52 +14,59 @@ use crate::completer::refresh_commands;
 use crate::desktop::{find_view_mut, focus_view_mut, SlotId};
 use crate::handler::{downcast_desktop, AppState};
 use crate::handler_evict::try_insert_tab;
-use crate::views::results::ResultsView;
+use crate::task_output::TaskOutput;
+use crate::views::results::{ResultEntry, ResultsView};
 use crate::views::todo_tree::model::{get_item_mut, load_todo_file, save_todo_file};
 use crate::views::todo_tree::TodoTreeView;
 
 /// Drain grep results from background thread into the ResultsView.
 pub fn drain_grep(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some((title, gs, root)) = state.pending_mut().take_grep_pending() else {
+    let Some(pending) = state.pending_mut().take_grep_pending() else {
         return;
     };
-    if let Some(err) = gs.take_error() {
-        let msg = Message::new(MsgLevel::Error, "grep", err);
-        ctx.sink()
-            .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-    }
-    let entries = gs.take_entries();
-    let done = gs.is_done();
-    if !entries.is_empty() || done {
-        append_to_active_results(ctx, entries, done);
-    }
-    if !done {
-        state.pending_mut().set_grep_pending(Some((title, gs, root)));
+    let put_back = drain_task(ctx, state, &pending, "grep", |_, _, _| {});
+    if put_back {
+        state.pending_mut().set_grep_pending(Some(pending));
     }
 }
 
 /// Drain build/test results from background thread into the ResultsView.
 pub fn drain_build(ctx: &mut CommandContext, state: &mut AppState) {
-    let Some((title, task, root)) = state.build_mut().take_pending() else {
+    let Some(pending) = state.build_mut().take_pending() else {
         return;
     };
+    let put_back = drain_task(ctx, state, &pending, "build", collect_build_errors);
+    if put_back {
+        state.build_mut().set_pending(Some(pending));
+    }
+}
+
+/// Generic drain for background tasks producing `ResultEntry` items.
+///
+/// Returns `true` if the task is still running (caller should put it back).
+fn drain_task(
+    ctx: &mut CommandContext,
+    state: &mut AppState,
+    pending: &(String, Arc<TaskOutput>, PathBuf),
+    label: &'static str,
+    on_entries: fn(&[ResultEntry], &std::path::Path, &mut AppState),
+) -> bool {
+    let (_title, task, root) = pending;
     if let Some(err) = task.take_error() {
-        let msg = Message::new(MsgLevel::Error, "build", err);
+        let msg = Message::new(MsgLevel::Error, label, err);
         ctx.sink()
             .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
     }
     let entries = task.take_entries();
     let done = task.is_done();
     if !entries.is_empty() || done {
-        collect_build_errors(&entries, &root, state);
-        append_to_results_view(ctx, entries, done);
+        on_entries(&entries, root, state);
+        append_to_active_results(ctx, entries, done);
     }
-    if !done {
-        state.build_mut().set_pending(Some((title, task, root)));
-    }
+    !done
 }
 
-fn collect_build_errors(entries: &[crate::views::results::ResultEntry], root: &std::path::Path, state: &mut AppState) {
+fn collect_build_errors(entries: &[ResultEntry], root: &std::path::Path, state: &mut AppState) {
     for e in entries {
         if !e.path.as_os_str().is_empty() {
             state.build_mut().errors_mut().push(ErrorLocation {
@@ -74,7 +84,7 @@ fn collect_build_errors(entries: &[crate::views::results::ResultEntry], root: &s
     }
 }
 
-fn append_to_active_results(ctx: &mut CommandContext, entries: Vec<crate::views::results::ResultEntry>, done: bool) {
+fn append_to_active_results(ctx: &mut CommandContext, entries: Vec<ResultEntry>, done: bool) {
     let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
         return;
     };
@@ -86,10 +96,6 @@ fn append_to_active_results(ctx: &mut CommandContext, entries: Vec<crate::views:
     if let Some(rv) = rv {
         rv.append(entries, done);
     }
-}
-
-fn append_to_results_view(ctx: &mut CommandContext, entries: Vec<crate::views::results::ResultEntry>, done: bool) {
-    append_to_active_results(ctx, entries, done);
 }
 
 /// Refresh plugins: scan dirs, reload changed, unload removed.
