@@ -6,6 +6,7 @@ use std::fs;
 use duir_core::tree_ops::find_node_path;
 use serde_json::{json, Map, Value};
 
+use super::args::require_queue;
 use super::commands::{McpAction, McpCommandQueue};
 
 pub fn tool_get_todo_tree() -> Result<Value, String> {
@@ -73,7 +74,7 @@ fn resolve_path(args: &Map<String, Value>) -> Result<Vec<usize>, String> {
 }
 
 pub fn tool_update_todo(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let queue = require_queue(cmd_queue)?;
     let action_str = args.get("action").and_then(Value::as_str).ok_or("Missing 'action'")?;
     let path = resolve_path(args)?;
     if action_str == "get_note" {
@@ -141,7 +142,7 @@ fn tool_get_note(path: &[usize]) -> Result<Value, String> {
 }
 
 pub fn tool_add_subtree(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let queue = require_queue(cmd_queue)?;
     let path = resolve_path(args)?;
     let items_ref = args.get("items").and_then(Value::as_array).ok_or("Missing 'items'")?;
     let items = items_ref.clone();

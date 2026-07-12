@@ -2,6 +2,7 @@
 
 pub mod agent_file;
 pub mod agent_patch;
+pub mod args;
 pub mod bridge;
 pub mod collect;
 pub mod command_queue;

@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Map, Value};
 
+use super::args::{opt_bool, opt_str, require_queue, require_str};
 use super::commands::{McpAction, McpCommandQueue};
 use super::snapshot::McpSnapshot;
 use super::tools_extra::{
@@ -135,10 +136,7 @@ fn tool_get_messages(snapshot: &Arc<Mutex<McpSnapshot>>) -> Result<Value, String
 }
 
 fn tool_get_tab_content(snapshot: &Arc<Mutex<McpSnapshot>>, args: &Map<String, Value>) -> Result<Value, String> {
-    let name = args
-        .get("name")
-        .and_then(Value::as_str)
-        .ok_or("Missing 'name' argument")?;
+    let name = require_str(args, "name")?;
     let snap = snapshot.lock().map_err(|e| e.to_string())?;
     match snap.tab_contents.get(name) {
         Some(content) => Ok(json!({"name": name, "content": content})),
@@ -151,22 +149,19 @@ fn tool_split(
     cmd_queue: Option<&McpCommandQueue>,
     args: &Map<String, Value>,
 ) -> Result<Value, String> {
-    let action = args
-        .get("action")
-        .and_then(Value::as_str)
-        .ok_or("Missing 'action' argument")?;
+    let action = require_str(args, "action")?;
     let file = args.get("file").and_then(Value::as_str).map(String::from);
 
     if action == "status" {
         let snap = snapshot.lock().map_err(|e| e.to_string())?;
-        return Ok(serde_json::json!({
+        return Ok(json!({
             "active": snap.split_direction != "none",
             "direction": snap.split_direction,
             "linked_scroll": snap.split_linked,
         }));
     }
 
-    let queue = cmd_queue.ok_or("MCP command queue not available")?;
+    let queue = require_queue(cmd_queue)?;
     let mcp_action = match action {
         "vsplit" => McpAction::SplitVertical { file },
         "hsplit" => McpAction::SplitHorizontal { file },
@@ -177,7 +172,7 @@ fn tool_split(
             McpAction::SplitOpen { path }
         }
         "linked" => {
-            let on = args.get("value").and_then(Value::as_bool).unwrap_or(true);
+            let on = opt_bool(args, "value", true);
             McpAction::SplitLinked { on }
         }
         other => return Err(format!("Unknown split action: {other}")),
@@ -186,9 +181,9 @@ fn tool_split(
 }
 
 fn tool_clipboard_copy(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("Write operations disabled")?;
-    let text = args.get("text").and_then(Value::as_str).ok_or("Missing 'text'")?;
-    let source = args.get("source").and_then(Value::as_str).unwrap_or("mcp");
+    let queue = require_queue(cmd_queue)?;
+    let text = require_str(args, "text")?;
+    let source = opt_str(args, "source", "mcp");
     queue.send(McpAction::ClipboardCopy {
         text: text.to_string(),
         source: source.to_string(),
@@ -197,11 +192,11 @@ fn tool_clipboard_copy(cmd_queue: Option<&McpCommandQueue>, args: &Map<String, V
 }
 
 fn tool_clipboard_paste(cmd_queue: Option<&McpCommandQueue>, _args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let queue = require_queue(cmd_queue)?;
     queue.send(McpAction::ClipboardPaste)
 }
 
 fn tool_clipboard_list(cmd_queue: Option<&McpCommandQueue>, _args: &Map<String, Value>) -> Result<Value, String> {
-    let queue = cmd_queue.ok_or("Write operations disabled")?;
+    let queue = require_queue(cmd_queue)?;
     queue.send(McpAction::ClipboardList)
 }
