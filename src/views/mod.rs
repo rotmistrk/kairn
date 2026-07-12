@@ -14,6 +14,7 @@ pub mod problems;
 pub mod result_entry;
 pub mod results;
 pub mod scroll_map;
+pub(crate) mod scroll_util;
 pub mod search_replace;
 pub mod struct_view;
 pub mod terminal;

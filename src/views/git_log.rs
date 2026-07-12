@@ -10,6 +10,8 @@ use txv_core::prelude::*;
 use crate::commands::{CM_GIT_BASE_CHANGED, CM_GIT_SET_BASE, CM_TAB_CLOSE};
 use crate::git_log::{CommitEntry, LogState, SharedLog};
 
+use super::scroll_util::ensure_visible;
+
 /// Scrollable git commit log view.
 pub struct GitLogView {
     pub(super) state: ViewState,
@@ -72,15 +74,7 @@ impl GitLogView {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.visible_height();
-        if h == 0 {
-            return;
-        }
-        if self.cursor < self.scroll {
-            self.scroll = self.cursor;
-        } else if self.cursor >= self.scroll + h {
-            self.scroll = self.cursor - h + 1;
-        }
+        self.scroll = ensure_visible(self.cursor, self.scroll, self.visible_height());
     }
 
     fn visible_height(&self) -> usize {

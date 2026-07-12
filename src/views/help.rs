@@ -7,6 +7,8 @@ use txv_core::prelude::*;
 
 use crate::help_topics::generate_topic;
 
+use super::scroll_util::ensure_visible;
+
 pub struct HelpView {
     state: ViewState,
     lines: Vec<String>,
@@ -44,15 +46,7 @@ impl HelpView {
     }
 
     fn sync_scroll(&mut self) {
-        let h = self.visible_rows();
-        if h == 0 {
-            return;
-        }
-        if self.cursor < self.scroll {
-            self.scroll = self.cursor;
-        } else if self.cursor >= self.scroll + h {
-            self.scroll = self.cursor - h + 1;
-        }
+        self.scroll = ensure_visible(self.cursor, self.scroll, self.visible_rows());
     }
 
     fn handle_enter(&mut self) -> HandleResult {

@@ -8,3 +8,4 @@ rusticle-tk/target
 .idea/
 .kiro/agents/
 *.avif
+.tasks/

@@ -5,6 +5,8 @@ use txv_core::prelude::*;
 
 use txv_core::clipboard_ring::ClipboardHandle;
 
+use super::scroll_util::ensure_visible;
+
 pub struct ClipboardViewer {
     state: ViewState,
     clipboard: ClipboardHandle,
@@ -107,14 +109,7 @@ impl View for ClipboardViewer {
 impl ClipboardViewer {
     fn sync_scroll(&mut self) {
         let h = self.state.bounds().h() as usize;
-        if h == 0 {
-            return;
-        }
-        if self.cursor < self.scroll {
-            self.scroll = self.cursor;
-        } else if self.cursor >= self.scroll + h {
-            self.scroll = self.cursor - h + 1;
-        }
+        self.scroll = ensure_visible(self.cursor, self.scroll, h);
         self.state.mark_dirty();
     }
 }

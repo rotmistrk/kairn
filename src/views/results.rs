@@ -12,6 +12,7 @@ use txv_widgets::tiled_workspace::commands::CM_TW_FOCUS_PANEL;
 use crate::commands::{OpenFileRequest, CM_OPEN_FILE, CM_TAB_CLOSE};
 
 pub use super::result_entry::ResultEntry;
+use super::scroll_util::ensure_visible;
 
 /// Quickfix-style results list view.
 pub struct ResultsView {
@@ -87,14 +88,7 @@ impl ResultsView {
 
     fn sync_scroll(&mut self) {
         let h = self.state.bounds().h().saturating_sub(1) as usize;
-        if h == 0 {
-            return;
-        }
-        if self.cursor < self.scroll {
-            self.scroll = self.cursor;
-        } else if self.cursor >= self.scroll + h {
-            self.scroll = self.cursor - h + 1;
-        }
+        self.scroll = ensure_visible(self.cursor, self.scroll, h);
     }
 
     fn open_current(&self) {
