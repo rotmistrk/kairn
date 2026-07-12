@@ -3,6 +3,7 @@
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
 use super::JsonDoc;
+use crate::structured::json_escape::escape_json_string;
 
 pub(crate) fn serialize(doc: &JsonDoc) -> String {
     let mut out = String::new();
@@ -137,22 +138,6 @@ fn push_indent(out: &mut String, n: usize) {
     for _ in 0..n {
         out.push(' ');
     }
-}
-
-fn escape_json_string(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\x20' => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out
 }
 
 /// Emit comment lines from node meta before the node itself.

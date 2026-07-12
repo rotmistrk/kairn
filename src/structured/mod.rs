@@ -1,6 +1,7 @@
 //! Structured document model — format-agnostic tree representation.
 
 pub mod json_doc;
+pub mod json_escape;
 pub mod jsonc_parse;
 pub mod jsonl_doc;
 

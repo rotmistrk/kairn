@@ -4,6 +4,7 @@
 use serde_json::Value;
 
 use crate::structured::json_doc::JsonDoc;
+use crate::structured::json_escape::escape_json_string;
 use crate::structured::{NodeId, NodeKind, ScalarType, StructuredDoc};
 
 /// JSONL document — wraps a JsonDoc whose root is an array of line values.
@@ -159,7 +160,7 @@ fn serialize_node_compact(doc: &JsonDoc, id: NodeId) -> String {
             for (i, &child) in children.iter().enumerate() {
                 if let Some(k) = doc.node(child).key() {
                     out.push('"');
-                    out.push_str(&escape_json(k));
+                    out.push_str(&escape_json_string(k));
                     out.push_str("\":");
                 }
                 out.push_str(&serialize_node_compact(doc, child));
@@ -190,23 +191,7 @@ fn serialize_node_compact(doc: &JsonDoc, id: NodeId) -> String {
 
 fn serialize_scalar_compact(node: &crate::structured::json_doc::Node) -> String {
     match node.scalar_type {
-        ScalarType::String => format!("\"{}\"", escape_json(&node.value)),
+        ScalarType::String => format!("\"{}\"", escape_json_string(&node.value)),
         _ => node.value.clone(),
     }
-}
-
-fn escape_json(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\x20' => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out
 }
