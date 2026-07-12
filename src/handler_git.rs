@@ -9,67 +9,36 @@ use crate::commands::*;
 use crate::git_ops::{git_commit, git_stage, git_unstage, git_untrack};
 use crate::handler::AppState;
 
-pub fn handle_git_stage(ctx: &mut CommandContext, state: &AppState) {
+fn handle_git_op(
+    ctx: &mut CommandContext,
+    state: &AppState,
+    op: fn(&std::path::Path, &str) -> Result<(), String>,
+    verb: &str,
+) {
     let Some(boxed) = ctx.data().as_ref() else {
         return;
     };
     let Some(rel) = boxed.downcast_ref::<String>() else {
         return;
     };
-    match git_stage(state.root_dir(), rel) {
-        Ok(()) => {
-            let msg = Message::info("git", format!("Staged: {rel}"));
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-        Err(e) => {
-            let msg = Message::error("git", e);
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-    }
+    let msg = match op(state.root_dir(), rel) {
+        Ok(()) => Message::info("git", format!("{verb}: {rel}")),
+        Err(e) => Message::error("git", e),
+    };
+    ctx.sink()
+        .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+}
+
+pub fn handle_git_stage(ctx: &mut CommandContext, state: &AppState) {
+    handle_git_op(ctx, state, git_stage, "Staged");
 }
 
 pub fn handle_git_unstage(ctx: &mut CommandContext, state: &AppState) {
-    let Some(boxed) = ctx.data().as_ref() else {
-        return;
-    };
-    let Some(rel) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    match git_unstage(state.root_dir(), rel) {
-        Ok(()) => {
-            let msg = Message::info("git", format!("Unstaged: {rel}"));
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-        Err(e) => {
-            let msg = Message::error("git", e);
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-    }
+    handle_git_op(ctx, state, git_unstage, "Unstaged");
 }
 
 pub fn handle_git_untrack(ctx: &mut CommandContext, state: &AppState) {
-    let Some(boxed) = ctx.data().as_ref() else {
-        return;
-    };
-    let Some(rel) = boxed.downcast_ref::<String>() else {
-        return;
-    };
-    match git_untrack(state.root_dir(), rel) {
-        Ok(()) => {
-            let msg = Message::info("git", format!("Untracked: {rel}"));
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-        Err(e) => {
-            let msg = Message::error("git", e);
-            ctx.sink()
-                .push_command(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
-        }
-    }
+    handle_git_op(ctx, state, git_untrack, "Untracked");
 }
 
 pub fn handle_git_commit(ctx: &mut CommandContext, state: &AppState) {
