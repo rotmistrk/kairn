@@ -43,6 +43,7 @@ use crate::handler_theme::{handle_set_glyphs, handle_set_syntax_theme, handle_to
 use crate::lsp::handler::{handle_lsp_command, poll_lsp};
 use crate::mcp::collect::{collect_messages, collect_snapshot, collect_terminal_content};
 use crate::suspend::{peek_screen, suspend_to_shell};
+use crate::views::editor::EditorView;
 
 /// Handle a command from the Program event loop.
 /// This is the single source of truth for command handling.
@@ -227,4 +228,21 @@ pub fn downcast_workspace(view: &mut dyn View) -> Option<&mut TiledWorkspace> {
 /// Deprecated alias.
 pub fn downcast_desktop(view: &mut dyn View) -> Option<&mut TiledWorkspace> {
     downcast_workspace(view)
+}
+
+/// Run a closure with the active EditorView in the focused panel.
+/// Handles the full downcast chain: desktop → panel → view → EditorView.
+/// If any step fails, the closure is not called.
+pub fn with_active_editor(ctx: &mut CommandContext, f: impl FnOnce(&mut EditorView)) {
+    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
+        return;
+    };
+    let slot = desktop.focused_panel();
+    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
+        return;
+    };
+    let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
+        return;
+    };
+    f(editor);
 }

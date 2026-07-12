@@ -10,27 +10,22 @@ use txv_core::program::CommandContext;
 use txv_core::view::EventSink;
 
 use crate::commands::CM_LSP_FORMAT_RESULT;
-use crate::handler::{downcast_desktop, AppState};
-use crate::views::editor::EditorView;
+use crate::handler::{with_active_editor, AppState};
 
 pub(crate) fn cmd_format_builtin(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
     let opts = parse_format_opts(arg);
+    let mut extracted: Option<(String, String)> = None;
 
-    let Some(desktop) = downcast_desktop(ctx.desktop_mut()) else {
+    with_active_editor(ctx, |editor| {
+        let content = editor.content();
+        let ext = extension(editor.path()).to_string();
+        extracted = Some((content, ext));
+    });
+
+    let Some((content, ext)) = extracted else {
         return;
     };
-    let slot = desktop.focused_panel();
-    let Some(view) = desktop.panel_mut(slot).and_then(|p| p.active_view_mut()) else {
-        return;
-    };
-    let Some(editor) = view.as_any_mut().and_then(|a| a.downcast_mut::<EditorView>()) else {
-        return;
-    };
-
-    let content = editor.content();
-    let ext = extension(editor.path());
-
-    let formatted = match ext {
+    let formatted = match ext.as_str() {
         "json" | "jsonc" => format_json(&content, &opts),
         _ => Err(format!("No built-in formatter for .{ext} files")),
     };
