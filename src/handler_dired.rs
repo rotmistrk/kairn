@@ -91,44 +91,19 @@ pub(crate) fn cmd_delete_file(ctx: &mut CommandContext, _state: &mut AppState, a
     refresh_tree(ctx);
 }
 
-pub(crate) fn cmd_rename_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
-    // arg format: "<old_path> <new_path>" (split on last space? no — use " -> " separator)
-    // Actually: prefill is "rename-file <old>", user appends " <new>"
+/// Shared logic for two-path operations (rename, copy).
+/// Parses args into src/dest, validates both, ensures parent dirs, runs `op_fn`, reports result.
+fn dired_two_path_op(
+    ctx: &mut CommandContext,
+    arg: &str,
+    usage: &str,
+    err_verb: &str,
+    ok_verb: &str,
+    op_fn: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+) {
     let parts: Vec<&str> = arg.trim().splitn(2, ' ').collect();
     if parts.len() < 2 {
-        err(ctx, "Usage: rename-file <old> <new>".into());
-        return;
-    }
-    let old = Path::new(parts[0]);
-    let new = Path::new(parts[1]);
-    if !old.exists() {
-        err(ctx, format!("Not found: {}", old.display()));
-        return;
-    }
-    if new.exists() {
-        err(ctx, format!("Already exists: {}", new.display()));
-        return;
-    }
-    if let Some(parent) = new.parent() {
-        if !parent.exists() {
-            if let Err(e) = fs::create_dir_all(parent) {
-                err(ctx, format!("Cannot create dirs: {e}"));
-                return;
-            }
-        }
-    }
-    if let Err(e) = fs::rename(old, new) {
-        err(ctx, format!("Cannot rename: {e}"));
-        return;
-    }
-    msg(ctx, format!("Renamed: {} → {}", old.display(), new.display()));
-    refresh_tree(ctx);
-}
-
-pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
-    let parts: Vec<&str> = arg.trim().splitn(2, ' ').collect();
-    if parts.len() < 2 {
-        err(ctx, "Usage: copy-file <src> <dest>".into());
+        err(ctx, format!("Usage: {usage}"));
         return;
     }
     let src = Path::new(parts[0]);
@@ -149,17 +124,28 @@ pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg
             }
         }
     }
-    let result = if src.is_dir() {
-        copy_dir_recursive(src, dest)
-    } else {
-        fs::copy(src, dest).map(|_| ())
-    };
-    if let Err(e) = result {
-        err(ctx, format!("Cannot copy: {e}"));
+    if let Err(e) = op_fn(src, dest) {
+        err(ctx, format!("Cannot {err_verb}: {e}"));
         return;
     }
-    msg(ctx, format!("Copied: {} → {}", src.display(), dest.display()));
+    msg(ctx, format!("{ok_verb}: {} → {}", src.display(), dest.display()));
     refresh_tree(ctx);
+}
+
+pub(crate) fn cmd_rename_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
+    dired_two_path_op(ctx, arg, "rename-file <old> <new>", "rename", "Renamed", |old, new| {
+        fs::rename(old, new)
+    });
+}
+
+pub(crate) fn cmd_copy_file(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
+    dired_two_path_op(ctx, arg, "copy-file <src> <dest>", "copy", "Copied", |src, dest| {
+        if src.is_dir() {
+            copy_dir_recursive(src, dest)
+        } else {
+            fs::copy(src, dest).map(|_| ())
+        }
+    });
 }
 
 pub(crate) fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
