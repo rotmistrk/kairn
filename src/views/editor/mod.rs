@@ -22,6 +22,7 @@ mod handle_completion_accept;
 mod handle_deferred;
 mod handle_signature;
 mod handle_tick;
+mod hunk_ops;
 pub mod methods;
 pub mod methods_diff;
 pub mod sbs_model;

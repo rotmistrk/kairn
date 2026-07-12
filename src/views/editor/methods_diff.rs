@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use txv_core::message::Message;
 
+use super::hunk_ops::apply_hunk_to_buffer;
 use super::methods::EditorViewExt;
 use super::EditorView;
 use crate::commands::{CM_DIFF_OPEN_VIEW, CM_FILE_CLOSED, CM_FS_CHANGED, CM_TAB_CLOSE};
@@ -99,33 +100,7 @@ fn collect_hunk_data(ds: &super::diff_model::DiffState, start: usize, end: usize
 }
 
 fn apply_revert(view: &mut EditorView, buf_lines: &[usize], deleted_text: &[String], insert_line: usize) {
-    let mut buf = view.editor_mut().buf();
-    buf.begin_group();
-    if !buf_lines.is_empty() {
-        let first = buf_lines[0];
-        let last = buf_lines[buf_lines.len() - 1];
-        let start_off = buf.line_col_to_offset(first, 0).unwrap_or(0);
-        let end_off = if last + 1 < buf.line_count() {
-            buf.line_col_to_offset(last + 1, 0).unwrap_or(buf.len())
-        } else {
-            buf.len()
-        };
-        if end_off > start_off {
-            buf.delete(start_off, end_off);
-        }
-        if !deleted_text.is_empty() {
-            let insert = deleted_text.join("\n") + "\n";
-            let off = buf.line_col_to_offset(first, 0).unwrap_or(buf.len());
-            buf.insert(off, &insert);
-        }
-    } else if !deleted_text.is_empty() {
-        let insert = deleted_text.join("\n") + "\n";
-        let off = buf.line_col_to_offset(insert_line, 0).unwrap_or(buf.len());
-        buf.insert(off, &insert);
-    }
-    buf.end_group();
-    drop(buf);
-    view.editor_mut().clamp_cursor();
+    apply_hunk_to_buffer(view.editor_mut(), buf_lines, deleted_text, insert_line);
 }
 
 fn flush_force_close(view: &mut EditorView) {

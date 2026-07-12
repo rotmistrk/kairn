@@ -10,6 +10,8 @@ use crate::commands::{CM_DIFF_OPEN_VIEW, CM_FILE_CLOSED, CM_FS_CHANGED, CM_TAB_C
 use crate::editor::Editor;
 use crate::views::editor::diff_model::{is_change, DiffLine, DiffState};
 
+use super::hunk_ops::apply_hunk_to_buffer;
+
 impl KairnDelegate {
     pub(crate) fn process_deferred(&mut self, editor: &mut Editor) {
         self.flush_force_close(editor);
@@ -110,33 +112,7 @@ impl KairnDelegate {
     }
 
     fn apply_hunk(editor: &mut Editor, buf_lines: &[usize], deleted_text: &[String], insert_line: usize) {
-        let mut buf = editor.buf();
-        buf.begin_group();
-        if !buf_lines.is_empty() {
-            let first = buf_lines[0];
-            let last = buf_lines[buf_lines.len() - 1];
-            let start_off = buf.line_col_to_offset(first, 0).unwrap_or(0);
-            let end_off = if last + 1 < buf.line_count() {
-                buf.line_col_to_offset(last + 1, 0).unwrap_or(buf.len())
-            } else {
-                buf.len()
-            };
-            if end_off > start_off {
-                buf.delete(start_off, end_off);
-            }
-            if !deleted_text.is_empty() {
-                let insert = deleted_text.join("\n") + "\n";
-                let off = buf.line_col_to_offset(first, 0).unwrap_or(buf.len());
-                buf.insert(off, &insert);
-            }
-        } else if !deleted_text.is_empty() {
-            let insert = deleted_text.join("\n") + "\n";
-            let off = buf.line_col_to_offset(insert_line, 0).unwrap_or(buf.len());
-            buf.insert(off, &insert);
-        }
-        buf.end_group();
-        drop(buf);
-        editor.clamp_cursor();
+        apply_hunk_to_buffer(editor, buf_lines, deleted_text, insert_line);
     }
 
     fn flush_nodiff(&mut self, editor: &mut Editor) {
