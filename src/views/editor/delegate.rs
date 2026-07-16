@@ -155,8 +155,8 @@ impl EditorViewDelegate for KairnDelegate {
     }
 
     fn on_key_pre(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
-        // Secret: M-b cycles fancy alphabet display
-        if key.code() == KeyCode::Char('b') && key.modifiers().alt() {
+        // Secret: M-b (or ∫ on macOS) cycles fancy alphabet display
+        if (key.code() == KeyCode::Char('b') && key.modifiers().alt()) || key.code() == KeyCode::Char('∫') {
             self.fancy_alpha = self.fancy_alpha.next();
             self.dirty = true;
             return Some(HandleResult::Consumed);
