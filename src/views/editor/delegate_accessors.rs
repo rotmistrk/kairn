@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use crate::blame::SharedBlame;
 use crate::buffer_store::BufferStore;
 use crate::completer::new_command_list;
+use crate::fancy_alpha::FancyAlpha;
 use crate::lsp::diagnostics::Diagnostic;
 use crate::settings::EditorSettings;
 
@@ -44,6 +45,7 @@ impl KairnDelegate {
             pending_nodiff: false,
             search_hist: None,
             cmd_hist: None,
+            fancy_alpha: FancyAlpha::Normal,
         }
     }
 

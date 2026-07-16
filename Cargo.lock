@@ -2258,7 +2258,7 @@ dependencies = [
 [[package]]
 name = "txv-core"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#4c8d5bad80b531b31c7c2da812609c78ed352496"
+source = "git+https://github.com/rotmistrk/txv.git#0d2067ff32662c2ebb410a42e67b3f7bf1bd889a"
 dependencies = [
  "libc",
  "log",
@@ -2268,7 +2268,7 @@ dependencies = [
 [[package]]
 name = "txv-edit"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#4c8d5bad80b531b31c7c2da812609c78ed352496"
+source = "git+https://github.com/rotmistrk/txv.git#0d2067ff32662c2ebb410a42e67b3f7bf1bd889a"
 dependencies = [
  "regex",
  "syntect",
@@ -2279,7 +2279,7 @@ dependencies = [
 [[package]]
 name = "txv-render"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#4c8d5bad80b531b31c7c2da812609c78ed352496"
+source = "git+https://github.com/rotmistrk/txv.git#0d2067ff32662c2ebb410a42e67b3f7bf1bd889a"
 dependencies = [
  "crossterm",
  "libc",
@@ -2292,7 +2292,7 @@ dependencies = [
 [[package]]
 name = "txv-widgets"
 version = "0.1.0"
-source = "git+https://github.com/rotmistrk/txv.git#4c8d5bad80b531b31c7c2da812609c78ed352496"
+source = "git+https://github.com/rotmistrk/txv.git#0d2067ff32662c2ebb410a42e67b3f7bf1bd889a"
 dependencies = [
  "ignore",
  "libc",
@@ -2524,7 +2524,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

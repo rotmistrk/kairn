@@ -39,6 +39,7 @@ pub mod editor;
 pub mod editor_settings;
 pub mod editor_shared;
 pub mod eviction;
+pub(crate) mod fancy_alpha;
 pub mod format_yaml;
 pub mod git_keys;
 pub mod git_log;

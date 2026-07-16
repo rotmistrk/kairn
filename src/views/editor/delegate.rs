@@ -54,6 +54,8 @@ pub struct KairnDelegate {
     pub(crate) pending_nodiff: bool,
     pub(crate) search_hist: Option<txv_core::shared_history::SharedHistory>,
     pub(crate) cmd_hist: Option<txv_core::shared_history::SharedHistory>,
+    /// Secret display mode (M-b cycles through fancy alphabets).
+    pub(crate) fancy_alpha: crate::fancy_alpha::FancyAlpha,
 }
 
 impl EditorViewDelegate for KairnDelegate {
@@ -153,6 +155,12 @@ impl EditorViewDelegate for KairnDelegate {
     }
 
     fn on_key_pre(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
+        // Secret: M-b cycles fancy alphabet display
+        if key.code() == KeyCode::Char('b') && key.modifiers().alt() {
+            self.fancy_alpha = self.fancy_alpha.next();
+            self.dirty = true;
+            return Some(HandleResult::Consumed);
+        }
         if self.highlight_word.is_some() {
             self.highlight_word = None;
             self.dirty = true;
@@ -212,6 +220,10 @@ impl EditorViewDelegate for KairnDelegate {
 
     fn needs_redraw(&self, _editor: &Editor) -> bool {
         self.dirty
+    }
+
+    fn transform_char(&self, ch: char) -> char {
+        self.fancy_alpha.remap(ch)
     }
 
     fn supports_downcast() -> bool {
