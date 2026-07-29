@@ -8,7 +8,7 @@ use txv_core::prelude::HandleResult;
 use super::delegate::KairnDelegate;
 use crate::commands::{
     ConfirmContext, ContentChanged, CM_CONFIRM, CM_CONTENT_CHANGED, CM_LSP_COMPLETION, CM_LSP_SIGNATURE_HELP,
-    CM_SET_CONFIRM_CONTEXT,
+    CM_SET_CONFIRM_CONTEXT, CM_TAB_CLOSE,
 };
 use crate::editor::keymap::EditorMode;
 use crate::editor::Editor;
@@ -87,6 +87,8 @@ impl KairnDelegate {
             return;
         };
         let Ok(meta) = metadata(&self.path) else {
+            // File no longer exists — deleted or moved
+            self.handle_file_gone(editor);
             return;
         };
         let Ok(current_mtime) = meta.modified() else {
@@ -118,6 +120,24 @@ impl KairnDelegate {
             self.dirty = true;
             let msg = Message::info("editor", format!("{} reloaded", self.display_title));
             self.emit(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        }
+    }
+
+    fn handle_file_gone(&mut self, editor: &Editor) {
+        // Stop further polling
+        self.disk_mtime = None;
+        if editor.buf().is_dirty() {
+            // Preserve unsaved work — just warn
+            let msg = Message::warn(
+                "editor",
+                format!("{} deleted on disk — unsaved changes preserved", self.display_title),
+            );
+            self.emit(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+        } else {
+            // Clean buffer — close the tab
+            let msg = Message::info("editor", format!("{} deleted on disk", self.display_title));
+            self.emit(txv_widgets::CM_STATUS_MESSAGE, Some(Box::new(msg)));
+            self.emit(CM_TAB_CLOSE, None);
         }
     }
 

@@ -44,6 +44,8 @@ pub struct AppState {
     pub(crate) ui: UiChrome,
     /// Git diff base commits per root (short hash). When set, git pane shows diff vs this commit.
     pub(crate) diff_base: HashMap<PathBuf, String>,
+    /// Watches for file renames in the project root.
+    pub(crate) rename_watcher: Option<crate::file_rename_watcher::FileRenameWatcher>,
 }
 
 impl AppState {
@@ -219,5 +221,9 @@ impl AppState {
 
     pub fn refresh_plugins(&mut self) -> Vec<String> {
         self.scripting.refresh_plugins()
+    }
+
+    pub fn set_rename_watcher(&mut self, w: Option<crate::file_rename_watcher::FileRenameWatcher>) {
+        self.rename_watcher = w;
     }
 }

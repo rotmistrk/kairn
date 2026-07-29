@@ -32,6 +32,7 @@ use crate::handler_git::{
 use crate::handler_log::open_git_log;
 use crate::handler_mcp::drain_mcp;
 use crate::handler_open::{handle_open_file, handle_shell_output, handle_show_results};
+use crate::handler_rename::drain_renames;
 use crate::handler_script::handle_script_command;
 use crate::handler_set::handle_set_global;
 use crate::handler_split::{
@@ -81,6 +82,7 @@ fn run_background_tasks(ctx: &mut CommandContext, state: &mut AppState) {
     drain_grep(ctx, state);
     drain_build(ctx, state);
     drain_mcp(ctx, state);
+    drain_renames(ctx, state);
     auto_close_exited_terminals(ctx, state);
     sync_dirty_badges(ctx);
     sync_pty_badges(ctx, state);

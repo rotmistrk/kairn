@@ -72,6 +72,7 @@ impl AppState {
             editor: EditorShared::new(new_clipboard(1), SharedHistory::new(1), SharedHistory::new(1)),
             ui: UiChrome::new(),
             diff_base: HashMap::new(),
+            rename_watcher: None,
         }
     }
 

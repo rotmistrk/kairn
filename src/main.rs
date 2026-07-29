@@ -158,6 +158,12 @@ fn init_backend(app_state: &mut AppState, mcp_cmd_queue: &SharedCommandQueue) ->
     app_state.set_waker(backend.waker());
     app_state.lsp_set_waker(backend.waker());
 
+    // Start file rename watcher
+    let waker = backend.waker();
+    use kairn::file_rename_watcher::FileRenameWatcher;
+    let rw = FileRenameWatcher::new(app_state.root_dir(), waker);
+    app_state.set_rename_watcher(rw);
+
     let cmd_queue = McpCommandQueue::new(backend.waker());
     app_state.set_mcp_commands(cmd_queue.clone());
     if let Ok(mut guard) = mcp_cmd_queue.lock() {
