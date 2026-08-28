@@ -55,7 +55,8 @@ fn status_bar_dormant_no_black_bg() {
 #[test]
 fn status_bar_active_modal_right_cap_colors() {
     let dir = temp_project(&[("main.rs", "fn main() {}")]);
-    let mut h = TestHarness::new(dir.path());
+    // Use wider terminal to ensure M-x modal has space for power caps
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
     h.run_cycles(2);
 
     // Activate M-x modal
@@ -97,7 +98,8 @@ fn status_bar_active_modal_right_cap_colors() {
 #[test]
 fn status_bar_active_modal_no_black_after_cap() {
     let dir = temp_project(&[("main.rs", "fn main() {}")]);
-    let mut h = TestHarness::new(dir.path());
+    // Use wider terminal to ensure M-x modal has space for power caps
+    let mut h = TestHarness::with_size(dir.path(), 120, 24);
     h.run_cycles(2);
 
     // Activate M-x modal

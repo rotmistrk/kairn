@@ -2,10 +2,6 @@
 
 use txv_core::prelude::*;
 use txv_core::status_bar::{StatusBar, StatusSlot};
-use txv_widgets::tiled_workspace::commands::{
-    CM_TW_ACTIVATE_TAB, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_RIGHT, CM_TW_TAB_DROPDOWN, CM_TW_TAB_NEXT, CM_TW_TAB_PREV,
-    CM_TW_TOGGLE_TOOLS, CM_TW_TOGGLE_TREE, CM_TW_ZOOM,
-};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 use txv_widgets::{FocusGatedGroup, KeyLabelView, ModalKey};
 
@@ -15,42 +11,13 @@ use crate::views::tree::DIRED_STATUS_GROUP;
 
 use super::helpers::{alt, ctrl, key};
 
-/// Short label for status bar display (mapped by command ID).
-fn tw_short_label(cmd: CommandId) -> &'static str {
-    match cmd {
-        CM_TW_TOGGLE_TREE => "~M-,~:Tree",
-        CM_TW_TOGGLE_TOOLS => "~M-.~:Tools",
-        CM_TW_ZOOM => "~M-/~:Zoom",
-        CM_TW_TAB_DROPDOWN => "~M-0~:Tabs",
-        CM_TW_TAB_NEXT => "~M-;~:Next",
-        CM_TW_TAB_PREV => "~M-'~:Prev",
-        _ => "",
-    }
-}
-
-/// Help description for F1 help system (mapped by command ID).
-fn tw_help_text(cmd: CommandId) -> &'static str {
-    match cmd {
-        CM_TW_TOGGLE_TREE => "Toggle tree panel",
-        CM_TW_TOGGLE_TOOLS => "Toggle tools panel",
-        CM_TW_ZOOM => "Zoom toggle",
-        CM_TW_FOCUS_LEFT => "Focus previous panel",
-        CM_TW_FOCUS_RIGHT => "Focus next panel",
-        CM_TW_TAB_DROPDOWN => "Tab dropdown picker",
-        CM_TW_TAB_NEXT => "Next tab",
-        CM_TW_TAB_PREV => "Previous tab",
-        CM_TW_ACTIVATE_TAB => "Switch to tab",
-        _ => "",
-    }
-}
-
-/// Register TiledWorkspace's default key→command bindings with labels.
+/// Register TiledWorkspace's default key→command bindings.
+/// These are HIDDEN bindings (empty label) — for key capture and help system only.
+/// Help text comes from command registry in txv.
 pub fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
     for (k, command, _payload) in desktop.default_bindings() {
-        let label = tw_short_label(command);
-        let help = tw_help_text(command);
-        let view = KeyLabelView::new(k, command, label).with_help(help);
-        bar.add(StatusSlot::new(Box::new(view)));
+        // Empty label = hidden binding (not visible in status bar)
+        bar.add(StatusSlot::new(Box::new(KeyLabelView::new(k, command, ""))));
     }
 }
 
@@ -104,20 +71,15 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.zoom, CM_TW_ZOOM, "~F5~:Zoom"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.messages, CM_SHOW_MESSAGES, "~F6~:Msg"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "~C-q~:Quit"))).priority(9));
+    // F2/F3/F4 focus panels - help text comes from command registry
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "~F2~:Tree")
-            .with_help("Focus tree panel")
-            .with_data(0),
+        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "~F2~:Tree").with_data(0),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "~F3~:Edit")
-            .with_help("Focus editor panel")
-            .with_data(1),
+        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "~F3~:Edit").with_data(1),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "~F4~:Term")
-            .with_help("Focus terminal panel")
-            .with_data(2),
+        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "~F4~:Term").with_data(2),
     )));
     add_hidden_bindings(bar);
 }
@@ -168,7 +130,7 @@ fn add_hidden_misc(bar: &mut StatusBar) {
 
 /// Alt+digit and macOS Option+digit for tab switching.
 pub fn add_tab_digit_bindings(bar: &mut StatusBar) {
-    use txv_widgets::tiled_workspace::commands::CM_TW_TAB_DROPDOWN;
+    use txv_widgets::tiled_workspace::commands::{CM_TW_ACTIVATE_TAB, CM_TW_TAB_DROPDOWN};
     let mac_digits = ['º', '¡', '™', '£', '¢', '∞', '§', '¶', '•', 'ª'];
     let alt_0 = KeyEvent::new(KeyCode::Char('0'), KeyMod::ALT);
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(

@@ -173,3 +173,88 @@ pub const CM_OPEN_FILES_CHANGED: CommandId = CM_APP_BASE + 192;
 pub const CM_FILE_FINDER_OPEN: CommandId = CM_APP_BASE + 193;
 pub const CM_DIFF_EXIT: CommandId = CM_APP_BASE + 194;
 pub const CM_DIFF_OPEN_VIEW: CommandId = CM_APP_BASE + 195;
+
+// ---------------------------------------------------------------------------
+// Command registration for help system
+// ---------------------------------------------------------------------------
+
+use txv_core::command_registry::{register, CommandMeta};
+
+/// Register kairn-specific commands with the command registry.
+/// Called once at startup (after txv's register_commands).
+pub fn register_commands() {
+    register_tree_commands();
+    register_app_commands();
+}
+
+fn register_tree_commands() {
+    register_tree_file_ops();
+    register_tree_mark_ops();
+}
+
+fn register_tree_file_ops() {
+    register(
+        CM_TREE_NEW_FILE,
+        CommandMeta::new(
+            "tree-new-file",
+            "New file",
+            "Create a new file in the selected directory",
+        ),
+    );
+    register(
+        CM_TREE_NEW_DIR,
+        CommandMeta::new("tree-new-dir", "New directory", "Create a new directory"),
+    );
+    register(
+        CM_TREE_DELETE,
+        CommandMeta::new("tree-delete", "Delete", "Delete the selected file or directory"),
+    );
+    register(
+        CM_TREE_RENAME,
+        CommandMeta::new("tree-rename", "Rename", "Rename or move the selected file"),
+    );
+    register(
+        CM_TREE_COPY,
+        CommandMeta::new("tree-copy", "Copy", "Copy the selected file or directory"),
+    );
+}
+
+fn register_tree_mark_ops() {
+    register(
+        CM_TREE_MARK,
+        CommandMeta::new(
+            "tree-mark",
+            "Mark",
+            "Mark/unmark the selected file for batch operations",
+        ),
+    );
+    register(
+        CM_TREE_UNMARK_ALL,
+        CommandMeta::new("tree-unmark-all", "Unmark all", "Clear all file marks"),
+    );
+    register(
+        CM_TREE_MOVE_MARKED,
+        CommandMeta::new(
+            "tree-move-marked",
+            "Move marked",
+            "Move all marked files to the selected directory",
+        ),
+    );
+    register(
+        CM_TREE_COPY_MARKED,
+        CommandMeta::new(
+            "tree-copy-marked",
+            "Copy marked",
+            "Copy all marked files to the selected directory",
+        ),
+    );
+}
+
+fn register_app_commands() {
+    register(CM_SHOW_HELP, CommandMeta::new("help", "Help", "Show the help window"));
+    register(
+        CM_SHOW_MESSAGES,
+        CommandMeta::new("messages", "Messages", "Show the messages window"),
+    );
+    register(CM_APP_QUIT, CommandMeta::new("quit", "Quit", "Exit the application"));
+}
