@@ -50,7 +50,8 @@ fn add_command_items(
         .with_command(CM_EXECUTE_COMMAND)
         .with_prefill_command(CM_COMMAND_PREFILL)
         .with_history(command_history)
-        .with_completer(completer);
+        .with_completer(completer)
+        .with_constrained();
     let command_line = ModalKey::new("M-x", ":")
         .trigger_key(ALT_X)
         .trigger_key(APPROX)
@@ -69,7 +70,8 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
     let input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
-        .with_completer(Box::new(FileFinderCompleter::new(root.clone())));
+        .with_completer(Box::new(FileFinderCompleter::new(root.clone())))
+        .with_constrained();
     let finder = ModalKey::new("", "file: ")
         .trigger_key(ctrl_p)
         .terminal_command(CM_FILE_FINDER_OPEN)
@@ -80,7 +82,8 @@ fn add_file_finder(bar: &mut StatusBar, root: PathBuf, clipboard: txv_core::clip
     let sym_input = InputLine::new()
         .with_clipboard(clipboard.clone())
         .with_command(CM_FILE_FINDER_OPEN)
-        .with_completer(Box::new(SymbolFinderCompleter::new(root)));
+        .with_completer(Box::new(SymbolFinderCompleter::new(root)))
+        .with_constrained();
     let sym_finder = ModalKey::new("", "sym: ")
         .trigger_key(ctrl_t)
         .terminal_command(CM_FILE_FINDER_OPEN)

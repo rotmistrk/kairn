@@ -18,7 +18,7 @@ impl TodoTreeView {
         }
         let id = self.inner_mut().data_mut().visible_id(row);
         let label = self.inner_mut().data_mut().label(id).to_owned();
-        let mut input = InputLine::new().with_command(CM_OK);
+        let mut input = InputLine::new().with_command(CM_OK).with_constrained();
         input.set_text(&label);
         input.select_all();
         let pal = self.edit_palette();
@@ -44,7 +44,7 @@ impl TodoTreeView {
 
     /// Start filter mode.
     pub(super) fn start_filter(&mut self) {
-        let mut input = InputLine::new().with_command(CM_OK);
+        let mut input = InputLine::new().with_command(CM_OK).with_constrained();
         input.set_text(self.inner_mut().data_mut().filter_text());
         let pal = self.filter_palette();
         let sink = self.child_sink.clone();

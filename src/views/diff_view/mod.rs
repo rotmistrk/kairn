@@ -42,7 +42,9 @@ impl DiffView {
             .unwrap_or_default();
         let display_title = format!("[{}] {name}", ds.base_ref);
         let mut group = GroupState::new(ViewOptions::default());
-        let il = InputLine::new().with_completer(Box::new(DiffCompleter));
+        let il = InputLine::new()
+            .with_completer(Box::new(DiffCompleter))
+            .with_constrained();
         group.insert(Box::new(il));
         group.set_child_visible(0, false);
         Self {

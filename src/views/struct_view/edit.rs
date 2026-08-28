@@ -86,7 +86,7 @@ impl StructuredView {
 
     /// Insert InputLine as child 1 of the group (tree is always child 0).
     fn insert_input_child(&mut self, text: &str) {
-        let mut input = InputLine::new().with_command(CM_OK);
+        let mut input = InputLine::new().with_command(CM_OK).with_constrained();
         input.set_text(text);
         input.select_all();
         let pal = self.edit_palette();

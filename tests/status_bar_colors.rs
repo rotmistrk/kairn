@@ -211,9 +211,12 @@ fn mx_reopen_nav_deselects() {
     h.run_cycles(1);
 
     let row = h.row(23);
-    // "test" should still be there with "X" inserted
+    // "test" should still be there with "X" inserted somewhere.
+    // With constrained InputLine, may show overflow indicator (…) + partial text.
+    // After Left+X at position 4, result is "tesXt" with cursor after X.
+    // Accept: full visible, or truncated showing end near cursor.
     assert!(
-        row.contains("tesX") || row.contains("teXt") || row.contains("tXst") || row.contains("Xest"),
+        row.contains("tesXt") || row.contains("Xt") || row.contains("sXt"),
         "after Left+X, should have X inserted into 'test', got: {row}"
     );
 }

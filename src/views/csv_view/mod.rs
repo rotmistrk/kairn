@@ -161,7 +161,7 @@ impl CsvView {
     }
 
     fn insert_input_line(&mut self, text: &str) {
-        let mut input = InputLine::new().with_command(CM_OK);
+        let mut input = InputLine::new().with_command(CM_OK).with_constrained();
         input.set_text(text);
         input.select_all();
         let pal = self.edit_palette();
