@@ -15,8 +15,21 @@ use crate::views::tree::DIRED_STATUS_GROUP;
 
 use super::helpers::{alt, ctrl, key};
 
-/// Map command ID to help description for TiledWorkspace bindings.
-fn tw_command_label(cmd: CommandId) -> &'static str {
+/// Short label for status bar display (mapped by command ID).
+fn tw_short_label(cmd: CommandId) -> &'static str {
+    match cmd {
+        CM_TW_TOGGLE_TREE => "~M-,~:Tree",
+        CM_TW_TOGGLE_TOOLS => "~M-.~:Tools",
+        CM_TW_ZOOM => "~M-/~:Zoom",
+        CM_TW_TAB_DROPDOWN => "~M-0~:Tabs",
+        CM_TW_TAB_NEXT => "~M-;~:Next",
+        CM_TW_TAB_PREV => "~M-'~:Prev",
+        _ => "",
+    }
+}
+
+/// Help description for F1 help system (mapped by command ID).
+fn tw_help_text(cmd: CommandId) -> &'static str {
     match cmd {
         CM_TW_TOGGLE_TREE => "Toggle tree panel",
         CM_TW_TOGGLE_TOOLS => "Toggle tools panel",
@@ -34,8 +47,10 @@ fn tw_command_label(cmd: CommandId) -> &'static str {
 /// Register TiledWorkspace's default key→command bindings with labels.
 pub fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
     for (k, command, _payload) in desktop.default_bindings() {
-        let label = tw_command_label(command);
-        bar.add(StatusSlot::new(Box::new(KeyLabelView::new(k, command, label))));
+        let label = tw_short_label(command);
+        let help = tw_help_text(command);
+        let view = KeyLabelView::new(k, command, label).with_help(help);
+        bar.add(StatusSlot::new(Box::new(view)));
     }
 }
 
@@ -90,13 +105,19 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.messages, CM_SHOW_MESSAGES, "~F6~:Msg"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "~C-q~:Quit"))).priority(9));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "").with_data(0),
+        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "~F2~:Tree")
+            .with_help("Focus tree panel")
+            .with_data(0),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "").with_data(1),
+        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "~F3~:Edit")
+            .with_help("Focus editor panel")
+            .with_data(1),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "").with_data(2),
+        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "~F4~:Term")
+            .with_help("Focus terminal panel")
+            .with_data(2),
     )));
     add_hidden_bindings(bar);
 }

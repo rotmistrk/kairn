@@ -176,3 +176,38 @@ fn help_tree_topic_has_no_cmd_ids() {
         "Tree help should not contain raw command IDs"
     );
 }
+
+// =============================================================================
+// TEST: Status bar shows short labels, not descriptions
+// =============================================================================
+
+#[test]
+fn status_bar_has_short_labels_not_descriptions() {
+    let dir = temp_project(&[("dummy.txt", "")]);
+    let h = TestHarness::new(dir.path());
+
+    let content = h.screen_text();
+
+    // Status bar is typically the last few lines
+    let lines: Vec<&str> = content.lines().collect();
+    if lines.is_empty() {
+        return;
+    }
+
+    // Check for long descriptions that should NOT be in status bar
+    let bad_phrases = [
+        "Toggle tree panel",
+        "Toggle tools panel",
+        "Focus previous panel",
+        "Focus next panel",
+        "Tab dropdown picker",
+    ];
+
+    for phrase in bad_phrases {
+        assert!(
+            !content.contains(phrase),
+            "Status bar should show short labels, not descriptions. Found: '{}'",
+            phrase
+        );
+    }
+}

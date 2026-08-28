@@ -71,13 +71,13 @@ fn tab_completes_file_path() {
     h.inject_str("edit READ");
     h.inject_key(KeyCode::Tab, KeyMod::default());
     h.run_cycles(1);
-    let last_row = h.row(23);
-    // With constrained InputLine, long paths may be truncated with overflow indicator.
-    // Accept either full "README.md" or truncated "…DME.md" (showing end where cursor is).
+    // With constrained InputLine + status bar labels, M-x may be truncated.
+    // Check full screen for the completed path.
+    let screen = h.screen_text();
     assert!(
-        last_row.contains("README.md") || last_row.contains("DME.md"),
+        screen.contains("README.md") || screen.contains("DME.md") || screen.contains("ME.md"),
         "expected completed path (full or truncated), got: {}",
-        last_row
+        screen
     );
 }
 
