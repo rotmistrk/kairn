@@ -2,7 +2,10 @@
 
 use txv_core::prelude::*;
 use txv_core::status_bar::{StatusBar, StatusSlot};
-use txv_widgets::tiled_workspace::commands::CM_TW_ACTIVATE_TAB;
+use txv_widgets::tiled_workspace::commands::{
+    CM_TW_ACTIVATE_TAB, CM_TW_FOCUS_LEFT, CM_TW_FOCUS_RIGHT, CM_TW_TAB_DROPDOWN, CM_TW_TAB_NEXT, CM_TW_TAB_PREV,
+    CM_TW_TOGGLE_TOOLS, CM_TW_TOGGLE_TREE, CM_TW_ZOOM,
+};
 use txv_widgets::tiled_workspace::TiledWorkspace;
 use txv_widgets::{FocusGatedGroup, KeyLabelView, ModalKey};
 
@@ -12,10 +15,27 @@ use crate::views::tree::DIRED_STATUS_GROUP;
 
 use super::helpers::{alt, ctrl, key};
 
-/// Register TiledWorkspace's default key→command bindings (hidden).
+/// Map command ID to help description for TiledWorkspace bindings.
+fn tw_command_label(cmd: CommandId) -> &'static str {
+    match cmd {
+        CM_TW_TOGGLE_TREE => "Toggle tree panel",
+        CM_TW_TOGGLE_TOOLS => "Toggle tools panel",
+        CM_TW_ZOOM => "Zoom toggle",
+        CM_TW_FOCUS_LEFT => "Focus previous panel",
+        CM_TW_FOCUS_RIGHT => "Focus next panel",
+        CM_TW_TAB_DROPDOWN => "Tab dropdown picker",
+        CM_TW_TAB_NEXT => "Next tab",
+        CM_TW_TAB_PREV => "Previous tab",
+        CM_TW_ACTIVATE_TAB => "Switch to tab",
+        _ => "",
+    }
+}
+
+/// Register TiledWorkspace's default key→command bindings with labels.
 pub fn add_workspace_bindings(bar: &mut StatusBar, desktop: &TiledWorkspace) {
     for (k, command, _payload) in desktop.default_bindings() {
-        bar.add(StatusSlot::new(Box::new(KeyLabelView::new(k, command, ""))));
+        let label = tw_command_label(command);
+        bar.add(StatusSlot::new(Box::new(KeyLabelView::new(k, command, label))));
     }
 }
 

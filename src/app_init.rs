@@ -1,9 +1,11 @@
 //! App initialization — shared between main() and test harness.
 
 use std::path::Path;
+use std::sync::Once;
 
 use txv_core::program::Program;
 use txv_widgets::sidekick_manager::SidekickManager;
+use txv_widgets::tiled_workspace;
 
 use crate::build_desktop::build_workspace;
 use crate::completer::AppCompleter;
@@ -14,9 +16,16 @@ use crate::startup::configure_app_state;
 use crate::status::build_status_bar;
 use crate::views::tree::FileTreeView;
 
+/// Ensure command metadata is registered once (for help system).
+static REGISTER_COMMANDS: Once = Once::new();
+
 /// Build the full application: AppState + Program, ready to run.
 /// This is the single source of truth for app initialization.
 pub fn build_app(root_dir: &Path) -> (Program, AppState) {
+    REGISTER_COMMANDS.call_once(|| {
+        tiled_workspace::register_commands();
+    });
+
     let settings = load_config(root_dir);
     let git_keys = settings.git_keys().clone();
     let mut app_state = AppState::with_settings(root_dir.to_path_buf(), settings);
