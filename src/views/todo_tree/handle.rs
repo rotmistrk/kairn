@@ -54,6 +54,10 @@ fn handle_shift_move(
 fn handle_toggle_complete(data: &mut TodoTreeData, id: usize) -> Option<HandleAction> {
     let path_ref = data.path_at(id)?;
     let path = path_ref.clone();
+    // Skip toggle on parents — their state is computed from children.
+    if model::has_children(&data.file, &path) {
+        return Some(HandleAction::Stay);
+    }
     let item = model::get_item_mut(&mut data.file, &path)?;
     item.completed = match item.completed {
         Completion::Done => Completion::Open,

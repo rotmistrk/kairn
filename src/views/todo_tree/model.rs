@@ -87,14 +87,31 @@ pub fn clone_subtree(file: &mut TodoFile, path: &TreePath) -> bool {
     true
 }
 
+/// Check if an item at the given path has children.
+pub fn has_children(file: &TodoFile, path: &TreePath) -> bool {
+    get_item(file, path).is_some_and(|item| !item.items.is_empty())
+}
+
+/// Reconcile completion state for all items in the tree.
+/// Call this after loading or after any mutation that might affect parent states.
+pub fn reconcile_all(file: &mut TodoFile) {
+    for item in &mut file.items {
+        update_completion(item);
+    }
+}
+
 /// Load a TodoFile from path, creating empty if absent.
 /// If the file lacks `id` fields (legacy format), IDs are generated and saved back.
+/// Reconciles parent completion states from descendants on load.
 pub fn load_todo_file(path: &Path) -> TodoFile {
     match fs::read_to_string(path) {
         Ok(content) if !content.trim().is_empty() => {
-            let file: TodoFile = serde_json::from_str(&content).unwrap_or_else(|_| TodoFile::new("Todo"));
-            // Persist generated IDs if the file lacked them.
-            if !content.contains("\"id\"") && !file.items.is_empty() {
+            let mut file: TodoFile = serde_json::from_str(&content).unwrap_or_else(|_| TodoFile::new("Todo"));
+            // Reconcile parent states from descendants.
+            reconcile_all(&mut file);
+            // Persist generated IDs or reconciled states if needed.
+            let needs_save = !content.contains("\"id\"") && !file.items.is_empty();
+            if needs_save {
                 let _ = save_todo_file(path, &file);
             }
             file

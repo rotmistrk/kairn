@@ -112,15 +112,19 @@ fn todo_set_completed() {
     let mut h = TestHarness::new(dir.path());
     h.state.set_mcp_commands(McpCommandQueue::new(Waker::noop()));
 
+    // Set completed on the leaf child (path [0, 0]), not the parent.
+    // Parent completion is computed from children, so set_completed on parent would fail.
     let result = exec_mcp_action(
         &mut h,
         McpAction::TodoSetCompleted {
-            path: vec![0],
+            path: vec![0, 0],
             state: "done".to_string(),
         },
     );
     assert!(result.is_ok(), "TodoSetCompleted failed: {result:?}");
 
     let todo = read_todo(dir.path());
+    assert_eq!(todo.items[0].items[0].completed, duir_core::model::Completion::Done);
+    // Parent should also become Done since its only child is now Done.
     assert_eq!(todo.items[0].completed, duir_core::model::Completion::Done);
 }
