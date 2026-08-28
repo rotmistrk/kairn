@@ -71,15 +71,15 @@ pub fn add_app_bindings(bar: &mut StatusBar, keys: &StatusKeys) {
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.zoom, CM_TW_ZOOM, "~F5~:Zoom"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.messages, CM_SHOW_MESSAGES, "~F6~:Msg"))).priority(5));
     bar.add(StatusSlot::new(Box::new(KeyLabelView::new(keys.quit, CM_APP_QUIT, "~C-q~:Quit"))).priority(9));
-    // F2/F3/F4 focus panels - help text comes from command registry
+    // F2/F3/F4 focus panels - hidden bindings (for key capture only), help from registry
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "~F2~:Tree").with_data(0),
+        KeyLabelView::new(keys.tree, CM_TW_FOCUS_PANEL, "").with_data(0),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "~F3~:Edit").with_data(1),
+        KeyLabelView::new(keys.main, CM_TW_FOCUS_PANEL, "").with_data(1),
     )));
     bar.add(StatusSlot::new(Box::new(
-        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "~F4~:Term").with_data(2),
+        KeyLabelView::new(keys.term, CM_TW_FOCUS_PANEL, "").with_data(2),
     )));
     add_hidden_bindings(bar);
 }

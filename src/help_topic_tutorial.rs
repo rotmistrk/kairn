@@ -74,6 +74,9 @@ fn section_roots() -> &'static str {
 │  :remove-root <path> to remove.
 │
 └──────────────────────────────────────
+
+See also:
+  → :help             Back to overview
 "
 }
 

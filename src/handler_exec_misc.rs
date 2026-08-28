@@ -1,5 +1,9 @@
 //! Misc M-x command handlers (theme, vsplit, welcome, set).
 
+use std::fs;
+use std::path::PathBuf;
+
+use txv_core::message::Message;
 use txv_core::program::CommandContext;
 
 use crate::commands::*;
@@ -50,4 +54,68 @@ pub(crate) fn cmd_welcome(ctx: &mut CommandContext, state: &mut AppState, _arg: 
 
 pub(crate) fn cmd_set(ctx: &mut CommandContext, _state: &mut AppState, arg: &str) {
     ctx.sink().push_command(CM_SET_GLOBAL, Some(Box::new(arg.to_string())));
+}
+
+pub(crate) fn cmd_add_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let path = PathBuf::from(arg);
+    let path = if path.is_relative() {
+        state.root_dir().join(&path)
+    } else {
+        path
+    };
+    let Some(path) = fs::canonicalize(&path).ok() else {
+        push_msg(state, Message::error("root", format!("Not found: {arg}")));
+        return;
+    };
+    if !path.is_dir() {
+        push_msg(state, Message::error("root", format!("Not a directory: {arg}")));
+        return;
+    }
+    if !state.roots_mut().add(path.clone()) {
+        push_msg(
+            state,
+            Message::warn("root", format!("Already a root: {}", path.display())),
+        );
+        return;
+    }
+    push_msg(state, Message::info("root", format!("Added root: {}", path.display())));
+    refresh_completer_roots(state);
+    emit_roots_changed(ctx, state);
+}
+pub(crate) fn cmd_remove_root(ctx: &mut CommandContext, state: &mut AppState, arg: &str) {
+    let path = PathBuf::from(arg);
+    let path = if path.is_relative() {
+        state.root_dir().join(&path)
+    } else {
+        path
+    };
+    let path = fs::canonicalize(&path).unwrap_or(path);
+    if !state.roots_mut().remove(&path) {
+        push_msg(
+            state,
+            Message::warn("root", format!("Not a root or last root: {}", path.display())),
+        );
+        return;
+    }
+    push_msg(
+        state,
+        Message::info("root", format!("Removed root: {}", path.display())),
+    );
+    refresh_completer_roots(state);
+    emit_roots_changed(ctx, state);
+}
+pub(crate) fn refresh_completer_roots(state: &AppState) {
+    let paths: Vec<String> = state.roots().paths().iter().map(|p| p.display().to_string()).collect();
+    if let Ok(mut guard) = state.scripting().completer_roots().lock() {
+        *guard = paths;
+    }
+}
+fn emit_roots_changed(ctx: &mut CommandContext, state: &AppState) {
+    let data = RootsChangedData::from_roots(state.roots());
+    ctx.sink().push_broadcast(CM_ROOTS_CHANGED, Some(Box::new(data)));
+}
+fn push_msg(state: &AppState, msg: Message) {
+    if let Ok(mut ring) = state.messages().lock() {
+        ring.push(msg);
+    }
 }

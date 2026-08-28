@@ -62,5 +62,6 @@ fn help_tcl_examples() -> &'static str {
 See also:
   → :help hooks       Hook events reference
   → :help commands    All M-x commands
+  → :help             Back to overview
 "
 }

@@ -51,6 +51,7 @@ fn help_editor_extras() -> &'static str {
 
 See also:
   → :help keys        All key bindings
+  → :help             Back to overview
 "
 }
 
@@ -76,6 +77,7 @@ pub(crate) fn help_tree() -> String {
 
 See also:
   → :help keys        All key bindings
+  → :help             Back to overview
 "
     .to_string()
 }
@@ -98,6 +100,7 @@ pub(crate) fn help_csv() -> String {
 
 See also:
   → :help keys        All key bindings
+  → :help             Back to overview
 "
     .to_string()
 }
@@ -122,6 +125,7 @@ pub(crate) fn help_struct() -> String {
 
 See also:
   → :help keys        All key bindings
+  → :help             Back to overview
 "
     .to_string()
 }
@@ -143,6 +147,7 @@ pub(crate) fn help_todo() -> String {
 
 See also:
   → :help keys        All key bindings
+  → :help             Back to overview
 "
     .to_string()
 }

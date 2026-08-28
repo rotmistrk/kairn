@@ -9,7 +9,7 @@ use txv_core::run::Waker;
 use crate::app_state::AppState;
 use crate::commands::*;
 use crate::grep;
-use crate::handler_exec_table2::refresh_completer_roots;
+use crate::handler_exec_misc::refresh_completer_roots;
 use crate::handler_script_util::lsp_cmd;
 use crate::mcp::commands::McpAction;
 use crate::scripting::ScriptCommand;

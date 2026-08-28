@@ -30,6 +30,7 @@ pub(crate) fn help_mcp() -> String {
 See also:
   → :help tcl         Tcl scripting (eval tool)
   → :help commands    All commands
+  → :help             Back to overview
 "
     .to_string()
 }

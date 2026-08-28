@@ -38,6 +38,7 @@ pub(crate) fn help_hooks() -> String {
 
 See also:
   → :help tcl         Tcl scripting reference
+  → :help             Back to overview
 "
     .to_string()
 }

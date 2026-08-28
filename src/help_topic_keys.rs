@@ -37,5 +37,6 @@ pub fn help_keys_from_bindings(bindings: &[KeyHelpEntry]) -> String {
     s.push_str("  → :help csv       CSV view keys\n");
     s.push_str("  → :help struct    Structured view keys\n");
     s.push_str("  → :help todo      Todo tree keys\n");
+    s.push_str("  → :help           Back to overview\n");
     s
 }

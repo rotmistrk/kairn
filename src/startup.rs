@@ -22,7 +22,7 @@ use crate::completer::refresh_commands;
 use crate::config_colors::apply_chrome_config;
 use crate::desktop::SlotId;
 use crate::handler::AppState;
-use crate::handler_exec_table2::refresh_completer_roots;
+use crate::handler_exec_misc::refresh_completer_roots;
 use crate::handler_lsp_cmd::refresh_lsp_languages;
 use crate::mcp::agent_file::write_agent_file;
 use crate::mcp::listener::{start_mcp_listener, SharedCommandQueue};

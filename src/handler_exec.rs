@@ -8,6 +8,8 @@ use crate::handler::AppState;
 pub struct ExecEntry {
     /// Command names (first is canonical, rest are aliases).
     pub(crate) names: &'static [&'static str],
+    /// Brief description for help system.
+    pub(crate) description: &'static str,
     /// If true, the command requires a non-empty argument.
     pub(crate) requires_arg: bool,
     /// Handler function: receives context, state, and the argument string.
