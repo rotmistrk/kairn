@@ -142,16 +142,14 @@ impl EditorViewDelegate for KairnDelegate {
         self.handle_command_event(id, data, editor)
     }
 
-    fn on_paste(&mut self, text: &str, editor: &mut Editor) -> HandleResult {
-        let offset = editor
-            .buf()
-            .line_col_to_offset(editor.cursor_line(), editor.cursor_col())
-            .unwrap_or(0);
-        editor.buf().insert(offset, text);
+    fn on_paste(&mut self, _text: &str, _editor: &mut Editor) -> HandleResult {
+        // Let the default EditorView::handle_paste handle this properly.
+        // It handles insert mode (char-by-char with newlines) and normal mode
+        // (yank + paste) correctly. Kairn just needs to mark dirty.
         self.last_edit_tick = u64::MAX;
         self.clear_diagnostics();
         self.dirty = true;
-        HandleResult::Consumed
+        HandleResult::Ignored
     }
 
     fn on_key_pre(&mut self, key: &KeyEvent, editor: &mut Editor) -> Option<HandleResult> {
