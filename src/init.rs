@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const HOME_CONFIG_TEMPLATE: &str = include_str!("../doc/example-init.tcl");
+const STEERING_TEMPLATE: &str = include_str!("../doc/kairn-agent-sop.md");
 
 const WP_CONFIG_TEMPLATE: &str = "\
 # kairn project config — .kairn/init.tcl
@@ -41,6 +42,7 @@ pub fn init_wp_config(project: &Path) -> anyhow::Result<()> {
     let path = project.join(".kairn").join("init.tcl");
     write_or_diff(&path, WP_CONFIG_TEMPLATE, "project")?;
     write_agent_config(project)?;
+    write_steering_doc(project)?;
     Ok(())
 }
 
@@ -72,6 +74,21 @@ fn write_agent_config(project: &Path) -> anyhow::Result<()> {
     }
     fs::write(&agent_path, json)?;
     println!("Created agent config: {}", agent_path.display());
+    Ok(())
+}
+
+/// Write .kiro/steering/kairn-agent-sop.md with kairn-specific SOPs.
+fn write_steering_doc(project: &Path) -> anyhow::Result<()> {
+    let steering_path = project.join(".kiro/steering/kairn-agent-sop.md");
+    if steering_path.exists() {
+        println!("steering doc already exists: {}", steering_path.display());
+        return Ok(());
+    }
+    if let Some(parent) = steering_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&steering_path, STEERING_TEMPLATE)?;
+    println!("Created steering doc: {}", steering_path.display());
     Ok(())
 }
 
