@@ -123,29 +123,8 @@ fn extract_app_settings(interp: &Interpreter, settings: &mut AppSettings) {
             settings.clock_interval = n as u16;
         }
     }
-    if let Some(val) = interp.get_var("terminal.scrollback") {
-        if let Ok(n) = val.as_int() {
-            settings.scrollback_lines = n as u16;
-        }
-    }
-    if let Some(val) = interp.get_var("terminal.idle-timeout") {
-        if let Ok(n) = val.as_int() {
-            settings.terminal_idle_timeout = n as u64;
-        }
-    }
-    if let Some(val) = interp.get_var("terminal.auto-close-on-exit") {
-        settings.terminal_auto_close = val.as_str() == "true" || val.as_str() == "1";
-    }
-    if let Some(val) = interp.get_var("layout.wide-threshold") {
-        if let Ok(n) = val.as_int() {
-            settings.layout_wide_threshold = n as u16;
-        }
-    }
-    if let Some(val) = interp.get_var("layout.tall-threshold") {
-        if let Ok(n) = val.as_int() {
-            settings.layout_tall_threshold = n as u16;
-        }
-    }
+    extract_terminal_settings(interp, settings);
+    extract_layout_settings(interp, settings);
     if let Some(val) = interp.get_var("tabs.max") {
         if let Ok(n) = val.as_int() {
             settings.max_tabs = n as u16;
@@ -157,6 +136,40 @@ fn extract_app_settings(interp: &Interpreter, settings: &mut AppSettings) {
         }
     }
     extract_theme_settings(interp, settings);
+}
+
+fn extract_terminal_settings(interp: &Interpreter, settings: &mut AppSettings) {
+    if let Some(val) = interp.get_var("terminal.scrollback") {
+        if let Ok(n) = val.as_int() {
+            settings.scrollback_lines = n as u16;
+        }
+    }
+    if let Some(val) = interp.get_var("terminal.cursor-area") {
+        if let Ok(n) = val.as_int() {
+            settings.cursor_area_lines = n as u16;
+        }
+    }
+    if let Some(val) = interp.get_var("terminal.idle-timeout") {
+        if let Ok(n) = val.as_int() {
+            settings.terminal_idle_timeout = n as u64;
+        }
+    }
+    if let Some(val) = interp.get_var("terminal.auto-close-on-exit") {
+        settings.terminal_auto_close = val.as_str() == "true" || val.as_str() == "1";
+    }
+}
+
+fn extract_layout_settings(interp: &Interpreter, settings: &mut AppSettings) {
+    if let Some(val) = interp.get_var("layout.wide-threshold") {
+        if let Ok(n) = val.as_int() {
+            settings.layout_wide_threshold = n as u16;
+        }
+    }
+    if let Some(val) = interp.get_var("layout.tall-threshold") {
+        if let Ok(n) = val.as_int() {
+            settings.layout_tall_threshold = n as u16;
+        }
+    }
 }
 
 fn extract_theme_settings(interp: &Interpreter, settings: &mut AppSettings) {

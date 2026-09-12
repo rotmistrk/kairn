@@ -13,17 +13,25 @@ pub use txv_widgets::PtyTerminal as TerminalView;
 
 /// Create a shell terminal, falling back to a placeholder on failure.
 pub fn new_shell_terminal() -> Box<dyn View> {
-    new_shell_terminal_with_scrollback(2000)
+    new_shell_terminal_with_config(2000, 3)
 }
 
 /// Create a shell terminal with custom scrollback, falling back to a placeholder on failure.
 pub fn new_shell_terminal_with_scrollback(scrollback_lines: u16) -> Box<dyn View> {
+    new_shell_terminal_with_config(scrollback_lines, 3)
+}
+
+/// Create a shell terminal with custom scrollback and cursor area.
+pub fn new_shell_terminal_with_config(scrollback_lines: u16, cursor_area: u16) -> Box<dyn View> {
     // In test environments, don't spawn a real PTY
     if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Shell"));
     }
     match TerminalView::spawn_shell_with_scrollback(80, 24, scrollback_lines as usize) {
-        Ok(term) => Box::new(term),
+        Ok(mut term) => {
+            term.set_cursor_area_lines(cursor_area);
+            Box::new(term)
+        }
         Err(e) => {
             log::error!("Failed to spawn shell: {}", e);
             Box::new(FallbackTerminal::with_error("Shell (failed)", format!("{e}")))
@@ -48,7 +56,7 @@ pub fn new_shell_with_command(cmd: &str, cwd: &Path) -> Box<dyn View> {
 /// Spawn a kiro terminal from a fully-built argv list.
 /// First element is the program, rest are arguments.
 /// KAIRN_MCP_SOCKET is always injected into the environment.
-pub fn new_kiro_terminal_argv(argv: &[String], cwd: &Path) -> Box<dyn View> {
+pub fn new_kiro_terminal_argv(argv: &[String], cwd: &Path, cursor_area: u16) -> Box<dyn View> {
     if env::var("KAIRN_TEST").is_ok() {
         return Box::new(FallbackTerminal::new("Kiro"));
     }
@@ -69,7 +77,10 @@ pub fn new_kiro_terminal_argv(argv: &[String], cwd: &Path) -> Box<dyn View> {
         vec![("KAIRN_MCP_SOCKET", &socket_val)]
     };
     match TerminalView::spawn_command_with_env(program, &arg_refs, cwd, 80, 24, &envs) {
-        Ok(term) => Box::new(term),
+        Ok(mut term) => {
+            term.set_cursor_area_lines(cursor_area);
+            Box::new(term)
+        }
         Err(e) => {
             log::error!("Failed to spawn kiro: {}", e);
             Box::new(FallbackTerminal::with_error("Kiro (failed)", format!("{program}: {e}")))

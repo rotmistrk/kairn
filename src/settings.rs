@@ -10,6 +10,7 @@ pub use crate::status_keys::StatusKeys;
 pub struct AppSettings {
     pub(crate) clock_interval: u16,
     pub(crate) scrollback_lines: u16,
+    pub(crate) cursor_area_lines: u16,
     pub(crate) max_tabs: u16,
     pub(crate) theme_mode: String,
     pub(crate) theme_syntax_dark: String,
@@ -37,6 +38,7 @@ impl Default for AppSettings {
         Self {
             clock_interval: 60,
             scrollback_lines: 2000,
+            cursor_area_lines: 3,
             max_tabs: 10,
             theme_mode: "auto".to_string(),
             theme_syntax_dark: "base16-eighties.dark".to_string(),
@@ -143,5 +145,11 @@ impl AppSettings {
     }
     pub fn set_theme_glyphs(&mut self, v: String) {
         self.theme_glyphs = v;
+    }
+    pub fn cursor_area_lines(&self) -> u16 {
+        self.cursor_area_lines
+    }
+    pub fn scrollback_lines(&self) -> u16 {
+        self.scrollback_lines
     }
 }

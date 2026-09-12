@@ -165,6 +165,7 @@ pub fn restore_kiro_tabs(
     root_dir: &Path,
     registry: &mut KiroTabRegistry,
     kiro: &crate::settings::KiroLaunchSettings,
+    cursor_area: u16,
 ) {
     for (i, session) in sessions.iter().enumerate() {
         let mut argv: Vec<String> = kiro.cmd.clone();
@@ -179,7 +180,7 @@ pub fn restore_kiro_tabs(
         if !argv.iter().any(|a| a.starts_with("--agent")) {
             argv.push("--agent=kairn".to_string());
         }
-        let term = new_kiro_terminal_argv(&argv, root_dir);
+        let term = new_kiro_terminal_argv(&argv, root_dir, cursor_area);
         insert_tab(desktop, SlotId::Tools, &session.name, term);
         registry.register_with_id(&session.name, session.session_id.clone());
     }

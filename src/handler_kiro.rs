@@ -30,7 +30,8 @@ pub(crate) fn cmd_kiro(ctx: &mut CommandContext, state: &mut AppState, arg: &str
 
     let argv = build_kiro_argv(state.settings().kiro().cmd(), &patched_agent, &extra_args);
     let name = next_tab_name(desktop, SlotId::Tools, "Kiro");
-    let term = new_kiro_terminal_argv(&argv, state.root_dir());
+    let cursor_area = state.settings().cursor_area_lines();
+    let term = new_kiro_terminal_argv(&argv, state.root_dir(), cursor_area);
     try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
     state.kiro_registry.register(&name);
     sink.push_command(

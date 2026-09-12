@@ -20,7 +20,7 @@ use crate::scripting::hooks::HookEvent;
 use crate::views::help::HelpView;
 use crate::views::problems::ProblemsView;
 use crate::views::results::ResultsView;
-use crate::views::terminal::new_shell_terminal;
+use crate::views::terminal::new_shell_terminal_with_config;
 
 pub(crate) fn cmd_blame(ctx: &mut CommandContext, _state: &mut AppState, _arg: &str) {
     ctx.sink().push_command(CM_BLAME, None);
@@ -217,7 +217,10 @@ pub(crate) fn cmd_shell(ctx: &mut CommandContext, state: &mut AppState, _arg: &s
     let sink = ctx.sink().clone();
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let name = next_tab_name(desktop, SlotId::Tools, "Shell");
-        try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), new_shell_terminal());
+        let scrollback = state.settings().scrollback_lines();
+        let cursor_area = state.settings().cursor_area_lines();
+        let term = new_shell_terminal_with_config(scrollback, cursor_area);
+        try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
         sink.push_command(
             txv_widgets::CM_STATUS_MESSAGE,
             Some(Box::new(Message::info("shell", format!("Started: {name}")))),

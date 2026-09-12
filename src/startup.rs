@@ -160,12 +160,14 @@ pub fn restore_saved_session(
     }
     patch_editor_clipboard(desktop, app_state);
     let kiro_settings = app_state.settings().kiro().clone();
+    let cursor_area = app_state.settings().cursor_area_lines();
     session::restore_kiro_tabs(
         desktop,
         sess.kiro_sessions(),
         root_dir,
         app_state.kiro_registry_mut(),
         &kiro_settings,
+        cursor_area,
     );
 }
 

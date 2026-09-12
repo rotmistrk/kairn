@@ -37,6 +37,9 @@ set editor.cursor_command software
 
 # ─── Terminal ────────────────────────────────────────────────────────────────
 set terminal.scrollback 2000
+# Lines reserved at bottom for live output when scrolling back (default: 3)
+# 0 = simple freeze (no split view), >0 = split view with gap indicator
+# set terminal.cursor-area 3
 # Seconds before terminal is considered idle (default: 3)
 # set terminal.idle-timeout 3
 # Auto-close shell tabs when the shell process exits (default: true)

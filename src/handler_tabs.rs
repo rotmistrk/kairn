@@ -9,7 +9,7 @@ use crate::handler_evict::try_insert_tab;
 use crate::slots::{focus_tab_by_title, next_tab_name, SlotId};
 use crate::views::help::HelpView;
 use crate::views::messages::MessagesView;
-use crate::views::terminal::new_shell_terminal;
+use crate::views::terminal::new_shell_terminal_with_config;
 
 pub fn handle_show_help(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
@@ -43,7 +43,9 @@ pub fn handle_show_messages(ctx: &mut CommandContext, state: &mut AppState) {
 
 pub fn handle_new_shell(ctx: &mut CommandContext, state: &mut AppState) {
     let sink = ctx.sink().clone();
-    let term = new_shell_terminal();
+    let scrollback = state.settings().scrollback_lines();
+    let cursor_area = state.settings().cursor_area_lines();
+    let term = new_shell_terminal_with_config(scrollback, cursor_area);
     if let Some(desktop) = downcast_desktop(ctx.desktop_mut()) {
         let name = next_tab_name(desktop, SlotId::Tools, "Shell");
         try_insert_tab(desktop, state, &sink, SlotId::Tools, name.clone(), term);
